@@ -1,4 +1,4 @@
-# /internal/config
+# App configuration
 
 ## Description
 Module for application configuration and setup.
@@ -8,7 +8,4 @@ Contains the configuration for both the whole application and the individual ser
 To be added
 
 ## Configuration
-To be added
-
-## Examples
-To be added
+See [configuration docs](../../docs/04_configuration) for more details.

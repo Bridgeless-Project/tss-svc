@@ -10,12 +10,18 @@ Contains the command-line interface (CLI) for the project
 
 ## Commands
 
+---
+
 ### Service Commands
 
 #### Migration
 - `tss-svc service migrate up`: Migrates the database schema to the latest version
 - `tss-svc service migrate down`: Rolls back the database schema to the previous version
 
+---
+
 ### Helper Commands
-To be added
-    
+
+#### Generation
+- `tss-svc helpers generate preparams`: Generates a new set of pre-parameters for the TSS service
+TODO: Add more commands and detailed descriptions

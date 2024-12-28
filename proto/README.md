@@ -1,7 +1,7 @@
 # /proto
 
 ## Description
-Contains the protocol buffer (protobuf) definitions for the project
+Contains the Protocol Buffer (protobuf) definitions for the project
 
 ## Components
 To be added
