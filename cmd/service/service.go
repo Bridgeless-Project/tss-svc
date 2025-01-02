@@ -14,15 +14,15 @@ const (
 )
 
 func init() {
-	registerCommands(Cmd)
-	registerFlags(Cmd)
+	registerServiceCommands(Cmd)
+	registerServiceFlags(Cmd)
 }
 
-func registerCommands(cmd *cobra.Command) {
+func registerServiceCommands(cmd *cobra.Command) {
 	cmd.AddCommand(migrate.Cmd)
 }
 
-func registerFlags(cmd *cobra.Command) {
+func registerServiceFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().String(configFlag, "config.yaml", "config file path")
 }
 

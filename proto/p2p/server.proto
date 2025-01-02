@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/hyle-team/tss-svc/internal/p2p";
+
+enum PartyStatus {
+  UNKNOWN = 0;
+  INACTIVE = 1;
+  SYNCING = 2;
+  KEYGENING = 3;
+  SIGNING = 4;
+}
+
+enum RequestType {
+  KEYGEN = 0;
+  ACCEPT = 1;
+  SIGN = 2;
+  FINALIZE = 3;
+}
+
+service P2P {
+  rpc Status (google.protobuf.Empty) returns (StatusResponse) {}
+  rpc Submit (SubmitRequest) returns (google.protobuf.Empty) {}
+}
+
+message StatusResponse {
+  PartyStatus status = 1;
+}
+
+message SubmitRequest {
+  string sender = 1;
+  string sessionId = 2;
+  RequestType type = 3;
+  google.protobuf.Any data = 4;
+}
+
+message TssData {
+  bytes data = 1;
+  bool isBroadcast = 2;
+}

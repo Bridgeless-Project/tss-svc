@@ -1,0 +1,15 @@
+version: v1
+plugins:
+  - plugin: buf.build/grpc-ecosystem/openapiv2
+    out: ../../docs/static
+
+  - plugin: go
+    out: ../../internal/p2p
+    opt: paths=source_relative
+
+  - plugin: go-grpc
+    out: ../../internal/p2p
+    opt: paths=source_relative
+
+
+
