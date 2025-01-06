@@ -7,17 +7,25 @@ import (
 	"time"
 
 	tss "github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/hyle-team/tss-svc/cmd/utils"
+	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
 var defaultGenerationDeadline = 10 * time.Minute
+var outputType string
+var filePath string
+var configPath string
+
+func init() {
+	registerPreParamsFlags(preparamsCmd)
+}
 
 var preparamsCmd = &cobra.Command{
-	Use:   "preparams [output-file.json]",
+	Use:   "preparams",
 	Short: "Generates pre-parameters for the TSS protocol",
-	Long:  "Generates pre-parameters for the TSS protocol. The default output is a configured stdout. Additionally, JSON file path can be specified to save data.",
-	Args:  cobra.MaximumNArgs(1),
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Generating pre-parameters...")
 
@@ -29,18 +37,35 @@ var preparamsCmd = &cobra.Command{
 			return errors.New("generated pre-parameters are invalid, please try again")
 		}
 
-		data, err := json.Marshal(params)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal pre-parameters")
+		fmt.Println("Pre-parameters generated successfully")
+
+		switch outputType {
+		case "console":
+			raw, _ := json.Marshal(params)
+			fmt.Println(string(raw))
+		case "file":
+			raw, _ := json.Marshal(params)
+			if err := os.WriteFile(filePath, raw, 0644); err != nil {
+				return errors.Wrap(err, "failed to write pre-parameters to file")
+			}
+		case "vault":
+			config, err := utils.ConfigFromFlags(cmd)
+			if err != nil {
+				return errors.Wrap(err, "failed to get config from flags")
+			}
+
+			storage := vault.NewStorage(config.VaultClient())
+			if err := storage.SaveKeygenPreParams(params); err != nil {
+				return errors.Wrap(err, "failed to save pre-parameters to vault")
+			}
 		}
 
-		fmt.Println("Generated pre-parameters:")
-		fmt.Println(string(data))
-
-		if len(args) == 0 {
-			return nil
-		}
-
-		return errors.Wrap(os.WriteFile(args[0], data, 0644), "failed to write pre-parameters to file")
+		return nil
 	},
+}
+
+func registerPreParamsFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&outputType, "output", "o", "console", "Output type: console, file, or vault")
+	cmd.Flags().StringVar(&filePath, "path", "preparams.json", "Path to save the pre-parameters file (used when output-type is 'file')")
+	cmd.Flags().StringVar(&configPath, "config", "config.yaml", "Path to configuration file (used when output-type is 'vault')")
 }

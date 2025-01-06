@@ -54,15 +54,14 @@ func (c *p2PClient) Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.
 }
 
 // P2PServer is the server API for P2P service.
-// All implementations must embed UnimplementedP2PServer
+// All implementations should embed UnimplementedP2PServer
 // for forward compatibility
 type P2PServer interface {
 	Status(context.Context, *emptypb.Empty) (*StatusResponse, error)
 	Submit(context.Context, *SubmitRequest) (*emptypb.Empty, error)
-	mustEmbedUnimplementedP2PServer()
 }
 
-// UnimplementedP2PServer must be embedded to have forward compatible implementations.
+// UnimplementedP2PServer should be embedded to have forward compatible implementations.
 type UnimplementedP2PServer struct {
 }
 
@@ -72,7 +71,6 @@ func (UnimplementedP2PServer) Status(context.Context, *emptypb.Empty) (*StatusRe
 func (UnimplementedP2PServer) Submit(context.Context, *SubmitRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Submit not implemented")
 }
-func (UnimplementedP2PServer) mustEmbedUnimplementedP2PServer() {}
 
 // UnsafeP2PServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to P2PServer will

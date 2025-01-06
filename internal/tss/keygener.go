@@ -3,6 +3,7 @@ package tss
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/tss"
@@ -33,6 +34,8 @@ type KeygenParty struct {
 	result         *keygen.LocalPartySaveData
 
 	sessionId string
+
+	ended atomic.Bool
 
 	logger *logan.Entry
 }
@@ -88,11 +91,16 @@ func (p *KeygenParty) Run(ctx context.Context) {
 
 func (p *KeygenParty) WaitFor() *keygen.LocalPartySaveData {
 	p.wg.Wait()
+	p.ended.Store(true)
 
 	return p.result
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
+	if p.ended.Load() {
+		return
+	}
+
 	p.msgs <- partyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
