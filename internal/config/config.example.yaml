@@ -1,0 +1,11 @@
+## Logger configuration
+log:
+  ## Log level: debug, info, warn, error, fatal
+  level: debug
+  ## Disable Sentry integration
+  disable_sentry: true
+
+## Database configuration
+db:
+  ## Database URL connection string
+  url:

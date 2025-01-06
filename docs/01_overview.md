@@ -55,7 +55,10 @@ After receiving the deposit data, the TSS network will start the process of with
 
 ## Service Configuration
 
-TODO: add
+Service configuration is based on the configuration file that should be provided to the service during the launch or commands execution.
+The configuration file contains the service settings, network settings, and other required parameters.
+Additionally, the [HashiCorp Vault](https://www.vaultproject.io/) is used to store the most sensitive data like keys, shares etc.
+See the [Configuration](./04_configuration.md) docs for more details on how to configure the system.
 
 ---
 
