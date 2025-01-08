@@ -50,7 +50,8 @@ var keygenCmd = &cobra.Command{
 		}
 
 		errGroup := new(errgroup.Group)
-		ctx, ctxCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+		defer cancel()
 
 		connectionManager := p2p.NewConnectionManager(
 			cfg.Parties(),
@@ -78,7 +79,7 @@ var keygenCmd = &cobra.Command{
 		})
 
 		errGroup.Go(func() error {
-			defer ctxCancel()
+			defer cancel()
 
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
@@ -87,6 +88,8 @@ var keygenCmd = &cobra.Command{
 			if err != nil {
 				return errors.Wrap(err, "failed to obtain keygen session result")
 			}
+
+			cfg.Log().Info("keygen session successfully completed")
 
 			return storeKeygenResult(result, storage)
 		})

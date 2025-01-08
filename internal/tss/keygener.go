@@ -19,23 +19,18 @@ type LocalKeygenParty struct {
 }
 
 type KeygenParty struct {
-	wg *sync.WaitGroup
+	wg    *sync.WaitGroup
+	ended atomic.Bool
 
-	broadcaster interface {
-		Send(msg *p2p.SubmitRequest, to core.Address) error
-		Broadcast(msg *p2p.SubmitRequest) error
-	}
-
+	broadcaster    *p2p.Broadcaster
 	party          tss.Party
 	sortedPartyIds tss.SortedPartyIDs
 	parties        map[core.Address]struct{}
 	self           LocalKeygenParty
-	msgs           chan partyMsg
-	result         *keygen.LocalPartySaveData
 
+	msgs      chan partyMsg
+	result    *keygen.LocalPartySaveData
 	sessionId string
-
-	ended atomic.Bool
 
 	logger *logan.Entry
 }
@@ -43,13 +38,9 @@ type KeygenParty struct {
 func NewKeygenParty(self LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
-	partyIds[0] = p2p.AddrToPartyIdentifier(self.Address)
+	partyIds[0] = self.Address.PartyIdentifier()
 
 	for i, party := range parties {
-		if party.CoreAddress == self.Address {
-			continue
-		}
-
 		partyMap[party.CoreAddress] = struct{}{}
 		partyIds[i+1] = party.Identifier()
 	}
@@ -69,7 +60,7 @@ func NewKeygenParty(self LocalKeygenParty, parties []p2p.Party, sessionId string
 func (p *KeygenParty) Run(ctx context.Context) {
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
-		p2p.AddrToPartyIdentifier(p.self.Address),
+		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
 		len(p.sortedPartyIds),
 	)
@@ -81,6 +72,8 @@ func (p *KeygenParty) Run(ctx context.Context) {
 	p.wg.Add(3)
 
 	go func() {
+		defer p.wg.Done()
+
 		if err := p.party.Start(); err != nil {
 			p.logger.WithError(err).Error("failed to run keygen party")
 			close(end)
@@ -117,18 +110,18 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 		case <-ctx.Done():
 			p.logger.Warn("context is done; stopping receiving messages")
 			return
-		case msg, closed := <-p.msgs:
-			if closed {
+		case msg, ok := <-p.msgs:
+			if !ok {
 				p.logger.Debug("msg channel is closed")
 				return
 			}
 
 			if _, exists := p.parties[msg.Sender]; !exists {
-				p.logger.Warn("got message from outside party")
+				p.logger.WithField("party", msg.Sender).Warn("got message from outside party")
 				continue
 			}
 
-			_, err := p.party.UpdateFromBytes(msg.WireMsg, p2p.AddrToPartyIdentifier(msg.Sender), msg.IsBroadcast)
+			_, err := p.party.UpdateFromBytes(msg.WireMsg, p.sortedPartyIds.FindByKey(msg.Sender.PartyKey()), msg.IsBroadcast)
 			if err != nil {
 				p.logger.WithError(err).Error("failed to update party state")
 			}
@@ -175,20 +168,15 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 			}
 
 			// https://github.com/bnb-chain/tss/blob/100c015447e557b0608c8c8cbd30730d5dac7fba/client/client.go#L288
-			destination := routing.To
-			if destination == nil || len(destination) > 1 {
+			to := routing.To
+			if to == nil || len(to) > 1 {
 				if err = p.broadcaster.Broadcast(&submitReq); err != nil {
 					p.logger.WithError(err).Error("failed to broadcast message")
 				}
 				continue
 			}
 
-			dst, err := p2p.AddrFromPartyIdentifier(destination[0])
-			if err != nil {
-				p.logger.WithError(err).Error("failed to get destination address")
-				continue
-			}
-
+			dst := core.AddrFromPartyId(to[0])
 			if err = p.broadcaster.Send(&submitReq, dst); err != nil {
 				p.logger.WithError(err).Error("failed to send message")
 			}

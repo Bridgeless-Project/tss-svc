@@ -58,6 +58,7 @@ func (s *Server) Status(ctx context.Context, empty *emptypb.Empty) (*StatusRespo
 }
 
 func (s *Server) Submit(ctx context.Context, request *SubmitRequest) (*emptypb.Empty, error) {
+	// TODO: auth check
 	if err := s.manager.Receive(request); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
