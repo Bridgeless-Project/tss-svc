@@ -18,7 +18,6 @@ type Party struct {
 	PubKey      string
 	CoreAddress core.Address
 
-	RawConn    string
 	connection *grpc.ClientConn
 	identifier *tss.PartyID
 }
@@ -31,8 +30,8 @@ func (p *Party) Connection() *grpc.ClientConn {
 	return p.connection
 }
 
-func NewParty(pubKey string, coreAddr core.Address, connection *grpc.ClientConn) *Party {
-	return &Party{
+func NewParty(pubKey string, coreAddr core.Address, connection *grpc.ClientConn) Party {
+	return Party{
 		PubKey:      pubKey,
 		connection:  connection,
 		CoreAddress: coreAddr,

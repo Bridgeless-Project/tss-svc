@@ -1,9 +1,8 @@
-package session
+package p2p
 
 import (
 	"sync"
 
-	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/pkg/errors"
 )
 
@@ -11,18 +10,30 @@ var (
 	ErrSessionNotFound = errors.New("session not found")
 )
 
-type Session interface {
+type TssSession interface {
 	Id() string
-	Receive(request *p2p.SubmitRequest) error
+	Receive(request *SubmitRequest) error
 	RegisterIdChangeListener(func(oldId, newId string))
 }
 
-type Manager struct {
-	sessions map[string]Session
+type SessionManager struct {
+	sessions map[string]TssSession
 	mu       sync.RWMutex
 }
 
-func (m *Manager) AddSession(session Session) {
+func NewSessionManager(sessions ...TssSession) *SessionManager {
+	manager := &SessionManager{
+		sessions: make(map[string]TssSession),
+	}
+
+	for _, session := range sessions {
+		manager.Add(session)
+	}
+
+	return manager
+}
+
+func (m *SessionManager) Add(session TssSession) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -30,7 +41,7 @@ func (m *Manager) AddSession(session Session) {
 	session.RegisterIdChangeListener(m.onIdChange)
 }
 
-func (m *Manager) Get(id string) Session {
+func (m *SessionManager) Get(id string) TssSession {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -41,7 +52,7 @@ func (m *Manager) Get(id string) Session {
 	return nil
 }
 
-func (m *Manager) Receive(request *p2p.SubmitRequest) error {
+func (m *SessionManager) Receive(request *SubmitRequest) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -52,7 +63,7 @@ func (m *Manager) Receive(request *p2p.SubmitRequest) error {
 	return ErrSessionNotFound
 }
 
-func (m *Manager) onIdChange(oldId, newId string) {
+func (m *SessionManager) onIdChange(oldId, newId string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

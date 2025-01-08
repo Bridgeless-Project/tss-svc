@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"context"
-
 	"github.com/hyle-team/tss-svc/internal/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -10,19 +8,26 @@ import (
 )
 
 const (
-	cfgKey     = iota
 	configFlag = "config"
 )
 
-func WithConfig(cmd *cobra.Command, cfg config.Config) *cobra.Command {
-	cmd.SetContext(context.WithValue(cmd.Context(), cfgKey, cfg))
-
-	return cmd
+func RegisterOutputFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&OutputType, "output", "o", "console", "Output type: console, file, or vault")
+	cmd.Flags().StringVar(&FilePath, "path", "preparams.json", "Path to save the pre-parameters file (used when output-type is 'file')")
+	RegisterConfigFlag(cmd)
 }
 
-func Config(cmd *cobra.Command) config.Config {
-	return cmd.Context().Value(cfgKey).(config.Config)
+func RegisterConfigFlag(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringP(configFlag, "c", "config.yaml", "Path to the config file")
 }
+
+func OutputValid() bool {
+	return OutputType == "console" || OutputType == "file" || OutputType == "vault"
+}
+
+var OutputType string
+var FilePath string
+var ConfigPath string
 
 func ConfigFromFlags(cmd *cobra.Command) (config.Config, error) {
 	configPath, err := cmd.Flags().GetString(configFlag)

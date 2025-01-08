@@ -40,7 +40,7 @@ type KeygenParty struct {
 	logger *logan.Entry
 }
 
-func New(self LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
+func NewKeygenParty(self LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
 	partyIds[0] = p2p.AddrToPartyIdentifier(self.Address)
@@ -62,6 +62,7 @@ func New(self LocalKeygenParty, parties []p2p.Party, sessionId string, logger *l
 		msgs:           make(chan partyMsg, MsgsCapacity),
 		logger:         logger,
 		sessionId:      sessionId,
+		wg:             &sync.WaitGroup{},
 	}
 }
 
@@ -123,7 +124,7 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 			}
 
 			if _, exists := p.parties[msg.Sender]; !exists {
-				p.logger.Error("got message from outside party")
+				p.logger.Warn("got message from outside party")
 				continue
 			}
 
@@ -164,6 +165,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 				Data:        raw,
 				IsBroadcast: routing.IsBroadcast,
 			}
+
 			tssReq, _ := anypb.New(tssData)
 			submitReq := p2p.SubmitRequest{
 				Sender:    p.self.Address.String(),

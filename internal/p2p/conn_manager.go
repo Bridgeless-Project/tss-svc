@@ -17,15 +17,14 @@ type connection struct {
 }
 
 type ConnectionManager struct {
-	conns  map[core.Address]connection
-	connsM *sync.RWMutex
+	conns map[core.Address]connection
 
 	ready          map[core.Address]struct{}
-	readyM         *sync.RWMutex
+	readyM         sync.RWMutex
 	requiredStatus PartyStatus
 
 	subscribers map[chan struct{}]int
-	subM        *sync.RWMutex
+	subM        sync.RWMutex
 	logger      *logan.Entry
 }
 
@@ -36,13 +35,17 @@ func NewConnectionManager(parties []Party, requiredStatus PartyStatus, logger *l
 		conns[p.CoreAddress] = connection{conn: p.Connection(), status: PartyStatus_UNKNOWN}
 	}
 
-	return &ConnectionManager{
+	manager := &ConnectionManager{
 		conns:          conns,
 		ready:          make(map[core.Address]struct{}, len(parties)),
 		requiredStatus: requiredStatus,
 		subscribers:    make(map[chan struct{}]int),
 		logger:         logger,
 	}
+
+	go manager.watchStatuses()
+
+	return manager
 }
 
 func (c *ConnectionManager) Subscribe(readyPartiesCount int) chan struct{} {
@@ -62,19 +65,23 @@ func (c *ConnectionManager) GetReady() map[core.Address]struct{} {
 	return maps.Clone(c.ready)
 }
 
+func (c *ConnectionManager) GetReadyCount() int {
+	c.readyM.RLock()
+	defer c.readyM.RUnlock()
+
+	return len(c.ready)
+}
+
 func (c *ConnectionManager) watchStatuses() {
 	ticker := time.NewTicker(10 * time.Second)
 	keys := make([]core.Address, 0, len(c.conns))
 
-	c.connsM.RLock()
 	for k := range c.conns {
 		keys = append(keys, k)
 	}
-	c.connsM.RUnlock()
 
 	for ; ; <-ticker.C {
 		for _, k := range keys {
-			c.connsM.Lock()
 			conn := c.conns[k]
 
 			ctx, cancel := context.WithTimeout(context.Background(), DefaultConnectionTimeout)
@@ -87,7 +94,6 @@ func (c *ConnectionManager) watchStatuses() {
 			responseStatus := response.GetStatus()
 			// if status is the same, do nothing
 			if conn.status == responseStatus {
-				c.connsM.Unlock()
 				continue
 			}
 			// when new status is required one, update ready list
@@ -114,7 +120,6 @@ func (c *ConnectionManager) watchStatuses() {
 
 			conn.status = responseStatus
 			c.conns[k] = conn
-			c.connsM.Unlock()
 		}
 	}
 }

@@ -71,7 +71,8 @@ Distributor provides the out channel where incoming deposits should be sent.
 ### Description
 Session is a submodule for managing the TSS session lifecycle.
 
-A TSS session is a set of operations that are performed by the parties in the network to process the withdrawal request.
+### Signing session
+A TSS signing session is a set of operations that are performed by the parties in the network to process the withdrawal request.
 The main goal of the session is to define the current signers set, the data to be signed, sign the data, and finalize the transfer process.
 
 Session consists of the following steps:
@@ -88,12 +89,17 @@ This is done to:
 Each session has its own lifecycle and identifier that changes with each new session.
 New session in this context is an old finished session with new (incremented) session identifier that is ready to process new withdrawal requests (for the same chain as previous session) and waits for its start.
 
+### Keygen session
+Keygen session is a special session that is used to generate the secret shares for the parties in the TSS network.
+It is performed only once when the network is initialized and the parties are ready to start the TSS signing process.
+
+
 ### Session boundaries
 To control the session duration, the session should be bounded by the time limits.
 Those limits are different for each step of the session (acceptance, signing, finalization) and session chain type.
 Also, each active session changes to the new one once in a constant time interval.
 
-Here is the list of the session time bounds:
+Here is the list of the signing session time bounds:
 - EVM session:
   - acceptance: 10 seconds;
   - signing: 10 seconds;
@@ -111,6 +117,8 @@ Here is the list of the session time bounds:
   - new session period: 60 seconds.
 
 In case of the session step timeout, the session should be finished and the new session should be initialized and wait for its start.
+
+Keygen session deadline is 1 minute.
 
 ### Session manager
 Session manager is responsible for managing the set of sessions.

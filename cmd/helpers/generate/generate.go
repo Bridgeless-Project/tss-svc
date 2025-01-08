@@ -12,5 +12,5 @@ var Cmd = &cobra.Command{
 }
 
 func registerGenerateCommands(cmd *cobra.Command) {
-	cmd.AddCommand(preparamsCmd)
+	cmd.AddCommand(preparamsCmd, cosmosAccountCmd)
 }

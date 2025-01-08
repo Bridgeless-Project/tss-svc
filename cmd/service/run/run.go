@@ -1,6 +1,8 @@
 package run
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+)
 
 func init() {
 	registerCommands(Cmd)

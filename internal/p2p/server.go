@@ -5,7 +5,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
@@ -19,9 +18,24 @@ type Server struct {
 	status  PartyStatus
 	statusM sync.RWMutex
 
-	manager session.Manager
+	manager *SessionManager
 
 	listener net.Listener
+}
+
+func NewServer(listener net.Listener, manager *SessionManager) *Server {
+	return &Server{
+		status:   PartyStatus_UNKNOWN,
+		manager:  manager,
+		listener: listener,
+	}
+}
+
+func (s *Server) SetStatus(status PartyStatus) {
+	s.statusM.Lock()
+	defer s.statusM.Unlock()
+
+	s.status = status
 }
 
 func (s *Server) Run(ctx context.Context) error {

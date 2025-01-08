@@ -14,18 +14,22 @@ import (
 )
 
 var defaultGenerationDeadline = 10 * time.Minute
-var outputType string
-var filePath string
-var configPath string
 
 func init() {
-	registerPreParamsFlags(preparamsCmd)
+	utils.RegisterOutputFlags(preparamsCmd)
 }
 
 var preparamsCmd = &cobra.Command{
 	Use:   "preparams",
 	Short: "Generates pre-parameters for the TSS protocol",
 	Args:  cobra.NoArgs,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if !utils.OutputValid() {
+			return errors.New("invalid output type")
+		}
+
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Generating pre-parameters...")
 
@@ -39,33 +43,35 @@ var preparamsCmd = &cobra.Command{
 
 		fmt.Println("Pre-parameters generated successfully")
 
-		switch outputType {
-		case "console":
-			raw, _ := json.Marshal(params)
-			fmt.Println(string(raw))
-		case "file":
-			raw, _ := json.Marshal(params)
-			if err := os.WriteFile(filePath, raw, 0644); err != nil {
-				return errors.Wrap(err, "failed to write pre-parameters to file")
-			}
-		case "vault":
-			config, err := utils.ConfigFromFlags(cmd)
-			if err != nil {
-				return errors.Wrap(err, "failed to get config from flags")
-			}
-
-			storage := vault.NewStorage(config.VaultClient())
-			if err := storage.SaveKeygenPreParams(params); err != nil {
-				return errors.Wrap(err, "failed to save pre-parameters to vault")
-			}
-		}
-
-		return nil
+		return storePreParams(cmd, params)
 	},
 }
 
-func registerPreParamsFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&outputType, "output", "o", "console", "Output type: console, file, or vault")
-	cmd.Flags().StringVar(&filePath, "path", "preparams.json", "Path to save the pre-parameters file (used when output-type is 'file')")
-	cmd.Flags().StringVar(&configPath, "config", "config.yaml", "Path to configuration file (used when output-type is 'vault')")
+func storePreParams(cmd *cobra.Command, params *tss.LocalPreParams) error {
+	raw, err := json.Marshal(params)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal pre-parameters")
+	}
+
+	switch utils.OutputType {
+	case "console":
+		fmt.Println(string(raw))
+	case "file":
+		fmt.Println(utils.FilePath)
+		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
+			return errors.Wrap(err, "failed to write pre-parameters to file")
+		}
+	case "vault":
+		config, err := utils.ConfigFromFlags(cmd)
+		if err != nil {
+			return errors.Wrap(err, "failed to get config from flags")
+		}
+
+		storage := vault.NewStorage(config.VaultClient())
+		if err := storage.SaveKeygenPreParams(params); err != nil {
+			return errors.Wrap(err, "failed to save pre-parameters to vault")
+		}
+	}
+
+	return nil
 }
