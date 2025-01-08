@@ -45,7 +45,7 @@ type SignParty struct {
 	sessionId string
 }
 
-func NewSignParty(wg *sync.WaitGroup, self LocalSignParty, parties []p2p.Party, data, sessionId string) *SignParty {
+func NewSignParty(self LocalSignParty, parties []p2p.Party, data, sessionId string, logger *logan.Entry) *SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
 	partyIds[0] = p2p.AddrToPartyIdentifier(self.Address)
@@ -59,7 +59,7 @@ func NewSignParty(wg *sync.WaitGroup, self LocalSignParty, parties []p2p.Party, 
 		partyIds[i+1] = party.Identifier()
 	}
 	return &SignParty{
-		wg:             wg,
+		wg:             &sync.WaitGroup{},
 		self:           self,
 		sortedPartyIds: tss.SortPartyIDs(partyIds),
 		parties:        partyMap,
@@ -67,6 +67,8 @@ func NewSignParty(wg *sync.WaitGroup, self LocalSignParty, parties []p2p.Party, 
 		threshold:      GetThreshold(tss.SortPartyIDs(partyIds).Len()),
 		msgs:           make(chan partyMsg, MsgsCapacity),
 		sessionId:      sessionId,
+		logger:         logger,
+		broadcaster:    p2p.NewBroadcaster(parties),
 	}
 }
 
