@@ -32,10 +32,7 @@ type SignParty struct {
 	logger      *logan.Entry
 	party       tss.Party
 	msgs        chan partyMsg
-	broadcaster interface {
-		Send(msg *p2p.SubmitRequest, to core.Address) error
-		Broadcast(msg *p2p.SubmitRequest) error
-	}
+	broadcaster *p2p.Broadcaster
 
 	data      string
 	threshold int
