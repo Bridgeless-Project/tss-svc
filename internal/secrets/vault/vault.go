@@ -113,3 +113,20 @@ func (s *Storage) SaveCoreAccount(account *core.Account) error {
 		"value": hexutil.Encode(account.PrivateKey().Bytes()),
 	})
 }
+
+func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
+	kvData, err := s.load(keyTssShare)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load share")
+	}
+	val, ok := kvData["value"].(string)
+	if !ok {
+		return nil, errors.New("share value not found")
+	}
+	data := new(keygen.LocalPartySaveData)
+	err = json.Unmarshal([]byte(val), data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode share data")
+	}
+	return data, nil
+}
