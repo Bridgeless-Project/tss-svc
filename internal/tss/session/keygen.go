@@ -70,14 +70,16 @@ func (s *KeygenSession) Run(ctx context.Context) error {
 		s.logger.Info("keygen session cancelled")
 		return nil
 	case <-time.After(runDelay):
+		if s.connectedPartiesCount() != s.partiesCount {
+			return errors.New("cannot start keygen session: not all parties connected")
+		}
 	}
 
-	if s.connectedPartiesCount() != s.partiesCount {
-		return errors.New("cannot start keygen session: not all parties connected")
-	}
+	s.logger.Info("keygen session started")
 
 	s.wg.Add(1)
 	go s.run(ctx)
+
 	return nil
 }
 
@@ -111,20 +113,26 @@ func (s *KeygenSession) Id() string {
 }
 
 func (s *KeygenSession) Receive(request *p2p.SubmitRequest) error {
+	if request == nil || request.Data == nil {
+		return errors.New("nil request")
+	}
 	if request.Type != p2p.RequestType_KEYGEN {
 		return errors.New("invalid request type")
 	}
 
-	var data *p2p.TssData
-
+	data := &p2p.TssData{}
 	if err := request.Data.UnmarshalTo(data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal TSS request data")
 	}
 
-	sender, _ := core.AddressFromString(request.Sender)
+	sender, err := core.AddressFromString(request.Sender)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse sender address")
+	}
 
 	// TODO: add better error handling?
 	s.keygenParty.Receive(sender, data)
+
 	return nil
 }
 

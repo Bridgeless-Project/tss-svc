@@ -28,11 +28,9 @@ func NewAccount(privKey string, hrp ...string) (*Account, error) {
 		return nil, errors.Wrap(err, "failed to convert and encode address")
 	}
 
-	addr, _ := AddressFromString(address)
-
 	return &Account{
 		privKey: key,
-		addr:    addr,
+		addr:    Address(address),
 	}, nil
 }
 

@@ -8,12 +8,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Account string
-
-func (a Account) String() string {
-	return string(a)
-}
-
 type Party struct {
 	PubKey      string
 	CoreAddress core.Address
@@ -30,23 +24,15 @@ func (p *Party) Connection() *grpc.ClientConn {
 	return p.connection
 }
 
+func (p *Party) Key() *big.Int {
+	return p.CoreAddress.PartyKey()
+}
+
 func NewParty(pubKey string, coreAddr core.Address, connection *grpc.ClientConn) Party {
 	return Party{
 		PubKey:      pubKey,
 		connection:  connection,
 		CoreAddress: coreAddr,
-		identifier:  AddrToPartyIdentifier(coreAddr),
+		identifier:  coreAddr.PartyIdentifier(),
 	}
-}
-
-func AddrToPartyIdentifier(addr core.Address) *tss.PartyID {
-	return tss.NewPartyID(
-		addr.String(),
-		addr.String(),
-		new(big.Int).SetBytes(addr.Bytes()),
-	)
-}
-
-func AddrFromPartyIdentifier(id *tss.PartyID) (core.Address, error) {
-	return core.AddressFromString(id.GetMoniker())
 }

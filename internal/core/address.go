@@ -2,8 +2,10 @@ package core
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 
+	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
@@ -38,6 +40,22 @@ func (a Address) Bytes() []byte {
 	}
 
 	return data
+}
+
+func (a Address) PartyIdentifier() *tss.PartyID {
+	return tss.NewPartyID(
+		a.String(),
+		a.String(),
+		a.PartyKey(),
+	)
+}
+
+func (a Address) PartyKey() *big.Int {
+	return new(big.Int).SetBytes(a.Bytes())
+}
+
+func AddrFromPartyId(id *tss.PartyID) Address {
+	return Address(id.GetMoniker())
 }
 
 var AddressHook = figure.Hooks{
