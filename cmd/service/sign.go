@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
@@ -10,9 +13,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"os"
 	"os/signal"
 	"syscall"
 )
+
+func init() {
+	utils.RegisterOutputFlags(signCmd)
+}
 
 var signCmd = &cobra.Command{
 	Use:  "sign [data-string]",
@@ -84,9 +92,30 @@ var signCmd = &cobra.Command{
 
 			cfg.Log().Info("signing session successfully completed. Signature: ", result.String())
 
+			err = saveSigningResult(result)
+			if err != nil {
+				return errors.Wrap(err, "failed to save signing result")
+			}
 			return nil
 		})
 
 		return errGroup.Wait()
 	},
+}
+
+func saveSigningResult(result *common.SignatureData) error {
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal signing result")
+	}
+
+	switch utils.OutputType {
+	case "console":
+		fmt.Println(string(raw))
+	case "file":
+		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
+			return errors.Wrap(err, "failed to write signing result to file")
+		}
+	}
+	return nil
 }
