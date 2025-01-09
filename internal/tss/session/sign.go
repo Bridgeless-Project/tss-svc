@@ -19,7 +19,7 @@ type SigningSessionParams struct {
 	Threshold int
 }
 
-type SigningSession struct {
+type DefaultSigningSession struct {
 	params SigningSessionParams
 	logger *logan.Entry
 	wg     *sync.WaitGroup
@@ -38,8 +38,8 @@ type SigningSession struct {
 	err    error
 }
 
-func NewSigningSession(self tss.LocalSignParty, params SigningSessionParams, logger *logan.Entry, parties []p2p.Party, data string, connectedPartiesCountFunc func() int) *SigningSession {
-	return &SigningSession{
+func NewDefaultSigningSession(self tss.LocalSignParty, params SigningSessionParams, logger *logan.Entry, parties []p2p.Party, data string, connectedPartiesCountFunc func() int) *DefaultSigningSession {
+	return &DefaultSigningSession{
 		params:                params,
 		wg:                    &sync.WaitGroup{},
 		logger:                logger,
@@ -50,7 +50,7 @@ func NewSigningSession(self tss.LocalSignParty, params SigningSessionParams, log
 	}
 }
 
-func (s *SigningSession) Run(ctx context.Context) error {
+func (s *DefaultSigningSession) Run(ctx context.Context) error {
 	runDelay := time.Until(s.params.StartTime)
 	if runDelay <= 0 {
 		return errors.New("target time is in the past")
@@ -74,7 +74,7 @@ func (s *SigningSession) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *SigningSession) run(ctx context.Context) {
+func (s *DefaultSigningSession) run(ctx context.Context) {
 	defer s.wg.Done()
 
 	boundedCtx, cancel := context.WithTimeout(ctx, BoundarySigningSession)
@@ -94,16 +94,16 @@ func (s *SigningSession) run(ctx context.Context) {
 	}
 }
 
-func (s *SigningSession) WaitFor() (*common.SignatureData, error) {
+func (s *DefaultSigningSession) WaitFor() (*common.SignatureData, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }
 
-func (s *SigningSession) Id() string {
+func (s *DefaultSigningSession) Id() string {
 	return s.params.Id
 }
 
-func (s *SigningSession) Receive(request *p2p.SubmitRequest) error {
+func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 	if request.Type != p2p.RequestType_SIGN {
 		return errors.New("invalid request type")
 	}
@@ -119,5 +119,5 @@ func (s *SigningSession) Receive(request *p2p.SubmitRequest) error {
 	return nil
 }
 
-// RegisterIdChangeListener is a no-op for SigningSession
-func (s *SigningSession) RegisterIdChangeListener(func(oldId, newId string)) {}
+// RegisterIdChangeListener is a no-op for DefaultSigningSession
+func (s *DefaultSigningSession) RegisterIdChangeListener(func(oldId, newId string)) {}

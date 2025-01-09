@@ -15,6 +15,7 @@ func init() {
 func registerServiceCommands(cmd *cobra.Command) {
 	cmd.AddCommand(migrate.Cmd)
 	cmd.AddCommand(run.Cmd)
+	cmd.AddCommand(signCmd)
 }
 
 var Cmd = &cobra.Command{

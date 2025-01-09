@@ -1,9 +1,7 @@
-package run
+package service
 
 import (
 	"context"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
@@ -13,13 +11,12 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"os/signal"
-	"strconv"
 	"syscall"
 )
 
 var signCmd = &cobra.Command{
-	Use:  "sign [data-string] [threshold]",
-	Args: cobra.ExactArgs(2),
+	Use:  "sign [data-string]",
+	Args: cobra.ExactArgs(1),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")
@@ -36,24 +33,16 @@ var signCmd = &cobra.Command{
 		if len(dataToSign) == 0 {
 			return errors.Wrap(errors.New("empty data to-sign"), "invalid data")
 		}
-		arg2 := args[1]
-		threshold, err := strconv.Atoi(arg2)
-		if err != nil {
-			return errors.Wrap(err, "invalid threshold")
-		}
 
 		storage := vault.NewStorage(cfg.VaultClient())
 
-		// Configuring local data for LocalSignParty
-		localData := keygen.NewLocalPartySaveData(len(cfg.Parties()))
-		var partyIds []*tsslib.PartyID
-		for _, party := range cfg.Parties() {
-			partyIds = append(partyIds, party.Identifier())
-		}
-		localSaveData := keygen.BuildLocalSaveDataSubset(localData, tsslib.SortPartyIDs(partyIds))
 		account, err := storage.GetCoreAccount()
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
+		}
+		localSaveData, err := storage.GetTssShare()
+		if err != nil {
+			return errors.Wrap(err, "failed to get local share")
 		}
 
 		errGroup := new(errgroup.Group)
@@ -62,11 +51,11 @@ var signCmd = &cobra.Command{
 
 		connectionManager := p2p.NewConnectionManager(cfg.Parties(), p2p.PartyStatus_SIGNING, cfg.Log().WithField("component", "connection_manager"))
 
-		session := session.NewSigningSession(
+		session := session.NewDefaultSigningSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
-				Data:      &localSaveData,
-				Threshold: threshold,
+				Data:      localSaveData,
+				Threshold: cfg.TSSParams().SigningSessionParams().Threshold,
 			},
 			cfg.TSSParams().SigningSessionParams(),
 			cfg.Log().WithField("component", "signing_session"),
