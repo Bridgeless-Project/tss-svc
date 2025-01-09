@@ -121,7 +121,7 @@ func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
 	}
 	val, ok := kvData["value"].(string)
 	if !ok {
-		return nil, errors.New("share value not found")
+		return nil, errors.Wrap(errors.New("no value"), "share value not found")
 	}
 	data := new(keygen.LocalPartySaveData)
 	err = json.Unmarshal([]byte(val), data)
