@@ -33,8 +33,11 @@ var signCmd = &cobra.Command{
 		}
 
 		dataToSign := args[0]
+		if len(dataToSign) == 0 {
+			return errors.Wrap(errors.New("empty data to-sign"), "invalid data")
+		}
 		arg2 := args[1]
-		threshoold, err := strconv.Atoi(arg2)
+		threshold, err := strconv.Atoi(arg2)
 		if err != nil {
 			return errors.Wrap(err, "invalid threshold")
 		}
@@ -63,7 +66,7 @@ var signCmd = &cobra.Command{
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Data:      &localSaveData,
-				Threshold: threshoold,
+				Threshold: threshold,
 			},
 			cfg.TSSParams().SigningSessionParams(),
 			cfg.Log().WithField("component", "signing_session"),
