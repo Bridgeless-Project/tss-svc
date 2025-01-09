@@ -48,7 +48,7 @@ type SignParty struct {
 func NewSignParty(self LocalSignParty, parties []p2p.Party, data, sessionId string, logger *logan.Entry) *SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
-	partyIds[0] = p2p.AddrToPartyIdentifier(self.Address)
+	partyIds[0] = self.Address.PartyIdentifier()
 
 	for i, party := range parties {
 		if party.CoreAddress == self.Address {
@@ -76,7 +76,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	p.logger.Infof("Running TSS signing on set: %v", p.parties)
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
-		p2p.AddrToPartyIdentifier(p.self.Address),
+		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
 		len(p.sortedPartyIds),
 	)
@@ -133,11 +133,11 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 			}
 
 			if _, exists := p.parties[msg.Sender]; !exists {
-				p.logger.Warn("got message from outside party")
+				p.logger.WithField("party", msg.Sender).Warn("got message from outside party")
 				continue
 			}
 
-			_, err := p.party.UpdateFromBytes(msg.WireMsg, p2p.AddrToPartyIdentifier(msg.Sender), msg.IsBroadcast)
+			_, err := p.party.UpdateFromBytes(msg.WireMsg, p.sortedPartyIds.FindByKey(msg.Sender.PartyKey()), msg.IsBroadcast)
 			if err != nil {
 				p.logger.WithError(err).Error("failed to update party state")
 			}
@@ -191,8 +191,8 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, 
 				continue
 			}
 
-			dst, err := p2p.AddrFromPartyIdentifier(destination[0])
-			if err != nil {
+			dst := core.AddrFromPartyId(destination[0])
+			if len(dst.String()) == 0 {
 				p.logger.WithError(err).Error("failed to get destination address")
 				continue
 			}
