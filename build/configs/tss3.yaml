@@ -22,4 +22,9 @@ tss:
   keygen:
     start_time: "2025-01-08 17:51:38"
     session_id: abcd
+  signing:
+    start_time: "2025-01-08 00:21:20"
+    session_id: abcd
+    threshold: 1
+
 
