@@ -17,8 +17,9 @@ import (
 )
 
 type LocalSignParty struct {
-	Address core.Address
-	data    *keygen.LocalPartySaveData
+	Address        core.Address
+	data           *keygen.LocalPartySaveData
+	countThreshold func(int) int
 }
 
 type SignParty struct {
@@ -61,7 +62,7 @@ func NewSignParty(self LocalSignParty, parties []p2p.Party, data, sessionId stri
 		sortedPartyIds: tss.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		data:           data,
-		threshold:      GetThreshold(tss.SortPartyIDs(partyIds).Len()),
+		threshold:      self.countThreshold(len(parties)),
 		msgs:           make(chan partyMsg, MsgsCapacity),
 		sessionId:      sessionId,
 		logger:         logger,
@@ -75,7 +76,7 @@ func (p *SignParty) Run(ctx context.Context) {
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
-		len(p.sortedPartyIds),
+		p.threshold,
 	)
 	out := make(chan tss.Message, OutChannelSize)
 	end := make(chan *common.SignatureData, EndChannelSize)
