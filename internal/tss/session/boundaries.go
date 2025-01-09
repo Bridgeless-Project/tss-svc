@@ -3,5 +3,5 @@ package session
 import "time"
 
 const (
-	BoundaryKeygenSession  = time.Minute
+	BoundaryKeygenSession = time.Minute
 )
