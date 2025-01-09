@@ -33,6 +33,7 @@ func (p Params) SigningSessionParams() session.SigningSessionParams {
 	return session.SigningSessionParams{
 		Id:        p.Signing.Id,
 		StartTime: p.Signing.StartTime,
+		Threshold: p.Signing.Threshold,
 	}
 }
 
@@ -44,6 +45,7 @@ type KeygenParams struct {
 type SigningParams struct {
 	Id        string    `fig:"session_id,required"`
 	StartTime time.Time `fig:"start_time,required"`
+	Threshold int       `fig:"threshold,required"`
 }
 
 type tssParamsConfigurator struct {

@@ -16,6 +16,7 @@ import (
 type SigningSessionParams struct {
 	Id        string
 	StartTime time.Time
+	Threshold int
 }
 
 type SigningSession struct {
