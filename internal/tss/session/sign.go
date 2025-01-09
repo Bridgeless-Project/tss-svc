@@ -33,12 +33,12 @@ type DefaultSigningSession struct {
 		Receive(sender core.Address, data *p2p.TssData)
 	}
 
-	data   string
+	data   []byte
 	result *common.SignatureData
 	err    error
 }
 
-func NewDefaultSigningSession(self tss.LocalSignParty, params SigningSessionParams, logger *logan.Entry, parties []p2p.Party, data string, connectedPartiesCountFunc func() int) *DefaultSigningSession {
+func NewDefaultSigningSession(self tss.LocalSignParty, params SigningSessionParams, logger *logan.Entry, parties []p2p.Party, data []byte, connectedPartiesCountFunc func() int) *DefaultSigningSession {
 	return &DefaultSigningSession{
 		params:                params,
 		wg:                    &sync.WaitGroup{},
@@ -104,17 +104,23 @@ func (s *DefaultSigningSession) Id() string {
 }
 
 func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
+	if request == nil || request.Data == nil {
+		return errors.New("nil request")
+	}
 	if request.Type != p2p.RequestType_SIGN {
 		return errors.New("invalid request type")
 	}
 
-	var data *p2p.TssData
-
+	data := &p2p.TssData{}
 	if err := request.Data.UnmarshalTo(data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal TSS request data")
 	}
 
-	sender, _ := core.AddressFromString(request.Sender)
+	sender, err := core.AddressFromString(request.Sender)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse sender address")
+	}
+
 	s.signingParty.Receive(sender, data)
 	return nil
 }

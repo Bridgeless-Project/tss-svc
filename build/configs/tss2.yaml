@@ -20,10 +20,10 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-08 17:51:38"
+    start_time: "2025-01-09 17:06:05"
     session_id: abcd
   signing:
-    start_time: "2025-01-08 00:21:20"
+    start_time: "2025-01-09 17:06:05"
     session_id: abcd
-    threshold: 1
+    threshold: 2
 

@@ -6,7 +6,6 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -35,14 +34,14 @@ type SignParty struct {
 	msgs        chan partyMsg
 	broadcaster *p2p.Broadcaster
 
-	data string
+	data []byte
 
 	ended     atomic.Bool
 	result    *common.SignatureData
 	sessionId string
 }
 
-func NewSignParty(self LocalSignParty, parties []p2p.Party, data, sessionId string, logger *logan.Entry) *SignParty {
+func NewSignParty(self LocalSignParty, parties []p2p.Party, data []byte, sessionId string, logger *logan.Entry) *SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
 	partyIds[0] = self.Address.PartyIdentifier()
@@ -79,7 +78,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	out := make(chan tss.Message, OutChannelSize)
 	end := make(chan *common.SignatureData, EndChannelSize)
 
-	p.party = signing.NewLocalParty(new(big.Int).SetBytes(hexutil.MustDecode(p.data)), params, *p.self.Data, out, end)
+	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Data, out, end)
 
 	p.wg.Add(3)
 
@@ -122,8 +121,8 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 		case <-ctx.Done():
 			p.logger.Warn("context is done; stopping receiving messages")
 			return
-		case msg, closed := <-p.msgs:
-			if closed {
+		case msg, ok := <-p.msgs:
+			if !ok {
 				p.logger.Debug("msg channel is closed")
 				return
 			}
@@ -139,7 +138,6 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 			}
 		}
 	}
-
 }
 
 func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, end <-chan *common.SignatureData) {
