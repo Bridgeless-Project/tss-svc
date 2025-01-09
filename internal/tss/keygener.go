@@ -62,7 +62,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
-		len(p.sortedPartyIds),
+		getKeygenTreshold(len(p.sortedPartyIds)),
 	)
 	out := make(chan tss.Message, OutChannelSize)
 	end := make(chan *keygen.LocalPartySaveData, EndChannelSize)
@@ -182,4 +182,8 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 			}
 		}
 	}
+}
+
+func getKeygenTreshold(partiesNum int) int {
+	return int(float32(partiesNum) * 2 / 3)
 }

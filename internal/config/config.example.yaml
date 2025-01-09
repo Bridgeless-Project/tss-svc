@@ -9,3 +9,26 @@ log:
 db:
   ## Database URL connection string
   url:
+
+## gRPC listener configuration
+listener-grpc:
+  ## gRPC listener address
+  addr: :8012
+
+## Parties configuration
+parties:
+  ## List of parties
+  list:
+    ## Party 1
+    - core_address: bridge123ex5u9qqmlyzzff278ncsn7rwh65ks0urjyzn
+      connection: conn
+      pubkey: pub
+
+## TSS configuration
+tss:
+  ## Keygen configuration
+  keygen:
+    ## Keygen start time
+    start_time: "2025-01-08 00:21:20"
+    ## Keygen session ID
+    session_id: abcd

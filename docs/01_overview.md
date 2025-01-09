@@ -64,5 +64,11 @@ See the [Configuration](./04_configuration.md) docs for more details on how to c
 
 ## Running The Service
 
-TODO: add
+Service can be run in two main modes: keygen and signing.
+Also, the service can execute additional commands like database migrations, message signing, etc.
+
+Check the available commands and flags in the [CLI documentation](../cmd/README.md).
+
+Check the [Running service documentation](./05_running-service.md) for more details on how to run the service in different modes.
+
 
