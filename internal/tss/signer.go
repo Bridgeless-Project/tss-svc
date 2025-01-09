@@ -17,9 +17,9 @@ import (
 )
 
 type LocalSignParty struct {
-	Address        core.Address
-	data           *keygen.LocalPartySaveData
-	countThreshold func(int) int
+	Address   core.Address
+	Data      *keygen.LocalPartySaveData
+	Threshold int
 }
 
 type SignParty struct {
@@ -35,8 +35,7 @@ type SignParty struct {
 	msgs        chan partyMsg
 	broadcaster *p2p.Broadcaster
 
-	data      string
-	threshold int
+	data string
 
 	ended     atomic.Bool
 	result    *common.SignatureData
@@ -62,7 +61,6 @@ func NewSignParty(self LocalSignParty, parties []p2p.Party, data, sessionId stri
 		sortedPartyIds: tss.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		data:           data,
-		threshold:      self.countThreshold(len(parties)),
 		msgs:           make(chan partyMsg, MsgsCapacity),
 		sessionId:      sessionId,
 		logger:         logger,
@@ -76,12 +74,12 @@ func (p *SignParty) Run(ctx context.Context) {
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
-		p.threshold,
+		p.self.Threshold,
 	)
 	out := make(chan tss.Message, OutChannelSize)
 	end := make(chan *common.SignatureData, EndChannelSize)
 
-	p.party = signing.NewLocalParty(new(big.Int).SetBytes(hexutil.MustDecode(p.data)), params, *p.self.data, out, end)
+	p.party = signing.NewLocalParty(new(big.Int).SetBytes(hexutil.MustDecode(p.data)), params, *p.self.Data, out, end)
 
 	p.wg.Add(3)
 

@@ -18,7 +18,8 @@ type ParamsConfigurator interface {
 }
 
 type Params struct {
-	Keygen KeygenParams `fig:"keygen"`
+	Keygen  KeygenParams  `fig:"keygen"`
+	Signing SigningParams `fig:"signing"`
 }
 
 func (p Params) KeygenSessionParams() session.KeygenSessionParams {
@@ -28,7 +29,19 @@ func (p Params) KeygenSessionParams() session.KeygenSessionParams {
 	}
 }
 
+func (p Params) SigningSessionParams() session.SigningSessionParams {
+	return session.SigningSessionParams{
+		Id:        p.Signing.Id,
+		StartTime: p.Signing.StartTime,
+	}
+}
+
 type KeygenParams struct {
+	Id        string    `fig:"session_id,required"`
+	StartTime time.Time `fig:"start_time,required"`
+}
+
+type SigningParams struct {
 	Id        string    `fig:"session_id,required"`
 	StartTime time.Time `fig:"start_time,required"`
 }
