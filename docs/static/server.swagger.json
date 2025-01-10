@@ -37,7 +37,8 @@
         "FINALIZE",
         "ACK",
         "NACK",
-        "NO_DATA_TO_SIGN"
+        "NO_DATA_TO_SIGN",
+        "DATA_TO_SIGN"
       ],
       "default": "KEYGEN",
       "title": "- ACK: it could be a separate MsgType but it would clone logic of requests"
