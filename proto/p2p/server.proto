@@ -18,6 +18,9 @@ enum RequestType {
   ACCEPT = 1;
   SIGN = 2;
   FINALIZE = 3;
+  ACK = 4;
+  NACK = 5;
+  NO_DATA_TO_SIGN = 6;
 }
 
 service P2P {

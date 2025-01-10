@@ -10,7 +10,7 @@ const (
 	MsgsCapacity   = 100
 )
 
-type partyMsg struct {
+type PartyMsg struct {
 	Sender      core.Address
 	WireMsg     []byte
 	IsBroadcast bool

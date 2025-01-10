@@ -31,7 +31,7 @@ type SignParty struct {
 
 	logger      *logan.Entry
 	party       tss.Party
-	msgs        chan partyMsg
+	msgs        chan PartyMsg
 	broadcaster *p2p.Broadcaster
 
 	data []byte
@@ -60,7 +60,7 @@ func NewSignParty(self LocalSignParty, parties []p2p.Party, data []byte, session
 		sortedPartyIds: tss.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		data:           data,
-		msgs:           make(chan partyMsg, MsgsCapacity),
+		msgs:           make(chan PartyMsg, MsgsCapacity),
 		sessionId:      sessionId,
 		logger:         logger,
 		broadcaster:    p2p.NewBroadcaster(parties),
@@ -105,7 +105,7 @@ func (p *SignParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.msgs <- partyMsg{
+	p.msgs <- PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
