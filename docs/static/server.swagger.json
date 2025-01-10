@@ -34,9 +34,13 @@
         "KEYGEN",
         "ACCEPT",
         "SIGN",
-        "FINALIZE"
+        "FINALIZE",
+        "ACK",
+        "NACK",
+        "NO_DATA_TO_SIGN"
       ],
-      "default": "KEYGEN"
+      "default": "KEYGEN",
+      "title": "- ACK: it could be a separate MsgType but it would clone logic of requests"
     },
     "StatusResponse": {
       "type": "object",

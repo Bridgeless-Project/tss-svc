@@ -18,6 +18,7 @@ enum RequestType {
   ACCEPT = 1;
   SIGN = 2;
   FINALIZE = 3;
+  // it could be a separate MsgType but it would clone logic of requests
   ACK = 4;
   NACK = 5;
   NO_DATA_TO_SIGN = 6;
