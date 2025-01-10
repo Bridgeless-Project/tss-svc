@@ -1,16 +1,12 @@
-package tss
+package consensus
 
 import (
 	"github.com/hyle-team/tss-svc/internal/core"
-)
-
-const (
-	OutChannelSize = 1000
-	EndChannelSize = 1
-	MsgsCapacity   = 100
+	"github.com/hyle-team/tss-svc/internal/p2p"
 )
 
 type partyMsg struct {
+	Type        p2p.RequestType
 	Sender      core.Address
 	WireMsg     []byte
 	IsBroadcast bool

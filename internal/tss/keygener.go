@@ -28,7 +28,7 @@ type KeygenParty struct {
 	parties        map[core.Address]struct{}
 	self           LocalKeygenParty
 
-	msgs      chan PartyMsg
+	msgs      chan partyMsg
 	result    *keygen.LocalPartySaveData
 	sessionId string
 
@@ -50,7 +50,7 @@ func NewKeygenParty(self LocalKeygenParty, parties []p2p.Party, sessionId string
 		sortedPartyIds: tss.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		self:           self,
-		msgs:           make(chan PartyMsg, MsgsCapacity),
+		msgs:           make(chan partyMsg, MsgsCapacity),
 		logger:         logger,
 		sessionId:      sessionId,
 		wg:             &sync.WaitGroup{},
@@ -95,7 +95,7 @@ func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.msgs <- PartyMsg{
+	p.msgs <- partyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
