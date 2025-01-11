@@ -17,6 +17,7 @@ require (
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
 	github.com/cosmos/cosmos-sdk v0.46.13
 	github.com/ethereum/go-ethereum v1.10.26
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3
 	github.com/hashicorp/vault/api v1.15.0
 	github.com/hyle-team/bridgeless-core v0.0.0-20241003084139-414cc4a6f73c
 	github.com/pkg/errors v0.9.1
@@ -26,6 +27,7 @@ require (
 	gitlab.com/distributed_lab/kit v1.11.3
 	gitlab.com/distributed_lab/logan v3.8.1+incompatible
 	golang.org/x/sync v0.7.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20240723171418-e6d459c13d2a
 	google.golang.org/grpc v1.64.1
 	google.golang.org/protobuf v1.34.2
 )
@@ -169,7 +171,6 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240723171418-e6d459c13d2a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240723171418-e6d459c13d2a // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
