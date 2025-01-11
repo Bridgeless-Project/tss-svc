@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package api;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
+import "deposit.proto";
+
+option go_package = "github.com/hyle-team/tss-svc/internal/api";
+
+
+message CheckWithdrawalResponse {
+  deposit.DepositIdentifier deposit_identifier = 1;
+  deposit.TransferData transfer_data = 2;
+  deposit.WithdrawalStatus withdrawal_status = 3;
+  optional deposit.WithdrawalIdentifier withdrawal_identifier = 4;
+
+}
+
+service Service {
+  rpc SubmitWithdrawal(deposit.DepositIdentifier) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/submit"
+      body: "*"
+    };
+  }
+  rpc CheckWithdrawal(deposit.DepositIdentifier) returns (CheckWithdrawalResponse) {
+    option (google.api.http) = {
+      get: "/check/{chain_id}/{tx_hash}/{tx_nonce}"
+    };
+  }
+}
