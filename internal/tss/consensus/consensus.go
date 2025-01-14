@@ -1,123 +1,157 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	tss2 "github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
-	"math/big"
 	"math/rand/v2"
-	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
-type partyStatus int
+type PartyStatus int
 
 const (
-	Proposer partyStatus = iota
+	Proposer PartyStatus = iota
 	Signer
 )
 
 type LocalParams struct {
-	partyStatus partyStatus //init as Signer
+	PartyStatus PartyStatus //init as Signer
 	Address     core.Address
 }
 
-type ConsensusParams struct {
-	StartTime time.Time
-	Threshold int
-}
-
 type Consensus struct {
-	wg     *sync.WaitGroup
-	params ConsensusParams
-	self   LocalParams
-
-	proposerID     *tss.PartyID
-	broadcaster    *p2p.Broadcaster
-	sortedPartyIds tss.SortedPartyIDs
-	parties        []p2p.Party
-	partiesMap     map[core.Address]struct{}
-
+	wg        *sync.WaitGroup
+	self      LocalParams
 	sessionId string
 
+	broadcaster    *p2p.Broadcaster
+	parties        []p2p.Party
+	sortedPartyIds []*tss.PartyID
+	partiesMap     map[core.Address]struct{}
+	ackSet         map[string]struct{}
+	threshold      int
+	proposerKey    string
+
+	//TODO: ADD CHAIN METADATA
+
 	rand         *rand.Rand
+	data         []byte
 	formData     func([]byte) ([]byte, error)
 	validateData func([]byte) (bool, error)
 
 	resultData    []byte
-	resultSigners []*tss.PartyID
+	resultSigners []p2p.Party
+	err           error
 
-	msgs  chan partyMsg
-	ended atomic.Bool
+	msgs    chan partyMsg
+	ended   atomic.Bool
+	chainId int
 
 	logger *logan.Entry
 }
 
-func (c *Consensus) Run(ctx context.Context) ([]byte, []p2p.Party, error) {
+func NewConsensus(self LocalParams, parties []p2p.Party, logger *logan.Entry, sessionId string, data []byte, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), threshold int) *Consensus {
+	partyMap := make(map[core.Address]struct{}, len(parties))
+	partyMap[self.Address] = struct{}{}
+	partyIds := make([]*tss.PartyID, len(parties)+1)
+	partyIds[0] = self.Address.PartyIdentifier()
+
+	for i, party := range parties {
+		if party.CoreAddress == self.Address {
+			continue
+		}
+
+		partyMap[party.CoreAddress] = struct{}{}
+		partyIds[i+1] = party.Identifier()
+	}
+
+	return &Consensus{
+		wg:             &sync.WaitGroup{},
+		self:           self,
+		sessionId:      sessionId,
+		broadcaster:    p2p.NewBroadcaster(parties),
+		parties:        parties,
+		partiesMap:     partyMap,
+		ackSet:         make(map[string]struct{}),
+		data:           data,
+		formData:       formData,
+		sortedPartyIds: tss.SortPartyIDs(partyIds),
+		validateData:   validateData,
+		msgs:           make(chan partyMsg, tss2.MsgsCapacity),
+		ended:          atomic.Bool{},
+		logger:         logger,
+		threshold:      threshold,
+	}
+}
+
+func (c *Consensus) Run(ctx context.Context) {
 
 	// 1. Pick a proposer for this Consensus session
-	id := c.rand.IntN(c.sortedPartyIds.Len())
-	c.proposerID = tss.NewPartyID(strconv.Itoa(id), "proposer", big.NewInt(int64(id)))
+	var seed [32]byte
+	hash := sha256.Sum256([]byte(c.sessionId))
+	copy(seed[:], hash[:])
+	gen := rand.NewChaCha8(seed)
+	randIndex := int(gen.Uint64() % uint64(len(c.parties)))
+	c.proposerKey = c.sortedPartyIds[randIndex].Id
 
-	if id == c.self.Address.PartyIdentifier().Index {
-		c.self.partyStatus = Proposer
-		c.logger.Info("successfully picked a proposer, proposer id is ", id)
+	c.logger.Info("proposer ID ", c.proposerKey)
+	c.logger.Info("local key", c.self.Address.PartyIdentifier().Id)
+
+	if c.proposerKey == c.self.Address.PartyIdentifier().Id {
+		c.logger.Info("i am a proposer")
+		c.self.PartyStatus = Proposer
 	}
 	c.wg.Add(1)
 	// 2.1 If local party is proposer - validate incoming data and form data to sign and send it to signers
-	if c.self.partyStatus == Proposer {
-		//TODO: Add data parsing and validation logic
-		//TODO: Add data is not null validation with broadcasting NO_DATA_TO_SIGN message type
-		var inputData []byte //input data as example
-
-		if inputData == nil {
-			c.sendMessage(inputData, nil, p2p.RequestType_NO_DATA_TO_SIGN)
-			c.waitFor()
-			return nil, nil, errors.Wrap(errors.New("nil data"), "no input data")
+	if c.self.PartyStatus == Proposer {
+		if c.data == nil {
+			c.err = errors.Wrap(errors.New("nil data"), "no input data")
+			c.sendMessage([]byte(c.err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
+			return
 		}
 
-		valid, err := c.validateData(inputData)
+		valid, err := c.validateData(c.data)
 		if err != nil {
-			c.logger.Error("failed to validate input data", err)
-			return nil, nil, errors.Wrap(err, "failed to validate input data")
+			c.sendMessage([]byte(err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
+			err = errors.Wrap(err, "failed to validate input data")
+			return
 		}
 		if !valid {
-			return nil, nil, errors.Wrap(errors.New("invalid data"), "invalid input data")
+			c.err = errors.New("invalid data")
+			c.sendMessage([]byte(c.err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
+			return
 		}
-
-		c.resultData, err = c.formData(inputData) //will be returned after successful consensus process
+		c.resultData, err = c.formData(c.data) //will be returned after successful consensus process
 		if err != nil {
-			c.logger.Error("failed to form data", err)
-			return nil, nil, errors.Wrap(err, "failed to form data")
+			c.err = errors.Wrap(err, "failed to form data")
+			c.sendMessage([]byte(c.err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
+			return
 		}
-		// Send data to
+		// Send data to parties
+		c.ackSet[c.self.Address.PartyKey().String()] = struct{}{}
 		c.sendMessage(c.resultData, nil, p2p.RequestType_DATA_TO_SIGN)
 		go c.receiveMsgs(ctx)
 
 	}
-	// 2.2 If party status is signer in only receives messages
-
-	if c.self.partyStatus == Signer {
+	if c.self.PartyStatus == Signer {
 		go c.receiveMsgs(ctx)
 	}
-
-	// 3 Validate threshold
-	if c.params.Threshold < c.sortedPartyIds.Len() {
-		return nil, nil, errors.Wrap(errors.New("consensus failure"), "not enough signers fro threshold")
-	}
-
-	signers := c.parties[:len(c.resultSigners)]
-	return c.resultData, signers, nil
+	return
 }
 
 // sendMessage is general func to send messages during consensus process
 func (c *Consensus) sendMessage(data []byte, to *tss.PartyID, messageType p2p.RequestType) {
+	c.logger.Info("message type ", messageType.String())
 	if messageType == p2p.RequestType_DATA_TO_SIGN || messageType == p2p.RequestType_NO_DATA_TO_SIGN {
 
 		tssData := &p2p.TssData{
@@ -141,35 +175,87 @@ func (c *Consensus) sendMessage(data []byte, to *tss.PartyID, messageType p2p.Re
 		}
 	}
 	if messageType == p2p.RequestType_ACK || messageType == p2p.RequestType_NACK {
-	}
-	tssData := &p2p.TssData{
-		Data:        data,
-		IsBroadcast: false,
-	}
+		tssData := &p2p.TssData{
+			Data:        data,
+			IsBroadcast: true,
+		}
 
-	tssReq, _ := anypb.New(tssData)
-	submitReq := p2p.SubmitRequest{
-		Sender:    c.self.Address.String(),
-		SessionId: c.sessionId,
-		Type:      messageType,
-		Data:      tssReq,
+		tssReq, _ := anypb.New(tssData)
+		submitReq := p2p.SubmitRequest{
+			Sender:    c.self.Address.String(),
+			SessionId: c.sessionId,
+			Type:      messageType,
+			Data:      tssReq,
+		}
+		dst := core.AddrFromPartyId(to)
+		if err := c.broadcaster.Send(&submitReq, dst); err != nil {
+			c.logger.WithError(err).Error("failed to send message")
+		}
 	}
-	dst := core.AddrFromPartyId(to)
-	if err := c.broadcaster.Send(&submitReq, dst); err != nil {
-		c.logger.WithError(err).Error("failed to send message")
+	if messageType == p2p.RequestType_SIGNER_NOTIFY {
+		tssData := &p2p.TssData{
+			Data:        data,
+			IsBroadcast: false,
+		}
+
+		tssReq, _ := anypb.New(tssData)
+		submitReq := p2p.SubmitRequest{
+			Sender:    c.self.Address.String(),
+			SessionId: c.sessionId,
+			Type:      messageType,
+			Data:      tssReq,
+		}
+		dst := core.AddrFromPartyId(to)
+		if err := c.broadcaster.Send(&submitReq, dst); err != nil {
+			c.logger.WithError(err).Error("failed to send message")
+		}
 	}
 }
 
-func (c *Consensus) waitFor() {
+func (c *Consensus) WaitFor() ([]byte, []p2p.Party, error) {
 	c.wg.Wait()
 	c.ended.Store(true)
+	isSigner := false
+	for _, signer := range c.resultSigners {
+		if signer.CoreAddress == c.self.Address {
+			isSigner = true
+		}
+	}
+	if !isSigner {
+		return nil, nil, nil
+	}
+
+	if len(c.resultSigners) != c.threshold {
+		c.err = errors.Wrap(errors.New("consensus failed"), "didn`t reached threshold")
+	}
+
+	return c.resultData, c.resultSigners, c.err
 }
 
+func (c *Consensus) Receive(sender core.Address, data *p2p.TssData, reqType p2p.RequestType) {
+	if c.ended.Load() {
+		return
+	}
+
+	c.msgs <- partyMsg{
+		Type:        reqType,
+		Sender:      sender,
+		WireMsg:     data.Data,
+		IsBroadcast: data.IsBroadcast,
+	}
+
+}
 func (c *Consensus) receiveMsgs(ctx context.Context) {
+	defer c.wg.Done()
+	votesCount := 0
 	for {
 		select {
 		case <-ctx.Done():
-			c.logger.Warn("context is done; stopping receiving messages")
+			c.logger.Warnf("context timed out with %d ACKs out of %d needed", len(c.ackSet), c.threshold)
+			if len(c.ackSet) < c.threshold {
+				c.logger.Error("Consensus failed due to insufficient ACKs")
+			}
+			close(c.msgs)
 			return
 		case msg, ok := <-c.msgs:
 			if !ok {
@@ -182,67 +268,135 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 				continue
 			}
 
-			if c.self.partyStatus == Proposer {
+			if c.self.PartyStatus == Proposer {
 				if msg.Type == p2p.RequestType_ACK {
-					c.resultSigners = append(c.resultSigners, msg.Sender.PartyIdentifier())
+					if _, exists := c.ackSet[msg.Sender.PartyKey().String()]; !exists {
+						c.ackSet[msg.Sender.PartyKey().String()] = struct{}{}
+						votesCount++
+						c.logger.Info("Received ACK from party", msg.Sender.PartyIdentifier())
+
+						if votesCount == len(c.parties) {
+							c.logger.Info("All parties voted")
+							if len(c.ackSet) < c.threshold {
+								c.logger.Error("Didn`t reach threshold")
+								c.err = errors.Wrap(errors.New("consensus failed"), "didn`t reach threshold")
+							}
+							var signerKeysList []string
+							for signerKey, _ := range c.ackSet {
+								for _, party := range c.parties {
+									if party.CoreAddress.PartyKey().String() == signerKey {
+										c.resultSigners = append(c.resultSigners, party)
+										break
+									}
+								}
+								signerKeysList = append(signerKeysList, signerKey)
+							}
+							c.resultSigners = c.resultSigners[:c.threshold]
+							c.logger.Info("Signers list", c.resultSigners)
+
+							err := c.notifySigners(signerKeysList)
+							if err != nil {
+								c.logger.Error("failed to notify signers", err)
+								c.err = errors.Wrap(err, "failed to notify signers")
+							}
+							close(c.msgs)
+							return
+						}
+					}
+					continue
+				}
+				if msg.Type == p2p.RequestType_NACK {
+					if _, exists := c.ackSet[msg.Sender.PartyKey().String()]; !exists {
+						votesCount++
+						c.logger.Info("Received NACK from party", msg.Sender.PartyIdentifier())
+					}
+					continue
 				}
 			}
-			if c.self.partyStatus == Signer || c.self.partyStatus == Proposer {
-				if msg.Type == p2p.RequestType_DATA_TO_SIGN {
-					//perform validation by signer
-					valid, err := c.validateData(msg.WireMsg)
-					if err != nil {
-						c.logger.Error("failed to validate data", err)
-						c.waitFor()
-					}
-					if !valid {
-						c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
-						c.waitFor()
-					}
-					if valid {
-						c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_ACK)
-						c.waitFor()
+
+			if msg.Type == p2p.RequestType_DATA_TO_SIGN {
+				//perform validation by signer
+
+				//validate sender
+				senderId := msg.Sender.PartyIdentifier().Id
+				if senderId != c.proposerKey {
+					c.logger.Error("invalid proposer")
+					c.err = errors.New("invalid proposer")
+					c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
+					close(c.msgs)
+					return
+				}
+				// validate deposit data with recreating it
+				localData, err := c.formData(c.data)
+				if err != nil {
+					c.logger.Error("failed to form data", err)
+					c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
+					close(c.msgs)
+					return
+				}
+				if !bytes.Equal(localData, msg.WireMsg) {
+					c.logger.Error("invalid data")
+					c.err = errors.Wrap(errors.New("invalid data"), "formed different data")
+					c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
+				}
+				c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_ACK)
+				//
+				//valid, err := c.validateData(msg.WireMsg)
+				//if err != nil {
+				//	c.logger.Error("failed to validate data ", err)
+				//	c.err = errors.Wrap(err, "failed to validate data")
+				//	c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
+				//	close(c.msgs)
+				//	return
+				//
+				//}
+				//if !valid {
+				//	c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
+				//	close(c.msgs)
+				//	return
+				//}
+				//if valid {
+				//}
+				continue
+			}
+			if msg.Type == p2p.RequestType_NO_DATA_TO_SIGN {
+				close(c.msgs)
+				c.resultData = nil
+				c.resultSigners = nil
+				c.err = errors.New(string(msg.WireMsg))
+				c.logger.Warn("got no data")
+				return
+			}
+
+			if msg.Type == p2p.RequestType_SIGNER_NOTIFY {
+				var signersList []string
+				err := json.Unmarshal(msg.WireMsg, &signersList)
+				if err != nil {
+					c.logger.Error("failed to unmarshal signer list", err)
+				}
+				for _, signer := range signersList {
+					for _, party := range c.parties {
+						if party.CoreAddress.PartyKey().String() == signer {
+							c.resultSigners = append(c.resultSigners, party)
+						}
 					}
 				}
+				c.logger.Info("Signer list received", c.resultSigners)
+				close(c.msgs)
+				return
 			}
 		}
 	}
 }
 
-func (c *Consensus) Id() string {
-	return c.sessionId
-}
-func (c *Consensus) Receive(request *p2p.SubmitRequest) error {
-	if request == nil || request.Data == nil {
-		return errors.New("nil request")
-	}
-	if request.Type != p2p.RequestType_ACK || request.Type != p2p.RequestType_NACK || request.Type != p2p.RequestType_DATA_TO_SIGN || request.Type != p2p.RequestType_NO_DATA_TO_SIGN {
-		return errors.New("invalid request type")
-	}
-
-	data := &p2p.TssData{}
-	if err := request.Data.UnmarshalTo(data); err != nil {
-		return errors.Wrap(err, "failed to unmarshal TSS request data")
-	}
-
-	sender, err := core.AddressFromString(request.Sender)
+func (c *Consensus) notifySigners(signers []string) error {
+	resultSignersData, err := json.Marshal(signers)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse sender address")
+		return errors.Wrap(err, "failed to serialize resultSigners")
 	}
 
-	if c.ended.Load() {
-		return errors.Wrap(errors.New("consensus ended already"), "")
-	}
-
-	c.msgs <- partyMsg{
-		Type:        request.Type,
-		Sender:      sender,
-		WireMsg:     data.Data,
-		IsBroadcast: data.IsBroadcast,
+	for _, signer := range c.resultSigners {
+		c.sendMessage(resultSignersData, signer.CoreAddress.PartyIdentifier(), p2p.RequestType_SIGNER_NOTIFY)
 	}
 	return nil
-}
-
-// RegisterIdChangeListener is a no-op for Consensus
-func (c *Consensus) RegisterIdChangeListener(func(oldId string, newId string)) {
 }

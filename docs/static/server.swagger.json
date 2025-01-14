@@ -38,7 +38,8 @@
         "ACK",
         "NACK",
         "NO_DATA_TO_SIGN",
-        "DATA_TO_SIGN"
+        "DATA_TO_SIGN",
+        "SIGNER_NOTIFY"
       ],
       "default": "KEYGEN",
       "title": "- ACK: it could be a separate MsgType but it would clone logic of requests"

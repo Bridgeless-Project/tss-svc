@@ -37,6 +37,14 @@ func (p Params) SigningSessionParams() session.SigningSessionParams {
 	}
 }
 
+func (p Params) ConsensusParams() session.ConsensusParams {
+	return session.ConsensusParams{
+		Id:        p.Signing.Id,
+		StartTime: p.Signing.StartTime,
+		Threshold: p.Signing.Threshold,
+	}
+}
+
 type KeygenParams struct {
 	Id        string    `fig:"session_id,required"`
 	StartTime time.Time `fig:"start_time,required"`

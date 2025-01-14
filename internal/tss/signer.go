@@ -41,6 +41,7 @@ type SignParty struct {
 	sessionId string
 }
 
+// TODO: remove parties??
 func NewSignParty(self LocalSignParty, parties []p2p.Party, data []byte, sessionId string, logger *logan.Entry) *SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
@@ -67,7 +68,20 @@ func NewSignParty(self LocalSignParty, parties []p2p.Party, data []byte, session
 	}
 }
 
-func (p *SignParty) Run(ctx context.Context) {
+func (p *SignParty) Run(ctx context.Context, data []byte, parties []p2p.Party) {
+	p.data = data
+	partyMap := make(map[core.Address]struct{}, len(parties))
+	partyIds := make([]*tss.PartyID, len(parties)+1)
+	partyIds[0] = p.self.Address.PartyIdentifier()
+
+	for i, party := range parties {
+		if party.CoreAddress == p.self.Address {
+			continue
+		}
+
+		partyMap[party.CoreAddress] = struct{}{}
+		partyIds[i+1] = party.Identifier()
+	}
 	p.logger.Infof("Running TSS signing on set: %v", p.parties)
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),

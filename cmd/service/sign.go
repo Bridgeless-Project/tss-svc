@@ -14,6 +14,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
+	"github.com/hyle-team/tss-svc/internal/tss/consensus"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -44,9 +45,9 @@ var signCmd = &cobra.Command{
 		}
 
 		dataToSign := args[0]
-		if len(dataToSign) == 0 {
-			return errors.Wrap(errors.New("empty data to-sign"), "invalid data")
-		}
+		//if len(dataToSign) == 0 {
+		//	return errors.Wrap(errors.New("empty data to-sign"), "invalid data")
+		//}
 
 		storage := vault.NewStorage(cfg.VaultClient())
 
@@ -65,6 +66,11 @@ var signCmd = &cobra.Command{
 
 		connectionManager := p2p.NewConnectionManager(cfg.Parties(), p2p.PartyStatus_SIGNING, cfg.Log().WithField("component", "connection_manager"))
 
+		consensus := session.NewConsensusSession(consensus.LocalParams{
+			PartyStatus: consensus.Signer,
+			Address:     account.CosmosAddress(),
+		}, cfg.TSSParams().ConsensusParams(), cfg.Log().WithField("component", "consensus_session"), []byte(dataToSign), connectionManager.GetReadyCount, cfg.Parties(), form, validate, account.CosmosAddress())
+
 		session := session.NewDefaultSigningSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
@@ -78,7 +84,7 @@ var signCmd = &cobra.Command{
 			connectionManager.GetReadyCount,
 		)
 
-		sessionManager := p2p.NewSessionManager(session)
+		sessionManager := p2p.NewSessionManager(consensus)
 		errGroup.Go(func() error {
 			server := p2p.NewServer(cfg.GRPCListener(), sessionManager)
 			server.SetStatus(p2p.PartyStatus_SIGNING)
@@ -88,6 +94,15 @@ var signCmd = &cobra.Command{
 		errGroup.Go(func() error {
 			defer cancel()
 
+			if err := consensus.Run(ctx); err != nil {
+				return errors.Wrap(err, "failed to run consensus session")
+			}
+			data, parties, err := consensus.WaitFor()
+			if data == nil || parties == nil {
+				return errors.Wrap(err, "failed to wait for consensus session")
+			}
+			session.SetDataToSign(data)
+			session.SetSigningParties(parties)
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run signing session")
 			}
@@ -101,7 +116,7 @@ var signCmd = &cobra.Command{
 			if err != nil {
 				return errors.Wrap(err, "failed to save signing result")
 			}
-			verifySignature(localSaveData, []byte(dataToSign), result, cfg)
+			verifySignature(localSaveData, data, result, cfg)
 			return nil
 		})
 		return errGroup.Wait()
@@ -142,4 +157,12 @@ func verifySignature(localData *keygen.LocalPartySaveData, inputData []byte, sig
 			cfg.Log().Warn("signature is invalid")
 		}
 	}
+}
+
+func form(data []byte) ([]byte, error) {
+	return data, nil
+}
+
+func validate(data []byte) (bool, error) {
+	return true, nil
 }

@@ -23,6 +23,7 @@ enum RequestType {
   NACK = 5;
   NO_DATA_TO_SIGN = 6;
   DATA_TO_SIGN = 7;
+  SIGNER_NOTIFY = 8;
 }
 
 service P2P {

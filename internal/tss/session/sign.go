@@ -25,10 +25,11 @@ type DefaultSigningSession struct {
 	wg     *sync.WaitGroup
 
 	connectedPartiesCount func() int
+	parties               []p2p.Party
 	partiesCount          int
 
 	signingParty interface {
-		Run(ctx context.Context)
+		Run(ctx context.Context, data []byte, parties []p2p.Party)
 		WaitFor() *common.SignatureData
 		Receive(sender core.Address, data *p2p.TssData)
 	}
@@ -80,7 +81,7 @@ func (s *DefaultSigningSession) run(ctx context.Context) {
 	boundedCtx, cancel := context.WithTimeout(ctx, BoundarySigningSession)
 	defer cancel()
 
-	s.signingParty.Run(boundedCtx)
+	s.signingParty.Run(boundedCtx, s.data, s.parties)
 	s.result = s.signingParty.WaitFor()
 	s.logger.Info("signing session finished")
 	if s.result != nil {
@@ -108,7 +109,7 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 		return errors.New("nil request")
 	}
 	if request.Type != p2p.RequestType_SIGN {
-		return errors.New("invalid request type")
+		return errors.New("invalid request type" + request.Type.String())
 	}
 
 	data := &p2p.TssData{}
@@ -123,6 +124,14 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 
 	s.signingParty.Receive(sender, data)
 	return nil
+}
+
+func (s *DefaultSigningSession) SetSigningParties(p2p []p2p.Party) {
+	s.parties = p2p
+}
+
+func (s *DefaultSigningSession) SetDataToSign(data []byte) {
+	s.data = data
 }
 
 // RegisterIdChangeListener is a no-op for DefaultSigningSession
