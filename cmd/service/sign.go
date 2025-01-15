@@ -89,7 +89,11 @@ var signCmd = &cobra.Command{
 			data, parties, err := consensus.WaitFor()
 			cfg.Log().Info("consensus session finished ", "parties ", parties, "err ", err, "data ", data)
 			if data == nil || parties == nil {
-				return errors.Wrap(errors.New("consensus error"), "not a signer")
+				if err != nil {
+					return errors.Wrap(err, "consensus error")
+				}
+				cfg.Log().Info("not a signer")
+				return nil
 			}
 			cfg.Log().Info("Try to start signing session")
 			connectionManager := p2p.NewConnectionManager(parties, p2p.PartyStatus_SIGNING, cfg.Log().WithField("component", "connection_manager"))
