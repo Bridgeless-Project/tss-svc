@@ -10,6 +10,7 @@ import (
 	tss_lib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/cmd/utils"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/config"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
@@ -70,22 +71,9 @@ var signCmd = &cobra.Command{
 		consensus := session.NewConsensusSession(consensus.LocalParams{
 			PartyStatus: consensus.Signer,
 			Address:     account.CosmosAddress(),
-		}, cfg.TSSParams().ConsensusParams(), cfg.Log().WithField("component", "consensus_session"), []byte(dataToSign), connectionManager.GetReadyCount, cfg.Parties(), form, validate, account.CosmosAddress())
+		}, cfg.TSSParams().ConsensusParams(), cfg.Log().WithField("component", "consensus_session"), []byte(dataToSign), connectionManager.GetReadyCount, cfg.Parties(), form, validate, account.CosmosAddress(), chain.ChainMetadata{}, "Bitcoin", selector)
 
-		signSession := session.NewDefaultSigningSession(
-			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
-				Data:      localSaveData,
-				Threshold: cfg.TSSParams().SigningSessionParams().Threshold,
-			},
-			cfg.TSSParams().SigningSessionParams(),
-			cfg.Log().WithField("component", "signing_session"),
-			cfg.Parties(),
-			[]byte(dataToSign),
-			connectionManager.GetReadyCount,
-		)
-
-		sessionManager := p2p.NewSessionManager(consensus, signSession)
+		sessionManager := p2p.NewSessionManager(consensus)
 		errGroup.Go(func() error {
 			server := p2p.NewServer(cfg.GRPCListener(), sessionManager)
 			server.SetStatus(p2p.PartyStatus_SIGNING)
@@ -101,12 +89,24 @@ var signCmd = &cobra.Command{
 			data, parties, err := consensus.WaitFor()
 			cfg.Log().Info("consensus session finished ", "parties ", parties, "err ", err, "data ", data)
 			if data == nil || parties == nil {
-				return errors.Wrap(err, "failed to wait for consensus session")
+				return errors.Wrap(errors.New("consensus error"), "not a signer")
 			}
 			cfg.Log().Info("Try to start signing session")
-			signSession.SetDataToSign(data)
-			signSession.SetSigningParties(parties)
-			signSession.AddStartTime(20 * time.Second)
+			connectionManager := p2p.NewConnectionManager(parties, p2p.PartyStatus_SIGNING, cfg.Log().WithField("component", "connection_manager"))
+			signSession := session.NewDefaultSigningSession(
+				tss.LocalSignParty{
+					Address:   account.CosmosAddress(),
+					Data:      localSaveData,
+					Threshold: cfg.TSSParams().SigningSessionParams().Threshold,
+				},
+				cfg.TSSParams().SigningSessionParams(),
+				cfg.Log().WithField("component", "signing_session"),
+				parties,
+				data,
+				connectionManager.GetReadyCount,
+			)
+			sessionManager.Add(signSession)
+			signSession.AddStartTime(10 * time.Second)
 			if err := signSession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run signing session")
 			}
@@ -169,4 +169,11 @@ func form(data []byte) ([]byte, error) {
 
 func validate(data []byte) (bool, error) {
 	return true, nil
+}
+
+func selector(chainId string, data []byte) ([]byte, error) {
+	if data == nil {
+		return nil, errors.New("no data")
+	}
+	return data, nil
 }

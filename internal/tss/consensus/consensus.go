@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	tss2 "github.com/hyle-team/tss-svc/internal/tss"
@@ -42,12 +43,12 @@ type Consensus struct {
 	threshold      int
 	proposerKey    string
 
-	//TODO: ADD CHAIN METADATA
-
+	chainData    chain.ChainMetadata
 	rand         *rand.Rand
 	data         []byte
 	formData     func([]byte) ([]byte, error)
 	validateData func([]byte) (bool, error)
+	dataSelector func(string, []byte) ([]byte, error)
 
 	resultData    []byte
 	resultSigners []p2p.Party
@@ -55,12 +56,12 @@ type Consensus struct {
 
 	msgs    chan partyMsg
 	ended   atomic.Bool
-	chainId int
+	chainId string
 
 	logger *logan.Entry
 }
 
-func NewConsensus(self LocalParams, parties []p2p.Party, logger *logan.Entry, sessionId string, data []byte, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), threshold int) *Consensus {
+func NewConsensus(self LocalParams, parties []p2p.Party, logger *logan.Entry, sessionId string, data []byte, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), threshold int, metadata chain.ChainMetadata, chainId string, dataSelector func(string, []byte) ([]byte, error)) *Consensus {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyMap[self.Address] = struct{}{}
 	partyIds := make([]*tss.PartyID, len(parties)+1)
@@ -80,6 +81,9 @@ func NewConsensus(self LocalParams, parties []p2p.Party, logger *logan.Entry, se
 		self:           self,
 		sessionId:      sessionId,
 		broadcaster:    p2p.NewBroadcaster(parties),
+		chainData:      metadata,
+		dataSelector:   dataSelector,
+		chainId:        chainId,
 		parties:        parties,
 		partiesMap:     partyMap,
 		ackSet:         make(map[string]struct{}),
@@ -114,6 +118,14 @@ func (c *Consensus) Run(ctx context.Context) {
 	c.wg.Add(1)
 	// 2.1 If local party is proposer - validate incoming data and form data to sign and send it to signers
 	if c.self.PartyStatus == Proposer {
+		// select data with selector
+		c.data, c.err = c.dataSelector(c.chainId, c.data)
+		if c.err != nil {
+			c.resultData = nil
+			c.sendMessage([]byte(c.err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
+			return
+		}
+
 		if c.data == nil {
 			c.err = errors.Wrap(errors.New("nil data"), "no input data")
 			c.sendMessage([]byte(c.err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
@@ -214,15 +226,11 @@ func (c *Consensus) sendMessage(data []byte, to *tss.PartyID, messageType p2p.Re
 func (c *Consensus) WaitFor() ([]byte, []p2p.Party, error) {
 	c.wg.Wait()
 	c.ended.Store(true)
-	//isSigner := false
-	//for _, signer := range c.resultSigners {
-	//	if signer.CoreAddress == c.self.Address {
-	//		isSigner = true
-	//	}
-	//}
-	//if !isSigner {
-	//	return nil, nil, nil
-	//}
+
+	// If party is not a signer it won`t receive the list of signers
+	if c.resultSigners == nil {
+		c.resultData = nil
+	}
 
 	if len(c.resultSigners) != c.threshold {
 		c.err = errors.Wrap(errors.New("consensus failed"), "didn`t reached threshold")

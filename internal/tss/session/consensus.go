@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss/consensus"
@@ -38,7 +39,7 @@ type ConsensusSession struct {
 	}
 }
 
-func NewConsensusSession(self consensus.LocalParams, params ConsensusParams, logger *logan.Entry, data []byte, counterFunc func() int, parties []p2p.Party, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), local core.Address) *ConsensusSession {
+func NewConsensusSession(self consensus.LocalParams, params ConsensusParams, logger *logan.Entry, data []byte, counterFunc func() int, parties []p2p.Party, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), local core.Address, metadata chain.ChainMetadata, chainId string, dataSelector func(string, []byte) ([]byte, error)) *ConsensusSession {
 	return &ConsensusSession{
 		wg:                    &sync.WaitGroup{},
 		params:                params,
@@ -47,7 +48,7 @@ func NewConsensusSession(self consensus.LocalParams, params ConsensusParams, log
 		localPartyAddr:        local,
 		connectedPartiesCount: counterFunc,
 		partiesCount:          len(parties),
-		consensus:             consensus.NewConsensus(self, parties, logger, params.Id, data, formData, validateData, params.Threshold),
+		consensus:             consensus.NewConsensus(self, parties, logger, params.Id, data, formData, validateData, params.Threshold, metadata, chainId, dataSelector),
 	}
 }
 
