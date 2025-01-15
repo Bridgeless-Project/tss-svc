@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func init() {
@@ -71,7 +72,7 @@ var signCmd = &cobra.Command{
 			Address:     account.CosmosAddress(),
 		}, cfg.TSSParams().ConsensusParams(), cfg.Log().WithField("component", "consensus_session"), []byte(dataToSign), connectionManager.GetReadyCount, cfg.Parties(), form, validate, account.CosmosAddress())
 
-		session := session.NewDefaultSigningSession(
+		signSession := session.NewDefaultSigningSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Data:      localSaveData,
@@ -84,7 +85,7 @@ var signCmd = &cobra.Command{
 			connectionManager.GetReadyCount,
 		)
 
-		sessionManager := p2p.NewSessionManager(consensus)
+		sessionManager := p2p.NewSessionManager(consensus, signSession)
 		errGroup.Go(func() error {
 			server := p2p.NewServer(cfg.GRPCListener(), sessionManager)
 			server.SetStatus(p2p.PartyStatus_SIGNING)
@@ -98,15 +99,18 @@ var signCmd = &cobra.Command{
 				return errors.Wrap(err, "failed to run consensus session")
 			}
 			data, parties, err := consensus.WaitFor()
+			cfg.Log().Info("consensus session finished ", "parties ", parties, "err ", err, "data ", data)
 			if data == nil || parties == nil {
 				return errors.Wrap(err, "failed to wait for consensus session")
 			}
-			session.SetDataToSign(data)
-			session.SetSigningParties(parties)
-			if err := session.Run(ctx); err != nil {
+			cfg.Log().Info("Try to start signing session")
+			signSession.SetDataToSign(data)
+			signSession.SetSigningParties(parties)
+			signSession.AddStartTime(20 * time.Second)
+			if err := signSession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run signing session")
 			}
-			result, err := session.WaitFor()
+			result, err := signSession.WaitFor()
 			if err != nil {
 				return errors.Wrap(err, "failed to obtain signing session result")
 			}

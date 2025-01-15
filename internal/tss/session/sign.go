@@ -134,5 +134,9 @@ func (s *DefaultSigningSession) SetDataToSign(data []byte) {
 	s.data = data
 }
 
+func (s *DefaultSigningSession) AddStartTime(t time.Duration) {
+	s.params.StartTime = s.params.StartTime.Add(t)
+}
+
 // RegisterIdChangeListener is a no-op for DefaultSigningSession
 func (s *DefaultSigningSession) RegisterIdChangeListener(func(oldId, newId string)) {}

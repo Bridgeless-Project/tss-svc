@@ -119,7 +119,6 @@ func (c *Consensus) Run(ctx context.Context) {
 			c.sendMessage([]byte(c.err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
 			return
 		}
-
 		valid, err := c.validateData(c.data)
 		if err != nil {
 			c.sendMessage([]byte(err.Error()), nil, p2p.RequestType_NO_DATA_TO_SIGN)
@@ -215,15 +214,15 @@ func (c *Consensus) sendMessage(data []byte, to *tss.PartyID, messageType p2p.Re
 func (c *Consensus) WaitFor() ([]byte, []p2p.Party, error) {
 	c.wg.Wait()
 	c.ended.Store(true)
-	isSigner := false
-	for _, signer := range c.resultSigners {
-		if signer.CoreAddress == c.self.Address {
-			isSigner = true
-		}
-	}
-	if !isSigner {
-		return nil, nil, nil
-	}
+	//isSigner := false
+	//for _, signer := range c.resultSigners {
+	//	if signer.CoreAddress == c.self.Address {
+	//		isSigner = true
+	//	}
+	//}
+	//if !isSigner {
+	//	return nil, nil, nil
+	//}
 
 	if len(c.resultSigners) != c.threshold {
 		c.err = errors.Wrap(errors.New("consensus failed"), "didn`t reached threshold")
@@ -339,6 +338,8 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 					c.err = errors.Wrap(errors.New("invalid data"), "formed different data")
 					c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
 				}
+				c.logger.Info("got new data: ", msg.WireMsg)
+				c.resultData = msg.WireMsg
 				c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_ACK)
 				//
 				//valid, err := c.validateData(msg.WireMsg)
