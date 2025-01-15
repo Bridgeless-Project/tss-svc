@@ -363,6 +363,8 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 				err := json.Unmarshal(msg.WireMsg, &signersList)
 				if err != nil {
 					c.logger.Error("failed to unmarshal signer list", err)
+					c.err = errors.Wrap(err, "failed to unmarshal signer list")
+					return
 				}
 				for _, signer := range signersList {
 					for _, party := range c.parties {
