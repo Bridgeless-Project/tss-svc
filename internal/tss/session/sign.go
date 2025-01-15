@@ -29,7 +29,7 @@ type DefaultSigningSession struct {
 	partiesCount          int
 
 	signingParty interface {
-		Run(ctx context.Context, data []byte, parties []p2p.Party)
+		Run(ctx context.Context)
 		WaitFor() *common.SignatureData
 		Receive(sender core.Address, data *p2p.TssData)
 	}
@@ -81,7 +81,7 @@ func (s *DefaultSigningSession) run(ctx context.Context) {
 	boundedCtx, cancel := context.WithTimeout(ctx, BoundarySigningSession)
 	defer cancel()
 
-	s.signingParty.Run(boundedCtx, s.data, s.parties)
+	s.signingParty.Run(boundedCtx)
 	s.result = s.signingParty.WaitFor()
 	s.logger.Info("signing session finished")
 	if s.result != nil {
@@ -124,14 +124,6 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 
 	s.signingParty.Receive(sender, data)
 	return nil
-}
-
-func (s *DefaultSigningSession) SetSigningParties(p2p []p2p.Party) {
-	s.parties = p2p
-}
-
-func (s *DefaultSigningSession) SetDataToSign(data []byte) {
-	s.data = data
 }
 
 func (s *DefaultSigningSession) AddStartTime(t time.Duration) {
