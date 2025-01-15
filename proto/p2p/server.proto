@@ -24,6 +24,7 @@ enum RequestType {
   NO_DATA_TO_SIGN = 6;
   DATA_TO_SIGN = 7;
   SIGNER_NOTIFY = 8;
+  RAW_DATA = 9;
 }
 
 service P2P {

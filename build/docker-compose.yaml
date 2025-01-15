@@ -36,7 +36,7 @@ services:
       MOUNT_PATH: tss1
     volumes:
       - ./configs/tss1.yaml:/config.yaml
-    command: "service run keygen -o vault"
+    command: "service sign aboba --verify"
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -53,7 +53,7 @@ services:
       MOUNT_PATH: tss2
     volumes:
       - ./configs/tss2.yaml:/config.yaml
-    command: "service run keygen -o vault"
+    command: "service sign aboba --verify"
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -70,7 +70,7 @@ services:
       MOUNT_PATH: tss3
     volumes:
       - ./configs/tss3.yaml:/config.yaml
-    command: "service run keygen -o vault"
+    command: "service sign aboba --verify"
     depends_on:
       vault_init:
         condition: service_completed_successfully

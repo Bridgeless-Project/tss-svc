@@ -106,7 +106,7 @@ func (c *ConsensusSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil || request.Data == nil {
 		return errors.New("nil request")
 	}
-	if request.Type != p2p.RequestType_ACK && request.Type != p2p.RequestType_NACK && request.Type != p2p.RequestType_DATA_TO_SIGN && request.Type != p2p.RequestType_NO_DATA_TO_SIGN && request.Type != p2p.RequestType_SIGNER_NOTIFY {
+	if request.Type != p2p.RequestType_ACK && request.Type != p2p.RequestType_NACK && request.Type != p2p.RequestType_DATA_TO_SIGN && request.Type != p2p.RequestType_NO_DATA_TO_SIGN && request.Type != p2p.RequestType_SIGNER_NOTIFY && request.Type != p2p.RequestType_RAW_DATA {
 		return errors.New("invalid request type: " + request.Type.String())
 	}
 
