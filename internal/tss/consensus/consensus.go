@@ -253,7 +253,10 @@ func (c *Consensus) Receive(sender core.Address, data *p2p.TssData, reqType p2p.
 
 }
 func (c *Consensus) receiveMsgs(ctx context.Context) {
-	defer c.wg.Done()
+	defer func() {
+		c.wg.Done()
+		close(c.msgs)
+	}()
 	votesCount := 0
 	for {
 		select {
@@ -262,7 +265,6 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 			if len(c.ackSet) < c.threshold {
 				c.logger.Error("Consensus failed due to insufficient ACKs")
 			}
-			close(c.msgs)
 			return
 		case msg, ok := <-c.msgs:
 			if !ok {
@@ -306,7 +308,6 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 								c.logger.Error("failed to notify signers", err)
 								c.err = errors.Wrap(err, "failed to notify signers")
 							}
-							close(c.msgs)
 							return
 						}
 					}
@@ -330,7 +331,6 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 					c.logger.Error("invalid proposer")
 					c.err = errors.New("invalid proposer")
 					c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
-					close(c.msgs)
 					return
 				}
 				// validate deposit data with recreating it
@@ -338,7 +338,6 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 				if err != nil {
 					c.logger.Error("failed to form data", err)
 					c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
-					close(c.msgs)
 					return
 				}
 				if !bytes.Equal(localData, msg.WireMsg) {
@@ -349,27 +348,9 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 				c.logger.Info("got new data: ", msg.WireMsg)
 				c.resultData = msg.WireMsg
 				c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_ACK)
-				//
-				//valid, err := c.validateData(msg.WireMsg)
-				//if err != nil {
-				//	c.logger.Error("failed to validate data ", err)
-				//	c.err = errors.Wrap(err, "failed to validate data")
-				//	c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
-				//	close(c.msgs)
-				//	return
-				//
-				//}
-				//if !valid {
-				//	c.sendMessage(nil, msg.Sender.PartyIdentifier(), p2p.RequestType_NACK)
-				//	close(c.msgs)
-				//	return
-				//}
-				//if valid {
-				//}
 				continue
 			}
 			if msg.Type == p2p.RequestType_NO_DATA_TO_SIGN {
-				close(c.msgs)
 				c.resultData = nil
 				c.resultSigners = nil
 				c.err = errors.New(string(msg.WireMsg))
@@ -391,7 +372,6 @@ func (c *Consensus) receiveMsgs(ctx context.Context) {
 					}
 				}
 				c.logger.Info("Signer list received", c.resultSigners)
-				close(c.msgs)
 				return
 			}
 		}
