@@ -41,7 +41,10 @@ type Consensus struct {
 	threshold      int
 	proposerKey    string
 
-	chainData    chain.ChainMetadata
+	chainData chain.Chain
+	chainId   string
+	//chainClient bridgeTypes.Proxy
+
 	testData     []byte // mock will be deleted
 	rand         *rand.Rand
 	data         []byte
@@ -53,14 +56,13 @@ type Consensus struct {
 	resultSigners []p2p.Party
 	err           error
 
-	msgs    chan partyMsg
-	ended   atomic.Bool
-	chainId string
+	msgs  chan partyMsg
+	ended atomic.Bool
 
 	logger *logan.Entry
 }
 
-func NewConsensus(self LocalParams, parties []p2p.Party, logger *logan.Entry, sessionId string, data []byte, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), threshold int, metadata chain.ChainMetadata, chainId string, dataSelector func(string, []byte) ([]byte, error)) *Consensus {
+func NewConsensus(self LocalParams, parties []p2p.Party, logger *logan.Entry, sessionId string, data []byte, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), threshold int, metadata chain.Chain, chainId string, dataSelector func(string, []byte) ([]byte, error)) *Consensus {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyMap[self.Address] = struct{}{}
 	partyIds := make([]*tss.PartyID, len(parties)+1)
@@ -76,13 +78,14 @@ func NewConsensus(self LocalParams, parties []p2p.Party, logger *logan.Entry, se
 	}
 
 	return &Consensus{
-		wg:             &sync.WaitGroup{},
-		self:           self,
-		sessionId:      sessionId,
-		broadcaster:    p2p.NewBroadcaster(parties),
-		chainData:      metadata,
-		dataSelector:   dataSelector,
-		chainId:        chainId,
+		wg:           &sync.WaitGroup{},
+		self:         self,
+		sessionId:    sessionId,
+		broadcaster:  p2p.NewBroadcaster(parties),
+		chainData:    metadata,
+		dataSelector: dataSelector,
+		chainId:      chainId,
+		// chainClient:    proxy,
 		parties:        parties,
 		partiesMap:     partyMap,
 		ackSet:         make(map[string]struct{}),

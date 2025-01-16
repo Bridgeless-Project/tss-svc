@@ -71,7 +71,7 @@ var signCmd = &cobra.Command{
 		consensus := session.NewConsensusSession(consensus.LocalParams{
 			PartyStatus: consensus.Signer,
 			Address:     account.CosmosAddress(),
-		}, cfg.TSSParams().ConsensusParams(), cfg.Log().WithField("component", "consensus_session"), []byte(dataToSign), connectionManager.GetReadyCount, cfg.Parties(), form, validate, account.CosmosAddress(), chain.ChainMetadata{}, "Bitcoin", selector)
+		}, cfg.TSSParams().ConsensusParams(), cfg.Log().WithField("component", "consensus_session"), []byte(dataToSign), connectionManager.GetReadyCount, cfg.Parties(), form, validate, account.CosmosAddress(), chain.Chain{}, "Bitcoin", selector)
 
 		sessionManager := p2p.NewSessionManager(consensus)
 		errGroup.Go(func() error {

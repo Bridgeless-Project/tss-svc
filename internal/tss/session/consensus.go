@@ -39,7 +39,7 @@ type ConsensusSession struct {
 	}
 }
 
-func NewConsensusSession(self consensus.LocalParams, params ConsensusParams, logger *logan.Entry, data []byte, counterFunc func() int, parties []p2p.Party, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), local core.Address, metadata chain.ChainMetadata, chainId string, dataSelector func(string, []byte) ([]byte, error)) *ConsensusSession {
+func NewConsensusSession(self consensus.LocalParams, params ConsensusParams, logger *logan.Entry, data []byte, counterFunc func() int, parties []p2p.Party, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), local core.Address, metadata chain.Chain, chainId string, dataSelector func(string, []byte) ([]byte, error)) *ConsensusSession {
 	return &ConsensusSession{
 		wg:                    &sync.WaitGroup{},
 		params:                params,

@@ -1,6 +1,9 @@
 protogen-p2p:
 	cd proto/p2p && buf generate
 
+protogen-service:
+	cd proto/service && buf generate
+
 account:
 	go run main.go helpers generate cosmos-account
 
