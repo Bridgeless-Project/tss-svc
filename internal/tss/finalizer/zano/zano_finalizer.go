@@ -6,6 +6,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/client/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/db"
+	finalizerTypes "github.com/hyle-team/tss-svc/internal/tss/finalizer"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -30,15 +31,16 @@ type finalizer struct {
 	logger *logan.Entry
 }
 
-func newZanoFinalizer(chainClient zano.BridgeProxy, db db.DepositsQ, logger *logan.Entry) *finalizer {
+func newZanoFinalizer(chainClient zano.BridgeProxy, db db.DepositsQ, logger *logan.Entry) finalizerTypes.Finalizer {
 	return &finalizer{
 		wg:          &sync.WaitGroup{},
 		chainClient: chainClient,
 		db:          db,
-		errChan:     make(chan error, 4),
+		errChan:     make(chan error, 1),
+		logger:      logger,
 	}
 }
-func ZanoFinalizer(chainClient types.Proxy, db db.DepositsQ, logger *logan.Entry) (*finalizer, error) {
+func ZanoFinalizer(chainClient types.Proxy, db db.DepositsQ, logger *logan.Entry) (finalizerTypes.Finalizer, error) {
 	proxy, ok := chainClient.(zano.BridgeProxy)
 	if !ok {
 		return nil, errors.Wrap(errors.New("invalid proxy type"), "failed finalizer initialization")
@@ -46,6 +48,10 @@ func ZanoFinalizer(chainClient types.Proxy, db db.DepositsQ, logger *logan.Entry
 	return newZanoFinalizer(proxy, db, logger), nil
 }
 func (zf *finalizer) Run(ctx context.Context, data []byte, signatureData *common.SignatureData, deposit db.DepositData) error {
+	if data == nil || signatureData == nil {
+		return errors.Wrap(errors.New("invalid data"), "failed finalizer initialization")
+	}
+	zf.logger.Info("Starting finalization")
 	// Configure ctx with timeout
 	boundedCtx, cancel := context.WithTimeout(ctx, session.BoundaryFinalizeSession)
 	defer cancel()
@@ -54,6 +60,7 @@ func (zf *finalizer) Run(ctx context.Context, data []byte, signatureData *common
 	zf.data = data
 	deposit.Signature = signatureData.Signature
 	zf.rawData = deposit
+	zf.logger.Info("configured data for finalization")
 
 	zf.run(boundedCtx)
 	return zf.waitFor()
@@ -64,10 +71,14 @@ func (zf *finalizer) run(ctx context.Context) {
 	// Save deposit signature
 	go func() {
 		defer zf.wg.Done()
-		zf.errChan <- zf.db.SetDepositSignature(zf.rawData)
+		err := zf.db.SetDepositSignature(zf.rawData)
+		if err != nil {
+			zf.errChan <- err
+			return
+		}
 
 		// Using core connector pass withdrawal tx info to Bridge core
-		// TODO: Implement passing withdrawal data to chain
+		// TODO: Implement passing withdrawal data to Bridge core
 
 		// Pass withdrawal tx to network
 		// TODO: using network connector pass tx to network
@@ -80,20 +91,27 @@ func (zf *finalizer) listen(ctx context.Context) {
 		close(zf.errChan)
 		zf.wg.Done()
 	}()
-	select {
-	case <-ctx.Done():
-		zf.err = errors.Wrap(ctx.Err(), "finalization timed out")
-	case err, ok := <-zf.errChan:
-		if !ok {
+	for {
+		select {
+		case <-ctx.Done():
+			zf.err = errors.Wrap(ctx.Err(), "finalization timed out")
 			return
-		}
-		if err != nil {
-			zf.err = errors.Wrap(err, "finalization failed")
+		case err, ok := <-zf.errChan:
+			if !ok {
+				zf.logger.Debug("error chanel is closed")
+				return
+			}
+			if err != nil {
+				zf.err = errors.Wrap(err, "finalization failed")
+				return
+			}
+			continue
 		}
 	}
 }
 
 func (zf *finalizer) waitFor() error {
 	zf.wg.Wait()
+	zf.logger.Info("finalizer finished")
 	return zf.err
 }

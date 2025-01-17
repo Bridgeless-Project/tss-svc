@@ -3,6 +3,8 @@ package finalizer
 import (
 	"github.com/hyle-team/tss-svc/internal/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/tss/finalizer/btc"
+	"github.com/hyle-team/tss-svc/internal/tss/finalizer/evm"
 	"github.com/hyle-team/tss-svc/internal/tss/finalizer/zano"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -23,8 +25,16 @@ func NewFinalizersRepo(proxiesRepo map[string]types.Proxy, db db.DepositsQ, logg
 			if err != nil {
 				return nil, errors.Wrap(err, "zano finalizer init failed")
 			}
-		// TODO: add EVM case
-		// TODO: add BTC case
+		case types.ChainTypeEVM:
+			finalizer, err = evm.EVMFinalizer(proxy, db, logger)
+			if err != nil {
+				return nil, errors.Wrap(err, "evm finalizer init failed")
+			}
+		case types.ChainTypeBitcoin:
+			finalizer, err = btc.BTCFinalizer(proxy, db, logger)
+			if err != nil {
+				return nil, errors.Wrap(err, "btc finalizer init failed")
+			}
 		default:
 			return nil, errors.Errorf("unknown chain type: %s", proxy.Type())
 		}
