@@ -6,6 +6,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/client/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 )
 
@@ -28,7 +29,10 @@ func NewEVMFinalizer(chainClient types.Proxy, data []byte, signatureData *common
 	}
 }
 
-func (ef *EVMFinalizer) Run(_ context.Context) error {
+func (ef *EVMFinalizer) Run(ctx context.Context) error {
+	boundedCtx, cancel := context.WithTimeout(ctx, session.BoundaryFinalizeSession)
+	defer cancel()
+
 	evmProxy, ok := ef.chainClient.(evm.BridgeProxy)
 	if !ok {
 		return errors.Wrap(errors.New("invalid proxy type"), "finalization failed")
@@ -39,6 +43,20 @@ func (ef *EVMFinalizer) Run(_ context.Context) error {
 	err := ef.db.SetDepositSignature(ef.rawData)
 	if err != nil {
 		return errors.Wrap(err, "finalization failed")
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- ef.db.SetDepositSignature(ef.rawData)
+	}()
+
+	select {
+	case <-boundedCtx.Done():
+		return errors.Wrap(ctx.Err(), "finalization timed out")
+	case err := <-errChan:
+		if err != nil {
+			return errors.Wrap(err, "finalization failed during DB operation")
+		}
 	}
 
 	// Using core connector pass withdrawal tx info to Bridge core
