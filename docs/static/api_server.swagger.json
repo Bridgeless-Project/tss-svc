@@ -6,7 +6,7 @@
   },
   "tags": [
     {
-      "name": "Service"
+      "name": "API"
     }
   ],
   "consumes": [
@@ -18,7 +18,7 @@
   "paths": {
     "/check/{chainId}/{txHash}/{txNonce}": {
       "get": {
-        "operationId": "Service_CheckWithdrawal",
+        "operationId": "API_CheckWithdrawal",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -55,13 +55,13 @@
           }
         ],
         "tags": [
-          "Service"
+          "API"
         ]
       }
     },
     "/submit": {
       "post": {
-        "operationId": "Service_SubmitWithdrawal",
+        "operationId": "API_SubmitWithdrawal",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -88,7 +88,7 @@
           }
         ],
         "tags": [
-          "Service"
+          "API"
         ]
       }
     }
