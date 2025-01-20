@@ -5,6 +5,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/db"
 	"gitlab.com/distributed_lab/logan/v3"
 	"math/big"
 )
@@ -20,6 +21,11 @@ type BridgeProxy interface {
 type proxy struct {
 	chain  chain.Bitcoin
 	logger *logan.Entry
+}
+
+func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
+	//TODO implement me
+	return []byte("bitcoin"), nil
 }
 
 func NewBridgeProxy(ch chain.Bitcoin, logger *logan.Entry) BridgeProxy {

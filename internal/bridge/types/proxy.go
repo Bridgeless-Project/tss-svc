@@ -58,7 +58,7 @@ type Proxy interface {
 	AddressValid(addr string) bool
 	TransactionHashValid(hash string) bool
 	WithdrawalAmountValid(amount *big.Int) bool
-	// TODO: add withdrawal transaction constructor and data validator
+	ConstructWithdrawalTx(data db.Deposit) ([]byte, error)
 }
 
 type ProxiesRepository interface {

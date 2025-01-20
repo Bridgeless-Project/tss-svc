@@ -2,9 +2,12 @@ package evm
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/contracts"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
@@ -36,6 +39,22 @@ type proxy struct {
 	contractABI   abi.ABI
 	depositEvents []abi.Event
 	logger        *logan.Entry
+}
+
+func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
+	withdrawalTx := db.WithdrawalTx{
+		DepositId: data.Id,
+		TxHash:    data.TxHash,
+		ChainId:   *data.WithdrawalChainId,
+	}
+
+	dataToSign, err := json.Marshal(withdrawalTx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to construct data")
+	}
+	dataHash := crypto.Keccak256Hash(dataToSign)
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(dataHash.Bytes()), dataHash.Bytes())
+	return crypto.Keccak256Hash([]byte(msg)).Bytes(), nil
 }
 
 // NewBridgeProxy creates a new bridge proxy for the given chain.

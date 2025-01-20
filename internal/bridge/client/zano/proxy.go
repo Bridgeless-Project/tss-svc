@@ -23,6 +23,11 @@ type proxy struct {
 	chain  chain.Zano
 }
 
+func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
+	//TODO implement me
+	return []byte("zano"), nil
+}
+
 func (p *proxy) Type() bridgeTypes.ChainType {
 	return bridgeTypes.ChainTypeZano
 }
