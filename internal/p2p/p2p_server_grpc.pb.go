@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: server.proto
+// source: p2p_server.proto
 
 package p2p
 
@@ -20,8 +20,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	P2P_Status_FullMethodName = "/P2P/Status"
-	P2P_Submit_FullMethodName = "/P2P/Submit"
+	P2P_Status_FullMethodName = "/p2p.P2P/Status"
+	P2P_Submit_FullMethodName = "/p2p.P2P/Submit"
 )
 
 // P2PClient is the client API for P2P service.
@@ -141,7 +141,7 @@ func _P2P_Submit_Handler(srv interface{}, ctx context.Context, dec func(interfac
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var P2P_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "P2P",
+	ServiceName: "p2p.P2P",
 	HandlerType: (*P2PServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -154,5 +154,5 @@ var P2P_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "server.proto",
+	Metadata: "p2p_server.proto",
 }

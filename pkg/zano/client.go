@@ -3,13 +3,13 @@ package zano
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/pkg/errors"
+	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"sync/atomic"
 
-	"fmt"
-	"net/http"
+	"github.com/pkg/errors"
 )
 
 const rpcVersion = "2.0"

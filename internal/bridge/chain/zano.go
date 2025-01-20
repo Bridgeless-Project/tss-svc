@@ -1,11 +1,11 @@
 package chain
 
 import (
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"reflect"
+
 	"github.com/hyle-team/tss-svc/pkg/zano"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
-	"reflect"
 )
 
 type Zano struct {
@@ -15,8 +15,8 @@ type Zano struct {
 }
 
 func (c Chain) Zano() Zano {
-	if c.Type != bridgeTypes.ChainTypeZano {
-		panic("invalid chain type")
+	if c.Type != TypeZano {
+		panic("chain is not Zano")
 	}
 
 	chain := Zano{Confirmations: c.Confirmations}

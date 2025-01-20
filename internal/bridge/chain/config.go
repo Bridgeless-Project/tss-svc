@@ -1,12 +1,12 @@
 package chain
 
 import (
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"reflect"
+
+	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
-	"gitlab.com/distributed_lab/logan/v3/errors"
-	"reflect"
 )
 
 type Chainer interface {
@@ -35,7 +35,6 @@ func (c *chainer) Chains() []Chain {
 			With(
 				figure.BaseHooks,
 				figure.EthereumHooks,
-				bitcoinHooks,
 				interfaceHook,
 			).
 			From(kv.MustGetStringMap(c.getter, "chains")).
@@ -56,31 +55,4 @@ var interfaceHook = figure.Hooks{
 	"interface {}": func(value interface{}) (reflect.Value, error) {
 		return reflect.ValueOf(value), nil
 	},
-}
-
-type Network string
-
-const (
-	NetworkMainnet Network = "mainnet"
-	NetworkTestnet Network = "testnet"
-)
-
-func (n Network) Validate() error {
-	switch n {
-	case NetworkMainnet, NetworkTestnet:
-		return nil
-	default:
-		return errors.New("invalid network")
-	}
-}
-
-type Chain struct {
-	Id              string                `fig:"id,required"`
-	Type            bridgeTypes.ChainType `fig:"type,required"`
-	Confirmations   uint64                `fig:"confirmations,required"`
-	Rpc             any                   `fig:"rpc,required"`
-	BridgeAddresses any                   `fig:"bridge_addresses,required"`
-
-	Wallet  string  `fig:"wallet"`
-	Network Network `fig:"network"`
 }
