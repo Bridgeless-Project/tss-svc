@@ -83,39 +83,6 @@ func (d Deposit) Reprocessable() bool {
 	return d.Status == types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED
 }
 
-// TODO: move to api.go
-//func (d Deposit) ToStatusResponse() types.CheckWithdrawalResponse {
-//	result := &resources.CheckWithdrawalResponse{
-//		Status: d.Status,
-//		DepositData: &resources.DepositData{
-//			EventIndex:       int64(d.TxEventId),
-//			Depositor:        d.Depositor,
-//			DepositAmount:    d.DepositAmount,
-//			WithdrawalAmount: d.WithdrawalAmount,
-//			DepositToken:     d.DepositToken,
-//			WithdrawalToken:  d.WithdrawalToken,
-//			Receiver:         d.Receiver,
-//			BlockNumber:      d.DepositBlock,
-//			Signature:        d.Signature,
-//			IsWrapped:        d.IsWrappedToken,
-//		},
-//		DepositTransaction: &resources.Transaction{
-//			Hash:    d.TxHash,
-//			ChainId: d.ChainId,
-//		},
-//		SubmitStatus: d.SubmitStatus,
-//	}
-//
-//	if d.WithdrawalTxHash != nil && d.WithdrawalChainId != nil {
-//		result.WithdrawalTransaction = &resources.Transaction{
-//			Hash:    *d.WithdrawalTxHash,
-//			ChainId: *d.WithdrawalChainId,
-//		}
-//	}
-//
-//	return result
-//}
-
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
 	tx := bridgetypes.Transaction{
 		DepositTxHash:    d.TxHash,

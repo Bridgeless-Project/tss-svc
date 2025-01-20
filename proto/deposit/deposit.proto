@@ -16,6 +16,8 @@ message DepositIdentifier {
   string tx_hash = 1;
   int64 tx_nonce = 2;
   string chain_id = 3;
+  // added as needed it at db
+  int64 tx_event_id =4;
 }
 
 message WithdrawalIdentifier {

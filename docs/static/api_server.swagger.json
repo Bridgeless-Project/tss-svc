@@ -52,6 +52,14 @@
             "required": true,
             "type": "string",
             "format": "int64"
+          },
+          {
+            "name": "txEventId",
+            "description": "added as needed it at db",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -123,6 +131,11 @@
         },
         "chainId": {
           "type": "string"
+        },
+        "txEventId": {
+          "type": "string",
+          "format": "int64",
+          "title": "added as needed it at db"
         }
       }
     },

@@ -84,6 +84,7 @@ require (
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gogo/protobuf v1.3.3 // indirect
