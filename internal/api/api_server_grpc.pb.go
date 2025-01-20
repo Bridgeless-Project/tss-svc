@@ -20,120 +20,120 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// ServiceClient is the client API for Service service.
+// APIClient is the client API for API service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ServiceClient interface {
+type APIClient interface {
 	SubmitWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CheckWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*CheckWithdrawalResponse, error)
 }
 
-type serviceClient struct {
+type aPIClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewServiceClient(cc grpc.ClientConnInterface) ServiceClient {
-	return &serviceClient{cc}
+func NewAPIClient(cc grpc.ClientConnInterface) APIClient {
+	return &aPIClient{cc}
 }
 
-func (c *serviceClient) SubmitWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *aPIClient) SubmitWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/api.Service/SubmitWithdrawal", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.API/SubmitWithdrawal", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *serviceClient) CheckWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*CheckWithdrawalResponse, error) {
+func (c *aPIClient) CheckWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*CheckWithdrawalResponse, error) {
 	out := new(CheckWithdrawalResponse)
-	err := c.cc.Invoke(ctx, "/api.Service/CheckWithdrawal", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.API/CheckWithdrawal", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ServiceServer is the server API for Service service.
-// All implementations should embed UnimplementedServiceServer
+// APIServer is the server API for API service.
+// All implementations should embed UnimplementedAPIServer
 // for forward compatibility
-type ServiceServer interface {
+type APIServer interface {
 	SubmitWithdrawal(context.Context, *types.DepositIdentifier) (*emptypb.Empty, error)
 	CheckWithdrawal(context.Context, *types.DepositIdentifier) (*CheckWithdrawalResponse, error)
 }
 
-// UnimplementedServiceServer should be embedded to have forward compatible implementations.
-type UnimplementedServiceServer struct {
+// UnimplementedAPIServer should be embedded to have forward compatible implementations.
+type UnimplementedAPIServer struct {
 }
 
-func (UnimplementedServiceServer) SubmitWithdrawal(context.Context, *types.DepositIdentifier) (*emptypb.Empty, error) {
+func (UnimplementedAPIServer) SubmitWithdrawal(context.Context, *types.DepositIdentifier) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitWithdrawal not implemented")
 }
-func (UnimplementedServiceServer) CheckWithdrawal(context.Context, *types.DepositIdentifier) (*CheckWithdrawalResponse, error) {
+func (UnimplementedAPIServer) CheckWithdrawal(context.Context, *types.DepositIdentifier) (*CheckWithdrawalResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckWithdrawal not implemented")
 }
 
-// UnsafeServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ServiceServer will
+// UnsafeAPIServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to APIServer will
 // result in compilation errors.
-type UnsafeServiceServer interface {
-	mustEmbedUnimplementedServiceServer()
+type UnsafeAPIServer interface {
+	mustEmbedUnimplementedAPIServer()
 }
 
-func RegisterServiceServer(s grpc.ServiceRegistrar, srv ServiceServer) {
-	s.RegisterService(&Service_ServiceDesc, srv)
+func RegisterAPIServer(s grpc.ServiceRegistrar, srv APIServer) {
+	s.RegisterService(&API_ServiceDesc, srv)
 }
 
-func _Service_SubmitWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _API_SubmitWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.DepositIdentifier)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ServiceServer).SubmitWithdrawal(ctx, in)
+		return srv.(APIServer).SubmitWithdrawal(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.Service/SubmitWithdrawal",
+		FullMethod: "/api.API/SubmitWithdrawal",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServiceServer).SubmitWithdrawal(ctx, req.(*types.DepositIdentifier))
+		return srv.(APIServer).SubmitWithdrawal(ctx, req.(*types.DepositIdentifier))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Service_CheckWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _API_CheckWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(types.DepositIdentifier)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ServiceServer).CheckWithdrawal(ctx, in)
+		return srv.(APIServer).CheckWithdrawal(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.Service/CheckWithdrawal",
+		FullMethod: "/api.API/CheckWithdrawal",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServiceServer).CheckWithdrawal(ctx, req.(*types.DepositIdentifier))
+		return srv.(APIServer).CheckWithdrawal(ctx, req.(*types.DepositIdentifier))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Service_ServiceDesc is the grpc.ServiceDesc for Service service.
+// API_ServiceDesc is the grpc.ServiceDesc for API service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Service_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "api.Service",
-	HandlerType: (*ServiceServer)(nil),
+var API_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "api.API",
+	HandlerType: (*APIServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "SubmitWithdrawal",
-			Handler:    _Service_SubmitWithdrawal_Handler,
+			Handler:    _API_SubmitWithdrawal_Handler,
 		},
 		{
 			MethodName: "CheckWithdrawal",
-			Handler:    _Service_CheckWithdrawal_Handler,
+			Handler:    _API_CheckWithdrawal_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

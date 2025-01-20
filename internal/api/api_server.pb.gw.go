@@ -36,7 +36,7 @@ var (
 	_ = metadata.Join
 )
 
-func request_Service_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, client ServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_API_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, client APIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq types.DepositIdentifier
 		metadata runtime.ServerMetadata
@@ -48,7 +48,7 @@ func request_Service_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.M
 	return msg, metadata, err
 }
 
-func local_request_Service_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, server ServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_API_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, server APIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq types.DepositIdentifier
 		metadata runtime.ServerMetadata
@@ -60,7 +60,7 @@ func local_request_Service_SubmitWithdrawal_0(ctx context.Context, marshaler run
 	return msg, metadata, err
 }
 
-func request_Service_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, client ServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, client APIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq types.DepositIdentifier
 		metadata runtime.ServerMetadata
@@ -94,7 +94,7 @@ func request_Service_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Ma
 	return msg, metadata, err
 }
 
-func local_request_Service_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, server ServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, server APIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq types.DepositIdentifier
 		metadata runtime.ServerMetadata
@@ -128,59 +128,59 @@ func local_request_Service_CheckWithdrawal_0(ctx context.Context, marshaler runt
 	return msg, metadata, err
 }
 
-// RegisterServiceHandlerServer registers the http handlers for service Service to "mux".
-// UnaryRPC     :call ServiceServer directly.
+// RegisterAPIHandlerServer registers the http handlers for service API to "mux".
+// UnaryRPC     :call APIServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterServiceHandlerFromEndpoint instead.
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterAPIHandlerFromEndpoint instead.
 // GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
-func RegisterServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ServiceServer) error {
-	mux.Handle(http.MethodPost, pattern_Service_SubmitWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+func RegisterAPIHandlerServer(ctx context.Context, mux *runtime.ServeMux, server APIServer) error {
+	mux.Handle(http.MethodPost, pattern_API_SubmitWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.Service/SubmitWithdrawal", runtime.WithHTTPPathPattern("/submit"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.API/SubmitWithdrawal", runtime.WithHTTPPathPattern("/submit"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_Service_SubmitWithdrawal_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_API_SubmitWithdrawal_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Service_SubmitWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_API_SubmitWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodGet, pattern_Service_CheckWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_API_CheckWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.Service/CheckWithdrawal", runtime.WithHTTPPathPattern("/check/{chain_id}/{tx_hash}/{tx_nonce}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/api.API/CheckWithdrawal", runtime.WithHTTPPathPattern("/check/{chain_id}/{tx_hash}/{tx_nonce}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_Service_CheckWithdrawal_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_API_CheckWithdrawal_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Service_CheckWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_API_CheckWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
 }
 
-// RegisterServiceHandlerFromEndpoint is same as RegisterServiceHandler but
+// RegisterAPIHandlerFromEndpoint is same as RegisterAPIHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterAPIHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
@@ -199,64 +199,64 @@ func RegisterServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeM
 			}
 		}()
 	}()
-	return RegisterServiceHandler(ctx, mux, conn)
+	return RegisterAPIHandler(ctx, mux, conn)
 }
 
-// RegisterServiceHandler registers the http handlers for service Service to "mux".
+// RegisterAPIHandler registers the http handlers for service API to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterServiceHandlerClient(ctx, mux, NewServiceClient(conn))
+func RegisterAPIHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterAPIHandlerClient(ctx, mux, NewAPIClient(conn))
 }
 
-// RegisterServiceHandlerClient registers the http handlers for service Service
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ServiceClient"
+// RegisterAPIHandlerClient registers the http handlers for service API
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "APIClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "APIClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
-func RegisterServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ServiceClient) error {
-	mux.Handle(http.MethodPost, pattern_Service_SubmitWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+// "APIClient" to call the correct interceptors. This client ignores the HTTP middlewares.
+func RegisterAPIHandlerClient(ctx context.Context, mux *runtime.ServeMux, client APIClient) error {
+	mux.Handle(http.MethodPost, pattern_API_SubmitWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/api.Service/SubmitWithdrawal", runtime.WithHTTPPathPattern("/submit"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/api.API/SubmitWithdrawal", runtime.WithHTTPPathPattern("/submit"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_Service_SubmitWithdrawal_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_API_SubmitWithdrawal_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Service_SubmitWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_API_SubmitWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodGet, pattern_Service_CheckWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_API_CheckWithdrawal_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/api.Service/CheckWithdrawal", runtime.WithHTTPPathPattern("/check/{chain_id}/{tx_hash}/{tx_nonce}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/api.API/CheckWithdrawal", runtime.WithHTTPPathPattern("/check/{chain_id}/{tx_hash}/{tx_nonce}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_Service_CheckWithdrawal_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_API_CheckWithdrawal_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Service_CheckWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_API_CheckWithdrawal_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	return nil
 }
 
 var (
-	pattern_Service_SubmitWithdrawal_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"submit"}, ""))
-	pattern_Service_CheckWithdrawal_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 1, 0, 4, 1, 5, 2, 1, 0, 4, 1, 5, 3}, []string{"check", "chain_id", "tx_hash", "tx_nonce"}, ""))
+	pattern_API_SubmitWithdrawal_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"submit"}, ""))
+	pattern_API_CheckWithdrawal_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1, 1, 0, 4, 1, 5, 2, 1, 0, 4, 1, 5, 3}, []string{"check", "chain_id", "tx_hash", "tx_nonce"}, ""))
 )
 
 var (
-	forward_Service_SubmitWithdrawal_0 = runtime.ForwardResponseMessage
-	forward_Service_CheckWithdrawal_0  = runtime.ForwardResponseMessage
+	forward_API_SubmitWithdrawal_0 = runtime.ForwardResponseMessage
+	forward_API_CheckWithdrawal_0  = runtime.ForwardResponseMessage
 )

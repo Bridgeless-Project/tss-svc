@@ -18,7 +18,7 @@ message CheckWithdrawalResponse {
 
 }
 
-service Service {
+service API {
   rpc SubmitWithdrawal(deposit.DepositIdentifier) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/submit"

@@ -18,7 +18,7 @@ CREATE TABLE deposits
     deposit_block       BIGINT,
     signature           TEXT,
 
-    withdrawal_status              int          NOT NULL,
+    withdrawal_status   int          NOT NULL,
 
     withdrawal_tx_hash  VARCHAR(100),
     withdrawal_chain_id VARCHAR(50),
