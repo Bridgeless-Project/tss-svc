@@ -13,4 +13,5 @@ type Storage interface {
 	SaveCoreAccount(account *core.Account) error
 
 	SaveTssShare(data *keygen.LocalPartySaveData) error
+	GetTssShare() (*keygen.LocalPartySaveData, error)
 }

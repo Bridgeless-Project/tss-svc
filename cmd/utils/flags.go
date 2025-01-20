@@ -14,6 +14,7 @@ const (
 func RegisterOutputFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&OutputType, "output", "o", "console", "Output type: console, file, or vault")
 	cmd.Flags().StringVar(&FilePath, "path", "preparams.json", "Path to save the pre-parameters file (used when output-type is 'file')")
+	cmd.Flags().BoolVar(&IsVerifyNeeded, "verify", false, "Verify that output signature is valid")
 	RegisterConfigFlag(cmd)
 }
 
@@ -28,6 +29,7 @@ func OutputValid() bool {
 var OutputType string
 var FilePath string
 var ConfigPath string
+var IsVerifyNeeded bool
 
 func ConfigFromFlags(cmd *cobra.Command) (config.Config, error) {
 	configPath, err := cmd.Flags().GetString(configFlag)
