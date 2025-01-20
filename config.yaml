@@ -1,6 +1,0 @@
-log:
-  level: debug
-  disable_sentry: true
-
-db:
-  url:

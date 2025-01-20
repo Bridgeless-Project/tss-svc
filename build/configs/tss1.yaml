@@ -1,0 +1,25 @@
+log:
+  level: debug
+  disable_sentry: true
+
+db:
+  url:
+
+listener-grpc:
+  addr: :8090
+
+# self: bridge1dktu03jyuxdnxxtx2k72rwv8xyuz5qqxa7uk6e
+parties:
+  list:
+    - core_address: bridge15p6cxd3a92rtcky0l8wf6hl999ys5vmtg6x2as
+      connection: tss-2:8090
+      pubkey: pub
+    - core_address: bridge1sclksr8vnvlzh4h9778uvar53e9r25dfj2xkey
+      connection: tss-3:8090
+      pubkey: pub
+
+tss:
+  keygen:
+    start_time: "2025-01-08 17:51:38"
+    session_id: abcd
+

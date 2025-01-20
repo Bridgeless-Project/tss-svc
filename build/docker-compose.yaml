@@ -1,0 +1,76 @@
+services:
+  vault:
+    image: hashicorp/vault:1.18
+    hostname: vault
+    container_name: vault
+    restart: always
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+
+  vault_init:
+    container_name: vault_init
+    image: curlimages/curl
+    volumes:
+      - ./scripts/vault-init.sh:/vault-init.sh:ro
+    entrypoint: /vault-init.sh
+    environment:
+      VAULT_TOKEN: root
+      VAULT_ADDR: http://vault:8200
+    depends_on:
+      vault:
+        condition: service_started
+
+  tss-1:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    hostname: tss-1
+    container_name: tss-1
+    environment:
+      VAULT_PATH: http://vault:8200
+      VAULT_TOKEN: root
+      MOUNT_PATH: tss1
+    volumes:
+      - ./configs/tss1.yaml:/config.yaml
+    command: "service run keygen -o vault"
+    depends_on:
+      vault_init:
+        condition: service_completed_successfully
+
+  tss-2:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    hostname: tss-2
+    container_name: tss-2
+    environment:
+      VAULT_PATH: http://vault:8200
+      VAULT_TOKEN: root
+      MOUNT_PATH: tss2
+    volumes:
+      - ./configs/tss2.yaml:/config.yaml
+    command: "service run keygen -o vault"
+    depends_on:
+      vault_init:
+        condition: service_completed_successfully
+
+  tss-3:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    hostname: tss-3
+    container_name: tss-3
+    environment:
+      VAULT_PATH: http://vault:8200
+      VAULT_TOKEN: root
+      MOUNT_PATH: tss3
+    volumes:
+      - ./configs/tss3.yaml:/config.yaml
+    command: "service run keygen -o vault"
+    depends_on:
+      vault_init:
+        condition: service_completed_successfully
