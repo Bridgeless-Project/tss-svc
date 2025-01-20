@@ -3,7 +3,7 @@ package pg
 import (
 	"database/sql"
 	"encoding/hex"
-	"github.com/hyle-team/tss-svc/resources"
+	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/lib/pq"
 	"strings"
 
@@ -32,7 +32,7 @@ const (
 	depositsWithdrawalTxHash  = "withdrawal_tx_hash"
 	depositsWithdrawalChainId = "withdrawal_chain_id"
 
-	depositsSubmitStatus = "submit_status"
+	depositWithdrawalStatus = "withdrawal_status"
 
 	depositIsWrappedToken = "is_wrapped_token"
 
@@ -78,18 +78,17 @@ FROM (
 WHERE deposits.id = unnested_db.deposit_id
 `
 
-	return d.db.ExecRaw(query, resources.WithdrawalStatus_TX_PENDING, hashes, chains, ids)
+	return d.db.ExecRaw(query, types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING, hashes, chains, ids)
 }
 
 func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 	stmt := squirrel.
 		Insert(depositsTable).
 		SetMap(map[string]interface{}{
-			depositsTxHash:       deposit.TxHash,
-			depositsTxEventId:    deposit.TxEventId,
-			depositsChainId:      deposit.ChainId,
-			depositsStatus:       deposit.Status,
-			depositsSubmitStatus: deposit.SubmitStatus,
+			depositsTxHash:    deposit.TxHash,
+			depositsTxEventId: deposit.TxEventId,
+			depositsChainId:   deposit.ChainId,
+			depositsStatus:    deposit.Status,
 		}).
 		Suffix("RETURNING id")
 
@@ -129,17 +128,9 @@ func (d *depositsQ) Select(selector db.DepositsSelector) ([]db.Deposit, error) {
 	return deposits, nil
 }
 
-func (d *depositsQ) UpdateWithdrawalStatus(status resources.WithdrawalStatus, ids ...int64) error {
+func (d *depositsQ) UpdateWithdrawalStatus(status types.WithdrawalStatus, ids ...int64) error {
 	stmt := squirrel.Update(depositsTable).
 		Set(depositsStatus, status).
-		Where(squirrel.Eq{depositsId: ids})
-
-	return d.db.Exec(stmt)
-}
-
-func (d *depositsQ) UpdateSubmitStatus(status resources.SubmitWithdrawalStatus, ids ...int64) error {
-	stmt := squirrel.Update(depositsTable).
-		Set(depositsSubmitStatus, status).
 		Where(squirrel.Eq{depositsId: ids})
 
 	return d.db.Exec(stmt)
@@ -169,17 +160,17 @@ func (d *depositsQ) SetDepositData(db db.DepositData) error {
 	).SetMap(fields))
 }
 
-func (d *depositsQ) SetDepositSignature(db db.DepositData) error {
+func (d *depositsQ) SetDepositSignature(data db.DepositData) error {
 	fields := map[string]interface{}{
-		depositSignature: strings.ToLower(hex.EncodeToString(db.Signature)),
-		depositsStatus:   resources.WithdrawalStatus_WITHDRAWAL_SIGNED,
+		depositSignature: strings.ToLower(hex.EncodeToString([]byte(data.Signature))),
+		depositsStatus:   types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
 	}
 
 	return d.db.Exec(squirrel.Update(depositsTable).Where(
 		squirrel.Eq{
-			depositsTxHash:    db.TxHash,
-			depositsTxEventId: db.TxEventId,
-			depositsChainId:   db.ChainId,
+			depositsTxHash:    data.TxHash,
+			depositsTxEventId: data.TxEventId,
+			depositsChainId:   data.ChainId,
 		},
 	).SetMap(fields))
 }
@@ -201,7 +192,7 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 	}
 
 	if selector.Submitted != nil {
-		sql = sql.Where(squirrel.Eq{depositsSubmitStatus: resources.SubmitWithdrawalStatus_NOT_SUBMITTED})
+		sql = sql.Where(squirrel.Eq{depositWithdrawalStatus: types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING})
 	}
 
 	return sql

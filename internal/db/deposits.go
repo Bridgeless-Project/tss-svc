@@ -4,7 +4,6 @@ import (
 	"fmt"
 	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/types"
-	"github.com/hyle-team/tss-svc/resources"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 	"math/big"
 )
@@ -12,16 +11,16 @@ import (
 const OriginTxIdPattern = "%s-%d-%s"
 
 var ErrAlreadySubmitted = errors.New("transaction already submitted")
-var FinalWithdrawalStatuses = []resources.WithdrawalStatus{
-	// transaction is sent
-	resources.WithdrawalStatus_TX_PENDING,
-	resources.WithdrawalStatus_TX_SUCCESSFUL,
-	resources.WithdrawalStatus_TX_FAILED,
-	// ready to be sent
-	resources.WithdrawalStatus_WITHDRAWAL_SIGNED,
+var FinalWithdrawalStatuses = []types.WithdrawalStatus{
+	// transaction is waiting for signing
+	types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
+	// transaction is signing
+	types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING,
+	//transaction is signed
+	types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
 	// data invalid or something goes wrong
-	resources.WithdrawalStatus_INVALID,
-	resources.WithdrawalStatus_FAILED,
+	types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
+	types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED,
 }
 
 type DepositsQ interface {
@@ -30,8 +29,7 @@ type DepositsQ interface {
 	Select(selector DepositsSelector) ([]Deposit, error)
 	Get(identifier DepositIdentifier) (*Deposit, error)
 	SetDepositData(data DepositData) error
-	UpdateWithdrawalStatus(status resources.WithdrawalStatus, ids ...int64) error
-	UpdateSubmitStatus(status resources.SubmitWithdrawalStatus, ids ...int64) error
+	UpdateWithdrawalStatus(status types.WithdrawalStatus, ids ...int64) error
 	SetWithdrawalTxs(txs ...WithdrawalTx) error
 	Transaction(f func() error) error
 	SetDepositSignature(data DepositData) error
@@ -70,6 +68,8 @@ type Deposit struct {
 	WithdrawalToken *string `structs:"withdrawal_token" db:"withdrawal_token"`
 	DepositBlock    *int64  `structs:"deposit_block" db:"deposit_block"`
 
+	WithdrawalStatus int `structs:"withdrawal_status" db:"withdrawal_status"`
+
 	WithdrawalTxHash  *string `structs:"withdrawal_tx_hash" db:"withdrawal_tx_hash"`
 	WithdrawalChainId *string `structs:"withdrawal_chain_id" db:"withdrawal_chain_id"`
 	WithdrawalAmount  *string `structs:"withdrawal_amount" db:"withdrawal_amount"`
@@ -80,41 +80,41 @@ type Deposit struct {
 }
 
 func (d Deposit) Reprocessable() bool {
-	return d.Status == resources.WithdrawalStatus_FAILED ||
-		d.Status == resources.WithdrawalStatus_TX_FAILED
+	return d.Status == types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED
 }
 
-func (d Deposit) ToStatusResponse() types.CheckWithdrawalResponse {
-	result := &resources.CheckWithdrawalResponse{
-		Status: d.Status,
-		DepositData: &resources.DepositData{
-			EventIndex:       int64(d.TxEventId),
-			Depositor:        d.Depositor,
-			DepositAmount:    d.DepositAmount,
-			WithdrawalAmount: d.WithdrawalAmount,
-			DepositToken:     d.DepositToken,
-			WithdrawalToken:  d.WithdrawalToken,
-			Receiver:         d.Receiver,
-			BlockNumber:      d.DepositBlock,
-			Signature:        d.Signature,
-			IsWrapped:        d.IsWrappedToken,
-		},
-		DepositTransaction: &resources.Transaction{
-			Hash:    d.TxHash,
-			ChainId: d.ChainId,
-		},
-		SubmitStatus: d.SubmitStatus,
-	}
-
-	if d.WithdrawalTxHash != nil && d.WithdrawalChainId != nil {
-		result.WithdrawalTransaction = &resources.Transaction{
-			Hash:    *d.WithdrawalTxHash,
-			ChainId: *d.WithdrawalChainId,
-		}
-	}
-
-	return result
-}
+// TODO: move to api.go
+//func (d Deposit) ToStatusResponse() types.CheckWithdrawalResponse {
+//	result := &resources.CheckWithdrawalResponse{
+//		Status: d.Status,
+//		DepositData: &resources.DepositData{
+//			EventIndex:       int64(d.TxEventId),
+//			Depositor:        d.Depositor,
+//			DepositAmount:    d.DepositAmount,
+//			WithdrawalAmount: d.WithdrawalAmount,
+//			DepositToken:     d.DepositToken,
+//			WithdrawalToken:  d.WithdrawalToken,
+//			Receiver:         d.Receiver,
+//			BlockNumber:      d.DepositBlock,
+//			Signature:        d.Signature,
+//			IsWrapped:        d.IsWrappedToken,
+//		},
+//		DepositTransaction: &resources.Transaction{
+//			Hash:    d.TxHash,
+//			ChainId: d.ChainId,
+//		},
+//		SubmitStatus: d.SubmitStatus,
+//	}
+//
+//	if d.WithdrawalTxHash != nil && d.WithdrawalChainId != nil {
+//		result.WithdrawalTransaction = &resources.Transaction{
+//			Hash:    *d.WithdrawalTxHash,
+//			ChainId: *d.WithdrawalChainId,
+//		}
+//	}
+//
+//	return result
+//}
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
 	tx := bridgetypes.Transaction{
@@ -153,7 +153,7 @@ type DepositData struct {
 	DestinationTokenAddress string
 
 	IsWrappedToken bool
-	Signature      []byte
+	Signature      string
 
 	Block int64
 }
