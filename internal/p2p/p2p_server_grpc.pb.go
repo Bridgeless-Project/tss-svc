@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: server.proto
+// source: p2p_server.proto
 
 package p2p
 
@@ -37,7 +37,7 @@ func NewP2PClient(cc grpc.ClientConnInterface) P2PClient {
 
 func (c *p2PClient) Status(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
-	err := c.cc.Invoke(ctx, "/P2P/Status", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/p2p.P2P/Status", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *p2PClient) Status(ctx context.Context, in *emptypb.Empty, opts ...grpc.
 
 func (c *p2PClient) Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/P2P/Submit", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/p2p.P2P/Submit", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func _P2P_Status_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/P2P/Status",
+		FullMethod: "/p2p.P2P/Status",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(P2PServer).Status(ctx, req.(*emptypb.Empty))
@@ -111,7 +111,7 @@ func _P2P_Submit_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/P2P/Submit",
+		FullMethod: "/p2p.P2P/Submit",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(P2PServer).Submit(ctx, req.(*SubmitRequest))
@@ -123,7 +123,7 @@ func _P2P_Submit_Handler(srv interface{}, ctx context.Context, dec func(interfac
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var P2P_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "P2P",
+	ServiceName: "p2p.P2P",
 	HandlerType: (*P2PServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -136,5 +136,5 @@ var P2P_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "server.proto",
+	Metadata: "p2p_server.proto",
 }

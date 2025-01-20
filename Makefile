@@ -1,5 +1,8 @@
-protogen-p2p:
-	cd proto/p2p && buf generate
+protogen:
+	cd proto && \
+	buf generate deposit --template=./templates/deposit.yaml --config=buf.yaml && \
+	buf generate p2p --template=./templates/p2p.yaml --config=buf.yaml && \
+	buf generate api --template=./templates/api.yaml --config=buf.yaml
 
 account:
 	go run main.go helpers generate cosmos-account
