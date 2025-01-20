@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/hyle-team/tss-svc/resources"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 	"math/big"
@@ -60,7 +61,7 @@ func (d DepositIdentifier) String() string {
 type Deposit struct {
 	Id int64 `structs:"-" db:"id"`
 	DepositIdentifier
-	Status resources.WithdrawalStatus `structs:"status" db:"status"`
+	Status types.WithdrawalStatus `structs:"status" db:"status"`
 
 	Depositor       *string `structs:"depositor" db:"depositor"`
 	DepositAmount   *string `structs:"deposit_amount" db:"deposit_amount"`
@@ -75,8 +76,7 @@ type Deposit struct {
 
 	IsWrappedToken *bool `structs:"is_wrapped_token" db:"is_wrapped_token"`
 
-	SubmitStatus resources.SubmitWithdrawalStatus `structs:"submit_status" db:"submit_status"`
-	Signature    *string                          `structs:"signature" db:"signature"`
+	Signature *string `structs:"signature" db:"signature"`
 }
 
 func (d Deposit) Reprocessable() bool {
@@ -84,7 +84,7 @@ func (d Deposit) Reprocessable() bool {
 		d.Status == resources.WithdrawalStatus_TX_FAILED
 }
 
-func (d Deposit) ToStatusResponse() *resources.CheckWithdrawalResponse {
+func (d Deposit) ToStatusResponse() types.CheckWithdrawalResponse {
 	result := &resources.CheckWithdrawalResponse{
 		Status: d.Status,
 		DepositData: &resources.DepositData{

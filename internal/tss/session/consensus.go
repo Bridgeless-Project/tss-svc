@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/bridge/client/evm"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss/consensus"
@@ -39,7 +40,11 @@ type ConsensusSession struct {
 	}
 }
 
-func NewConsensusSession(self consensus.LocalParams, params ConsensusParams, logger *logan.Entry, data []byte, counterFunc func() int, parties []p2p.Party, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), local core.Address, metadata chain.Chain, chainId string, dataSelector func(string, []byte) ([]byte, error)) *ConsensusSession {
+func NewConsensusSession(self consensus.LocalParams, params ConsensusParams, logger *logan.Entry, data []byte, counterFunc func() int, parties []p2p.Party, formData func([]byte) ([]byte, error), validateData func([]byte) (bool, error), local core.Address, metadata chain.Chain, chainId string, dataSelector func(string, []byte) ([]byte, error), chainClient any) *ConsensusSession {
+	switch chainClient.(type) {
+	case evm.BridgeProxy:
+
+	}
 	return &ConsensusSession{
 		wg:                    &sync.WaitGroup{},
 		params:                params,
