@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package deposit;
+
+option go_package = "github.com/hyle-team/tss-svc/internal/types";
+
+enum WithdrawalStatus {
+  WITHDRAWAL_STATUS_PENDING = 0;
+  WITHDRAWAL_STATUS_PROCESSING = 1;
+  WITHDRAWAL_STATUS_PROCESSED = 2;
+  WITHDRAWAL_STATUS_FAILED = 3;
+  WITHDRAWAL_STATUS_INVALID = 4;
+}
+
+message DepositIdentifier {
+  string tx_hash = 1;
+  int64 tx_nonce = 2;
+  string chain_id = 3;
+}
+
+message WithdrawalIdentifier {
+  string tx_hash = 1;
+  string chain_id = 2;
+}
+
+message TransferData {
+  optional string sender = 1;
+  string receiver = 2;
+
+  string deposit_amount = 3;
+  string withdrawal_amount = 4;
+
+  string deposit_asset = 5;
+  string withdrawal_asset = 6;
+  string is_wrapped_asset = 7;
+
+  int64 deposit_block = 8;
+
+  // used for EVM transfers
+  optional string signature = 9;
+}
+

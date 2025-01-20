@@ -1,0 +1,15 @@
+version: v2
+plugins:
+  - local: protoc-gen-go
+    out: ../internal/p2p
+    opt:
+      - paths=source_relative
+
+  - local: protoc-gen-go-grpc
+    out: ../internal/p2p
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+
+
+
