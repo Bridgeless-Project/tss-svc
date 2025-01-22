@@ -26,7 +26,7 @@ func CheckTx(ctx context.Context, identifier *types.DepositIdentifier) (*databas
 	chain, ok := chains[identifier.ChainId]
 	if !ok {
 
-		return nil, apiTypes.ErrInvalidChainId
+		return nil, status.Error(codes.NotFound, "chain not found")
 	}
 	id := common.FormDepositIdentifier(identifier, chain.Type)
 
