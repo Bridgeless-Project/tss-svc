@@ -15,7 +15,7 @@ type destinationData struct {
 	ChainId string `json:"dst_net_id"`
 }
 
-func (p *proxy) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
+func (p *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
 	transaction, _, err := p.GetTransaction(id.TxHash, true, false, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get transaction")
@@ -56,7 +56,7 @@ func (p *proxy) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 	}, nil
 }
 
-func (p *proxy) validateConfirmations(txHeight uint64) error {
+func (p *client) validateConfirmations(txHeight uint64) error {
 	if txHeight == 0 {
 		return bridgeTypes.ErrTxPending
 	}

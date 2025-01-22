@@ -12,34 +12,34 @@ import (
 
 var addressPattern = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{97}$`)
 
-type BridgeProxy interface {
+type Bridgeclient interface {
 	bridgeTypes.Client
 	EmitAssetUnsigned(data db.DepositData) (*UnsignedTransaction, error)
 	EmitAssetSigned(transaction SignedTransaction) (txHash string, err error)
 }
 
-type proxy struct {
+type client struct {
 	logger *logan.Entry
 	chain  chain.Zano
 }
 
-func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
+func (p *client) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
 	//TODO implement me
 	return []byte("zano"), nil
 }
 
-func (p *proxy) Type() chain.Type {
+func (p *client) Type() chain.Type {
 	return chain.TypeZano
 }
 
-func (p *proxy) AddressValid(addr string) bool {
+func (p *client) AddressValid(addr string) bool {
 	return addressPattern.MatchString(addr)
 }
 
-func (p *proxy) TransactionHashValid(hash string) bool {
+func (p *client) TransactionHashValid(hash string) bool {
 	return bridge.DefaultTransactionHashPattern.MatchString(hash)
 }
 
-func NewBridgeProxy(chain chain.Zano, logger *logan.Entry) BridgeProxy {
-	return &proxy{logger, chain}
+func NewBridgeClient(chain chain.Zano, logger *logan.Entry) Bridgeclient {
+	return &client{logger, chain}
 }

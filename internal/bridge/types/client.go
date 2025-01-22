@@ -44,7 +44,7 @@ type Client interface {
 	ConstructWithdrawalTx(data db.Deposit) ([]byte, error)
 }
 
-type ProxiesRepository interface {
-	Proxy(chainId string) (Client, error)
+type ClientsRepository interface {
+	Client(chainId string) (Client, error)
 	SupportsChain(chainId string) bool
 }

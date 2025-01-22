@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (p *proxy) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
+func (p *client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
 	tx, inPool, err := p.GetTransaction(txHash, true, true, true)
 	if err != nil {
 		return bridgeTypes.TransactionStatusUnknown, err
@@ -24,7 +24,7 @@ func (p *proxy) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStat
 	return bridgeTypes.TransactionStatusSuccessful, nil
 }
 
-func (p *proxy) GetTransaction(txHash string, searchIn, searchOut, searchPool bool) (res *zanoTypes.Transaction, pool bool, err error) {
+func (p *client) GetTransaction(txHash string, searchIn, searchOut, searchPool bool) (res *zanoTypes.Transaction, pool bool, err error) {
 	txHash = strings.TrimPrefix(txHash, bridge.HexPrefix)
 	resp, err := p.chain.Client.GetTransactions(txHash)
 	if err != nil {
