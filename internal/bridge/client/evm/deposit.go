@@ -23,11 +23,11 @@ func (p *proxy) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 		return nil, bridgeTypes.ErrTxFailed
 	}
 
-	if len(txReceipt.Logs) < id.TxEventId+1 {
+	if len(txReceipt.Logs) < id.TxNonce+1 {
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
 
-	log := txReceipt.Logs[id.TxEventId]
+	log := txReceipt.Logs[id.TxNonce]
 	if log.Address.Hex() != p.chain.BridgeAddress.Hex() {
 		return nil, bridgeTypes.ErrUnsupportedContract
 	}

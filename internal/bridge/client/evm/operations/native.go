@@ -27,7 +27,7 @@ func NewWithdrawNativeContent(event db.DepositData) (*WithdrawNativeContent, err
 		Amount:   ToBytes32(event.WithdrawalAmount.Bytes()),
 		Receiver: hexutil.MustDecode(event.DestinationAddress),
 		TxHash:   hexutil.MustDecode(event.TxHash),
-		TxNonce:  IntToBytes32(event.TxEventId),
+		TxNonce:  IntToBytes32(event.TxNonce),
 		ChainID:  ToBytes32(destinationChainID.Bytes()),
 	}, nil
 }

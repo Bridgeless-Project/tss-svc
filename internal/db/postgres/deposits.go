@@ -14,12 +14,11 @@ import (
 )
 
 const (
-	depositsTable     = "deposits"
-	depositsTxHash    = "tx_hash"
-	depositsTxEventId = "tx_event_id"
-	depositsChainId   = "chain_id"
-	depositsStatus    = "status"
-	depositsId        = "id"
+	depositsTable   = "deposits"
+	depositsTxHash  = "tx_hash"
+	depositsTxNonce = "tx_nonce"
+	depositsChainId = "chain_id"
+	depositsId      = "id"
 
 	depositsDepositor        = "depositor"
 	depositsDepositAmount    = "deposit_amount"
@@ -29,7 +28,6 @@ const (
 	depositsWithdrawalToken  = "withdrawal_token"
 	depositsDepositBlock     = "deposit_block"
 
-	depositsWithdrawalTxHash  = "withdrawal_tx_hash"
 	depositsWithdrawalChainId = "withdrawal_chain_id"
 
 	depositWithdrawalStatus = "withdrawal_status"
@@ -85,10 +83,21 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 	stmt := squirrel.
 		Insert(depositsTable).
 		SetMap(map[string]interface{}{
-			depositsTxHash:    deposit.TxHash,
-			depositsTxEventId: deposit.TxEventId,
-			depositsChainId:   deposit.ChainId,
-			depositsStatus:    deposit.Status,
+			depositsTxHash:           deposit.TxHash,
+			depositsTxNonce:          deposit.TxNonce,
+			depositsChainId:          deposit.ChainId,
+			depositWithdrawalStatus:  deposit.WithdrawalStatus,
+			depositsDepositAmount:    *deposit.DepositAmount,
+			depositsWithdrawalAmount: *deposit.WithdrawalAmount,
+			depositsReceiver:         strings.ToLower(*deposit.Receiver),
+			depositsDepositBlock:     *deposit.DepositBlock,
+			depositIsWrappedToken:    *deposit.IsWrappedToken,
+			// can be 0x00... in case of native ones
+			depositsDepositToken: strings.ToLower(*deposit.DepositToken),
+			depositsDepositor:    strings.ToLower(*deposit.Depositor),
+			// can be 0x00... in case of native ones
+			depositsWithdrawalToken:   strings.ToLower(*deposit.WithdrawalToken),
+			depositsWithdrawalChainId: *deposit.WithdrawalChainId,
 		}).
 		Suffix("RETURNING id")
 
@@ -107,9 +116,9 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 func (d *depositsQ) Get(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	var deposit db.Deposit
 	err := d.db.Get(&deposit, d.selector.Where(squirrel.Eq{
-		depositsTxHash:    identifier.TxHash,
-		depositsTxEventId: identifier.TxEventId,
-		depositsChainId:   identifier.ChainId,
+		depositsTxHash:  identifier.TxHash,
+		depositsTxNonce: identifier.TxNonce,
+		depositsChainId: identifier.ChainId,
 	}))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -130,47 +139,23 @@ func (d *depositsQ) Select(selector db.DepositsSelector) ([]db.Deposit, error) {
 
 func (d *depositsQ) UpdateWithdrawalStatus(status types.WithdrawalStatus, ids ...int64) error {
 	stmt := squirrel.Update(depositsTable).
-		Set(depositsStatus, status).
+		Set(depositWithdrawalStatus, status).
 		Where(squirrel.Eq{depositsId: ids})
 
 	return d.db.Exec(stmt)
 }
 
-func (d *depositsQ) SetDepositData(db db.DepositData) error {
-	fields := map[string]interface{}{
-		depositsDepositAmount:    db.DepositAmount.String(),
-		depositsWithdrawalAmount: db.WithdrawalAmount.String(),
-		depositsReceiver:         strings.ToLower(db.DestinationAddress),
-		depositsDepositBlock:     db.Block,
-		depositIsWrappedToken:    db.IsWrappedToken,
-		// can be 0x00... in case of native ones
-		depositsDepositToken: strings.ToLower(db.TokenAddress),
-		depositsDepositor:    strings.ToLower(db.SourceAddress),
-		// can be 0x00... in case of native ones
-		depositsWithdrawalToken:   strings.ToLower(db.DestinationTokenAddress),
-		depositsWithdrawalChainId: db.DestinationChainId,
-	}
-
-	return d.db.Exec(squirrel.Update(depositsTable).Where(
-		squirrel.Eq{
-			depositsTxHash:    db.TxHash,
-			depositsTxEventId: db.TxEventId,
-			depositsChainId:   db.ChainId,
-		},
-	).SetMap(fields))
-}
-
 func (d *depositsQ) SetDepositSignature(data db.DepositData) error {
 	fields := map[string]interface{}{
-		depositSignature: strings.ToLower(hex.EncodeToString([]byte(data.Signature))),
-		depositsStatus:   types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+		depositSignature:        strings.ToLower(hex.EncodeToString([]byte(data.Signature))),
+		depositWithdrawalStatus: types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
 	}
 
 	return d.db.Exec(squirrel.Update(depositsTable).Where(
 		squirrel.Eq{
-			depositsTxHash:    data.TxHash,
-			depositsTxEventId: data.TxEventId,
-			depositsChainId:   data.ChainId,
+			depositsTxHash:  data.TxHash,
+			depositsTxNonce: data.TxNonce,
+			depositsChainId: data.ChainId,
 		},
 	).SetMap(fields))
 }

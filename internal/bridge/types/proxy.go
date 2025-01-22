@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 	"math/big"
@@ -22,24 +23,6 @@ var (
 	ErrUnsupportedContract    = errors.New("unsupported contract")
 )
 
-type ChainType string
-
-const (
-	ChainTypeEVM     ChainType = "evm"
-	ChainTypeBitcoin ChainType = "bitcoin"
-	ChainTypeZano    ChainType = "zano"
-	ChainTypeOther   ChainType = "other"
-)
-
-func (c ChainType) Validate() error {
-	switch c {
-	case ChainTypeEVM, ChainTypeBitcoin, ChainTypeZano, ChainTypeOther:
-		return nil
-	default:
-		return errors.New("invalid chain type")
-	}
-}
-
 type TransactionStatus int8
 
 const (
@@ -50,8 +33,8 @@ const (
 	TransactionStatusUnknown
 )
 
-type Proxy interface {
-	Type() ChainType
+type Client interface {
+	Type() chain.Type
 	GetTransactionStatus(txHash string) (TransactionStatus, error)
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 
@@ -62,6 +45,6 @@ type Proxy interface {
 }
 
 type ProxiesRepository interface {
-	Proxy(chainId string) (Proxy, error)
+	Proxy(chainId string) (Client, error)
 	SupportsChain(chainId string) bool
 }

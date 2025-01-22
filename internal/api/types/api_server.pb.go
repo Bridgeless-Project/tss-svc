@@ -4,7 +4,7 @@
 // 	protoc        (unknown)
 // source: api_server.proto
 
-package api
+package types
 
 import (
 	types "github.com/hyle-team/tss-svc/internal/types"

@@ -3,10 +3,12 @@ log:
   disable_sentry: true
 
 db:
-  url:
+  url: postgres://signer:signer@db/signer?sslmode=disable
 
 listener-grpc:
   addr: :8090
+listener-http:
+  addr: :8080
 
 # self: bridge1sclksr8vnvlzh4h9778uvar53e9r25dfj2xkey
 parties:
@@ -20,14 +22,14 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-20 12:51:04"
+    start_time: "2025-01-22 09:10:51"
     session_id: abcd
   signing:
-    start_time: "2025-01-20 12:51:04"
+    start_time: "2025-01-22 09:10:51"
     session_id: abcd
     threshold: 2
   consensus:
-    start_time: "2025-01-20 12:51:04"
+    start_time: "2025-01-22 09:10:51"
     session_id: aboba
     threshold: 2
 

@@ -32,10 +32,10 @@ func (p *proxy) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
 
-	if len(transaction.ServiceEntries) < id.TxEventId+1 {
+	if len(transaction.ServiceEntries) < id.TxNonce+1 {
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
-	addr, chainId, err := parseDestinationData(transaction.ServiceEntries[id.TxEventId])
+	addr, chainId, err := parseDestinationData(transaction.ServiceEntries[id.TxNonce])
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse destination data")
 	}

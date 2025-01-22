@@ -11,7 +11,10 @@ import (
 var (
 	ErrInternal           = status.Error(codes.Internal, "internal error")
 	ErrTxAlreadySubmitted = status.Error(codes.AlreadyExists, "transaction already submitted")
-	ErrInvalidOriginTxId  = errors.New("invalid origin tx id")
+	ErrInvalidTxNonce     = errors.New("invalid origin tx nonce")
+	ErrInvalidTxHash      = errors.New("invalid origin tx hash")
+
+	ErrInvalidChainId = errors.New("invalid chain id")
 )
 
 type Server interface {
@@ -19,4 +22,4 @@ type Server interface {
 	RunHTTP(ctx context.Context) error
 }
 
-type ChainsMap map[string]chain.Type
+type ChainsMap map[string]chain.Chain

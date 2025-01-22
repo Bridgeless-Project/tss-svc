@@ -13,7 +13,7 @@ import (
 var addressPattern = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{97}$`)
 
 type BridgeProxy interface {
-	bridgeTypes.Proxy
+	bridgeTypes.Client
 	EmitAssetUnsigned(data db.DepositData) (*UnsignedTransaction, error)
 	EmitAssetSigned(transaction SignedTransaction) (txHash string, err error)
 }
@@ -28,8 +28,8 @@ func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
 	return []byte("zano"), nil
 }
 
-func (p *proxy) Type() bridgeTypes.ChainType {
-	return bridgeTypes.ChainTypeZano
+func (p *proxy) Type() chain.Type {
+	return chain.TypeZano
 }
 
 func (p *proxy) AddressValid(addr string) bool {

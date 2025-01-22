@@ -1,11 +1,11 @@
--- +migrate Up
+    -- +migrate Up
 
 CREATE TABLE deposits
 (
     id                  BIGSERIAL PRIMARY KEY,
 
     tx_hash             VARCHAR(100) NOT NULL,
-    tx_event_id         INT          NOT NULL,
+    tx_nonce        INT          NOT NULL,
     chain_id            VARCHAR(50)  NOT NULL,
 
     depositor           VARCHAR(100),
@@ -23,7 +23,7 @@ CREATE TABLE deposits
     withdrawal_tx_hash  VARCHAR(100),
     withdrawal_chain_id VARCHAR(50),
 
-    CONSTRAINT unique_deposit UNIQUE (tx_hash, tx_event_id, chain_id)
+    CONSTRAINT unique_deposit UNIQUE (tx_hash, tx_nonce, chain_id)
 );
 
 -- +migrate Down

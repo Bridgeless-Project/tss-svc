@@ -30,12 +30,12 @@ var events = []string{
 }
 
 type BridgeProxy interface {
-	bridgeTypes.Proxy
+	bridgeTypes.Client
 	GetSignHash(data db.DepositData) ([]byte, error)
 }
 
 type proxy struct {
-	chain         chain.Evm
+	chain         chain.EvmChain
 	contractABI   abi.ABI
 	depositEvents []abi.Event
 	logger        *logan.Entry
@@ -58,7 +58,7 @@ func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
 }
 
 // NewBridgeProxy creates a new bridge proxy for the given chain.
-func NewBridgeProxy(chain chain.Evm, logger *logan.Entry) BridgeProxy {
+func NewBridgeProxy(chain chain.EvmChain, logger *logan.Entry) BridgeProxy {
 	bridgeAbi, err := abi.JSON(strings.NewReader(contracts.BridgeMetaData.ABI))
 	if err != nil {
 		panic(errors.Wrap(err, "failed to parse bridge ABI"))
@@ -81,8 +81,8 @@ func NewBridgeProxy(chain chain.Evm, logger *logan.Entry) BridgeProxy {
 	}
 }
 
-func (p *proxy) Type() bridgeTypes.ChainType {
-	return bridgeTypes.ChainTypeEVM
+func (p *proxy) Type() chain.Type {
+	return chain.TypeEVM
 }
 
 func (p *proxy) getDepositLogType(log *types.Log) string {

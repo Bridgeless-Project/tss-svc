@@ -12,10 +12,6 @@ const OriginTxIdPattern = "%s-%d-%s"
 
 var ErrAlreadySubmitted = errors.New("transaction already submitted")
 var FinalWithdrawalStatuses = []types.WithdrawalStatus{
-	// transaction is waiting for signing
-	types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
-	// transaction is signing
-	types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING,
 	//transaction is signed
 	types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
 	// data invalid or something goes wrong
@@ -28,7 +24,6 @@ type DepositsQ interface {
 	Insert(Deposit) (id int64, err error)
 	Select(selector DepositsSelector) ([]Deposit, error)
 	Get(identifier DepositIdentifier) (*Deposit, error)
-	SetDepositData(data DepositData) error
 	UpdateWithdrawalStatus(status types.WithdrawalStatus, ids ...int64) error
 	SetWithdrawalTxs(txs ...WithdrawalTx) error
 	Transaction(f func() error) error
@@ -42,9 +37,9 @@ type WithdrawalTx struct {
 }
 
 type DepositIdentifier struct {
-	TxHash    string `structs:"tx_hash" db:"tx_hash"`
-	TxEventId int    `structs:"tx_event_id" db:"tx_event_id"`
-	ChainId   string `structs:"chain_id" db:"chain_id"`
+	TxHash  string `structs:"tx_hash" db:"tx_hash"`
+	TxNonce int    `structs:"tx_nonce" db:"tx_nonce"`
+	ChainId string `structs:"chain_id" db:"chain_id"`
 }
 
 type DepositsSelector struct {
@@ -53,13 +48,12 @@ type DepositsSelector struct {
 }
 
 func (d DepositIdentifier) String() string {
-	return fmt.Sprintf(OriginTxIdPattern, d.TxHash, d.TxEventId, d.ChainId)
+	return fmt.Sprintf(OriginTxIdPattern, d.TxHash, d.TxNonce, d.ChainId)
 }
 
 type Deposit struct {
 	Id int64 `structs:"-" db:"id"`
 	DepositIdentifier
-	Status types.WithdrawalStatus `structs:"status" db:"status"`
 
 	Depositor       *string `structs:"depositor" db:"depositor"`
 	DepositAmount   *string `structs:"deposit_amount" db:"deposit_amount"`
@@ -68,7 +62,7 @@ type Deposit struct {
 	WithdrawalToken *string `structs:"withdrawal_token" db:"withdrawal_token"`
 	DepositBlock    *int64  `structs:"deposit_block" db:"deposit_block"`
 
-	WithdrawalStatus int `structs:"withdrawal_status" db:"withdrawal_status"`
+	WithdrawalStatus types.WithdrawalStatus `structs:"withdrawal_status" db:"withdrawal_status"`
 
 	WithdrawalTxHash  *string `structs:"withdrawal_tx_hash" db:"withdrawal_tx_hash"`
 	WithdrawalChainId *string `structs:"withdrawal_chain_id" db:"withdrawal_chain_id"`
@@ -79,14 +73,10 @@ type Deposit struct {
 	Signature *string `structs:"signature" db:"signature"`
 }
 
-func (d Deposit) Reprocessable() bool {
-	return d.Status == types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED
-}
-
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
 	tx := bridgetypes.Transaction{
 		DepositTxHash:    d.TxHash,
-		DepositTxIndex:   uint64(d.TxEventId),
+		DepositTxIndex:   uint64(d.TxNonce),
 		DepositChainId:   d.ChainId,
 		WithdrawalTxHash: stringOrEmpty(d.WithdrawalTxHash),
 		Depositor:        stringOrEmpty(d.Depositor),

@@ -3,10 +3,33 @@ log:
   disable_sentry: true
 
 db:
-  url:
+  url: postgres://signer:signer@db/signer?sslmode=disable
 
 listener-grpc:
   addr: :8090
+listener-http:
+  addr: :8080
+
+chains:
+  list:
+    ## Chain ID
+    - id: "test1"
+      ## RPC endpoint
+      rpc: "your_rpc_endpoint_here"
+      ## Bridge contract address
+      bridge_addresses: "test1"
+      ## Number of confirmations required for the deposit to be considered final
+      confirmations: 1
+      type: "evm"
+    - id: "test"
+      ## RPC endpoint
+      rpc: "your_rpc_endpoint_here"
+      ## Bridge contract address
+      bridge_addresses: "test"
+      ## Number of confirmations required for the deposit to be considered final
+      confirmations: 1
+      type: "zano"
+
 
 # self: bridge1dktu03jyuxdnxxtx2k72rwv8xyuz5qqxa7uk6e
 parties:
@@ -20,14 +43,14 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-20 12:51:04"
+    start_time: "2025-01-22 09:10:51"
     session_id: abcd
   signing:
-    start_time: "2025-01-20 12:51:04"
+    start_time: "2025-01-22 09:10:51"
     session_id: abcd
     threshold: 2
   consensus:
-    start_time: "2025-01-20 12:51:04"
+    start_time: "2025-01-22 09:10:51"
     session_id: aboba
     threshold: 2
 
