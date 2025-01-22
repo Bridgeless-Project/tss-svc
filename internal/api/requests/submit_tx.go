@@ -32,12 +32,12 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	}.Filter()
 
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	chain, ok := chains[identifier.ChainId]
 	if !ok {
-		return &emptypb.Empty{}, apiTypes.ErrInvalidChainId
+		return &emptypb.Empty{}, status.Error(codes.NotFound, "chain not found")
 	}
 	err = db.Transaction(func() error {
 		id := common.FormDepositIdentifier(identifier, chain.Type)
@@ -62,7 +62,7 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	})
 	if err != nil {
 
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return nil, nil
