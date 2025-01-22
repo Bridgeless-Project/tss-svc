@@ -13,7 +13,7 @@ import (
 
 const notFoundErrorMessage = "not found"
 
-func (p *proxy) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, *common.Address, error) {
+func (p *client) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, *common.Address, error) {
 	ctx := context.Background()
 	tx, pending, err := p.chain.Rpc.TransactionByHash(ctx, txHash)
 	if err != nil {
@@ -42,7 +42,7 @@ func (p *proxy) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, *comm
 	return receipt, &from, nil
 }
 
-func (p *proxy) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
+func (p *client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
 	receipt, _, err := p.GetTransactionReceipt(common.HexToHash(txHash))
 	if err != nil {
 		if errors.Is(err, bridgeTypes.ErrTxPending) {

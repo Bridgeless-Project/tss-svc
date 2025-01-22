@@ -12,7 +12,7 @@ type Operation interface {
 	CalculateHash() []byte
 }
 
-func (p *proxy) WithdrawalAmountValid(amount *big.Int) bool {
+func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
 	if amount.Cmp(bridge.ZeroAmount) != 1 {
 		return false
 	}
@@ -20,7 +20,7 @@ func (p *proxy) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
-func (p *proxy) GetSignHash(data db.DepositData) ([]byte, error) {
+func (p *client) GetSignHash(data db.DepositData) ([]byte, error) {
 	var operation Operation
 	var err error
 

@@ -8,7 +8,7 @@ import (
 	"math/big"
 )
 
-func (p *proxy) WithdrawalAmountValid(amount *big.Int) bool {
+func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
 	if amount.Cmp(bridge.ZeroAmount) != 1 {
 		return false
 	}
@@ -16,7 +16,7 @@ func (p *proxy) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
-func (p *proxy) EmitAssetUnsigned(data db.DepositData) (*UnsignedTransaction, error) {
+func (p *client) EmitAssetUnsigned(data db.DepositData) (*UnsignedTransaction, error) {
 	destination := zanoTypes.Destination{
 		Address: data.DestinationAddress,
 		Amount:  data.WithdrawalAmount.Uint64(),
@@ -47,7 +47,7 @@ func (p *proxy) EmitAssetUnsigned(data db.DepositData) (*UnsignedTransaction, er
 	}, nil
 }
 
-func (p *proxy) EmitAssetSigned(signedTx SignedTransaction) (string, error) {
+func (p *client) EmitAssetSigned(signedTx SignedTransaction) (string, error) {
 	_, err := p.chain.Client.SendExtSignedAssetTX(
 		signedTx.Signature,
 		signedTx.ExpectedTxHash,

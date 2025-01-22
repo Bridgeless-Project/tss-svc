@@ -29,19 +29,19 @@ var events = []string{
 	EventDepositedERC20,
 }
 
-type BridgeProxy interface {
+type BridgeClient interface {
 	bridgeTypes.Client
 	GetSignHash(data db.DepositData) ([]byte, error)
 }
 
-type proxy struct {
+type client struct {
 	chain         chain.EvmChain
 	contractABI   abi.ABI
 	depositEvents []abi.Event
 	logger        *logan.Entry
 }
 
-func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
+func (p *client) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
 	withdrawalTx := db.WithdrawalTx{
 		DepositId: data.Id,
 		TxHash:    data.TxHash,
@@ -57,8 +57,8 @@ func (p *proxy) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
 	return crypto.Keccak256Hash([]byte(msg)).Bytes(), nil
 }
 
-// NewBridgeProxy creates a new bridge proxy for the given chain.
-func NewBridgeProxy(chain chain.EvmChain, logger *logan.Entry) BridgeProxy {
+// NewBridgeClient creates a new bridge Client for the given chain.
+func NewBridgeClient(chain chain.EvmChain, logger *logan.Entry) BridgeClient {
 	bridgeAbi, err := abi.JSON(strings.NewReader(contracts.BridgeMetaData.ABI))
 	if err != nil {
 		panic(errors.Wrap(err, "failed to parse bridge ABI"))
@@ -73,7 +73,7 @@ func NewBridgeProxy(chain chain.EvmChain, logger *logan.Entry) BridgeProxy {
 		depositEvents[i] = depositEvent
 	}
 
-	return &proxy{
+	return &client{
 		chain:         chain,
 		contractABI:   bridgeAbi,
 		depositEvents: depositEvents,
@@ -81,11 +81,11 @@ func NewBridgeProxy(chain chain.EvmChain, logger *logan.Entry) BridgeProxy {
 	}
 }
 
-func (p *proxy) Type() chain.Type {
+func (p *client) Type() chain.Type {
 	return chain.TypeEVM
 }
 
-func (p *proxy) getDepositLogType(log *types.Log) string {
+func (p *client) getDepositLogType(log *types.Log) string {
 	if log == nil || len(log.Topics) == 0 {
 		return ""
 	}
@@ -100,10 +100,10 @@ func (p *proxy) getDepositLogType(log *types.Log) string {
 	return ""
 }
 
-func (p *proxy) AddressValid(addr string) bool {
+func (p *client) AddressValid(addr string) bool {
 	return common.IsHexAddress(addr)
 }
 
-func (p *proxy) TransactionHashValid(hash string) bool {
+func (p *client) TransactionHashValid(hash string) bool {
 	return bridge.DefaultTransactionHashPattern.MatchString(hash)
 }

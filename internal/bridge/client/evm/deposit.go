@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func (p *proxy) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
+func (p *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
 	txReceipt, from, err := p.GetTransactionReceipt(common.HexToHash(id.TxHash))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get transaction receipt")
@@ -93,7 +93,7 @@ func (p *proxy) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 	return unpackedData, nil
 }
 
-func (p *proxy) validateConfirmations(receipt *types.Receipt) error {
+func (p *client) validateConfirmations(receipt *types.Receipt) error {
 	curHeight, err := p.chain.Rpc.BlockNumber(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "failed to get current block number")
