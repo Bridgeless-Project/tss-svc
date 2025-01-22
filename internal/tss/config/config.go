@@ -18,9 +18,8 @@ type ParamsConfigurator interface {
 }
 
 type Params struct {
-	Keygen    KeygenParams    `fig:"keygen"`
-	Signing   SigningParams   `fig:"signing"`
-	Consensus ConsensusParams `fig:"consensus"`
+	Keygen  KeygenParams  `fig:"keygen"`
+	Signing SigningParams `fig:"signing"`
 }
 
 func (p Params) KeygenSessionParams() session.KeygenSessionParams {
@@ -38,23 +37,9 @@ func (p Params) SigningSessionParams() session.SigningSessionParams {
 	}
 }
 
-func (p Params) ConsensusParams() session.ConsensusParams {
-	return session.ConsensusParams{
-		Id:        p.Consensus.Id,
-		StartTime: p.Consensus.StartTime,
-		Threshold: p.Consensus.Threshold,
-	}
-}
-
 type KeygenParams struct {
 	Id        string    `fig:"session_id,required"`
 	StartTime time.Time `fig:"start_time,required"`
-}
-
-type ConsensusParams struct {
-	Id        string    `fig:"session_id,required"`
-	StartTime time.Time `fig:"start_time,required"`
-	Threshold int       `fig:"threshold,required"`
 }
 
 type SigningParams struct {

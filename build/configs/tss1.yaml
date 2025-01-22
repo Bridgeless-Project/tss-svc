@@ -43,15 +43,11 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-22 09:10:51"
+    start_time: "2025-01-22 10:58:49"
     session_id: abcd
   signing:
-    start_time: "2025-01-22 09:10:51"
+    start_time: "2025-01-22 10:58:49"
     session_id: abcd
-    threshold: 2
-  consensus:
-    start_time: "2025-01-22 09:10:51"
-    session_id: aboba
     threshold: 2
 
 

@@ -1,7 +1,7 @@
 version: v2
 plugins:
   - local: protoc-gen-go
-    out: ../internal/api
+    out: ../internal/api/types
     opt:
       - paths=source_relative
 
