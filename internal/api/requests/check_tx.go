@@ -19,11 +19,13 @@ func CheckTx(ctx context.Context, identifier *types.DepositIdentifier) (*databas
 	)
 	if identifier == nil {
 		logger.Error("empty identifier")
+
 		return nil, status.Error(codes.InvalidArgument, "identifier is required")
 	}
 
 	chain, ok := chains[identifier.ChainId]
 	if !ok {
+
 		return nil, apiTypes.ErrInvalidChainId
 	}
 	id := common.FormDepositIdentifier(identifier, chain.Type)
@@ -34,7 +36,9 @@ func CheckTx(ctx context.Context, identifier *types.DepositIdentifier) (*databas
 		return nil, apiTypes.ErrInternal
 	}
 	if tx == nil {
+
 		return nil, status.Error(codes.NotFound, "deposit not found")
 	}
+
 	return tx, nil
 }

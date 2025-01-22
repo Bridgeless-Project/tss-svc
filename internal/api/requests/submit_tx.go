@@ -57,10 +57,13 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 			logger.WithError(err).Error("failed to get deposit data")
 			return apiTypes.ErrInternal
 		}
+
 		return nil
 	})
 	if err != nil {
+
 		return nil, err
 	}
+
 	return nil, nil
 }

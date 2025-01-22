@@ -35,6 +35,7 @@ func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
 			ChainId: *d.WithdrawalChainId,
 		}
 	}
+
 	return result
 }
 
@@ -58,6 +59,7 @@ func CheckIfDepositExists(identifier database.DepositIdentifier, db database.Dep
 	if err != nil {
 		return false, err
 	}
+
 	return deposit != nil, nil
 }
 
@@ -90,9 +92,11 @@ func GetDepositData(identifier database.DepositIdentifier, p chainTypes.Chain, d
 
 	// TODO: get deposit data from network (if data is invalid pass status INVALID)
 	// TODO: pass deposit data to db
+
 	_, err := db.Insert(*deposit)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }

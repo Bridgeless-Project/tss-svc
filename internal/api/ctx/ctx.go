@@ -17,6 +17,7 @@ const (
 
 func DBProvider(q db.DepositsQ) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
+
 		return context.WithValue(ctx, dbKey, q)
 	}
 }
@@ -28,15 +29,18 @@ func DB(ctx context.Context) db.DepositsQ {
 
 func LoggerProvider(l *logan.Entry) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
+
 		return context.WithValue(ctx, loggerKey, l)
 	}
 }
 func Logger(ctx context.Context) *logan.Entry {
+
 	return ctx.Value(loggerKey).(*logan.Entry)
 }
 
 func ChainsProvider(cm apiTypes.ChainsMap) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
+
 		return context.WithValue(ctx, chainsKey, cm)
 	}
 }

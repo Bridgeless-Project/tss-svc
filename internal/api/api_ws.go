@@ -167,15 +167,19 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 func getUrlParams(w http.ResponseWriter, r *http.Request, chains apiTypes.ChainsMap) (chainId string, txHash string, txNonce int, err error) {
 	chainId = chi.URLParam(r, "chain_id")
 	if _, ok := chains[chainId]; !ok {
+
 		return "", "", 0, apiTypes.ErrInvalidChainId
 	}
 	txHash = chi.URLParam(r, "tx_hash")
 	if len(txHash) < 3 {
+
 		return "", "", 0, apiTypes.ErrInvalidTxHash
 	}
 	txNonce, err = strconv.Atoi(chi.URLParam(r, "tx_nonce"))
 	if err != nil || txNonce < 0 {
+
 		return "", "", 0, apiTypes.ErrInvalidTxNonce
 	}
+
 	return chainId, txHash, txNonce, nil
 }
