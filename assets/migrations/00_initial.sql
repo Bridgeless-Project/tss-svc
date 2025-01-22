@@ -1,4 +1,4 @@
-    -- +migrate Up
+-- +migrate Up
 
 CREATE TABLE deposits
 (
