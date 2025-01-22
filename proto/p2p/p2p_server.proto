@@ -21,13 +21,6 @@ enum RequestType {
   ACCEPT = 1;
   SIGN = 2;
   FINALIZE = 3;
-  // it could be a separate MsgType but it would clone logic of requests
-  ACK = 4;
-  NACK = 5;
-  NO_DATA_TO_SIGN = 6;
-  DATA_TO_SIGN = 7;
-  SIGNER_NOTIFY = 8;
-  RAW_DATA = 9;
 }
 
 service P2P {
