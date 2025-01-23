@@ -1,7 +1,6 @@
 package processor
 
 import (
-	"github.com/hyle-team/tss-svc/internal/api/common"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -13,32 +12,39 @@ import (
 type Processor struct {
 	core    types.Bridger
 	clients bridgeTypes.ClientsRepository
-	db      database.DepositsQ
 }
 
 func NewProcessor(clients bridgeTypes.ClientsRepository, db database.DepositsQ, core types.Bridger) *Processor {
 	return &Processor{
 		clients: clients,
-		db:      db,
 		core:    core,
 	}
 }
 
-func (p *Processor) FetchDepositData(identifier *types.DepositIdentifier, logger *logan.Entry) (*database.Deposit, error) {
+func (p *Processor) FetchDepositData(identifier database.DepositIdentifier, logger *logan.Entry) (*database.Deposit, error) {
 	//get source chain client
 	// error is ignored as chainId is checked before
-	sourceClient, _ := p.clients.Client(identifier.ChainId)
+	deposit := emptyDeposit(identifier)
 
-	// form db identifier
-	dbIdentifier := common.FormDepositIdentifier(identifier, sourceClient.Type())
-	deposit := emptyDeposit(dbIdentifier)
+	sourceClient, err := p.clients.Client(identifier.ChainId)
+	if err != nil {
+		return deposit, errors.Wrap(err, "error getting source client")
+	}
+
+	if !sourceClient.TransactionHashValid(identifier.TxHash) {
+		return deposit, errors.Wrap(errors.New("invalid transaction hash"), "failed fetch deposit data")
+	}
 
 	//get deposit data from network
-	depositData, err := sourceClient.GetDepositData(dbIdentifier)
+	depositData, err := sourceClient.GetDepositData(identifier)
 	if err != nil {
 		return deposit, errors.Wrap(err, "deposit data not found")
 	}
-	logger.Debug(depositData)
+
+	if !sourceClient.AddressValid(depositData.SourceAddress) {
+		return deposit, errors.Wrap(errors.New("invalid source address"), "failed fetch deposit data")
+	}
+
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)
 	if err != nil {
 		return deposit, errors.Wrap(err, "failed to fetch deposit data")
@@ -53,8 +59,7 @@ func (p *Processor) FetchDepositData(identifier *types.DepositIdentifier, logger
 		deposit.WithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED
 		return deposit, errors.Wrap(err, "failed to get source token info")
 	}
-
-	dstTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.DestinationTokenAddress)
+	dstTokenInfo, err := p.core.GetDestinationTokenInfo(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
 	if err != nil {
 		deposit.WithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED
 		return deposit, errors.Wrap(err, "failed to get destination token info")
@@ -62,14 +67,14 @@ func (p *Processor) FetchDepositData(identifier *types.DepositIdentifier, logger
 	depositData.WithdrawalAmount = transformAmount(depositData.DepositAmount, srcTokenInfo.Decimals, dstTokenInfo.Decimals)
 	if !dstClient.WithdrawalAmountValid(depositData.WithdrawalAmount) {
 		deposit.WithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED
-		return nil, bridgeTypes.ErrInvalidDepositedAmount
+		return deposit, bridgeTypes.ErrInvalidDepositedAmount
 	}
 
 	//set deposit data to deposit structure
 	depositAmount := depositData.DepositAmount.String()
 	withdrawalAmount := depositData.WithdrawalAmount.String()
 	deposit = &database.Deposit{
-		DepositIdentifier: dbIdentifier,
+		DepositIdentifier: identifier,
 		Depositor:         &depositData.SourceAddress,
 		DepositAmount:     &depositAmount,
 		DepositToken:      &depositData.TokenAddress,

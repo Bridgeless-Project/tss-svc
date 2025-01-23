@@ -44,6 +44,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 	depositIdentifier, err := parseIncomingUrlParams(r, clients)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
 	}
 
 	_, err = requests.CheckTx(ctxt, &types.DepositIdentifier{
@@ -53,6 +54,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
 	}
 
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -134,7 +136,6 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(4004, "deposit not found"))
 			return
 		}
-		logger.Info(deposit.WithdrawalStatus.String())
 
 		//poll until our tx won`t be finished
 		if deposit.WithdrawalStatus == prevStatus {
