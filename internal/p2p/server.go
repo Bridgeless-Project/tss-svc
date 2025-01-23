@@ -25,7 +25,7 @@ type Server struct {
 
 func NewServer(listener net.Listener, manager *SessionManager) *Server {
 	return &Server{
-		status:   PartyStatus_UNKNOWN,
+		status:   PartyStatus_PS_UNKNOWN,
 		manager:  manager,
 		listener: listener,
 	}

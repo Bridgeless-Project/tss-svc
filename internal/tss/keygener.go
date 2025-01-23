@@ -163,7 +163,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 			submitReq := p2p.SubmitRequest{
 				Sender:    p.self.Address.String(),
 				SessionId: p.sessionId,
-				Type:      p2p.RequestType_KEYGEN,
+				Type:      p2p.RequestType_RT_KEYGEN,
 				Data:      tssReq,
 			}
 

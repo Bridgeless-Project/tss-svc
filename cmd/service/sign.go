@@ -5,6 +5,11 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	tss_lib "github.com/bnb-chain/tss-lib/v2/tss"
@@ -18,10 +23,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-	"math/big"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func init() {
@@ -63,7 +64,7 @@ var signCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
-		connectionManager := p2p.NewConnectionManager(cfg.Parties(), p2p.PartyStatus_SIGNING, cfg.Log().WithField("component", "connection_manager"))
+		connectionManager := p2p.NewConnectionManager(cfg.Parties(), p2p.PartyStatus_PS_SIGN, cfg.Log().WithField("component", "connection_manager"))
 
 		session := session.NewDefaultSigningSession(
 			tss.LocalSignParty{
@@ -81,7 +82,7 @@ var signCmd = &cobra.Command{
 		sessionManager := p2p.NewSessionManager(session)
 		errGroup.Go(func() error {
 			server := p2p.NewServer(cfg.GRPCListener(), sessionManager)
-			server.SetStatus(p2p.PartyStatus_SIGNING)
+			server.SetStatus(p2p.PartyStatus_PS_SIGN)
 			return server.Run(ctx)
 		})
 

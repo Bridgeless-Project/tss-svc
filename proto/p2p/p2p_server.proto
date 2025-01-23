@@ -4,23 +4,22 @@ package p2p;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/any.proto";
-//import "deposit.proto";
+import "deposit.proto";
 
 option go_package = "github.com/hyle-team/tss-svc/internal/p2p";
 
 enum PartyStatus {
-  UNKNOWN = 0;
-  INACTIVE = 1;
-  SYNCING = 2;
-  KEYGENING = 3;
-  SIGNING = 4;
+  PS_UNKNOWN = 0;
+  PS_KEYGEN = 1;
+  PS_SIGN = 2;
 }
 
 enum RequestType {
-  KEYGEN = 0;
-  ACCEPT = 1;
-  SIGN = 2;
-  FINALIZE = 3;
+  RT_KEYGEN = 0;
+  RT_SIGN = 1;
+  RT_PROPOSAL = 2;
+  RT_ACCEPTANCE = 3;
+  RT_SIGN_START = 4;
 }
 
 service P2P {
@@ -43,3 +42,13 @@ message TssData {
   bytes data = 1;
   bool isBroadcast = 2;
 }
+
+message SignStartData {
+  repeated string parties = 1;
+}
+
+message AcceptanceData {
+  bool accepted = 1;
+}
+
+// TODO: add signing payloads

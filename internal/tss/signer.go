@@ -2,6 +2,10 @@ package tss
 
 import (
 	"context"
+	"math/big"
+	"sync"
+	"sync/atomic"
+
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
@@ -10,9 +14,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
-	"math/big"
-	"sync"
-	"sync/atomic"
 )
 
 type LocalSignParty struct {
@@ -173,7 +174,7 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, 
 			submitReq := p2p.SubmitRequest{
 				Sender:    p.self.Address.String(),
 				SessionId: p.sessionId,
-				Type:      p2p.RequestType_SIGN,
+				Type:      p2p.RequestType_RT_SIGN,
 				Data:      tssReq,
 			}
 

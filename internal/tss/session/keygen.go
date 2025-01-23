@@ -86,7 +86,7 @@ func (s *KeygenSession) Run(ctx context.Context) error {
 func (s *KeygenSession) run(ctx context.Context) {
 	defer s.wg.Done()
 
-	boundedCtx, cancel := context.WithTimeout(ctx, BoundaryKeygenSession)
+	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundaryKeygenSession)
 	defer cancel()
 
 	s.keygenParty.Run(boundedCtx)
@@ -116,7 +116,7 @@ func (s *KeygenSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil || request.Data == nil {
 		return errors.New("nil request")
 	}
-	if request.Type != p2p.RequestType_KEYGEN {
+	if request.Type != p2p.RequestType_RT_KEYGEN {
 		return errors.New("invalid request type")
 	}
 

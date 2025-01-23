@@ -3,14 +3,15 @@ package session
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
-	"sync"
-	"time"
 )
 
 type SigningSessionParams struct {
@@ -77,7 +78,7 @@ func (s *DefaultSigningSession) Run(ctx context.Context) error {
 func (s *DefaultSigningSession) run(ctx context.Context) {
 	defer s.wg.Done()
 
-	boundedCtx, cancel := context.WithTimeout(ctx, BoundarySigningSession)
+	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundarySigningSession)
 	defer cancel()
 
 	s.signingParty.Run(boundedCtx)
@@ -107,7 +108,7 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil || request.Data == nil {
 		return errors.New("nil request")
 	}
-	if request.Type != p2p.RequestType_SIGN {
+	if request.Type != p2p.RequestType_RT_SIGN {
 		return errors.New("invalid request type")
 	}
 
