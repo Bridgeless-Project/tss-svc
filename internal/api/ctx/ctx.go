@@ -2,17 +2,19 @@ package ctx
 
 import (
 	"context"
-	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/processor"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type ctxKey int
 
 const (
-	dbKey     ctxKey = iota
-	loggerKey ctxKey = iota
-	chainsKey ctxKey = iota
+	dbKey        ctxKey = iota
+	loggerKey    ctxKey = iota
+	clientsKey   ctxKey = iota
+	processorKey ctxKey = iota
 )
 
 func DBProvider(q db.DepositsQ) func(context.Context) context.Context {
@@ -38,13 +40,22 @@ func Logger(ctx context.Context) *logan.Entry {
 	return ctx.Value(loggerKey).(*logan.Entry)
 }
 
-func ChainsProvider(cm apiTypes.ChainsMap) func(context.Context) context.Context {
+func ClientsProvider(cr bridgeTypes.ClientsRepository) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
-
-		return context.WithValue(ctx, chainsKey, cm)
+		return context.WithValue(ctx, clientsKey, cr)
 	}
 }
 
-func Chains(ctx context.Context) apiTypes.ChainsMap {
-	return ctx.Value(chainsKey).(apiTypes.ChainsMap)
+func Clients(ctx context.Context) bridgeTypes.ClientsRepository {
+	return ctx.Value(clientsKey).(bridgeTypes.ClientsRepository)
+}
+
+func ProcessorProvider(processor *processor.Processor) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, processorKey, processor)
+	}
+}
+
+func Processor(ctx context.Context) *processor.Processor {
+	return ctx.Value(processorKey).(*processor.Processor)
 }

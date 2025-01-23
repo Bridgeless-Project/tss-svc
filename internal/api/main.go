@@ -8,6 +8,8 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/processor"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -40,7 +42,8 @@ func NewServer(
 	http net.Listener,
 	db db.DepositsQ,
 	logger *logan.Entry,
-	chains apiTypes.ChainsMap,
+	clients bridgeTypes.ClientsRepository,
+	processor *processor.Processor,
 ) apiTypes.Server {
 	return &server{
 		grpc:   grpc,
@@ -50,7 +53,8 @@ func NewServer(
 		ctxExtenders: []func(context.Context) context.Context{
 			ctx.LoggerProvider(logger),
 			ctx.DBProvider(db),
-			ctx.ChainsProvider(chains),
+			ctx.ClientsProvider(clients),
+			ctx.ProcessorProvider(processor),
 		},
 	}
 }

@@ -8,8 +8,10 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/requests"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	types "github.com/hyle-team/tss-svc/internal/types"
+	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -32,12 +34,12 @@ var upgrader = websocket.Upgrader{
 
 func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 	var (
-		ctxt   = r.Context()
-		chains = ctx.Chains(ctxt)
+		ctxt    = r.Context()
+		clients = ctx.Clients(ctxt)
 	)
 
 	//get incoming params
-	chainId, txHash, txNonce, err := getUrlParams(w, r, chains)
+	chainId, txHash, txNonce, err := getUrlParams(w, r, clients)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 	}
@@ -164,11 +166,12 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 	}
 }
 
-func getUrlParams(w http.ResponseWriter, r *http.Request, chains apiTypes.ChainsMap) (chainId string, txHash string, txNonce int, err error) {
+func getUrlParams(w http.ResponseWriter, r *http.Request, clients bridgeTypes.ClientsRepository) (chainId string, txHash string, txNonce int, err error) {
 	chainId = chi.URLParam(r, "chain_id")
-	if _, ok := chains[chainId]; !ok {
 
-		return "", "", 0, apiTypes.ErrInvalidChainId
+	if _, err := clients.Client(chainId); err != nil {
+
+		return "", "", 0, errors.Wrap(apiTypes.ErrInvalidChainId, err.Error())
 	}
 	txHash = chi.URLParam(r, "tx_hash")
 	if len(txHash) < 3 {

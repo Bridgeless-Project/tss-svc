@@ -13,22 +13,19 @@ listener-http:
 chains:
   list:
     ## Chain ID
-    - id: "test1"
+    - id: "35443"
       ## RPC endpoint
-      rpc: "your_rpc_endpoint_here"
+      rpc: "https://rpc.qdevnet.org/"
       ## Bridge contract address
-      bridge_addresses: "test1"
+      bridge_addresses: "0x4445b315a629d5f1964d1055502d2905870b81d1"
       ## Number of confirmations required for the deposit to be considered final
       confirmations: 1
       type: "evm"
-    - id: "test"
-      ## RPC endpoint
-      rpc: "your_rpc_endpoint_here"
-      ## Bridge contract address
-      bridge_addresses: "test"
-      ## Number of confirmations required for the deposit to be considered final
+    - id: "35442"
+      rpc: "https://rpc.qdevnet.org/"
+      bridge_addresses: "0x4445b315a629d5f1964d1055502d2905870b81d1"
+      type: "evm"
       confirmations: 1
-      type: "zano"
 
 
 # self: bridge1dktu03jyuxdnxxtx2k72rwv8xyuz5qqxa7uk6e
@@ -43,11 +40,21 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-22 12:46:03"
+    start_time: "2025-01-23 10:58:19"
     session_id: abcd
   signing:
-    start_time: "2025-01-22 12:46:03"
+    start_time: "2025-01-23 10:58:19"
     session_id: abcd
     threshold: 2
+
+core_connector:
+  connection:
+    addr: "https://rpc.node1.devnet.bridgeless.com"
+    enable_tls: false
+  settings:
+    account_private_key: "0xb5164b13d2a350f7c9263cb173211ada16c20883d70c449c541dc67ea9e94808"
+    chain_id: "bridge_2607-1"
+    denom: "abridge"
+    min_gas_price: 0
 
 

@@ -5,7 +5,6 @@ import (
 	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
-	"math/big"
 	"strconv"
 )
 
@@ -61,42 +60,4 @@ func CheckIfDepositExists(identifier database.DepositIdentifier, db database.Dep
 	}
 
 	return deposit != nil, nil
-}
-
-func GetDepositData(identifier database.DepositIdentifier, p chainTypes.Chain, db database.DepositsQ) error {
-	withdrawalChainId := "dscds"
-	depositor := "dsfdsf"
-	receiver := "depositToken"
-	depositToken := "sd"
-	withdrawalToken := "sd"
-	signature := "dddddd"
-	isWrappedToken := false
-	depositBlock := int64(0)
-	depositAmount := big.NewInt(1323213).String()
-	withdrwalAmount := big.NewInt(1).String()
-
-	deposit := &database.Deposit{
-		DepositIdentifier: identifier,
-		WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
-		WithdrawalChainId: &withdrawalChainId,
-		Depositor:         &depositor,
-		Receiver:          &receiver,
-		DepositAmount:     &depositAmount,
-		WithdrawalAmount:  &withdrwalAmount,
-		DepositToken:      &depositToken,
-		WithdrawalToken:   &withdrawalToken,
-		IsWrappedToken:    &isWrappedToken,
-		Signature:         &signature,
-		DepositBlock:      &depositBlock,
-	}
-
-	// TODO: get deposit data from network (if data is invalid pass status INVALID)
-	// TODO: pass deposit data to db
-
-	_, err := db.Insert(*deposit)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
