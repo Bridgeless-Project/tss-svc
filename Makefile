@@ -4,9 +4,6 @@ protogen:
 	buf generate p2p --template=./templates/p2p.yaml --config=buf.yaml && \
 	buf generate api --template=./templates/api.yaml --config=buf.yaml
 
-protogen-service:
-	cd proto/service && buf generate
-
 account:
 	go run main.go helpers generate cosmos-account
 

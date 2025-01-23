@@ -54,16 +54,7 @@ func FormDepositIdentifier(identifier *types.DepositIdentifier, chainType chainT
 	}
 }
 
-func CheckIfDepositExists(identifier database.DepositIdentifier, db database.DepositsQ) (bool, error) {
-	deposit, err := db.Get(identifier)
-	if err != nil {
-		return false, err
-	}
-
-	return deposit != nil, nil
-}
-
-func GetDepositData(identifier database.DepositIdentifier, p chainTypes.Chain, db database.DepositsQ) error {
+func SaveDepositData(identifier database.DepositIdentifier, p chainTypes.Chain, db database.DepositsQ) error {
 	withdrawalChainId := "dscds"
 	depositor := "dsfdsf"
 	receiver := "depositToken"

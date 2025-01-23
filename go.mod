@@ -20,8 +20,10 @@ require (
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
 	github.com/cosmos/cosmos-sdk v0.46.13
 	github.com/ethereum/go-ethereum v1.10.26
+	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-ozzo/ozzo-validation/v4 v4.2.1
+	github.com/gorilla/websocket v1.5.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1
 	github.com/hashicorp/vault/api v1.15.0
 	github.com/hyle-team/bridgeless-core v0.0.0-20241003084139-414cc4a6f73c
@@ -98,7 +100,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/jsonapi v0.0.0-20200226002910-c8283f632fb7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect

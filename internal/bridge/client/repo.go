@@ -14,35 +14,35 @@ type clientsRepository struct {
 	clients map[string]bridgeTypes.Client
 }
 
-func NewclientsRepository(chains []chain.Chain, logger *logan.Entry) (bridgeTypes.ClientsRepository, error) {
+func NewClientsRepository(chains []chain.Chain, logger *logan.Entry) (bridgeTypes.ClientsRepository, error) {
 	clientsMap := make(map[string]bridgeTypes.Client, len(chains))
 
 	for _, ch := range chains {
-		var Client bridgeTypes.Client
+		var client bridgeTypes.Client
 
 		switch ch.Type {
 		case chain.TypeEVM:
-			Client = evm.NewBridgeClient(ch.Evm(), logger)
+			client = evm.NewBridgeClient(ch.Evm(), logger)
 		//TODO: Add Bitcoin implementation
 		case chain.TypeZano:
-			Client = zano.NewBridgeClient(ch.Zano(), logger)
+			client = zano.NewBridgeClient(ch.Zano(), logger)
 		default:
 			return nil, errors.Errorf("unknown chain type %s", ch.Type)
 		}
 
-		clientsMap[ch.Id] = Client
+		clientsMap[ch.Id] = client
 	}
 
 	return &clientsRepository{clients: clientsMap}, nil
 }
 
 func (p clientsRepository) Client(chainId string) (bridgeTypes.Client, error) {
-	Client, ok := p.clients[chainId]
+	client, ok := p.clients[chainId]
 	if !ok {
 		return nil, bridgeTypes.ErrChainNotSupported
 	}
 
-	return Client, nil
+	return client, nil
 }
 
 func (p clientsRepository) SupportsChain(chainId string) bool {

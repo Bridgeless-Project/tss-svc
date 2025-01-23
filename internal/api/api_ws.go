@@ -20,8 +20,11 @@ import (
 )
 
 const (
-	paramOriginTxId = "origin_tx_id"
-	pollingPeriod   = 1 * time.Second
+	paramChainId = "chain_id"
+	paramTxHash  = "tx_hash"
+	paramTxNonce = "tx_nonce"
+
+	pollingPeriod = 1 * time.Second
 )
 
 var upgrader = websocket.Upgrader{
@@ -37,21 +40,19 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 	)
 
 	//get incoming params
-	chainId, txHash, txNonce, err := getUrlParams(w, r, chains)
+	depositIdentifier, err := parseIncomingUrlParams(r, chains)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 	}
 
-	deposit, err := requests.CheckTx(ctxt, &types.DepositIdentifier{
-		TxHash:  txHash,
-		TxNonce: int64(txNonce),
-		ChainId: chainId,
+	_, err = requests.CheckTx(ctxt, &types.DepositIdentifier{
+		TxHash:  depositIdentifier.TxHash,
+		TxNonce: int64(depositIdentifier.TxNonce),
+		ChainId: depositIdentifier.ChainId,
 	})
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 	}
-
-	depositIdentifier := deposit.DepositIdentifier
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -62,7 +63,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 
 	gracefulClose := make(chan struct{})
 	go watchConnectionClosing(ws, gracefulClose)
-	watchWithdrawalStatus(ctxt, ws, gracefulClose, depositIdentifier)
+	watchWithdrawalStatus(ctxt, ws, gracefulClose, *depositIdentifier)
 }
 
 func watchConnectionClosing(ws *websocket.Conn, done chan struct{}) {
@@ -164,22 +165,26 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 	}
 }
 
-func getUrlParams(w http.ResponseWriter, r *http.Request, chains apiTypes.ChainsMap) (chainId string, txHash string, txNonce int, err error) {
-	chainId = chi.URLParam(r, "chain_id")
+func parseIncomingUrlParams(r *http.Request, chains apiTypes.ChainsMap) (identifier *database.DepositIdentifier, err error) {
+	chainId := chi.URLParam(r, paramChainId)
 	if _, ok := chains[chainId]; !ok {
 
-		return "", "", 0, apiTypes.ErrInvalidChainId
+		return nil, apiTypes.ErrInvalidChainId
 	}
-	txHash = chi.URLParam(r, "tx_hash")
+	txHash := chi.URLParam(r, paramTxHash)
 	if len(txHash) < 3 {
 
-		return "", "", 0, apiTypes.ErrInvalidTxHash
+		return nil, apiTypes.ErrInvalidTxHash
 	}
-	txNonce, err = strconv.Atoi(chi.URLParam(r, "tx_nonce"))
+	txNonce, err := strconv.Atoi(chi.URLParam(r, paramTxNonce))
 	if err != nil || txNonce < 0 {
 
-		return "", "", 0, apiTypes.ErrInvalidTxNonce
+		return nil, apiTypes.ErrInvalidTxNonce
 	}
 
-	return chainId, txHash, txNonce, nil
+	return &database.DepositIdentifier{
+		TxHash:  txHash,
+		TxNonce: txNonce,
+		ChainId: chainId,
+	}, nil
 }

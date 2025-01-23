@@ -6,9 +6,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	database "github.com/hyle-team/tss-svc/internal/db"
 	types "github.com/hyle-team/tss-svc/internal/types"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -25,11 +23,7 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 		logger.Error("empty identifier")
 		return nil, status.Error(codes.InvalidArgument, "identifier is required")
 	}
-	err := validation.Errors{
-		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
-		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
-		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Required),
-	}.Filter()
+	err := validateIdentifier(identifier)
 
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -39,31 +33,28 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	if !ok {
 		return &emptypb.Empty{}, status.Error(codes.NotFound, "chain not found")
 	}
-	err = db.Transaction(func() error {
-		id := common.FormDepositIdentifier(identifier, chain.Type)
-		exists, err := common.CheckIfDepositExists(id, db)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return apiTypes.ErrTxAlreadySubmitted
-		}
-		if err := common.GetDepositData(id, chain, db); err != nil {
-			if errors.Is(err, database.ErrAlreadySubmitted) {
-				logger.Debug("error inserting")
-				return apiTypes.ErrTxAlreadySubmitted
-			}
-
-			logger.WithError(err).Error("failed to get deposit data")
-			return apiTypes.ErrInternal
-		}
-
-		return nil
-	})
+	id := common.FormDepositIdentifier(identifier, chain.Type)
+	tx, err := db.Get(id)
 	if err != nil {
+		logger.WithError(err).Error("failed to get deposit data from db")
+		return nil, apiTypes.ErrFailedGetDepositData
+	}
+	if tx != nil {
+		return nil, apiTypes.ErrTxAlreadySubmitted
+	}
 
-		return nil, status.Error(codes.Internal, err.Error())
+	if err := common.SaveDepositData(id, chain, db); err != nil {
+		logger.WithError(err).Error("failed to save deposit data")
+		return nil, apiTypes.ErrFailedSaveDepositData
 	}
 
 	return nil, nil
+}
+
+func validateIdentifier(identifier *types.DepositIdentifier) error {
+	return validation.Errors{
+		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
+		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
+		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Min(0)),
+	}.Filter()
 }
