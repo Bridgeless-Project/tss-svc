@@ -14,14 +14,20 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-type SigningSessionParams struct {
-	Id        string
-	StartTime time.Time
-	Threshold int
+type DefaultSigningSessionParams struct {
+	Id          string
+	StartTime   time.Time
+	Threshold   int
+	signingData []byte
+}
+
+func (p DefaultSigningSessionParams) WithSigningData(data []byte) DefaultSigningSessionParams {
+	p.signingData = data
+	return p
 }
 
 type DefaultSigningSession struct {
-	params SigningSessionParams
+	params DefaultSigningSessionParams
 	logger *logan.Entry
 	wg     *sync.WaitGroup
 
@@ -34,20 +40,26 @@ type DefaultSigningSession struct {
 		Receive(sender core.Address, data *p2p.TssData)
 	}
 
-	data   []byte
 	result *common.SignatureData
 	err    error
 }
 
-func NewDefaultSigningSession(self tss.LocalSignParty, params SigningSessionParams, logger *logan.Entry, parties []p2p.Party, data []byte, connectedPartiesCountFunc func() int) *DefaultSigningSession {
+func NewDefaultSigningSession(
+	self tss.LocalSignParty,
+	params DefaultSigningSessionParams,
+	parties []p2p.Party,
+	connectedPartiesCountFunc func() int,
+	logger *logan.Entry,
+) *DefaultSigningSession {
 	return &DefaultSigningSession{
 		params:                params,
 		wg:                    &sync.WaitGroup{},
 		logger:                logger,
 		connectedPartiesCount: connectedPartiesCountFunc,
-		partiesCount:          len(parties),
-		data:                  data,
-		signingParty:          tss.NewSignParty(self, parties, data, params.Id, logger),
+		signingParty: tss.NewSignParty(self, params.Id, logger).
+			WithSigningData(params.signingData).
+			WithParties(parties),
+		partiesCount: len(parties),
 	}
 }
 
@@ -64,21 +76,21 @@ func (s *DefaultSigningSession) Run(ctx context.Context) error {
 		s.logger.Info("signing session cancelled")
 		return nil
 	case <-time.After(runDelay):
-	}
-
-	if s.connectedPartiesCount() != s.partiesCount {
-		return errors.New("cannot start signing session: not all parties connected")
+		if s.connectedPartiesCount() != s.partiesCount {
+			return errors.New("cannot start signing session: not all parties connected")
+		}
 	}
 
 	s.wg.Add(1)
 	go s.run(ctx)
+
 	return nil
 }
 
 func (s *DefaultSigningSession) run(ctx context.Context) {
 	defer s.wg.Done()
 
-	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundarySigningSession)
+	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundarySign)
 	defer cancel()
 
 	s.signingParty.Run(boundedCtx)
@@ -114,7 +126,7 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 
 	data := &p2p.TssData{}
 	if err := request.Data.UnmarshalTo(data); err != nil {
-		return errors.Wrap(err, "failed to unmarshal TSS request data")
+		return errors.Wrap(err, "failed to unmarshal TSS request signingData")
 	}
 
 	sender, err := core.AddressFromString(request.Sender)
@@ -123,6 +135,7 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 	}
 
 	s.signingParty.Receive(sender, data)
+
 	return nil
 }
 

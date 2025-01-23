@@ -18,7 +18,7 @@ import (
 
 type LocalSignParty struct {
 	Address   core.Address
-	Data      *keygen.LocalPartySaveData
+	Share     *keygen.LocalPartySaveData
 	Threshold int
 }
 
@@ -42,33 +42,44 @@ type SignParty struct {
 	sessionId string
 }
 
-func NewSignParty(self LocalSignParty, parties []p2p.Party, data []byte, sessionId string, logger *logan.Entry) *SignParty {
-	partyMap := make(map[core.Address]struct{}, len(parties))
-	partyIds := make([]*tss.PartyID, len(parties)+1)
-	partyIds[0] = self.Address.PartyIdentifier()
-
-	for i, party := range parties {
-		if party.CoreAddress == self.Address {
-			continue
-		}
-
-		partyMap[party.CoreAddress] = struct{}{}
-		partyIds[i+1] = party.Identifier()
-	}
+func NewSignParty(self LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
 	return &SignParty{
-		wg:             &sync.WaitGroup{},
-		self:           self,
-		sortedPartyIds: tss.SortPartyIDs(partyIds),
-		parties:        partyMap,
-		data:           data,
-		msgs:           make(chan partyMsg, MsgsCapacity),
-		sessionId:      sessionId,
-		logger:         logger,
-		broadcaster:    p2p.NewBroadcaster(parties),
+		wg:        &sync.WaitGroup{},
+		self:      self,
+		msgs:      make(chan partyMsg, MsgsCapacity),
+		sessionId: sessionId,
+		logger:    logger,
 	}
 }
 
+func (p *SignParty) WithParties(parties []p2p.Party) *SignParty {
+	partyMap := make(map[core.Address]struct{}, len(parties))
+	partyIds := make([]*tss.PartyID, len(parties)+1)
+	partyIds[0] = p.self.Address.PartyIdentifier()
+
+	for i, party := range parties {
+		partyMap[party.CoreAddress] = struct{}{}
+		partyIds[i+1] = party.Identifier()
+	}
+
+	p.parties = partyMap
+	p.sortedPartyIds = tss.SortPartyIDs(partyIds)
+	p.broadcaster = p2p.NewBroadcaster(parties)
+
+	return p
+}
+
+func (p *SignParty) WithSigningData(data []byte) *SignParty {
+	p.data = data
+	return p
+}
+
 func (p *SignParty) Run(ctx context.Context) {
+	if p.parties == nil || p.data == nil {
+		p.logger.Error("parties or data is not set")
+		return
+	}
+
 	p.logger.Infof("Running TSS signing on set: %v", p.parties)
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
@@ -79,7 +90,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	out := make(chan tss.Message, OutChannelSize)
 	end := make(chan *common.SignatureData, EndChannelSize)
 
-	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Data, out, end)
+	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Share, out, end)
 
 	p.wg.Add(3)
 

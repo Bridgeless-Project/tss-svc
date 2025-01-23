@@ -69,14 +69,13 @@ var signCmd = &cobra.Command{
 		session := session.NewDefaultSigningSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
-				Data:      localSaveData,
-				Threshold: cfg.TSSParams().SigningSessionParams().Threshold,
+				Share:     localSaveData,
+				Threshold: cfg.TSSParams().DefaultSigningSessionParams().Threshold,
 			},
-			cfg.TSSParams().SigningSessionParams(),
-			cfg.Log().WithField("component", "signing_session"),
+			cfg.TSSParams().DefaultSigningSessionParams().WithSigningData([]byte(dataToSign)),
 			cfg.Parties(),
-			[]byte(dataToSign),
 			connectionManager.GetReadyCount,
+			cfg.Log().WithField("component", "signing_session"),
 		)
 
 		sessionManager := p2p.NewSessionManager(session)

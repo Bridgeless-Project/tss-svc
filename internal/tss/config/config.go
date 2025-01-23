@@ -29,8 +29,8 @@ func (p Params) KeygenSessionParams() session.KeygenSessionParams {
 	}
 }
 
-func (p Params) SigningSessionParams() session.SigningSessionParams {
-	return session.SigningSessionParams{
+func (p Params) DefaultSigningSessionParams() session.DefaultSigningSessionParams {
+	return session.DefaultSigningSessionParams{
 		Id:        p.Signing.Id,
 		StartTime: p.Signing.StartTime,
 		Threshold: p.Signing.Threshold,
