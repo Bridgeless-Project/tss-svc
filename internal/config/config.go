@@ -1,6 +1,8 @@
 package config
 
 import (
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	connector "github.com/hyle-team/tss-svc/internal/core/connector/config"
 	p2p "github.com/hyle-team/tss-svc/internal/p2p/config"
 	vaulter "github.com/hyle-team/tss-svc/internal/secrets/vault/config"
 	tss "github.com/hyle-team/tss-svc/internal/tss/config"
@@ -16,6 +18,8 @@ type Config interface {
 	Listenerer
 	p2p.PartiesConfigurator
 	tss.ParamsConfigurator
+	chain.Chainer
+	connector.ConnectorConfigurer
 }
 
 type config struct {
@@ -27,6 +31,8 @@ type config struct {
 	Listenerer
 	p2p.PartiesConfigurator
 	tss.ParamsConfigurator
+	chain.Chainer
+	connector.ConnectorConfigurer
 }
 
 func New(getter kv.Getter) Config {
@@ -38,5 +44,7 @@ func New(getter kv.Getter) Config {
 		Listenerer:          NewListenerer(getter),
 		PartiesConfigurator: p2p.NewPartiesConfigurator(getter),
 		ParamsConfigurator:  tss.NewParamsConfigurator(getter),
+		Chainer:             chain.NewChainer(getter),
+		ConnectorConfigurer: connector.NewConnectorConfigurer(getter),
 	}
 }

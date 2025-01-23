@@ -41,6 +41,7 @@ type SignParty struct {
 	sessionId string
 }
 
+// TODO: remove parties??
 func NewSignParty(self LocalSignParty, parties []p2p.Party, data []byte, sessionId string, logger *logan.Entry) *SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)

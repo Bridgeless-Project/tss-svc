@@ -25,6 +25,7 @@ type DefaultSigningSession struct {
 	wg     *sync.WaitGroup
 
 	connectedPartiesCount func() int
+	parties               []p2p.Party
 	partiesCount          int
 
 	signingParty interface {
@@ -108,7 +109,7 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 		return errors.New("nil request")
 	}
 	if request.Type != p2p.RequestType_SIGN {
-		return errors.New("invalid request type")
+		return errors.New(fmt.Sprintf("invalid request type %s", request.Type.String()))
 	}
 
 	data := &p2p.TssData{}

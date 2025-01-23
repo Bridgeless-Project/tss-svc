@@ -14,6 +14,8 @@ db:
 listener-grpc:
   ## gRPC listener address
   addr: :8012
+listener-http:
+  addr: :8084
 
 ## Parties configuration
 parties:
@@ -24,6 +26,19 @@ parties:
       connection: conn
       pubkey: pub
 
+## Chain list configuration
+chains:
+  list:
+    ## Chain ID
+    - id: "test1"
+      ## RPC endpoint
+      rpc: "your_rpc_endpoint_here"
+      ## Bridge contract address
+      bridge_addresses: "test_address"
+      ## Number of confirmations required for the deposit to be considered final
+      confirmations: 1
+      type: "type1"
+
 ## TSS configuration
 tss:
   ## Keygen configuration
@@ -32,3 +47,18 @@ tss:
     start_time: "2025-01-08 00:21:20"
     ## Keygen session ID
     session_id: abcd
+  ## Signing configuration
+  signing:
+    start_time: "2025-01-21 15:28:00"
+    session_id: abcd
+    threshold: 2
+
+core_connector:
+  connection:
+    addr: "rpc"
+    enable_tls: false
+  settings:
+    account_private_key: "private"
+    chain_id: "00000"
+    denom: "denom"
+    min_gas_price: 0

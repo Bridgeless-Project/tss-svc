@@ -3,10 +3,12 @@ log:
   disable_sentry: true
 
 db:
-  url:
+  url: postgres://signer:signer@db/signer?sslmode=disable
 
 listener-grpc:
   addr: :8090
+listener-http:
+  addr: :8080
 
 # self: bridge15p6cxd3a92rtcky0l8wf6hl999ys5vmtg6x2as
 parties:
@@ -20,10 +22,19 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-09 17:06:05"
+    start_time: "2025-01-23 16:55:48"
     session_id: abcd
   signing:
-    start_time: "2025-01-09 17:06:05"
+    start_time: "2025-01-23 16:55:48"
     session_id: abcd
     threshold: 2
+core_connector:
+  connection:
+    addr: "core-api.node1.devnet.bridgeless.com"
+    enable_tls: true
+  settings:
+    account_private_key: "0x78e99c7e010ad161fb8aaace13528e272e17edbf50693ed146bf222727b57905"
+    chain_id: "bridge_2607-1"
+    denom: "abridge"
+    min_gas_price: 0
 
