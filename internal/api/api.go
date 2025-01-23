@@ -2,22 +2,23 @@ package api
 
 import (
 	"context"
-
+	"github.com/hyle-team/tss-svc/internal/api/common"
+	"github.com/hyle-team/tss-svc/internal/api/requests"
+	types2 "github.com/hyle-team/tss-svc/internal/api/types"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var _ APIServer = &server{}
+func (grpcImplementation) SubmitWithdrawal(ctx context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
 
-type server struct {
+	return requests.SubmitTx(ctx, identifier)
 }
 
-func (s *server) SubmitWithdrawal(ctx context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
-	//TODO implement me
-	panic("implement me")
-}
+func (grpcImplementation) CheckWithdrawal(ctx context.Context, identifier *types.DepositIdentifier) (*types2.CheckWithdrawalResponse, error) {
+	tx, err := requests.CheckTx(ctx, identifier)
+	if err != nil {
+		return nil, err
+	}
 
-func (s *server) CheckWithdrawal(ctx context.Context, identifier *types.DepositIdentifier) (*CheckWithdrawalResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	return common.ToStatusResponse(tx), nil
 }

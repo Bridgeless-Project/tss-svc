@@ -1,18 +1,18 @@
 version: v2
 plugins:
   - local: protoc-gen-go
-    out: ../internal/api
+    out: ../internal/api/types
     opt:
       - paths=source_relative
 
   - local: protoc-gen-go-grpc
-    out: ../internal/api
+    out: ../internal/api/types
     opt:
       - paths=source_relative
       - require_unimplemented_servers=false
 
   - remote: buf.build/grpc-ecosystem/gateway
-    out: ../internal/api
+    out: ../internal/api/types
     opt:
       - paths=source_relative
 

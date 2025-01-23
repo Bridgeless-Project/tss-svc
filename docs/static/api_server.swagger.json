@@ -174,13 +174,14 @@
     "depositWithdrawalStatus": {
       "type": "string",
       "enum": [
+        "WITHDRAWAL_STATUS_UNSPECIFIED",
         "WITHDRAWAL_STATUS_PENDING",
         "WITHDRAWAL_STATUS_PROCESSING",
         "WITHDRAWAL_STATUS_PROCESSED",
         "WITHDRAWAL_STATUS_FAILED",
         "WITHDRAWAL_STATUS_INVALID"
       ],
-      "default": "WITHDRAWAL_STATUS_PENDING"
+      "default": "WITHDRAWAL_STATUS_UNSPECIFIED"
     },
     "protobufAny": {
       "type": "object",

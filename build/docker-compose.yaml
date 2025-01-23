@@ -23,12 +23,38 @@ services:
     depends_on:
       vault:
         condition: service_started
-
+  db:
+    image: tokend/postgres-ubuntu:9.6
+    hostname: signer-db
+    container_name: signer-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=signer
+      - POSTGRES_PASSWORD=signer
+      - POSTGRES_DB=signer
+      - PGDATA=/pgdata
+    volumes:
+      - ./signer_data:/pgdata
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U signer" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "20000:5432"
+    deploy:
+      resources:
+        limits:
+          memory:  1g
+        reservations:
+          memory: 1g
   tss-1:
     build:
       context: ../
       dockerfile: build/Dockerfile
     hostname: tss-1
+    ports:
+      - "8080:8080"
     container_name: tss-1
     environment:
       VAULT_PATH: http://vault:8200
@@ -36,10 +62,12 @@ services:
       MOUNT_PATH: tss1
     volumes:
       - ./configs/tss1.yaml:/config.yaml
-    command: "service run keygen -o vault"
+    command: "service run server"
     depends_on:
       vault_init:
         condition: service_completed_successfully
+      db:
+        condition: service_healthy
 
   tss-2:
     build:
@@ -53,10 +81,12 @@ services:
       MOUNT_PATH: tss2
     volumes:
       - ./configs/tss2.yaml:/config.yaml
-    command: "service run keygen -o vault"
+    command: "service migrate up"
     depends_on:
       vault_init:
         condition: service_completed_successfully
+      db:
+        condition: service_healthy
 
   tss-3:
     build:
@@ -70,7 +100,9 @@ services:
       MOUNT_PATH: tss3
     volumes:
       - ./configs/tss3.yaml:/config.yaml
-    command: "service run keygen -o vault"
+#    command: "service run server"
     depends_on:
       vault_init:
         condition: service_completed_successfully
+      db:
+        condition: service_healthy
