@@ -21,7 +21,6 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	)
 
 	if identifier == nil {
-		logger.Error("empty identifier")
 		return nil, status.Error(codes.InvalidArgument, "identifier is required")
 	}
 	err := validateIdentifier(identifier)
