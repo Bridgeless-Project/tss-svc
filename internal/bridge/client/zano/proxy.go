@@ -12,7 +12,7 @@ import (
 
 var addressPattern = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{97}$`)
 
-type Bridgeclient interface {
+type BridgeClient interface {
 	bridgeTypes.Client
 	EmitAssetUnsigned(data db.DepositData) (*UnsignedTransaction, error)
 	EmitAssetSigned(transaction SignedTransaction) (txHash string, err error)
@@ -40,6 +40,6 @@ func (p *client) TransactionHashValid(hash string) bool {
 	return bridge.DefaultTransactionHashPattern.MatchString(hash)
 }
 
-func NewBridgeClient(chain chain.Zano, logger *logan.Entry) Bridgeclient {
+func NewBridgeClient(chain chain.Zano, logger *logan.Entry) BridgeClient {
 	return &client{logger, chain}
 }

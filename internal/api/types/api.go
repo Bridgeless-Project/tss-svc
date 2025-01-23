@@ -9,10 +9,13 @@ import (
 )
 
 var (
-	ErrInternal           = status.Error(codes.Internal, "internal error")
-	ErrTxAlreadySubmitted = status.Error(codes.AlreadyExists, "transaction already submitted")
-	ErrInvalidTxNonce     = errors.New("invalid origin tx nonce")
-	ErrInvalidTxHash      = errors.New("invalid origin tx hash")
+	ErrInternal             = status.Error(codes.Internal, "internal error")
+	ErrTxAlreadySubmitted   = status.Error(codes.AlreadyExists, "transaction already submitted")
+	ErrFailedGetDepositData = status.Error(codes.Internal, "failed to get deposit data")
+
+	ErrFailedSaveDepositData = status.Error(codes.Internal, "failed to save deposit data")
+	ErrInvalidTxNonce        = errors.New("invalid origin tx nonce")
+	ErrInvalidTxHash         = errors.New("invalid origin tx hash")
 
 	ErrInvalidChainId = errors.New("invalid chain id")
 )

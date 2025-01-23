@@ -7,7 +7,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/client"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
 	pg "github.com/hyle-team/tss-svc/internal/db/postgres"
-	processor2 "github.com/hyle-team/tss-svc/internal/processor"
+	processor "github.com/hyle-team/tss-svc/internal/processor"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"sync"
@@ -27,20 +27,21 @@ var serverCmd = &cobra.Command{
 		logger := cfg.Log()
 		// Configure chains map from config
 		chains := cfg.Chains()
-		clientsRepo, err := client.NewclientsRepository(chains, logger)
+		clientsRepo, err := client.NewClientsRepository(chains, logger)
+
 		if err != nil {
 			return errors.Wrap(err, "failed to create clients repository")
 		}
 		db := pg.NewDepositsQ(cfg.DB())
 		connector := core.NewConnector(cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
-		processor := processor2.NewProcessor(clientsRepo, db, connector)
+		pr := processor.NewProcessor(clientsRepo, db, connector)
 		srv := api.NewServer(
 			cfg.GRPCListener(),
 			cfg.HTTPListener(),
 			db,
 			logger.WithField("serviceComponent", "componentServer"),
 			clientsRepo,
-			processor,
+			pr,
 		)
 		wg := sync.WaitGroup{}
 		wg.Add(2)

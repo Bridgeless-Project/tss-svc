@@ -9,8 +9,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var _ types2.APIServer = grpcImplementation{}
-
 func (grpcImplementation) SubmitWithdrawal(ctx context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
 
 	return requests.SubmitTx(ctx, identifier)

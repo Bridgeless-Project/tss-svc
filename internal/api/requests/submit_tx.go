@@ -5,6 +5,7 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
+	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/processor"
 	types "github.com/hyle-team/tss-svc/internal/types"
@@ -27,11 +28,7 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 		logger.Error("empty identifier")
 		return nil, status.Error(codes.InvalidArgument, "identifier is required")
 	}
-	err := validation.Errors{
-		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
-		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
-		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Min(0)),
-	}.Filter()
+	err := validateIdentifier(identifier)
 
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -41,19 +38,25 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	if err != nil {
 		return &emptypb.Empty{}, status.Error(codes.NotFound, "chain not found")
 	}
+
 	id := common.FormDepositIdentifier(identifier, chain.Type())
-	exists, err := common.CheckIfDepositExists(id, db)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+
+	tx, err := db.Get(id)
+	if tx != nil {
+		return nil, apiTypes.ErrTxAlreadySubmitted
 	}
-	if exists {
-		return nil, status.Error(codes.AlreadyExists, "already submitted")
+
+	if err != nil {
+		return nil, apiTypes.ErrFailedGetDepositData
 	}
 	if err := saveDepositData(identifier, db, *processor, logger); err != nil {
 		if errors.Is(err, database.ErrAlreadySubmitted) {
-			return nil, status.Error(codes.AlreadyExists, "already submitted")
+			logger.WithError(err).Error("failed to get deposit data from db")
+			return nil, apiTypes.ErrTxAlreadySubmitted
 		}
-		return nil, status.Error(codes.Internal, err.Error())
+
+		logger.WithError(err).Error("failed to save deposit data")
+		return nil, apiTypes.ErrFailedSaveDepositData
 	}
 	return nil, nil
 }
@@ -69,4 +72,12 @@ func saveDepositData(identifier *types.DepositIdentifier, db database.DepositsQ,
 	}
 
 	return nil
+}
+
+func validateIdentifier(identifier *types.DepositIdentifier) error {
+	return validation.Errors{
+		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
+		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
+		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Min(0)),
+	}.Filter()
 }

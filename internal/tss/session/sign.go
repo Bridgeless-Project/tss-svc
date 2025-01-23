@@ -109,7 +109,7 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 		return errors.New("nil request")
 	}
 	if request.Type != p2p.RequestType_SIGN {
-		return errors.New("invalid request type" + request.Type.String())
+		return errors.New(fmt.Sprintf("invalid request type %s", request.Type.String()))
 	}
 
 	data := &p2p.TssData{}
@@ -124,10 +124,6 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 
 	s.signingParty.Receive(sender, data)
 	return nil
-}
-
-func (s *DefaultSigningSession) AddStartTime(t time.Duration) {
-	s.params.StartTime = s.params.StartTime.Add(t)
 }
 
 // RegisterIdChangeListener is a no-op for DefaultSigningSession
