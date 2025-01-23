@@ -22,10 +22,10 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-23 14:11:03"
+    start_time: "2025-01-23 14:29:19"
     session_id: abcd
   signing:
-    start_time: "2025-01-23 14:11:03"
+    start_time: "2025-01-23 14:29:19"
     session_id: abcd
     threshold: 2
 core_connector:
