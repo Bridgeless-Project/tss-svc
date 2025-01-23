@@ -20,7 +20,6 @@ require (
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
 	github.com/cosmos/cosmos-sdk v0.46.13
 	github.com/ethereum/go-ethereum v1.10.26
-	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-ozzo/ozzo-validation/v4 v4.2.1
 	github.com/gorilla/websocket v1.5.0
