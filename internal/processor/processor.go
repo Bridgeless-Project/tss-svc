@@ -36,7 +36,7 @@ func (p *Processor) FetchDepositData(identifier *types.DepositIdentifier, logger
 	//get deposit data from network
 	depositData, err := sourceClient.GetDepositData(dbIdentifier)
 	if err != nil {
-		return deposit, errors.Wrap(err, bridgeTypes.ErrDepositNotFound.Error())
+		return deposit, errors.Wrap(err, "deposit data not found")
 	}
 	logger.Debug(depositData)
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)
@@ -48,7 +48,6 @@ func (p *Processor) FetchDepositData(identifier *types.DepositIdentifier, logger
 		return deposit, errors.Wrap(bridgeTypes.ErrInvalidReceiverAddress, depositData.DestinationAddress)
 	}
 
-	// TODO: Add fetching source and withdrawal tokens data from Core
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
 	if err != nil {
 		deposit.WithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED

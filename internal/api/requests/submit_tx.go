@@ -18,10 +18,10 @@ import (
 
 func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
 	var (
-		clients   = ctx.Clients(ctxt)
-		db        = ctx.DB(ctxt)
-		logger    = ctx.Logger(ctxt)
-		processor = ctx.Processor(ctxt)
+		clients = ctx.Clients(ctxt)
+		db      = ctx.DB(ctxt)
+		logger  = ctx.Logger(ctxt)
+		pr      = ctx.Processor(ctxt)
 	)
 
 	if identifier == nil {
@@ -36,7 +36,7 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 
 	chain, err := clients.Client(identifier.ChainId)
 	if err != nil {
-		return &emptypb.Empty{}, status.Error(codes.NotFound, "chain not found")
+		return &emptypb.Empty{}, status.Error(codes.InvalidArgument, "chain not found")
 	}
 
 	id := common.FormDepositIdentifier(identifier, chain.Type())
@@ -47,16 +47,12 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	}
 
 	if err != nil {
-		return nil, apiTypes.ErrFailedGetDepositData
+		logger.WithError(err).Error("failed to get deposit data from db")
+		return nil, apiTypes.ErrInternal
 	}
-	if err := saveDepositData(identifier, db, *processor, logger); err != nil {
-		if errors.Is(err, database.ErrAlreadySubmitted) {
-			logger.WithError(err).Error("failed to get deposit data from db")
-			return nil, apiTypes.ErrTxAlreadySubmitted
-		}
-
+	if err := saveDepositData(identifier, db, *pr, logger); err != nil {
 		logger.WithError(err).Error("failed to save deposit data")
-		return nil, apiTypes.ErrFailedSaveDepositData
+		return nil, apiTypes.ErrInternal
 	}
 	return nil, nil
 }
