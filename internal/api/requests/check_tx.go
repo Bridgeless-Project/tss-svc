@@ -13,22 +13,24 @@ import (
 
 func CheckTx(ctx context.Context, identifier *types.DepositIdentifier) (*database.Deposit, error) {
 	var (
-		db     = ctxt.DB(ctx)
-		logger = ctxt.Logger(ctx)
-		chains = ctxt.Chains(ctx)
+		db      = ctxt.DB(ctx)
+		logger  = ctxt.Logger(ctx)
+		clients = ctxt.Clients(ctx)
 	)
 	if identifier == nil {
 		return nil, status.Error(codes.InvalidArgument, "identifier is required")
 	}
-	err := validateIdentifier(identifier)
+
+	client, err := clients.Client(identifier.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid chain id")
+	}
+	err = validateIdentifier(identifier)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	chain, ok := chains[identifier.ChainId]
-	if !ok {
-		return nil, status.Error(codes.NotFound, "chain not found")
-	}
-	id := common.FormDepositIdentifier(identifier, chain.Type)
+
+	id := common.FormDepositIdentifier(identifier, client.Type())
 
 	tx, err := db.Get(id)
 	if err != nil {

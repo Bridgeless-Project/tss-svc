@@ -22,10 +22,19 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-23 13:39:45"
+    start_time: "2025-01-23 16:55:48"
     session_id: abcd
   signing:
-    start_time: "2025-01-23 13:39:45"
+    start_time: "2025-01-23 16:55:48"
     session_id: abcd
     threshold: 2
+core_connector:
+  connection:
+    addr: "core-api.node1.devnet.bridgeless.com"
+    enable_tls: true
+  settings:
+    account_private_key: "0x78e99c7e010ad161fb8aaace13528e272e17edbf50693ed146bf222727b57905"
+    chain_id: "bridge_2607-1"
+    denom: "abridge"
+    min_gas_price: 0
 

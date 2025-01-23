@@ -14,9 +14,10 @@ import (
 
 func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
 	var (
-		chains = ctx.Chains(ctxt)
-		db     = ctx.DB(ctxt)
-		logger = ctx.Logger(ctxt)
+		clients = ctx.Clients(ctxt)
+		db      = ctx.DB(ctxt)
+		logger  = ctx.Logger(ctxt)
+		pr      = ctx.Processor(ctxt)
 	)
 
 	if identifier == nil {
@@ -29,23 +30,43 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	chain, ok := chains[identifier.ChainId]
-	if !ok {
-		return &emptypb.Empty{}, status.Error(codes.NotFound, "chain not found")
+	chain, err := clients.Client(identifier.ChainId)
+	if err != nil {
+		return &emptypb.Empty{}, status.Error(codes.InvalidArgument, "chain not found")
 	}
-	id := common.FormDepositIdentifier(identifier, chain.Type)
+
+	id := common.FormDepositIdentifier(identifier, chain.Type())
+
 	tx, err := db.Get(id)
 	if err != nil {
 		logger.WithError(err).Error("failed to get deposit data from db")
-		return nil, apiTypes.ErrFailedGetDepositData
+		return nil, apiTypes.ErrInternal
 	}
 	if tx != nil {
 		return nil, apiTypes.ErrTxAlreadySubmitted
 	}
 
-	if err := common.SaveDepositData(id, chain, db); err != nil {
-		logger.WithError(err).Error("failed to save deposit data")
-		return nil, apiTypes.ErrFailedSaveDepositData
+	deposit, err := pr.FetchDepositData(id, logger)
+	//perform saving to db
+	insertErr := db.Transaction(func() error {
+		if deposit == nil {
+			logger.Error("got nil deposit after fetching data")
+			return apiTypes.ErrInternal
+		}
+		_, insertErr := db.Insert(*deposit)
+		if insertErr != nil {
+			logger.WithError(insertErr).Error("failed to insert deposit data")
+			return apiTypes.ErrInternal
+		}
+		return nil
+	})
+	if insertErr != nil {
+		logger.WithError(err).Error("failed to insert deposit data")
+		return nil, apiTypes.ErrInternal
+	}
+	if err != nil {
+		logger.WithError(err).Error("failed to fetch deposit data")
+		return nil, apiTypes.ErrInternal
 	}
 
 	return nil, nil

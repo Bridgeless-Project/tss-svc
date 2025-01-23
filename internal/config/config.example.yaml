@@ -52,3 +52,13 @@ tss:
     start_time: "2025-01-21 15:28:00"
     session_id: abcd
     threshold: 2
+
+core_connector:
+  connection:
+    addr: "rpc"
+    enable_tls: false
+  settings:
+    account_private_key: "private"
+    chain_id: "00000"
+    denom: "denom"
+    min_gas_price: 0

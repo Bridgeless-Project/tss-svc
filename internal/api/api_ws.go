@@ -8,6 +8,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/requests"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	types "github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/ape"
@@ -35,14 +36,15 @@ var upgrader = websocket.Upgrader{
 
 func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 	var (
-		ctxt   = r.Context()
-		chains = ctx.Chains(ctxt)
+		ctxt    = r.Context()
+		clients = ctx.Clients(ctxt)
 	)
 
 	//get incoming params
-	depositIdentifier, err := parseIncomingUrlParams(r, chains)
+	depositIdentifier, err := parseIncomingUrlParams(r, clients)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
 	}
 
 	_, err = requests.CheckTx(ctxt, &types.DepositIdentifier{
@@ -52,6 +54,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
 	}
 
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -133,7 +136,6 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(4004, "deposit not found"))
 			return
 		}
-		logger.Info(deposit.WithdrawalStatus.String())
 
 		//poll until our tx won`t be finished
 		if deposit.WithdrawalStatus == prevStatus {
@@ -165,10 +167,9 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 	}
 }
 
-func parseIncomingUrlParams(r *http.Request, chains apiTypes.ChainsMap) (identifier *database.DepositIdentifier, err error) {
+func parseIncomingUrlParams(r *http.Request, clients bridgeTypes.ClientsRepository) (*database.DepositIdentifier, error) {
 	chainId := chi.URLParam(r, paramChainId)
-	if _, ok := chains[chainId]; !ok {
-
+	if _, err := clients.Client(chainId); err != nil {
 		return nil, apiTypes.ErrInvalidChainId
 	}
 	txHash := chi.URLParam(r, paramTxHash)
