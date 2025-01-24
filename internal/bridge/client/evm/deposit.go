@@ -77,7 +77,6 @@ func (p *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			DestinationAddress: eventBody.Receiver,
 			DepositAmount:      eventBody.Amount,
 			TokenAddress:       strings.ToLower(eventBody.Token.String()),
-			IsWrappedToken:     eventBody.IsWrapped,
 			Block:              int64(log.BlockNumber),
 			SourceAddress:      from.String(),
 		}

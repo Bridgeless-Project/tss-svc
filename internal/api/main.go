@@ -2,14 +2,18 @@ package api
 
 import (
 	"context"
+	"net"
+	"net/http"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hyle-team/tss-svc/docs"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
-	"github.com/hyle-team/tss-svc/internal/processor"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -18,10 +22,6 @@ import (
 	"gitlab.com/distributed_lab/ape"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-
-	"net"
-	"net/http"
-	"time"
 )
 
 var _ apiTypes.APIServer = grpcImplementation{}
@@ -43,7 +43,7 @@ func NewServer(
 	db db.DepositsQ,
 	logger *logan.Entry,
 	clients bridgeTypes.ClientsRepository,
-	processor *processor.Processor,
+	processor *deposit.Processor,
 ) apiTypes.Server {
 	return &server{
 		grpc:   grpc,

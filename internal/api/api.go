@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/requests"
 	types2 "github.com/hyle-team/tss-svc/internal/api/types"
@@ -10,7 +11,6 @@ import (
 )
 
 func (grpcImplementation) SubmitWithdrawal(ctx context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
-
 	return requests.SubmitTx(ctx, identifier)
 }
 

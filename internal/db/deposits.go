@@ -2,10 +2,11 @@ package db
 
 import (
 	"fmt"
+	"math/big"
+
 	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
-	"math/big"
 )
 
 const OriginTxIdPattern = "%s-%d-%s"
@@ -24,10 +25,7 @@ type DepositsQ interface {
 	Insert(Deposit) (id int64, err error)
 	Select(selector DepositsSelector) ([]Deposit, error)
 	Get(identifier DepositIdentifier) (*Deposit, error)
-	UpdateWithdrawalStatus(status types.WithdrawalStatus, ids ...int64) error
-	SetWithdrawalTxs(txs ...WithdrawalTx) error
 	Transaction(f func() error) error
-	SetDepositSignature(data DepositData) error
 }
 
 type WithdrawalTx struct {
@@ -98,21 +96,37 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 
 type DepositData struct {
 	DepositIdentifier
-	DestinationChainId string
 
-	SourceAddress      string
+	Block         int64
+	SourceAddress string
+	DepositAmount *big.Int
+	TokenAddress  string
+
 	DestinationAddress string
+	DestinationChainId string
+}
 
-	DepositAmount    *big.Int
-	WithdrawalAmount *big.Int
+func (d DepositData) ToNewDeposit(
+	withdrawalAmount *big.Int,
+	dstTokenAddress string,
+	isWrappedToken bool,
+) Deposit {
+	depositAmountStr := d.DepositAmount.String()
+	withdrawalAmountStr := withdrawalAmount.String()
 
-	TokenAddress            string
-	DestinationTokenAddress string
-
-	IsWrappedToken bool
-	Signature      string
-
-	Block int64
+	return Deposit{
+		DepositIdentifier: d.DepositIdentifier,
+		Depositor:         &d.SourceAddress,
+		DepositAmount:     &depositAmountStr,
+		DepositToken:      &d.TokenAddress,
+		Receiver:          &d.DestinationAddress,
+		WithdrawalToken:   &dstTokenAddress,
+		DepositBlock:      &d.Block,
+		WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
+		WithdrawalChainId: &d.DestinationChainId,
+		WithdrawalAmount:  &withdrawalAmountStr,
+		IsWrappedToken:    &isWrappedToken,
+	}
 }
 
 func (d DepositData) OriginTxId() string {

@@ -2,6 +2,7 @@ package requests
 
 import (
 	"context"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
@@ -45,7 +46,7 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 		return nil, apiTypes.ErrTxAlreadySubmitted
 	}
 
-	deposit, err := pr.FetchDepositData(id, logger)
+	deposit, err := pr.FetchDepositData(id)
 	//perform saving to db
 	insertErr := db.Transaction(func() error {
 		if deposit == nil {
