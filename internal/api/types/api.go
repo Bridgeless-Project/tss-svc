@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -11,6 +12,7 @@ import (
 var (
 	ErrInternal           = status.Error(codes.Internal, "internal error")
 	ErrTxAlreadySubmitted = status.Error(codes.AlreadyExists, "transaction already submitted")
+	ErrDepositPending     = status.Error(codes.FailedPrecondition, "deposit pending")
 
 	ErrInvalidTxNonce = errors.New("invalid origin tx nonce")
 	ErrInvalidTxHash  = errors.New("invalid origin tx hash")

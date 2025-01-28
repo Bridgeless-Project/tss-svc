@@ -7,37 +7,36 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	types "github.com/hyle-team/tss-svc/internal/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/types"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
-	var (
-		clients = ctx.Clients(ctxt)
-		db      = ctx.DB(ctxt)
-		logger  = ctx.Logger(ctxt)
-		pr      = ctx.Processor(ctxt)
-	)
-
 	if identifier == nil {
 		return nil, status.Error(codes.InvalidArgument, "identifier is required")
 	}
-	err := validateIdentifier(identifier)
 
+	var (
+		clients   = ctx.Clients(ctxt)
+		data      = ctx.DB(ctxt)
+		logger    = ctx.Logger(ctxt)
+		processor = ctx.Processor(ctxt)
+	)
+
+	client, err := clients.Client(identifier.ChainId)
 	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid chain id")
+	}
+	if err = validateIdentifier(identifier, client); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	chain, err := clients.Client(identifier.ChainId)
-	if err != nil {
-		return &emptypb.Empty{}, status.Error(codes.InvalidArgument, "chain not found")
-	}
-
-	id := common.FormDepositIdentifier(identifier, chain.Type())
-
-	tx, err := db.Get(id)
+	tx, err := data.Get(common.FormDepositIdentifier(identifier, client.Type()))
 	if err != nil {
 		logger.WithError(err).Error("failed to get withdrawal data from db")
 		return nil, apiTypes.ErrInternal
@@ -46,36 +45,47 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 		return nil, apiTypes.ErrTxAlreadySubmitted
 	}
 
-	deposit, err := pr.FetchDeposit(id)
-	//perform saving to db
-	insertErr := db.Transaction(func() error {
-		if deposit == nil {
-			logger.Error("got nil withdrawal after fetching data")
-			return apiTypes.ErrInternal
+	id := db.DepositIdentifier{
+		ChainId: identifier.ChainId,
+		TxHash:  identifier.TxHash,
+		TxNonce: int(identifier.TxNonce),
+	}
+
+	deposit, err := processor.FetchDeposit(id)
+	if err != nil {
+		if bridgeTypes.IsPendingDepositError(err) {
+			return nil, apiTypes.ErrDepositPending
 		}
-		_, insertErr := db.Insert(*deposit)
-		if insertErr != nil {
-			logger.WithError(insertErr).Error("failed to insert withdrawal data")
-			return apiTypes.ErrInternal
+		if bridgeTypes.IsInvalidDepositError(err) {
+			// TODO: insert in db
+			return nil, status.Error(codes.InvalidArgument, "invalid deposit")
 		}
-		return nil
-	})
-	if insertErr != nil {
-		logger.WithError(err).Error("failed to insert withdrawal data")
+
+		logger.WithError(err).Error("failed to fetch deposit")
 		return nil, apiTypes.ErrInternal
 	}
-	if err != nil {
-		logger.WithError(err).Error("failed to fetch withdrawal data")
+
+	if _, err = data.Insert(*deposit); err != nil {
+		logger.WithError(err).Error("failed to save deposit")
 		return nil, apiTypes.ErrInternal
 	}
 
 	return nil, nil
 }
 
-func validateIdentifier(identifier *types.DepositIdentifier) error {
-	return validation.Errors{
+func validateIdentifier(identifier *types.DepositIdentifier, client bridgeTypes.Client) error {
+	err := validation.Errors{
 		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
 		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
 		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Min(0)),
 	}.Filter()
+	if err != nil {
+		return err
+	}
+
+	if !client.TransactionHashValid(identifier.TxHash) {
+		return errors.New("invalid transaction hash")
+	}
+
+	return nil
 }

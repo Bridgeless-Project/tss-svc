@@ -18,19 +18,19 @@ func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
 }
 
 func (p *client) EmitAssetUnsigned(data db.Deposit) (*UnsignedTransaction, error) {
-	amount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)
+	amount, ok := new(big.Int).SetString(*data.WithdrawalAmount, 10)
 	if !ok {
 		return nil, errors.New("failed to convert withdrawal amount")
 	}
 
 	destination := zanoTypes.Destination{
-		Address: data.Receiver,
+		Address: *data.Receiver,
 		Amount:  amount.Uint64(),
 		// leaving empty here as this field overrides by function asset parameter
 		AssetID: "",
 	}
 
-	raw, err := p.chain.Client.EmitAsset(data.WithdrawalToken, destination)
+	raw, err := p.chain.Client.EmitAsset(*data.WithdrawalToken, destination)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to emit unsigned asset")
 	}

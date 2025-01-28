@@ -55,14 +55,14 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalStatus: deposit.WithdrawalStatus,
 			depositsDepositAmount:    deposit.DepositAmount,
 			depositsWithdrawalAmount: deposit.WithdrawalAmount,
-			depositsReceiver:         strings.ToLower(deposit.Receiver),
+			depositsReceiver:         strings.ToLower(*deposit.Receiver),
 			depositsDepositBlock:     deposit.DepositBlock,
 			depositsIsWrappedToken:   deposit.IsWrappedToken,
 			// can be 0x00... in case of native ones
-			depositsDepositToken: strings.ToLower(deposit.DepositToken),
+			depositsDepositToken: strings.ToLower(*deposit.DepositToken),
 			depositsDepositor:    deposit.Depositor,
 			// can be 0x00... in case of native ones
-			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
+			depositsWithdrawalToken:   strings.ToLower(*deposit.WithdrawalToken),
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 		}).
 		Suffix("RETURNING id")

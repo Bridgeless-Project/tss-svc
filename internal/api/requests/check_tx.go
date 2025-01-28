@@ -26,8 +26,8 @@ func CheckTx(ctx context.Context, identifier *types.DepositIdentifier) (*databas
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid chain id")
 	}
-	err = validateIdentifier(identifier)
-	if err != nil {
+
+	if err = validateIdentifier(identifier, client); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
