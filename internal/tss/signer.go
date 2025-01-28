@@ -80,7 +80,6 @@ func (p *SignParty) Run(ctx context.Context) {
 		return
 	}
 
-	p.logger.Infof("Running TSS signing on set: %v", p.parties)
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),

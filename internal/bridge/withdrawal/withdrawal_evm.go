@@ -67,7 +67,7 @@ func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (EvmWithd
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
 				TxHash:  deposit.TxHash,
-				TxNonce: int32(deposit.TxNonce),
+				TxNonce: uint32(deposit.TxNonce),
 			},
 			SigData: sigHash,
 		},

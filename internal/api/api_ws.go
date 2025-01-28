@@ -50,7 +50,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 
 	_, err = requests.CheckTx(ctxt, &types.DepositIdentifier{
 		TxHash:  depositIdentifier.TxHash,
-		TxNonce: int32(depositIdentifier.TxNonce),
+		TxNonce: uint32(depositIdentifier.TxNonce),
 		ChainId: depositIdentifier.ChainId,
 	})
 	if err != nil {

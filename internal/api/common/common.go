@@ -11,7 +11,7 @@ func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
 	result := &apiTyoes.CheckWithdrawalResponse{
 		DepositIdentifier: &types.DepositIdentifier{
 			TxHash:  d.TxHash,
-			TxNonce: int32(d.TxNonce),
+			TxNonce: uint32(d.TxNonce),
 			ChainId: d.ChainId,
 		},
 		WithdrawalStatus: d.WithdrawalStatus,
