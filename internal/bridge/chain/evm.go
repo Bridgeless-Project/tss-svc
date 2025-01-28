@@ -8,6 +8,7 @@ import (
 )
 
 type EvmChain struct {
+	Id            string
 	Rpc           *ethclient.Client
 	BridgeAddress common.Address
 	Confirmations uint64
@@ -18,7 +19,9 @@ func (c Chain) Evm() EvmChain {
 		panic("chain is not EVM")
 	}
 
-	chain := EvmChain{Confirmations: c.Confirmations}
+	chain := EvmChain{
+		Id:            c.Id,
+		Confirmations: c.Confirmations}
 
 	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(figure.EthereumHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain Ethereum client"))

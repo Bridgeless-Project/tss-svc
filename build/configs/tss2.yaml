@@ -3,12 +3,30 @@ log:
   disable_sentry: true
 
 db:
-  url: postgres://signer:signer@db/signer?sslmode=disable
+  url: postgres://tss:tss@tss-2-db:5432/tss?sslmode=disable
 
-listener-grpc:
-  addr: :8090
-listener-http:
-  addr: :8080
+listeners:
+  p2p_grpc_addr: :8090
+  api_grpc_addr: :8085
+  api_http_addr: :8080
+
+
+chains:
+  list:
+    ## Chain ID
+    - id: "35443"
+      ## RPC endpoint
+      rpc: "https://rpc.qdevnet.org/"
+      ## Bridge contract address
+      bridge_addresses: "0x4445b315a629d5f1964d1055502d2905870b81d1"
+      ## Number of confirmations required for the withdrawal to be considered final
+      confirmations: 1
+      type: "evm"
+#    - id: "35442"
+#      rpc: "https://rpc.qdevnet.org/"
+#      bridge_addresses: "0x4445b315a629d5f1964d1055502d2905870b81d1"
+#      type: "evm"
+#      confirmations: 1
 
 # self: bridge15p6cxd3a92rtcky0l8wf6hl999ys5vmtg6x2as
 parties:
@@ -22,11 +40,11 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-23 16:55:48"
-    session_id: abcd
+    start_time: "2025-01-28 13:57:01"
+    session_id: 123
   signing:
-    start_time: "2025-01-23 16:55:48"
-    session_id: abcd
+    start_time: "2025-01-28 13:57:01"
+    session_id: 123
     threshold: 2
 core_connector:
   connection:

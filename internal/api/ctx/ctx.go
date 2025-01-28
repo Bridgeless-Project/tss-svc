@@ -3,8 +3,8 @@ package ctx
 import (
 	"context"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -51,12 +51,12 @@ func Clients(ctx context.Context) bridgeTypes.ClientsRepository {
 	return ctx.Value(clientsKey).(bridgeTypes.ClientsRepository)
 }
 
-func ProcessorProvider(processor *deposit.Processor) func(context.Context) context.Context {
+func ProcessorProvider(processor *withdrawal.Processor) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, processorKey, processor)
 	}
 }
 
-func Processor(ctx context.Context) *deposit.Processor {
-	return ctx.Value(processorKey).(*deposit.Processor)
+func Processor(ctx context.Context) *withdrawal.Processor {
+	return ctx.Value(processorKey).(*withdrawal.Processor)
 }

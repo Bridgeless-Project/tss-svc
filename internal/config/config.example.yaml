@@ -35,7 +35,7 @@ chains:
       rpc: "your_rpc_endpoint_here"
       ## Bridge contract address
       bridge_addresses: "test_address"
-      ## Number of confirmations required for the deposit to be considered final
+      ## Number of confirmations required for the withdrawal to be considered final
       confirmations: 1
       type: "type1"
 

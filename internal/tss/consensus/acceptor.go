@@ -6,6 +6,7 @@ import (
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -81,20 +82,31 @@ func (c *Consensus[T]) handleProposalMsg(msg consensusMsg) error {
 		}
 	}()
 
-	var data T
-	if err := data.FromPayload(msg.Data); err != nil {
+	data, err := c.constructor.FromPayload(msg.Data)
+	if err != nil {
 		return errors.Wrap(err, "failed to load consensus payload")
 	}
 
-	_ = data.Deposit()
-	// TODO: check is deposit is in db and not processed yet
-
-	existsInDb := true
-	if !existsInDb {
-		// TODO: get deposit from chain + core info about token
+	deposit, err := c.db.Get(data.DepositIdentifier())
+	if err != nil {
+		return errors.Wrap(err, "failed to get deposit data")
 	}
 
-	isValid, err := c.sigDataValidator.IsValid(data)
+	if deposit == nil {
+		deposit, err = c.processor.FetchDeposit(data.DepositIdentifier())
+		if err != nil {
+			return errors.Wrap(err, "failed to fetch deposit data")
+		}
+		if _, err = c.db.Insert(*deposit); err != nil {
+			return errors.Wrap(err, "failed to save deposit data")
+		}
+	}
+
+	if deposit.WithdrawalStatus != types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING {
+		return errors.New("deposit is not in pending status")
+	}
+
+	isValid, err := c.constructor.IsValid(data, *deposit)
 	if err != nil {
 		return errors.Wrap(err, "failed to validate signing data")
 	}
@@ -102,7 +114,7 @@ func (c *Consensus[T]) handleProposalMsg(msg consensusMsg) error {
 		return errors.New("invalid signing data")
 	}
 
-	c.result.sigData = data
+	c.result.sigData = &data
 	proposalAccepted = true
 
 	return nil

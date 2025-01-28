@@ -23,31 +23,42 @@ services:
     depends_on:
       vault:
         condition: service_started
-  db:
-    image: tokend/postgres-ubuntu:9.6
-    hostname: signer-db
-    container_name: signer-db
+
+  ## Databases
+
+  tss-1-db:
+    image: postgres:13
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=signer
-      - POSTGRES_PASSWORD=signer
-      - POSTGRES_DB=signer
+      - POSTGRES_USER=tss
+      - POSTGRES_PASSWORD=tss
+      - POSTGRES_DB=tss
       - PGDATA=/pgdata
     volumes:
-      - ./signer_data:/pgdata
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U signer" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "20000:5432"
-    deploy:
-      resources:
-        limits:
-          memory:  1g
-        reservations:
-          memory: 1g
+      - tss-1-data:/pgdata
+
+  tss-2-db:
+    image: postgres:13
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tss
+      - POSTGRES_PASSWORD=tss
+      - POSTGRES_DB=tss
+      - PGDATA=/pgdata
+    volumes:
+      - tss-2-data:/pgdata
+
+  tss-3-db:
+    image: postgres:13
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tss
+      - POSTGRES_PASSWORD=tss
+      - POSTGRES_DB=tss
+      - PGDATA=/pgdata
+    volumes:
+      - tss-3-data:/pgdata
+
   tss-1:
     build:
       context: ../
@@ -62,12 +73,13 @@ services:
       MOUNT_PATH: tss1
     volumes:
       - ./configs/tss1.yaml:/config.yaml
-    command: "service run server"
+      - ./shares/preparams1.json:/preparams.json
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully
-      db:
-        condition: service_healthy
+      tss-1-db:
+        condition: service_started
 
   tss-2:
     build:
@@ -81,12 +93,13 @@ services:
       MOUNT_PATH: tss2
     volumes:
       - ./configs/tss2.yaml:/config.yaml
-    command: "service migrate up"
+      - ./shares/preparams2.json:/preparams.json
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully
-      db:
-        condition: service_healthy
+      tss-2-db:
+        condition: service_started
 
   tss-3:
     build:
@@ -100,9 +113,15 @@ services:
       MOUNT_PATH: tss3
     volumes:
       - ./configs/tss3.yaml:/config.yaml
-#    command: "service run server"
+      - ./shares/preparams3.json:/preparams.json
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully
-      db:
-        condition: service_healthy
+      tss-3-db:
+        condition: service_started
+
+volumes:
+  tss-1-data:
+  tss-2-data:
+  tss-3-data:

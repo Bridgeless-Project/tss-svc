@@ -2,6 +2,11 @@ package api
 
 import (
 	"context"
+	"net/http"
+	"slices"
+	"strconv"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 	"github.com/hyle-team/tss-svc/internal/api/common"
@@ -14,10 +19,6 @@ import (
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 	"google.golang.org/protobuf/encoding/protojson"
-	"net/http"
-	"slices"
-	"strconv"
-	"time"
 )
 
 const (
@@ -49,7 +50,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 
 	_, err = requests.CheckTx(ctxt, &types.DepositIdentifier{
 		TxHash:  depositIdentifier.TxHash,
-		TxNonce: int64(depositIdentifier.TxNonce),
+		TxNonce: int32(depositIdentifier.TxNonce),
 		ChainId: depositIdentifier.ChainId,
 	})
 	if err != nil {
@@ -128,12 +129,12 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 
 		deposit, err := db.Get(id)
 		if err != nil {
-			logger.WithError(err).Error("failed to get deposit")
+			logger.WithError(err).Error("failed to get withdrawal")
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal server error"))
 			return
 		}
 		if deposit == nil {
-			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(4004, "deposit not found"))
+			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(4004, "withdrawal not found"))
 			return
 		}
 
@@ -144,7 +145,7 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 
 		raw, err := protojson.Marshal(common.ToStatusResponse(deposit))
 		if err != nil {
-			logger.WithError(err).Error("failed to marshal deposit status")
+			logger.WithError(err).Error("failed to marshal withdrawal status")
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal server error"))
 			return
 		}

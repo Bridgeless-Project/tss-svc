@@ -9,7 +9,9 @@ import (
 	"sync/atomic"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -24,41 +26,59 @@ type consensusMsg struct {
 	Data   *anypb.Any
 }
 
-// FIXME: CHANGE TO DEPOSIT DATA
-type DepositSigningData interface {
-	Deposit() Deposit
-	ToPayload() *anypb.Any
-	FromPayload(payload *anypb.Any) error
-}
-
-// FIXME: CHANGE TO DEPOSIT DATA
-type SigDataFormer[T DepositSigningData] interface {
-	FormSigningData(Deposit) (T, error)
-}
-
-type SigDataValidator[T DepositSigningData] interface {
-	IsValid(data T) (bool, error)
-}
-
-type Deposit struct {
-}
-
 type LocalConsensusParty struct {
 	Self      core.Address
 	SessionId string
 	Threshold int
+	ChainId   string
 }
 
-type Consensus[T DepositSigningData] struct {
+func New[T withdrawal.DepositSigningData](
+	party LocalConsensusParty,
+	parties []p2p.Party,
+	db db.DepositsQ,
+	processor *withdrawal.Processor,
+	constructor withdrawal.Constructor[T],
+	logger *logan.Entry,
+) *Consensus[T] {
+	partiesMap := make(map[core.Address]p2p.Party, len(parties))
+	for _, p := range parties {
+		partiesMap[p.CoreAddress] = p
+	}
+
+	return &Consensus[T]{
+		parties:     partiesMap,
+		broadcaster: p2p.NewBroadcaster(parties),
+
+		self:      party.Self,
+		sessionId: party.SessionId,
+		chainId:   party.ChainId,
+		threshold: party.Threshold,
+
+		db:          db,
+		processor:   processor,
+		constructor: constructor,
+
+		logger: logger,
+
+		wg:   &sync.WaitGroup{},
+		msgs: make(chan consensusMsg, msgsCapacity),
+	}
+}
+
+type Consensus[T withdrawal.DepositSigningData] struct {
 	parties     map[core.Address]p2p.Party
 	broadcaster *p2p.Broadcaster
 
 	self      core.Address
 	sessionId string
+	chainId   string
 	threshold int
 
-	sigDataFormer    SigDataFormer[T]
-	sigDataValidator SigDataValidator[T]
+	db        db.DepositsQ
+	processor *withdrawal.Processor
+
+	constructor withdrawal.Constructor[T]
 
 	logger *logan.Entry
 
@@ -68,14 +88,14 @@ type Consensus[T DepositSigningData] struct {
 	msgs     chan consensusMsg
 
 	result struct {
-		sigData T
+		sigData *T
 		signers []p2p.Party
 		err     error
 	}
 }
 
 func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
-	if request == nil || request.Data == nil {
+	if request == nil {
 		return errors.New("nil request")
 	}
 
@@ -107,18 +127,19 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 }
 
 func (c *Consensus[T]) Run(ctx context.Context) {
-	// todo: implement
-	// todo: check not nil
+	c.proposer = c.determineProposer()
+	c.logger.Info(fmt.Sprintf("proposer is '%s'", c.proposer))
 
 	c.wg.Add(1)
 	if c.proposer == c.self {
+		c.logger.Info("proposer is MEEEEEE")
 		go c.propose(ctx)
 	} else {
 		go c.accept(ctx)
 	}
 }
 
-func (c *Consensus[T]) WaitFor() (sigData T, signers []p2p.Party, err error) {
+func (c *Consensus[T]) WaitFor() (sigData *T, signers []p2p.Party, err error) {
 	c.wg.Wait()
 	c.ended.Store(true)
 
@@ -126,17 +147,20 @@ func (c *Consensus[T]) WaitFor() (sigData T, signers []p2p.Party, err error) {
 }
 
 func (c *Consensus[T]) determineProposer() core.Address {
-	partyIds := make([]*tss.PartyID, 0, len(c.parties)+1)
-	partyIds[0] = c.self.PartyIdentifier()
+	partyIds := make([]*tss.PartyID, len(c.parties)+1)
+	idx := 0
 	for _, party := range c.parties {
-		partyIds = append(partyIds, party.Identifier())
+		partyIds[idx] = party.Identifier()
+		idx++
 	}
+	partyIds[idx] = c.self.PartyIdentifier()
+
 	sortedIds := tss.SortPartyIDs(partyIds)
 
 	generator := deterministicRandSource(c.sessionId)
 	proposerIdx := int(generator.Uint64() % uint64(sortedIds.Len()))
 
-	return core.AddrFromPartyId(partyIds[proposerIdx])
+	return core.AddrFromPartyId(sortedIds[proposerIdx])
 }
 
 func deterministicRandSource(sessionId string) rand.Source {

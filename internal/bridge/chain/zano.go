@@ -9,6 +9,7 @@ import (
 )
 
 type Zano struct {
+	Id            string
 	Client        *zano.Sdk
 	Confirmations uint64
 	Receivers     []string
@@ -19,7 +20,11 @@ func (c Chain) Zano() Zano {
 		panic("chain is not Zano")
 	}
 
-	chain := Zano{Confirmations: c.Confirmations}
+	chain := Zano{
+		Id:            c.Id,
+		Confirmations: c.Confirmations,
+	}
+
 	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(figure.BaseHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode zano receivers"))
 	}

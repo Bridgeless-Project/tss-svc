@@ -17,13 +17,14 @@ import (
 var _ p2p.TssSession = &KeygenSession{}
 
 type KeygenSessionParams struct {
-	Id        string
+	Id        int64
 	StartTime time.Time
 }
 
 type KeygenSession struct {
-	params KeygenSessionParams
-	wg     *sync.WaitGroup
+	sessionId string
+	params    KeygenSessionParams
+	wg        *sync.WaitGroup
 
 	connectedPartiesCount func() int
 	partiesCount          int
@@ -47,12 +48,14 @@ func NewKeygenSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *KeygenSession {
+	sessionId := GetKeygenSessionIdentifier(params.Id)
 	return &KeygenSession{
+		sessionId:             sessionId,
 		params:                params,
 		wg:                    &sync.WaitGroup{},
 		connectedPartiesCount: connectedPartiesCountFunc,
 		partiesCount:          len(parties),
-		keygenParty:           tss.NewKeygenParty(self, parties, params.Id, logger.WithField("component", "keygen_party")),
+		keygenParty:           tss.NewKeygenParty(self, parties, sessionId, logger.WithField("component", "keygen_party")),
 		logger:                logger,
 	}
 }
@@ -109,7 +112,7 @@ func (s *KeygenSession) WaitFor() (*keygen.LocalPartySaveData, error) {
 }
 
 func (s *KeygenSession) Id() string {
-	return s.params.Id
+	return s.sessionId
 }
 
 func (s *KeygenSession) Receive(request *p2p.SubmitRequest) error {
@@ -118,6 +121,9 @@ func (s *KeygenSession) Receive(request *p2p.SubmitRequest) error {
 	}
 	if request.Type != p2p.RequestType_RT_KEYGEN {
 		return errors.New("invalid request type")
+	}
+	if request.SessionId != s.sessionId {
+		return errors.New(fmt.Sprintf("session id mismatch: expected '%s', got '%s'", s.sessionId, request.SessionId))
 	}
 
 	data := &p2p.TssData{}

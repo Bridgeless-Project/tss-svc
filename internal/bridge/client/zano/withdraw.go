@@ -1,11 +1,12 @@
 package zano
 
 import (
+	"math/big"
+
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/db"
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
@@ -16,15 +17,20 @@ func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
-func (p *client) EmitAssetUnsigned(data db.DepositData) (*UnsignedTransaction, error) {
+func (p *client) EmitAssetUnsigned(data db.Deposit) (*UnsignedTransaction, error) {
+	amount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)
+	if !ok {
+		return nil, errors.New("failed to convert withdrawal amount")
+	}
+
 	destination := zanoTypes.Destination{
-		Address: data.DestinationAddress,
-		Amount:  data.WithdrawalAmount.Uint64(),
+		Address: data.Receiver,
+		Amount:  amount.Uint64(),
 		// leaving empty here as this field overrides by function asset parameter
 		AssetID: "",
 	}
 
-	raw, err := p.chain.Client.EmitAsset(data.DestinationTokenAddress, destination)
+	raw, err := p.chain.Client.EmitAsset(data.WithdrawalToken, destination)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to emit unsigned asset")
 	}

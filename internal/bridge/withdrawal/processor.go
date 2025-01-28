@@ -1,4 +1,4 @@
-package deposit
+package withdrawal
 
 import (
 	"math/big"
@@ -21,7 +21,7 @@ func NewProcessor(clients bridgeTypes.ClientsRepository, core types.Bridger) *Pr
 	}
 }
 
-func (p *Processor) FetchDepositData(identifier db.DepositIdentifier) (*db.Deposit, error) {
+func (p *Processor) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	sourceClient, err := p.clients.Client(identifier.ChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting source client")
@@ -33,7 +33,7 @@ func (p *Processor) FetchDepositData(identifier db.DepositIdentifier) (*db.Depos
 
 	depositData, err := sourceClient.GetDepositData(identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get deposit data")
+		return nil, errors.Wrap(err, "failed to get withdrawal data")
 	}
 
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)

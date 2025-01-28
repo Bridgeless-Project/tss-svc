@@ -5,33 +5,32 @@ import (
 	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
-	"strconv"
 )
 
 func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
 	result := &apiTyoes.CheckWithdrawalResponse{
 		DepositIdentifier: &types.DepositIdentifier{
 			TxHash:  d.TxHash,
-			TxNonce: int64(d.TxNonce),
+			TxNonce: int32(d.TxNonce),
 			ChainId: d.ChainId,
 		},
 		TransferData: &types.TransferData{
 			Sender:           d.Depositor,
-			Receiver:         *d.Receiver,
-			DepositAmount:    *d.DepositAmount,
-			WithdrawalAmount: *d.WithdrawalAmount,
-			DepositAsset:     *d.DepositToken,
-			WithdrawalAsset:  *d.WithdrawalToken,
-			IsWrappedAsset:   strconv.FormatBool(*d.IsWrappedToken),
-			DepositBlock:     *d.DepositBlock,
+			Receiver:         d.Receiver,
+			DepositAmount:    d.DepositAmount,
+			WithdrawalAmount: d.WithdrawalAmount,
+			DepositAsset:     d.DepositToken,
+			WithdrawalAsset:  d.WithdrawalToken,
+			IsWrappedAsset:   d.IsWrappedToken,
+			DepositBlock:     d.DepositBlock,
 			Signature:        d.Signature,
 		},
 		WithdrawalStatus: d.WithdrawalStatus,
 	}
-	if d.WithdrawalTxHash != nil && d.WithdrawalChainId != nil {
+	if d.WithdrawalTxHash != nil {
 		result.WithdrawalIdentifier = &types.WithdrawalIdentifier{
 			TxHash:  *d.WithdrawalTxHash,
-			ChainId: *d.WithdrawalChainId,
+			ChainId: d.WithdrawalChainId,
 		}
 	}
 

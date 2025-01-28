@@ -25,6 +25,12 @@ type DepositsQ interface {
 	Insert(Deposit) (id int64, err error)
 	Select(selector DepositsSelector) ([]Deposit, error)
 	Get(identifier DepositIdentifier) (*Deposit, error)
+	GetWithSelector(selector DepositsSelector) (*Deposit, error)
+
+	UpdateWithdrawalTx(DepositIdentifier, string) error
+	UpdateSignature(DepositIdentifier, string) error
+	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
+
 	Transaction(f func() error) error
 }
 
@@ -41,8 +47,10 @@ type DepositIdentifier struct {
 }
 
 type DepositsSelector struct {
-	Ids       []int64
-	Submitted *bool
+	Ids     []int64
+	ChainId *string
+	One     bool
+	Status  *types.WithdrawalStatus
 }
 
 func (d DepositIdentifier) String() string {
@@ -54,44 +62,39 @@ type Deposit struct {
 	DepositIdentifier
 
 	Depositor       *string `structs:"depositor" db:"depositor"`
-	DepositAmount   *string `structs:"deposit_amount" db:"deposit_amount"`
-	DepositToken    *string `structs:"deposit_token" db:"deposit_token"`
-	Receiver        *string `structs:"receiver" db:"receiver"`
-	WithdrawalToken *string `structs:"withdrawal_token" db:"withdrawal_token"`
-	DepositBlock    *int64  `structs:"deposit_block" db:"deposit_block"`
+	DepositAmount   string  `structs:"deposit_amount" db:"deposit_amount"`
+	DepositToken    string  `structs:"deposit_token" db:"deposit_token"`
+	Receiver        string  `structs:"receiver" db:"receiver"`
+	WithdrawalToken string  `structs:"withdrawal_token" db:"withdrawal_token"`
+	DepositBlock    int64   `structs:"deposit_block" db:"deposit_block"`
 
 	WithdrawalStatus types.WithdrawalStatus `structs:"withdrawal_status" db:"withdrawal_status"`
 
 	WithdrawalTxHash  *string `structs:"withdrawal_tx_hash" db:"withdrawal_tx_hash"`
-	WithdrawalChainId *string `structs:"withdrawal_chain_id" db:"withdrawal_chain_id"`
-	WithdrawalAmount  *string `structs:"withdrawal_amount" db:"withdrawal_amount"`
+	WithdrawalChainId string  `structs:"withdrawal_chain_id" db:"withdrawal_chain_id"`
+	WithdrawalAmount  string  `structs:"withdrawal_amount" db:"withdrawal_amount"`
 
-	IsWrappedToken *bool `structs:"is_wrapped_token" db:"is_wrapped_token"`
+	IsWrappedToken bool `structs:"is_wrapped_token" db:"is_wrapped_token"`
 
 	Signature *string `structs:"signature" db:"signature"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
-	tx := bridgetypes.Transaction{
+	return bridgetypes.Transaction{
 		DepositTxHash:    d.TxHash,
 		DepositTxIndex:   uint64(d.TxNonce),
 		DepositChainId:   d.ChainId,
 		WithdrawalTxHash: stringOrEmpty(d.WithdrawalTxHash),
 		Depositor:        stringOrEmpty(d.Depositor),
-		// TODO: separate for deposit/withdrawal amount when added to bridge core
-		Amount:            stringOrEmpty(d.WithdrawalAmount),
-		DepositToken:      stringOrEmpty(d.DepositToken),
-		Receiver:          stringOrEmpty(d.Receiver),
-		WithdrawalToken:   stringOrEmpty(d.WithdrawalToken),
-		WithdrawalChainId: stringOrEmpty(d.WithdrawalChainId),
+		// TODO: separate for withdrawal/withdrawal amount when added to bridge core
+		Amount:            d.WithdrawalAmount,
+		DepositToken:      d.DepositToken,
+		Receiver:          d.Receiver,
+		WithdrawalToken:   d.WithdrawalToken,
+		WithdrawalChainId: d.WithdrawalChainId,
+		DepositBlock:      uint64(d.DepositBlock),
 		Signature:         stringOrEmpty(d.Signature),
 	}
-
-	if d.DepositBlock != nil {
-		tx.DepositBlock = uint64(*d.DepositBlock)
-	}
-
-	return tx
 }
 
 type DepositData struct {
@@ -111,21 +114,18 @@ func (d DepositData) ToNewDeposit(
 	dstTokenAddress string,
 	isWrappedToken bool,
 ) Deposit {
-	depositAmountStr := d.DepositAmount.String()
-	withdrawalAmountStr := withdrawalAmount.String()
-
 	return Deposit{
 		DepositIdentifier: d.DepositIdentifier,
 		Depositor:         &d.SourceAddress,
-		DepositAmount:     &depositAmountStr,
-		DepositToken:      &d.TokenAddress,
-		Receiver:          &d.DestinationAddress,
-		WithdrawalToken:   &dstTokenAddress,
-		DepositBlock:      &d.Block,
+		DepositAmount:     d.DepositAmount.String(),
+		DepositToken:      d.TokenAddress,
+		Receiver:          d.DestinationAddress,
+		WithdrawalToken:   dstTokenAddress,
+		DepositBlock:      d.Block,
 		WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
-		WithdrawalChainId: &d.DestinationChainId,
-		WithdrawalAmount:  &withdrawalAmountStr,
-		IsWrappedToken:    &isWrappedToken,
+		WithdrawalChainId: d.DestinationChainId,
+		WithdrawalAmount:  withdrawalAmount.String(),
+		IsWrappedToken:    isWrappedToken,
 	}
 }
 

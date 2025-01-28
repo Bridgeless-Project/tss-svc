@@ -80,7 +80,7 @@ var signCmd = &cobra.Command{
 
 		sessionManager := p2p.NewSessionManager(session)
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.GRPCListener(), sessionManager)
+			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager)
 			server.SetStatus(p2p.PartyStatus_PS_SIGN)
 			return server.Run(ctx)
 		})

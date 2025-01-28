@@ -4,10 +4,9 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/hyle-team/tss-svc/internal/types"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/kit/pgdb"
 )
@@ -28,12 +27,13 @@ const (
 	depositsDepositBlock     = "deposit_block"
 
 	depositsWithdrawalChainId = "withdrawal_chain_id"
+	depositsWithdrawalTxHash  = "withdrawal_tx_hash"
 
-	depositWithdrawalStatus = "withdrawal_status"
+	depositsWithdrawalStatus = "withdrawal_status"
 
-	depositIsWrappedToken = "is_wrapped_token"
+	depositsIsWrappedToken = "is_wrapped_token"
 
-	depositSignature = "signature"
+	depositsSignature = "signature"
 )
 
 type depositsQ struct {
@@ -52,18 +52,18 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsTxHash:           deposit.TxHash,
 			depositsTxNonce:          deposit.TxNonce,
 			depositsChainId:          deposit.ChainId,
-			depositWithdrawalStatus:  deposit.WithdrawalStatus,
-			depositsDepositAmount:    *deposit.DepositAmount,
-			depositsWithdrawalAmount: *deposit.WithdrawalAmount,
-			depositsReceiver:         strings.ToLower(*deposit.Receiver),
-			depositsDepositBlock:     *deposit.DepositBlock,
-			depositIsWrappedToken:    *deposit.IsWrappedToken,
+			depositsWithdrawalStatus: deposit.WithdrawalStatus,
+			depositsDepositAmount:    deposit.DepositAmount,
+			depositsWithdrawalAmount: deposit.WithdrawalAmount,
+			depositsReceiver:         strings.ToLower(deposit.Receiver),
+			depositsDepositBlock:     deposit.DepositBlock,
+			depositsIsWrappedToken:   deposit.IsWrappedToken,
 			// can be 0x00... in case of native ones
-			depositsDepositToken: strings.ToLower(*deposit.DepositToken),
-			depositsDepositor:    strings.ToLower(*deposit.Depositor),
+			depositsDepositToken: strings.ToLower(deposit.DepositToken),
+			depositsDepositor:    deposit.Depositor,
 			// can be 0x00... in case of native ones
-			depositsWithdrawalToken:   strings.ToLower(*deposit.WithdrawalToken),
-			depositsWithdrawalChainId: *deposit.WithdrawalChainId,
+			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
+			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 		}).
 		Suffix("RETURNING id")
 
@@ -81,11 +81,26 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 
 func (d *depositsQ) Get(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	var deposit db.Deposit
-	err := d.db.Get(&deposit, d.selector.Where(squirrel.Eq{
+	err := d.db.Get(&deposit, d.selector.Where(identifierToPredicate(identifier)))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+
+	return &deposit, err
+}
+
+func identifierToPredicate(identifier db.DepositIdentifier) squirrel.Eq {
+	return squirrel.Eq{
 		depositsTxHash:  identifier.TxHash,
 		depositsTxNonce: identifier.TxNonce,
 		depositsChainId: identifier.ChainId,
-	}))
+	}
+}
+
+func (d *depositsQ) GetWithSelector(selector db.DepositsSelector) (*db.Deposit, error) {
+	query := d.applySelector(selector, d.selector)
+	var deposit db.Deposit
+	err := d.db.Get(&deposit, query)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -101,6 +116,32 @@ func (d *depositsQ) Select(selector db.DepositsSelector) ([]db.Deposit, error) {
 	}
 
 	return deposits, nil
+}
+
+func (d *depositsQ) UpdateWithdrawalTx(identifier db.DepositIdentifier, hash string) error {
+	query := squirrel.Update(depositsTable).
+		Set(depositsWithdrawalTxHash, hash).
+		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
+		Where(identifierToPredicate(identifier))
+
+	return d.db.Exec(query)
+}
+
+func (d *depositsQ) UpdateSignature(identifier db.DepositIdentifier, sig string) error {
+	query := squirrel.Update(depositsTable).
+		Set(depositsSignature, sig).
+		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
+		Where(identifierToPredicate(identifier))
+
+	return d.db.Exec(query)
+}
+
+func (d *depositsQ) UpdateStatus(identifier db.DepositIdentifier, status types.WithdrawalStatus) error {
+	query := squirrel.Update(depositsTable).
+		Set(depositsWithdrawalStatus, status).
+		Where(identifierToPredicate(identifier))
+
+	return d.db.Exec(query)
 }
 
 func NewDepositsQ(db *pgdb.DB) db.DepositsQ {
@@ -119,8 +160,16 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 		sql = sql.Where(squirrel.Eq{depositsId: selector.Ids})
 	}
 
-	if selector.Submitted != nil {
-		sql = sql.Where(squirrel.Eq{depositWithdrawalStatus: types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING})
+	if selector.ChainId != nil {
+		sql = sql.Where(squirrel.Eq{depositsChainId: *selector.ChainId})
+	}
+
+	if selector.Status != nil {
+		sql = sql.Where(squirrel.Eq{depositsWithdrawalStatus: *selector.Status})
+	}
+
+	if selector.One {
+		sql = sql.Limit(1)
 	}
 
 	return sql

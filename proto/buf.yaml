@@ -2,6 +2,7 @@ version: v2
 deps:
   - buf.build/googleapis/googleapis
   - buf.build/grpc-ecosystem/grpc-gateway
+  - buf.build/gogo/protobuf
 modules:
   - path: deposit
   - path: p2p
@@ -14,4 +15,3 @@ lint:
   rpc_allow_same_request_response: false
   rpc_allow_google_protobuf_empty_requests: false
   rpc_allow_google_protobuf_empty_responses: false
-  service_suffix: Service

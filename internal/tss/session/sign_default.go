@@ -15,7 +15,7 @@ import (
 )
 
 type DefaultSigningSessionParams struct {
-	Id          string
+	Id          int64
 	StartTime   time.Time
 	Threshold   int
 	signingData []byte
@@ -27,6 +27,8 @@ func (p DefaultSigningSessionParams) WithSigningData(data []byte) DefaultSigning
 }
 
 type DefaultSigningSession struct {
+	sessionId string
+
 	params DefaultSigningSessionParams
 	logger *logan.Entry
 	wg     *sync.WaitGroup
@@ -51,12 +53,14 @@ func NewDefaultSigningSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *DefaultSigningSession {
+	sessionId := GetDefaultSigningSessionIdentifier(params.Id)
 	return &DefaultSigningSession{
+		sessionId:             sessionId,
 		params:                params,
 		wg:                    &sync.WaitGroup{},
 		logger:                logger,
 		connectedPartiesCount: connectedPartiesCountFunc,
-		signingParty: tss.NewSignParty(self, params.Id, logger).
+		signingParty: tss.NewSignParty(self, sessionId, logger).
 			WithSigningData(params.signingData).
 			WithParties(parties),
 		partiesCount: len(parties),
@@ -113,7 +117,7 @@ func (s *DefaultSigningSession) WaitFor() (*common.SignatureData, error) {
 }
 
 func (s *DefaultSigningSession) Id() string {
-	return s.params.Id
+	return s.sessionId
 }
 
 func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
@@ -122,6 +126,9 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 	}
 	if request.Type != p2p.RequestType_RT_SIGN {
 		return errors.New("invalid request type")
+	}
+	if request.SessionId != s.sessionId {
+		return errors.New(fmt.Sprintf("session id mismatch: expected '%s', got '%s'", s.sessionId, request.SessionId))
 	}
 
 	data := &p2p.TssData{}

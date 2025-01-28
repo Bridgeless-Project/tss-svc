@@ -4,6 +4,7 @@ package p2p;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/any.proto";
+import "gogoproto/gogo.proto";
 import "deposit.proto";
 
 option go_package = "github.com/hyle-team/tss-svc/internal/p2p";
@@ -51,4 +52,7 @@ message AcceptanceData {
   bool accepted = 1;
 }
 
-// TODO: add signing payloads
+message EvmProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+  bytes sigData = 2;
+}

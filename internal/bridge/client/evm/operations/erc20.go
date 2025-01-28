@@ -2,12 +2,13 @@ package operations
 
 import (
 	"bytes"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 type WithdrawERC20Content struct {
@@ -20,24 +21,29 @@ type WithdrawERC20Content struct {
 	IsWrapped               []byte
 }
 
-func NewWithdrawERC20Content(event db.DepositData) (*WithdrawERC20Content, error) {
-	destinationChainID, ok := new(big.Int).SetString(event.DestinationChainId, 10)
+func NewWithdrawERC20Content(data db.Deposit) (*WithdrawERC20Content, error) {
+	destinationChainID, ok := new(big.Int).SetString(data.WithdrawalChainId, 10)
 	if !ok {
 		return nil, errors.New("invalid chain id")
 	}
 
-	if !common.IsHexAddress(event.DestinationTokenAddress) {
+	withdrawalAmount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)
+	if !ok {
+		return nil, errors.New("invalid withdrawal amount")
+	}
+
+	if !common.IsHexAddress(data.Receiver) {
 		return nil, errors.New("invalid destination address")
 	}
 
 	return &WithdrawERC20Content{
-		Amount:                  ToBytes32(event.WithdrawalAmount.Bytes()),
-		Receiver:                hexutil.MustDecode(event.DestinationAddress),
-		TxHash:                  hexutil.MustDecode(event.TxHash),
-		TxNonce:                 IntToBytes32(event.TxNonce),
+		Amount:                  ToBytes32(withdrawalAmount.Bytes()),
+		Receiver:                hexutil.MustDecode(data.Receiver),
+		TxHash:                  hexutil.MustDecode(data.TxHash),
+		TxNonce:                 IntToBytes32(data.TxNonce),
 		ChainID:                 ToBytes32(destinationChainID.Bytes()),
-		DestinationTokenAddress: common.HexToAddress(event.DestinationTokenAddress).Bytes(),
-		IsWrapped:               BoolToBytes(event.IsWrappedToken),
+		DestinationTokenAddress: common.HexToAddress(data.WithdrawalToken).Bytes(),
+		IsWrapped:               BoolToBytes(data.IsWrappedToken),
 	}, nil
 }
 

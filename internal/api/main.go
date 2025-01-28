@@ -8,12 +8,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hyle-team/tss-svc/docs"
+	"github.com/hyle-team/tss-svc/api"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -43,7 +43,7 @@ func NewServer(
 	db db.DepositsQ,
 	logger *logan.Entry,
 	clients bridgeTypes.ClientsRepository,
-	processor *deposit.Processor,
+	processor *withdrawal.Processor,
 ) apiTypes.Server {
 	return &server{
 		grpc:   grpc,
@@ -107,7 +107,7 @@ func (s *server) httpRouter(ctxt context.Context) http.Handler {
 		middlewares.HijackedConnectionCloser(ctxt),
 	).Get("/ws/check/{chain_id}/{tx_hash}/{tx_nonce}", CheckWithdrawalWs)
 	//TODO: Check for ws implementation
-	router.Mount("/static/api_server.swagger.json", http.FileServer(http.FS(docs.Docs)))
+	router.Mount("/static/api_server.swagger.json", http.FileServer(http.FS(api.Docs)))
 	router.HandleFunc("/api", openapiconsole.Handler("Signer service", "/static/api_server.swagger.json"))
 
 	return router

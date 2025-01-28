@@ -2,6 +2,7 @@ package requests
 
 import (
 	"context"
+
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	ctxt "github.com/hyle-team/tss-svc/internal/api/ctx"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
@@ -34,11 +35,11 @@ func CheckTx(ctx context.Context, identifier *types.DepositIdentifier) (*databas
 
 	tx, err := db.Get(id)
 	if err != nil {
-		logger.WithError(err).Error("failed to get deposit")
+		logger.WithError(err).Error("failed to get withdrawal")
 		return nil, apiTypes.ErrInternal
 	}
 	if tx == nil {
-		return nil, status.Error(codes.NotFound, "deposit not found")
+		return nil, status.Error(codes.NotFound, "withdrawal not found")
 	}
 
 	return tx, nil

@@ -13,17 +13,23 @@ const (
 )
 
 type SigningSessionParams struct {
-	Id        string
+	Id        int64
 	StartTime time.Time
 	Threshold int
+	ChainId   string
 }
 
-func GetKeygenSessionIdentifier(sessionId string) string {
-	return fmt.Sprintf("%s_%s", KeygenSessionPrefix, sessionId)
+func (p SigningSessionParams) WithChainId(chainId string) SigningSessionParams {
+	p.ChainId = chainId
+	return p
 }
 
-func GetDefaultSigningSessionIdentifier(sessionId string) string {
-	return fmt.Sprintf("%s_%s", SignSessionPrefix, sessionId)
+func GetKeygenSessionIdentifier(sessionId int64) string {
+	return fmt.Sprintf("%s_%d", KeygenSessionPrefix, sessionId)
+}
+
+func GetDefaultSigningSessionIdentifier(sessionId int64) string {
+	return fmt.Sprintf("%s_%d", SignSessionPrefix, sessionId)
 }
 
 func GetConcreteSigningSessionIdentifier(chainId string, sessionId int64) string {

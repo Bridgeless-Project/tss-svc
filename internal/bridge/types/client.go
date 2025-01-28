@@ -1,10 +1,11 @@
 package types
 
 import (
+	"math/big"
+
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 var (
@@ -13,7 +14,7 @@ var (
 	ErrTxPending              = errors.New("transaction is pending")
 	ErrTxFailed               = errors.New("transaction failed")
 	ErrTxNotFound             = errors.New("transaction not found")
-	ErrDepositNotFound        = errors.New("deposit not found")
+	ErrDepositNotFound        = errors.New("withdrawal not found")
 	ErrTxNotConfirmed         = errors.New("transaction not confirmed")
 	ErrInvalidReceiverAddress = errors.New("invalid receiver address")
 	ErrInvalidDepositedAmount = errors.New("invalid deposited amount")
@@ -35,13 +36,13 @@ const (
 
 type Client interface {
 	Type() chain.Type
+	ChainId() string
 	GetTransactionStatus(txHash string) (TransactionStatus, error)
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 
 	AddressValid(addr string) bool
 	TransactionHashValid(hash string) bool
 	WithdrawalAmountValid(amount *big.Int) bool
-	ConstructWithdrawalTx(data db.Deposit) ([]byte, error)
 }
 
 type ClientsRepository interface {

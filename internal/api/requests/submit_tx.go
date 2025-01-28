@@ -39,33 +39,33 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 
 	tx, err := db.Get(id)
 	if err != nil {
-		logger.WithError(err).Error("failed to get deposit data from db")
+		logger.WithError(err).Error("failed to get withdrawal data from db")
 		return nil, apiTypes.ErrInternal
 	}
 	if tx != nil {
 		return nil, apiTypes.ErrTxAlreadySubmitted
 	}
 
-	deposit, err := pr.FetchDepositData(id)
+	deposit, err := pr.FetchDeposit(id)
 	//perform saving to db
 	insertErr := db.Transaction(func() error {
 		if deposit == nil {
-			logger.Error("got nil deposit after fetching data")
+			logger.Error("got nil withdrawal after fetching data")
 			return apiTypes.ErrInternal
 		}
 		_, insertErr := db.Insert(*deposit)
 		if insertErr != nil {
-			logger.WithError(insertErr).Error("failed to insert deposit data")
+			logger.WithError(insertErr).Error("failed to insert withdrawal data")
 			return apiTypes.ErrInternal
 		}
 		return nil
 	})
 	if insertErr != nil {
-		logger.WithError(err).Error("failed to insert deposit data")
+		logger.WithError(err).Error("failed to insert withdrawal data")
 		return nil, apiTypes.ErrInternal
 	}
 	if err != nil {
-		logger.WithError(err).Error("failed to fetch deposit data")
+		logger.WithError(err).Error("failed to fetch withdrawal data")
 		return nil, apiTypes.ErrInternal
 	}
 

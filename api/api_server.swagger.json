@@ -50,8 +50,8 @@
             "name": "txNonce",
             "in": "path",
             "required": true,
-            "type": "string",
-            "format": "int64"
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -118,8 +118,8 @@
           "type": "string"
         },
         "txNonce": {
-          "type": "string",
-          "format": "int64"
+          "type": "integer",
+          "format": "int32"
         },
         "chainId": {
           "type": "string"
@@ -148,7 +148,7 @@
           "type": "string"
         },
         "isWrappedAsset": {
-          "type": "string"
+          "type": "boolean"
         },
         "depositBlock": {
           "type": "string",

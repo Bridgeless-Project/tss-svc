@@ -2,11 +2,12 @@ package operations
 
 import (
 	"bytes"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 type WithdrawNativeContent struct {
@@ -17,17 +18,22 @@ type WithdrawNativeContent struct {
 	ChainID  []byte
 }
 
-func NewWithdrawNativeContent(event db.DepositData) (*WithdrawNativeContent, error) {
-	destinationChainID, ok := new(big.Int).SetString(event.DestinationChainId, 10)
+func NewWithdrawNativeContent(data db.Deposit) (*WithdrawNativeContent, error) {
+	destinationChainID, ok := new(big.Int).SetString(data.WithdrawalChainId, 10)
 	if !ok {
 		return nil, errors.New("invalid chain id")
 	}
 
+	withdrawalAmount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)
+	if !ok {
+		return nil, errors.New("invalid withdrawal amount")
+	}
+
 	return &WithdrawNativeContent{
-		Amount:   ToBytes32(event.WithdrawalAmount.Bytes()),
-		Receiver: hexutil.MustDecode(event.DestinationAddress),
-		TxHash:   hexutil.MustDecode(event.TxHash),
-		TxNonce:  IntToBytes32(event.TxNonce),
+		Amount:   ToBytes32(withdrawalAmount.Bytes()),
+		Receiver: hexutil.MustDecode(data.Receiver),
+		TxHash:   hexutil.MustDecode(data.TxHash),
+		TxNonce:  IntToBytes32(data.TxNonce),
 		ChainID:  ToBytes32(destinationChainID.Bytes()),
 	}, nil
 }

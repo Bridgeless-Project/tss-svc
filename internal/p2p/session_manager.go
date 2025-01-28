@@ -74,5 +74,4 @@ func (m *SessionManager) onIdChange(oldId, newId string) {
 
 	delete(m.sessions, oldId)
 	m.sessions[newId] = session
-	// id change listener remains the same
 }

@@ -2,14 +2,11 @@ package evm
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/bridge/client/evm/contracts"
@@ -32,7 +29,7 @@ var events = []string{
 
 type BridgeClient interface {
 	bridgeTypes.Client
-	GetSignHash(data db.DepositData) ([]byte, error)
+	GetSignHash(deposit db.Deposit) ([]byte, error)
 }
 
 type client struct {
@@ -42,24 +39,8 @@ type client struct {
 	logger        *logan.Entry
 }
 
-func (p *client) ConstructWithdrawalTx(data db.Deposit) ([]byte, error) {
-	withdrawalTx := db.WithdrawalTx{
-		DepositId: data.Id,
-		TxHash:    data.TxHash,
-		ChainId:   *data.WithdrawalChainId,
-	}
-
-	dataToSign, err := json.Marshal(withdrawalTx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to construct data")
-	}
-	dataHash := crypto.Keccak256Hash(dataToSign)
-	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(dataHash.Bytes()), dataHash.Bytes())
-	return crypto.Keccak256Hash([]byte(msg)).Bytes(), nil
-}
-
 // NewBridgeClient creates a new bridge Client for the given chain.
-func NewBridgeClient(chain chain.EvmChain, logger *logan.Entry) BridgeClient {
+func NewBridgeClient(chain chain.EvmChain) BridgeClient {
 	bridgeAbi, err := abi.JSON(strings.NewReader(contracts.BridgeMetaData.ABI))
 	if err != nil {
 		panic(errors.Wrap(err, "failed to parse bridge ABI"))
@@ -78,8 +59,11 @@ func NewBridgeClient(chain chain.EvmChain, logger *logan.Entry) BridgeClient {
 		chain:         chain,
 		contractABI:   bridgeAbi,
 		depositEvents: depositEvents,
-		logger:        logger,
 	}
+}
+
+func (p *client) ChainId() string {
+	return p.chain.Id
 }
 
 func (p *client) Type() chain.Type {

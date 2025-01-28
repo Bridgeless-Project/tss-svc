@@ -6,17 +6,28 @@ import (
 	"math/rand/v2"
 
 	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
+	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
+var pendingWithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
+
 func (c *Consensus[T]) propose(ctx context.Context) {
 	defer c.wg.Done()
 
-	// todo: select data
-	depositToSign := &Deposit{}
+	depositToSign, err := c.db.GetWithSelector(db.DepositsSelector{
+		ChainId: &c.chainId,
+		Status:  &pendingWithdrawalStatus,
+		One:     true,
+	})
+	if err != nil {
+		c.result.err = errors.Wrap(err, "failed to get deposit to sign")
+		return
+	}
 
 	proposalReq := &p2p.SubmitRequest{
 		Sender:    c.self.String(),
@@ -26,14 +37,13 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 	}
 
 	if depositToSign != nil {
-		// todo: form signing
-		signData, err := c.sigDataFormer.FormSigningData(*depositToSign)
+		signData, err := c.constructor.FormSigningData(*depositToSign)
 		if err != nil {
 			c.result.err = errors.Wrap(err, "failed to form signing data")
 			return
 		}
 
-		c.result.sigData = signData
+		c.result.sigData = &signData
 		proposalReq.Data = signData.ToPayload()
 	}
 
