@@ -24,7 +24,8 @@ import (
 )
 
 var signCmd = &cobra.Command{
-	Use: "sign",
+	Use:   "sign",
+	Short: "Starts the service in the signing mode",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := utils.ConfigFromFlags(cmd)
 		if err != nil {

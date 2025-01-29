@@ -25,7 +25,8 @@ func init() {
 }
 
 var keygenCmd = &cobra.Command{
-	Use: "keygen",
+	Use:   "keygen",
+	Short: "Generates a new keypair using TSS",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")

@@ -2,20 +2,15 @@ package service
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	tss_lib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/cmd/utils"
-	"github.com/hyle-team/tss-svc/internal/config"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
@@ -27,11 +22,19 @@ import (
 
 func init() {
 	utils.RegisterOutputFlags(signCmd)
+	registerSignCmdFlags(signCmd)
+}
+
+var verify bool
+
+func registerSignCmdFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&verify, "verify", false, "Whether to additionally verify the signature")
 }
 
 var signCmd = &cobra.Command{
-	Use:  "sign [data-string]",
-	Args: cobra.ExactArgs(1),
+	Use:   "sign [data-string]",
+	Short: "Signs the given data using TSS",
+	Args:  cobra.ExactArgs(1),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")
@@ -50,7 +53,6 @@ var signCmd = &cobra.Command{
 		}
 
 		storage := vault.NewStorage(cfg.VaultClient())
-
 		account, err := storage.GetCoreAccount()
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
@@ -96,12 +98,16 @@ var signCmd = &cobra.Command{
 				return errors.Wrap(err, "failed to obtain signing session result")
 			}
 
-			cfg.Log().Info("signing session successfully completed")
-			err = saveSigningResult(result)
-			if err != nil {
+			cfg.Log().Info("Signing session successfully completed")
+			if err = saveSigningResult(result); err != nil {
 				return errors.Wrap(err, "failed to save signing result")
 			}
-			verifySignature(localSaveData, []byte(dataToSign), result, cfg)
+
+			if verify {
+				valid := tss.Verify(localSaveData, []byte(dataToSign), result)
+				cfg.Log().Infof("Verified signature valid: %t", valid)
+			}
+
 			return nil
 		})
 		return errGroup.Wait()
@@ -124,22 +130,4 @@ func saveSigningResult(result *common.SignatureData) error {
 		}
 	}
 	return nil
-}
-
-func verifySignature(localData *keygen.LocalPartySaveData, inputData []byte, signature *common.SignatureData, cfg config.Config) {
-	if utils.IsVerifyNeeded {
-		pk := ecdsa.PublicKey{
-			Curve: tss_lib.EC(),
-			X:     localData.ECDSAPub.X(),
-			Y:     localData.ECDSAPub.Y(),
-		}
-		ok := ecdsa.Verify(&pk, big.NewInt(0).SetBytes(inputData).Bytes(), big.NewInt(0).SetBytes(signature.R), big.NewInt(0).SetBytes(signature.S))
-
-		if ok {
-			cfg.Log().Info("signature is valid")
-		}
-		if !ok {
-			cfg.Log().Warn("signature is invalid")
-		}
-	}
 }
