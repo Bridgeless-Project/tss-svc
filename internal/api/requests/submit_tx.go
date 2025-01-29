@@ -7,7 +7,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
@@ -22,15 +22,15 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	}
 
 	var (
-		clients   = ctx.Clients(ctxt)
-		data      = ctx.DB(ctxt)
-		logger    = ctx.Logger(ctxt)
-		processor = ctx.Processor(ctxt)
+		clientsRepo = ctx.Clients(ctxt)
+		data        = ctx.DB(ctxt)
+		logger      = ctx.Logger(ctxt)
+		processor   = ctx.Processor(ctxt)
 	)
 
-	client, err := clients.Client(identifier.ChainId)
+	client, err := clientsRepo.Client(identifier.ChainId)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid chain id")
+		return nil, status.Error(codes.InvalidArgument, "invalid chains id")
 	}
 	if err = validateIdentifier(identifier, client); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -53,10 +53,10 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 
 	deposit, err := processor.FetchDeposit(id)
 	if err != nil {
-		if bridgeTypes.IsPendingDepositError(err) {
+		if clients.IsPendingDepositError(err) {
 			return nil, apiTypes.ErrDepositPending
 		}
-		if bridgeTypes.IsInvalidDepositError(err) {
+		if clients.IsInvalidDepositError(err) {
 			// TODO: insert in db
 			return nil, status.Error(codes.InvalidArgument, "invalid deposit")
 		}
@@ -73,7 +73,7 @@ func SubmitTx(ctxt context.Context, identifier *types.DepositIdentifier) (*empty
 	return nil, nil
 }
 
-func validateIdentifier(identifier *types.DepositIdentifier, client bridgeTypes.Client) error {
+func validateIdentifier(identifier *types.DepositIdentifier, client clients.Client) error {
 	err := validation.Errors{
 		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
 		"chain_id": validation.Validate(identifier.ChainId, validation.Required),

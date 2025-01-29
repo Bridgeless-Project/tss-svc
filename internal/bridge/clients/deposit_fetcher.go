@@ -1,30 +1,29 @@
-package withdrawal
+package clients
 
 import (
 	"math/big"
 
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 )
 
-type Processor struct {
-	core    types.Bridger
-	clients bridgeTypes.ClientsRepository
+type DepositFetcher struct {
+	core    *connector.Connector
+	clients ClientsRepository
 }
 
-func NewProcessor(clients bridgeTypes.ClientsRepository, core types.Bridger) *Processor {
-	return &Processor{
+func NewDepositFetcher(clients ClientsRepository, core *connector.Connector) *DepositFetcher {
+	return &DepositFetcher{
 		clients: clients,
 		core:    core,
 	}
 }
 
-func (p *Processor) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
+func (p *DepositFetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	sourceClient, err := p.clients.Client(identifier.ChainId)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting source client")
+		return nil, errors.Wrap(err, "error getting source clients")
 	}
 
 	if !sourceClient.TransactionHashValid(identifier.TxHash) {
@@ -38,10 +37,10 @@ func (p *Processor) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, 
 
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting destination client")
+		return nil, errors.Wrap(err, "error getting destination clients")
 	}
 	if !dstClient.AddressValid(depositData.DestinationAddress) {
-		return nil, errors.Wrap(bridgeTypes.ErrInvalidReceiverAddress, depositData.DestinationAddress)
+		return nil, errors.Wrap(ErrInvalidReceiverAddress, depositData.DestinationAddress)
 	}
 
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
@@ -55,7 +54,7 @@ func (p *Processor) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, 
 
 	withdrawalAmount := transformAmount(depositData.DepositAmount, srcTokenInfo.Decimals, dstTokenInfo.Decimals)
 	if !dstClient.WithdrawalAmountValid(withdrawalAmount) {
-		return nil, bridgeTypes.ErrInvalidDepositedAmount
+		return nil, ErrInvalidDepositedAmount
 	}
 
 	deposit := depositData.ToNewDeposit(withdrawalAmount, dstTokenInfo.Address, dstTokenInfo.IsWrapped)

@@ -2,7 +2,7 @@ package common
 
 import (
 	apiTyoes "github.com/hyle-team/tss-svc/internal/api/types"
-	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
+	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
 )

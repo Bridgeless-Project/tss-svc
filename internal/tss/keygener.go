@@ -62,7 +62,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
-		getKeygenTreshold(len(p.sortedPartyIds)),
+		getKeygenThreshold(len(p.sortedPartyIds)),
 	)
 	out := make(chan tss.Message, OutChannelSize)
 	end := make(chan *keygen.LocalPartySaveData, EndChannelSize)
@@ -170,9 +170,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 			// https://github.com/bnb-chain/tss/blob/100c015447e557b0608c8c8cbd30730d5dac7fba/client/client.go#L288
 			to := routing.To
 			if to == nil || len(to) > 1 {
-				if err = p.broadcaster.Broadcast(&submitReq); err != nil {
-					p.logger.WithError(err).Error("failed to broadcast message")
-				}
+				p.broadcaster.Broadcast(&submitReq)
 				continue
 			}
 
@@ -184,6 +182,6 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 	}
 }
 
-func getKeygenTreshold(partiesNum int) int {
+func getKeygenThreshold(partiesNum int) int {
 	return int(float32(partiesNum) * 2 / 3)
 }

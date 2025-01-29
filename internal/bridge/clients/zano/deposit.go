@@ -3,7 +3,8 @@ package zano
 import (
 	"encoding/hex"
 	"encoding/json"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/db"
 
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
@@ -15,7 +16,7 @@ type destinationData struct {
 	ChainId string `json:"dst_net_id"`
 }
 
-func (p *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
+func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
 	transaction, _, err := p.GetTransaction(id.TxHash, true, false, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get transaction")
@@ -56,7 +57,7 @@ func (p *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	}, nil
 }
 
-func (p *client) validateConfirmations(txHeight uint64) error {
+func (p *Client) validateConfirmations(txHeight uint64) error {
 	if txHeight == 0 {
 		return bridgeTypes.ErrTxPending
 	}

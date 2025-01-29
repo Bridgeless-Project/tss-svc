@@ -2,10 +2,10 @@ package core
 
 import (
 	"context"
-	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
-	"github.com/hyle-team/tss-svc/internal/types"
-	"github.com/pkg/errors"
 	"strings"
+
+	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
+	"github.com/pkg/errors"
 )
 
 func (c *Connector) GetDestinationTokenInfo(
@@ -22,7 +22,7 @@ func (c *Connector) GetDestinationTokenInfo(
 	resp, err := c.querier.GetTokenPair(context.Background(), &req)
 	if err != nil {
 		if errors.Is(err, bridgetypes.ErrTokenPairNotFound.GRPCStatus().Err()) {
-			return bridgetypes.TokenInfo{}, types.ErrPairNotFound
+			return bridgetypes.TokenInfo{}, ErrPairNotFound
 		}
 
 		return bridgetypes.TokenInfo{}, errors.Wrap(err, "failed to get token pair")

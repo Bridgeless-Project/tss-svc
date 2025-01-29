@@ -7,14 +7,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/client/evm/contracts"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm/contracts"
 	"github.com/hyle-team/tss-svc/internal/db"
 
 	"github.com/pkg/errors"
 )
 
-func (p *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
+func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
 	txReceipt, from, err := p.GetTransactionReceipt(common.HexToHash(id.TxHash))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get transaction receipt")
@@ -93,7 +93,7 @@ func (p *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	return unpackedData, nil
 }
 
-func (p *client) validateConfirmations(receipt *types.Receipt) error {
+func (p *Client) validateConfirmations(receipt *types.Receipt) error {
 	curHeight, err := p.chain.Rpc.BlockNumber(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "failed to get current block number")

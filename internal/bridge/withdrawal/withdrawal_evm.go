@@ -3,7 +3,7 @@ package withdrawal
 import (
 	"bytes"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/client/evm"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -46,14 +46,14 @@ func (e EvmWithdrawalData) FromPayload(payload *anypb.Any) (DepositSigningData, 
 	}, nil
 }
 
-func NewEvmConstructor(client evm.BridgeClient) *EvmWithdrawalConstructor {
+func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
 	return &EvmWithdrawalConstructor{
 		client: client,
 	}
 }
 
 type EvmWithdrawalConstructor struct {
-	client evm.BridgeClient
+	client *evm.Client
 }
 
 func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (EvmWithdrawalData, error) {

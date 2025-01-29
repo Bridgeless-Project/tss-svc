@@ -13,7 +13,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/requests"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	types "github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/ape"

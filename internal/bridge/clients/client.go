@@ -1,15 +1,15 @@
-package types
+package clients
 
 import (
 	"math/big"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 
 var (
-	ErrChainNotSupported      = errors.New("chain not supported")
+	ErrChainNotSupported      = errors.New("chains not supported")
 	ErrTxPending              = errors.New("transaction is pending")
 	ErrTxFailed               = errors.New("transaction failed")
 	ErrTxNotFound             = errors.New("transaction not found")
@@ -52,7 +52,7 @@ const (
 )
 
 type Client interface {
-	Type() chain.Type
+	Type() chains.Type
 	ChainId() string
 	GetTransactionStatus(txHash string) (TransactionStatus, error)
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)

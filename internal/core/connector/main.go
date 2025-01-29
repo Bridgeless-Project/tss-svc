@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	clienttx "github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -15,12 +16,15 @@ import (
 	coretypes "github.com/hyle-team/bridgeless-core/types"
 	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
-var _ types.Bridger = &Connector{}
+var (
+	ErrPairNotFound                = errors.New("pair not found")
+	ErrTokenInfoNotFound           = errors.New("token info not found")
+	ErrTransactionAlreadySubmitted = errors.New("transaction already submitted")
+)
 
 type ConnectorSettings struct {
 	Account     core.Account `fig:"account_private_key,required"`

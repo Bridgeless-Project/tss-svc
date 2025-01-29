@@ -21,7 +21,7 @@ type WithdrawNativeContent struct {
 func NewWithdrawNativeContent(data db.Deposit) (*WithdrawNativeContent, error) {
 	destinationChainID, ok := new(big.Int).SetString(*data.WithdrawalChainId, 10)
 	if !ok {
-		return nil, errors.New("invalid chain id")
+		return nil, errors.New("invalid chains id")
 	}
 
 	withdrawalAmount, ok := new(big.Int).SetString(*data.WithdrawalAmount, 10)

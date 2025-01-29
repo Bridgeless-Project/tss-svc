@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
@@ -50,17 +50,14 @@ func (b *Broadcaster) send(ctx context.Context, msg *SubmitRequest, conn *grpc.C
 	return err
 }
 
-func (b *Broadcaster) Broadcast(msg *SubmitRequest) error {
+func (b *Broadcaster) Broadcast(msg *SubmitRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultConnectionTimeout+time.Second)
-	defer cancel()
 
-	errGroup, errCtx := errgroup.WithContext(ctx)
+	wg := sync.WaitGroup{}
+	wg.Add(len(b.parties))
 
+	go func() { wg.Wait(); cancel() }()
 	for _, party := range b.parties {
-		errGroup.Go(func() error {
-			return b.send(errCtx, msg, party.Connection())
-		})
+		go func() { defer wg.Done(); _ = b.send(ctx, msg, party.Connection()) }()
 	}
-
-	return errGroup.Wait()
 }

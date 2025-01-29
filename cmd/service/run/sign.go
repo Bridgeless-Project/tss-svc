@@ -8,9 +8,10 @@ import (
 
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/api"
-	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/client"
-	"github.com/hyle-team/tss-svc/internal/bridge/client/evm"
+	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/repository"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
 	pg "github.com/hyle-team/tss-svc/internal/db/postgres"
@@ -35,13 +36,13 @@ var signCmd = &cobra.Command{
 
 		logger := cfg.Log()
 		chains := cfg.Chains()
-		clientsRepo, err := client.NewRepository(chains)
+		clientsRepo, err := repository.NewClientsRepository(chains)
 		if err != nil {
 			return errors.Wrap(err, "failed to create clients repository")
 		}
 		db := pg.NewDepositsQ(cfg.DB())
 		connector := core.NewConnector(cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
-		pr := withdrawal.NewProcessor(clientsRepo, connector)
+		pr := clients.NewDepositFetcher(clientsRepo, connector)
 		srv := api.NewServer(
 			cfg.ApiGrpcListener(),
 			cfg.ApiHttpListener(),
@@ -85,7 +86,7 @@ var signCmd = &cobra.Command{
 
 			client, _ := clientsRepo.Client(chain.Id)
 			sessParams := cfg.TSSParams().SigningSessionParams()
-			constructor := withdrawal.NewEvmConstructor(client.(evm.BridgeClient))
+			constructor := withdrawal.NewEvmConstructor(client.(*evm.Client))
 			evmSession := session.NewEvmSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),

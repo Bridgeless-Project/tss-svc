@@ -1,15 +1,15 @@
 package zano
 
 import (
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	"strings"
 
+	"github.com/hyle-team/tss-svc/internal/bridge"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
-	"strings"
 )
 
-func (p *client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
+func (p *Client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
 	tx, inPool, err := p.GetTransaction(txHash, true, true, true)
 	if err != nil {
 		return bridgeTypes.TransactionStatusUnknown, err
@@ -24,7 +24,7 @@ func (p *client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionSta
 	return bridgeTypes.TransactionStatusSuccessful, nil
 }
 
-func (p *client) GetTransaction(txHash string, searchIn, searchOut, searchPool bool) (res *zanoTypes.Transaction, pool bool, err error) {
+func (p *Client) GetTransaction(txHash string, searchIn, searchOut, searchPool bool) (res *zanoTypes.Transaction, pool bool, err error) {
 	txHash = strings.TrimPrefix(txHash, bridge.HexPrefix)
 	resp, err := p.chain.Client.GetTransactions(txHash)
 	if err != nil {
