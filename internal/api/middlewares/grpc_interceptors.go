@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
 	"gitlab.com/distributed_lab/logan/v3"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -46,7 +46,7 @@ func RecoveryInterceptor(entry *logan.Entry) grpc.UnaryServerInterceptor {
 				rerr := errors.FromPanic(rvr)
 				entry.WithError(rerr).WithField("method", info.FullMethod).Error("handler panicked")
 
-				res, err = nil, apiTypes.ErrInternal
+				res, err = nil, status.Error(codes.Internal, "internal server error")
 			}
 		}()
 

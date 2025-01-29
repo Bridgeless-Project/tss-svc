@@ -1,11 +1,33 @@
 package common
 
 import (
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	apiTyoes "github.com/hyle-team/tss-svc/internal/api/types"
 	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
+
+func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Client) error {
+	err := validation.Errors{
+		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
+		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
+		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Min(0)),
+	}.Filter()
+	if err != nil {
+		return err
+	}
+
+	if !client.TransactionHashValid(identifier.TxHash) {
+		return errors.New("invalid transaction hash")
+	}
+
+	return nil
+}
 
 func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
 	result := &apiTyoes.CheckWithdrawalResponse{
@@ -43,17 +65,29 @@ func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
 	return result
 }
 
-func FormDepositIdentifier(identifier *types.DepositIdentifier, chainType chainTypes.Type) database.DepositIdentifier {
-	if chainType == chainTypes.TypeZano {
-		return database.DepositIdentifier{
-			TxHash:  identifier.TxHash,
-			ChainId: identifier.ChainId,
-		}
-	}
-
+func ToDbIdentifier(identifier *types.DepositIdentifier) database.DepositIdentifier {
 	return database.DepositIdentifier{
 		TxHash:  identifier.TxHash,
 		TxNonce: int(identifier.TxNonce),
 		ChainId: identifier.ChainId,
 	}
+}
+
+func ToExistenceCheck(identifier *types.DepositIdentifier, chainType chainTypes.Type) database.DepositExistenceCheck {
+	check := database.DepositExistenceCheck{
+		ByTxHash:  &identifier.TxHash,
+		ByChainId: &identifier.ChainId,
+	}
+
+	if chainType != chainTypes.TypeZano {
+		nonce := int(identifier.TxNonce)
+		check.ByTxNonce = &nonce
+	}
+
+	return check
+}
+
+func ProtoJsonMustMarshal(msg proto.Message) []byte {
+	raw, _ := protojson.Marshal(msg)
+	return raw
 }
