@@ -68,7 +68,9 @@ var signCmd = &cobra.Command{
 
 		go func() {
 			defer wg.Done()
-			sub.Run(ctx)
+			if err := sub.Run(ctx); err != nil {
+				logger.WithError(err).Error("failed to run subscriber")
+			}
 		}()
 		go func() {
 			defer wg.Done()
