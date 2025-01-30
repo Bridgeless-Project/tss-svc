@@ -16,7 +16,6 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Clie
 	err := validation.Errors{
 		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
 		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
-		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Required),
 	}.Filter()
 	if err != nil {
 		return err
