@@ -5,11 +5,14 @@ import (
 
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -22,7 +25,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		clientsRepo = ctx.Clients(ctxt)
 		data        = ctx.DB(ctxt)
 		logger      = ctx.Logger(ctxt)
-		processor   = ctx.Processor(ctxt)
+		processor   = ctx.Fetcher(ctxt)
 	)
 
 	client, err := clientsRepo.Client(identifier.ChainId)
@@ -33,7 +36,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	exists, err := data.Exists(common.ToExistenceCheck(identifier, client.Type()))
+	exists, err := data.Exists(db.ToExistenceCheck(identifier, client.Type()))
 	if err != nil {
 		logger.WithError(err).Error("failed to check if deposit exists")
 		return nil, ErrInternal
@@ -66,6 +69,15 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		logger.WithError(err).Error("failed to save deposit")
 		return nil, ErrInternal
 	}
+
+	raw, _ := anypb.New(&p2p.DepositDistributionData{DepositId: identifier})
+	// broadcasting in a separate goroutine to avoid request blocking
+	go ctx.Broadcaster(ctxt).Broadcast(&p2p.SubmitRequest{
+		Sender:    ctx.Self(ctxt).String(),
+		Type:      p2p.RequestType_RT_DEPOSIT_DISTRIBUTION,
+		SessionId: bridge.DepositAcceptorSessionIdentifier,
+		Data:      raw,
+	})
 
 	return nil, nil
 }

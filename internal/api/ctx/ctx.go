@@ -3,18 +3,23 @@ package ctx
 import (
 	"context"
 
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type ctxKey int
 
 const (
-	dbKey        ctxKey = iota
-	loggerKey    ctxKey = iota
-	clientsKey   ctxKey = iota
-	processorKey ctxKey = iota
+	dbKey          ctxKey = iota
+	loggerKey      ctxKey = iota
+	clientsKey     ctxKey = iota
+	processorKey   ctxKey = iota
+	broadcasterKey ctxKey = iota
+	selfKey        ctxKey = iota
 )
 
 func DBProvider(q db.DepositsQ) func(context.Context) context.Context {
@@ -50,12 +55,32 @@ func Clients(ctx context.Context) bridgeTypes.ClientsRepository {
 	return ctx.Value(clientsKey).(bridgeTypes.ClientsRepository)
 }
 
-func ProcessorProvider(processor *bridgeTypes.DepositFetcher) func(context.Context) context.Context {
+func FetcherProvider(processor *bridge.DepositFetcher) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, processorKey, processor)
 	}
 }
 
-func Processor(ctx context.Context) *bridgeTypes.DepositFetcher {
-	return ctx.Value(processorKey).(*bridgeTypes.DepositFetcher)
+func Fetcher(ctx context.Context) *bridge.DepositFetcher {
+	return ctx.Value(processorKey).(*bridge.DepositFetcher)
+}
+
+func BroadcasterProvider(b *p2p.Broadcaster) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, broadcasterKey, b)
+	}
+}
+
+func Broadcaster(ctx context.Context) *p2p.Broadcaster {
+	return ctx.Value(broadcasterKey).(*p2p.Broadcaster)
+}
+
+func SelfProvider(self core.Address) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, selfKey, self)
+	}
+}
+
+func Self(ctx context.Context) core.Address {
+	return ctx.Value(selfKey).(core.Address)
 }

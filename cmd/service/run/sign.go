@@ -8,8 +8,8 @@ import (
 
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/api"
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/repository"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
@@ -37,21 +37,6 @@ var signCmd = &cobra.Command{
 
 		logger := cfg.Log()
 		chains := cfg.Chains()
-		clientsRepo, err := repository.NewClientsRepository(chains)
-		if err != nil {
-			return errors.Wrap(err, "failed to create clients repository")
-		}
-		db := pg.NewDepositsQ(cfg.DB())
-		connector := core.NewConnector(cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
-		pr := clients.NewDepositFetcher(clientsRepo, connector)
-		srv := api.NewServer(
-			cfg.ApiGrpcListener(),
-			cfg.ApiHttpListener(),
-			db,
-			logger.WithField("component", "server"),
-			clientsRepo,
-			pr,
-		)
 		storage := vault.NewStorage(cfg.VaultClient())
 		account, err := storage.GetCoreAccount()
 		if err != nil {
@@ -61,20 +46,37 @@ var signCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to get tss share")
 		}
+		clientsRepo, err := repository.NewClientsRepository(chains)
+		if err != nil {
+			return errors.Wrap(err, "failed to create clients repository")
+		}
+		db := pg.NewDepositsQ(cfg.DB())
+		connector := core.NewConnector(cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
+		pr := bridge.NewDepositFetcher(clientsRepo, connector)
+		srv := api.NewServer(
+			cfg.ApiGrpcListener(),
+			cfg.ApiHttpListener(),
+			db,
+			logger.WithField("component", "server"),
+			clientsRepo,
+			pr,
+			p2p.NewBroadcaster(cfg.Parties()),
+			account.CosmosAddress(),
+		)
 
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 
 		go func() {
 			defer wg.Done()
-			if err := srv.RunHTTP(context.Background()); err != nil {
+			if err := srv.RunHTTP(ctx); err != nil {
 				logger.WithError(err).Error("rest gateway error occurred")
 			}
 		}()
 
 		go func() {
 			defer wg.Done()
-			if err := srv.RunGRPC(context.Background()); err != nil {
+			if err := srv.RunGRPC(ctx); err != nil {
 				logger.WithError(err).Error("grpc server error occurred")
 			}
 		}()
@@ -110,6 +112,21 @@ var signCmd = &cobra.Command{
 
 			sessionManager.Add(evmSession)
 		}
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			distributorSession := bridge.NewDepositAcceptorSession(
+				cfg.Parties(),
+				pr,
+				clientsRepo,
+				db,
+				logger.WithField("component", "deposit_acceptor_session"),
+			)
+			sessionManager.Add(distributorSession)
+			distributorSession.Run(ctx)
+		}()
 
 		wg.Add(1)
 		go func() {

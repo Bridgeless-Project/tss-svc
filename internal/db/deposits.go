@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
+	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -52,6 +53,20 @@ type DepositExistenceCheck struct {
 	ByTxHash  *string
 	ByTxNonce *int
 	ByChainId *string
+}
+
+func ToExistenceCheck(identifier *types.DepositIdentifier, chainType chainTypes.Type) DepositExistenceCheck {
+	check := DepositExistenceCheck{
+		ByTxHash:  &identifier.TxHash,
+		ByChainId: &identifier.ChainId,
+	}
+
+	if chainType != chainTypes.TypeZano {
+		nonce := int(identifier.TxNonce)
+		check.ByTxNonce = &nonce
+	}
+
+	return check
 }
 
 type DepositsSelector struct {

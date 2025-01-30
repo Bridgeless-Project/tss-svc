@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -58,6 +59,11 @@ func (b *Broadcaster) Broadcast(msg *SubmitRequest) {
 
 	go func() { wg.Wait(); cancel() }()
 	for _, party := range b.parties {
-		go func() { defer wg.Done(); _ = b.send(ctx, msg, party.Connection()) }()
+		go func() {
+			defer wg.Done()
+			if err := b.send(ctx, msg, party.Connection()); err != nil {
+				fmt.Println("failed to send message", msg.Type, "because", err.Error())
+			}
+		}()
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -38,7 +38,7 @@ func New[T withdrawal.DepositSigningData](
 	party LocalConsensusParty,
 	parties []p2p.Party,
 	db db.DepositsQ,
-	processor *clients.DepositFetcher,
+	processor *bridge.DepositFetcher,
 	constructor withdrawal.Constructor[T],
 	logger *logan.Entry,
 ) *Consensus[T] {
@@ -77,7 +77,7 @@ type Consensus[T withdrawal.DepositSigningData] struct {
 	threshold int
 
 	db        db.DepositsQ
-	processor *clients.DepositFetcher
+	processor *bridge.DepositFetcher
 
 	constructor withdrawal.Constructor[T]
 

@@ -21,6 +21,7 @@ enum RequestType {
   RT_PROPOSAL = 2;
   RT_ACCEPTANCE = 3;
   RT_SIGN_START = 4;
+  RT_DEPOSIT_DISTRIBUTION = 5;
 }
 
 service P2P {
@@ -55,4 +56,8 @@ message AcceptanceData {
 message EvmProposalData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
   bytes sigData = 2;
+}
+
+message DepositDistributionData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 }
