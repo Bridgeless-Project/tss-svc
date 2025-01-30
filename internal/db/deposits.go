@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -27,7 +26,7 @@ type DepositsQ interface {
 	Get(identifier DepositIdentifier) (*Deposit, error)
 	GetWithSelector(selector DepositsSelector) (*Deposit, error)
 
-	UpdateWithdrawalTx(DepositIdentifier, string) error
+	UpdateWithdrawalDetails(DepositIdentifier, string, string) error
 	UpdateSignature(DepositIdentifier, string) error
 	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
 
@@ -77,24 +76,6 @@ type Deposit struct {
 	IsWrappedToken bool `structs:"is_wrapped_token" db:"is_wrapped_token"`
 
 	Signature *string `structs:"signature" db:"signature"`
-}
-
-func (d Deposit) ToTransaction() bridgetypes.Transaction {
-	return bridgetypes.Transaction{
-		DepositTxHash:    d.TxHash,
-		DepositTxIndex:   uint64(d.TxNonce),
-		DepositChainId:   d.ChainId,
-		WithdrawalTxHash: stringOrEmpty(d.WithdrawalTxHash),
-		Depositor:        stringOrEmpty(d.Depositor),
-		// TODO: separate for withdrawal/withdrawal amount when added to bridge core
-		Amount:            d.WithdrawalAmount,
-		DepositToken:      d.DepositToken,
-		Receiver:          d.Receiver,
-		WithdrawalToken:   d.WithdrawalToken,
-		WithdrawalChainId: d.WithdrawalChainId,
-		DepositBlock:      uint64(d.DepositBlock),
-		Signature:         stringOrEmpty(d.Signature),
-	}
 }
 
 type DepositData struct {

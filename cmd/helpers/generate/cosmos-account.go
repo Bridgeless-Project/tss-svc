@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	secp256k1 "github.com/hyle-team/bridgeless-core/crypto/ethsecp256k1"
+	secp256k1 "github.com/hyle-team/bridgeless-core/v12/crypto/ethsecp256k1"
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"

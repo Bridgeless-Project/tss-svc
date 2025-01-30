@@ -1,7 +1,7 @@
 package types
 
 import (
-	coretypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
+	coretypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
 )
 

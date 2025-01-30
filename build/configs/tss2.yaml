@@ -22,11 +22,11 @@ chains:
       ## Number of confirmations required for the withdrawal to be considered final
       confirmations: 1
       type: "evm"
-#    - id: "35442"
-#      rpc: "https://rpc.qdevnet.org/"
-#      bridge_addresses: "0x4445b315a629d5f1964d1055502d2905870b81d1"
-#      type: "evm"
-#      confirmations: 1
+    - id: "35442"
+      rpc: "https://rpc.qdevnet.org/"
+      bridge_addresses: "0x4445b315a629d5f1964d1055502d2905870b81d1"
+      type: "evm"
+      confirmations: 1
 
 # self: bridge15p6cxd3a92rtcky0l8wf6hl999ys5vmtg6x2as
 parties:
@@ -40,10 +40,10 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-28 13:57:01"
+    start_time: "2025-01-30 00:35:38"
     session_id: 123
   signing:
-    start_time: "2025-01-28 13:57:01"
+    start_time: "2025-01-30 00:35:38"
     session_id: 123
     threshold: 2
 core_connector:
@@ -56,3 +56,6 @@ core_connector:
     denom: "abridge"
     min_gas_price: 0
 
+# Configurating subscription on Tendermint events
+subscriber:
+  addr: tcp://localhost:26657

@@ -4,7 +4,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	secp256k1 "github.com/hyle-team/bridgeless-core/crypto/ethsecp256k1"
+	secp256k1 "github.com/hyle-team/bridgeless-core/v12/crypto/ethsecp256k1"
 	"github.com/pkg/errors"
 )
 

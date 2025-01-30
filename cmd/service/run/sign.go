@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"github.com/hyle-team/tss-svc/internal/core/subscriber"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -41,6 +42,7 @@ var signCmd = &cobra.Command{
 		}
 		db := pg.NewDepositsQ(cfg.DB())
 		connector := core.NewConnector(cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
+		sub := subscriber.NewSubmitSubscriber(db, cfg.Client(), logger)
 		pr := withdrawal.NewProcessor(clientsRepo, connector)
 		srv := api.NewServer(
 			cfg.ApiGrpcListener(),
@@ -61,8 +63,12 @@ var signCmd = &cobra.Command{
 		}
 
 		wg := sync.WaitGroup{}
-		wg.Add(2)
+		wg.Add(3)
 
+		go func() {
+			defer wg.Done()
+			sub.Run(ctx)
+		}()
 		go func() {
 			defer wg.Done()
 			if err := srv.RunHTTP(context.Background()); err != nil {
