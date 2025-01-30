@@ -13,7 +13,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/requests"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	types "github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/ape"
@@ -50,7 +50,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 
 	_, err = requests.CheckTx(ctxt, &types.DepositIdentifier{
 		TxHash:  depositIdentifier.TxHash,
-		TxNonce: int32(depositIdentifier.TxNonce),
+		TxNonce: uint32(depositIdentifier.TxNonce),
 		ChainId: depositIdentifier.ChainId,
 	})
 	if err != nil {

@@ -1,16 +1,15 @@
-package types
+package clients
 
 import (
 	"math/big"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 
 var (
-	ErrChainNotSupported      = errors.New("chain not supported")
-	ErrInvalidProxyType       = errors.New("invalid proxy type")
+	ErrChainNotSupported      = errors.New("chains not supported")
 	ErrTxPending              = errors.New("transaction is pending")
 	ErrTxFailed               = errors.New("transaction failed")
 	ErrTxNotFound             = errors.New("transaction not found")
@@ -24,6 +23,24 @@ var (
 	ErrUnsupportedContract    = errors.New("unsupported contract")
 )
 
+func IsPendingDepositError(err error) bool {
+	return errors.Is(err, ErrTxPending) ||
+		errors.Is(err, ErrTxNotFound) ||
+		errors.Is(err, ErrTxNotConfirmed)
+}
+
+func IsInvalidDepositError(err error) bool {
+	return errors.Is(err, ErrChainNotSupported) ||
+		errors.Is(err, ErrTxFailed) ||
+		errors.Is(err, ErrDepositNotFound) ||
+		errors.Is(err, ErrInvalidReceiverAddress) ||
+		errors.Is(err, ErrInvalidDepositedAmount) ||
+		errors.Is(err, ErrInvalidScriptPubKey) ||
+		errors.Is(err, ErrFailedUnpackLogs) ||
+		errors.Is(err, ErrUnsupportedEvent) ||
+		errors.Is(err, ErrUnsupportedContract)
+}
+
 type TransactionStatus int8
 
 const (
@@ -35,7 +52,7 @@ const (
 )
 
 type Client interface {
-	Type() chain.Type
+	Type() chains.Type
 	ChainId() string
 	GetTransactionStatus(txHash string) (TransactionStatus, error)
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)

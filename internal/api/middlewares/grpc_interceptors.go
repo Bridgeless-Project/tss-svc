@@ -1,13 +1,14 @@
-package api
+package middlewares
 
 import (
 	"context"
+	"time"
+
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
 	"gitlab.com/distributed_lab/logan/v3"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
-	"time"
 )
 
 func ContextExtenderInterceptor(extenders ...func(context.Context) context.Context) grpc.UnaryServerInterceptor {

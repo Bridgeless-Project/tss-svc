@@ -22,28 +22,28 @@ type WithdrawERC20Content struct {
 }
 
 func NewWithdrawERC20Content(data db.Deposit) (*WithdrawERC20Content, error) {
-	destinationChainID, ok := new(big.Int).SetString(data.WithdrawalChainId, 10)
+	destinationChainID, ok := new(big.Int).SetString(*data.WithdrawalChainId, 10)
 	if !ok {
-		return nil, errors.New("invalid chain id")
+		return nil, errors.New("invalid chains id")
 	}
 
-	withdrawalAmount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)
+	withdrawalAmount, ok := new(big.Int).SetString(*data.WithdrawalAmount, 10)
 	if !ok {
 		return nil, errors.New("invalid withdrawal amount")
 	}
 
-	if !common.IsHexAddress(data.Receiver) {
+	if !common.IsHexAddress(*data.Receiver) {
 		return nil, errors.New("invalid destination address")
 	}
 
 	return &WithdrawERC20Content{
 		Amount:                  ToBytes32(withdrawalAmount.Bytes()),
-		Receiver:                hexutil.MustDecode(data.Receiver),
+		Receiver:                hexutil.MustDecode(*data.Receiver),
 		TxHash:                  hexutil.MustDecode(data.TxHash),
 		TxNonce:                 IntToBytes32(data.TxNonce),
 		ChainID:                 ToBytes32(destinationChainID.Bytes()),
-		DestinationTokenAddress: common.HexToAddress(data.WithdrawalToken).Bytes(),
-		IsWrapped:               BoolToBytes(data.IsWrappedToken),
+		DestinationTokenAddress: common.HexToAddress(*data.WithdrawalToken).Bytes(),
+		IsWrapped:               BoolToBytes(*data.IsWrappedToken),
 	}, nil
 }
 

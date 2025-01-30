@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -37,7 +38,7 @@ func New[T withdrawal.DepositSigningData](
 	party LocalConsensusParty,
 	parties []p2p.Party,
 	db db.DepositsQ,
-	processor *withdrawal.Processor,
+	processor *clients.DepositFetcher,
 	constructor withdrawal.Constructor[T],
 	logger *logan.Entry,
 ) *Consensus[T] {
@@ -76,7 +77,7 @@ type Consensus[T withdrawal.DepositSigningData] struct {
 	threshold int
 
 	db        db.DepositsQ
-	processor *withdrawal.Processor
+	processor *clients.DepositFetcher
 
 	constructor withdrawal.Constructor[T]
 
@@ -159,6 +160,8 @@ func (c *Consensus[T]) determineProposer() core.Address {
 
 	generator := deterministicRandSource(c.sessionId)
 	proposerIdx := int(generator.Uint64() % uint64(sortedIds.Len()))
+
+	c.logger.Info(fmt.Sprintf("proposerIdx: %d", proposerIdx))
 
 	return core.AddrFromPartyId(sortedIds[proposerIdx])
 }

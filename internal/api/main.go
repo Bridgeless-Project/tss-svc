@@ -12,8 +12,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
-	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -43,7 +42,7 @@ func NewServer(
 	db db.DepositsQ,
 	logger *logan.Entry,
 	clients bridgeTypes.ClientsRepository,
-	processor *withdrawal.Processor,
+	processor *bridgeTypes.DepositFetcher,
 ) apiTypes.Server {
 	return &server{
 		grpc:   grpc,
@@ -116,10 +115,10 @@ func (s *server) httpRouter(ctxt context.Context) http.Handler {
 func (s *server) grpcServer() *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			ContextExtenderInterceptor(s.ctxExtenders...),
-			LoggerInterceptor(s.logger),
+			middlewares.ContextExtenderInterceptor(s.ctxExtenders...),
+			middlewares.LoggerInterceptor(s.logger),
 			// RecoveryInterceptor should be the last one
-			RecoveryInterceptor(s.logger),
+			middlewares.RecoveryInterceptor(s.logger),
 		),
 	)
 

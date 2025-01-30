@@ -6,14 +6,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
-
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/pkg/errors"
 )
 
 const notFoundErrorMessage = "not found"
 
-func (p *client) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, *common.Address, error) {
+func (p *Client) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, *common.Address, error) {
 	ctx := context.Background()
 	tx, pending, err := p.chain.Rpc.TransactionByHash(ctx, txHash)
 	if err != nil {
@@ -42,7 +41,7 @@ func (p *client) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, *com
 	return receipt, &from, nil
 }
 
-func (p *client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
+func (p *Client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
 	receipt, _, err := p.GetTransactionReceipt(common.HexToHash(txHash))
 	if err != nil {
 		if errors.Is(err, bridgeTypes.ErrTxPending) {

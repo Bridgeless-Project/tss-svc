@@ -11,12 +11,12 @@ import (
 const defaultHrp = "bridge"
 
 type Account struct {
-	privKey *secp256k1.PrivKey
-	addr    Address
+	prv  *secp256k1.PrivKey
+	addr Address
 }
 
-func NewAccount(privKey string, hrp ...string) (*Account, error) {
-	key := &secp256k1.PrivKey{Key: hexutil.MustDecode(privKey)}
+func NewAccount(prv string, hrp ...string) (*Account, error) {
+	key := &secp256k1.PrivKey{Key: hexutil.MustDecode(prv)}
 
 	prefix := defaultHrp
 	if len(hrp) > 0 {
@@ -29,17 +29,17 @@ func NewAccount(privKey string, hrp ...string) (*Account, error) {
 	}
 
 	return &Account{
-		privKey: key,
-		addr:    Address(address),
+		prv:  key,
+		addr: Address(address),
 	}, nil
 }
 
 func (a *Account) PrivateKey() *secp256k1.PrivKey {
-	return a.privKey
+	return a.prv
 }
 
 func (a *Account) PublicKey() types.PubKey {
-	return a.privKey.PubKey()
+	return a.prv.PubKey()
 }
 
 func (a *Account) CosmosAddress() Address {

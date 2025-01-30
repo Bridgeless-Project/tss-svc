@@ -1,4 +1,4 @@
-package chain
+package chains
 
 import (
 	"github.com/ethereum/go-ethereum/common"
@@ -16,7 +16,7 @@ type EvmChain struct {
 
 func (c Chain) Evm() EvmChain {
 	if c.Type != TypeEVM {
-		panic("chain is not EVM")
+		panic("chains is not EVM")
 	}
 
 	chain := EvmChain{
@@ -24,7 +24,7 @@ func (c Chain) Evm() EvmChain {
 		Confirmations: c.Confirmations}
 
 	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(figure.EthereumHooks).Please(); err != nil {
-		panic(errors.Wrap(err, "failed to obtain Ethereum client"))
+		panic(errors.Wrap(err, "failed to obtain Ethereum clients"))
 	}
 	if err := figure.Out(&chain.BridgeAddress).FromInterface(c.BridgeAddresses).With(figure.EthereumHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain bridge addresses"))

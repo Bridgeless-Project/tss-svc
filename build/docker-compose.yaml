@@ -73,7 +73,7 @@ services:
       MOUNT_PATH: tss1
     volumes:
       - ./configs/tss1.yaml:/config.yaml
-      - ./shares/preparams1.json:/preparams.json
+      - ./configs/shares/preparams1.json:/preparams.json
     entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
@@ -93,7 +93,7 @@ services:
       MOUNT_PATH: tss2
     volumes:
       - ./configs/tss2.yaml:/config.yaml
-      - ./shares/preparams2.json:/preparams.json
+      - ./configs/shares/preparams2.json:/preparams.json
     entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
@@ -113,7 +113,7 @@ services:
       MOUNT_PATH: tss3
     volumes:
       - ./configs/tss3.yaml:/config.yaml
-      - ./shares/preparams3.json:/preparams.json
+      - ./configs/shares/preparams3.json:/preparams.json
     entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:

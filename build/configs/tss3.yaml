@@ -12,7 +12,7 @@ listeners:
 
 
 chains:
-  list: 
+  list:
     ## Chain ID
     - id: "35443"
       ## RPC endpoint
@@ -22,7 +22,11 @@ chains:
       ## Number of confirmations required for the withdrawal to be considered final
       confirmations: 1
       type: "evm"
-
+    - id: "35442"
+      rpc: "https://rpc.qdevnet.org/"
+      bridge_addresses: "0x4445b315a629d5f1964d1055502d2905870b81d1"
+      type: "evm"
+      confirmations: 1
 
 # self: bridge1sclksr8vnvlzh4h9778uvar53e9r25dfj2xkey
 parties:

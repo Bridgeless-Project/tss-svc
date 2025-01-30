@@ -47,11 +47,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 		proposalReq.Data = signData.ToPayload()
 	}
 
-	// TODO: should not be dependent on the error
-	if err := c.broadcaster.Broadcast(proposalReq); err != nil {
-		c.result.err = errors.Wrap(err, "failed to broadcast proposal")
-		return
-	}
+	c.broadcaster.Broadcast(proposalReq)
 
 	// nothing to sign for this session
 	if depositToSign == nil {
@@ -80,22 +76,19 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 
 			// Selecting T signers (excluding proposer)
 			signers := getSignersSet(possibleSigners, c.threshold, deterministicRandSource(c.sessionId))
-
 			c.result.signers = make([]p2p.Party, len(signers))
 			for idx, party := range signers {
 				c.result.signers[idx] = c.parties[party]
 			}
 
-			// TODO: notify without err
 			signStartData, _ := anypb.New(&p2p.SignStartData{Parties: append(signersToStr(signers), c.self.String())})
-			if err := p2p.NewBroadcaster(c.result.signers).Broadcast(&p2p.SubmitRequest{
+			msg := &p2p.SubmitRequest{
 				Sender:    c.self.String(),
 				SessionId: c.sessionId,
 				Type:      p2p.RequestType_RT_SIGN_START,
 				Data:      signStartData,
-			}); err != nil {
-				c.result.err = errors.Wrap(err, "failed to broadcast sign start message")
 			}
+			p2p.NewBroadcaster(c.result.signers).Broadcast(msg)
 
 			return
 		case msg := <-c.msgs:
@@ -109,7 +102,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			}
 
 			result := &p2p.AcceptanceData{}
-			if err := msg.Data.UnmarshalTo(result); err != nil {
+			if err = msg.Data.UnmarshalTo(result); err != nil {
 				c.logger.Warn(fmt.Sprintf("failed to parse acceptance data from %s", msg.Sender))
 				continue
 			}

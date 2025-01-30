@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
+func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 	if amount.Cmp(bridge.ZeroAmount) != 1 {
 		return false
 	}
@@ -17,20 +17,20 @@ func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
-func (p *client) EmitAssetUnsigned(data db.Deposit) (*UnsignedTransaction, error) {
-	amount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)
+func (p *Client) EmitAssetUnsigned(data db.Deposit) (*UnsignedTransaction, error) {
+	amount, ok := new(big.Int).SetString(*data.WithdrawalAmount, 10)
 	if !ok {
 		return nil, errors.New("failed to convert withdrawal amount")
 	}
 
 	destination := zanoTypes.Destination{
-		Address: data.Receiver,
+		Address: *data.Receiver,
 		Amount:  amount.Uint64(),
 		// leaving empty here as this field overrides by function asset parameter
 		AssetID: "",
 	}
 
-	raw, err := p.chain.Client.EmitAsset(data.WithdrawalToken, destination)
+	raw, err := p.chain.Client.EmitAsset(*data.WithdrawalToken, destination)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to emit unsigned asset")
 	}
@@ -53,7 +53,7 @@ func (p *client) EmitAssetUnsigned(data db.Deposit) (*UnsignedTransaction, error
 	}, nil
 }
 
-func (p *client) EmitAssetSigned(signedTx SignedTransaction) (string, error) {
+func (p *Client) EmitAssetSigned(signedTx SignedTransaction) (string, error) {
 	_, err := p.chain.Client.SendExtSignedAssetTX(
 		signedTx.Signature,
 		signedTx.ExpectedTxHash,

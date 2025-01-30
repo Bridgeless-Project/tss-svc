@@ -8,11 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/client/evm/contracts"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/types"
-	"github.com/hyle-team/tss-svc/internal/db"
-
+	"github.com/hyle-team/tss-svc/internal/bridge/chains"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm/contracts"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -27,20 +24,15 @@ var events = []string{
 	EventDepositedERC20,
 }
 
-type BridgeClient interface {
-	bridgeTypes.Client
-	GetSignHash(deposit db.Deposit) ([]byte, error)
-}
-
-type client struct {
-	chain         chain.EvmChain
+type Client struct {
+	chain         chains.EvmChain
 	contractABI   abi.ABI
 	depositEvents []abi.Event
 	logger        *logan.Entry
 }
 
-// NewBridgeClient creates a new bridge Client for the given chain.
-func NewBridgeClient(chain chain.EvmChain) BridgeClient {
+// NewBridgeClient creates a new bridge Client for the given chains.
+func NewBridgeClient(chain chains.EvmChain) *Client {
 	bridgeAbi, err := abi.JSON(strings.NewReader(contracts.BridgeMetaData.ABI))
 	if err != nil {
 		panic(errors.Wrap(err, "failed to parse bridge ABI"))
@@ -55,22 +47,22 @@ func NewBridgeClient(chain chain.EvmChain) BridgeClient {
 		depositEvents[i] = depositEvent
 	}
 
-	return &client{
+	return &Client{
 		chain:         chain,
 		contractABI:   bridgeAbi,
 		depositEvents: depositEvents,
 	}
 }
 
-func (p *client) ChainId() string {
+func (p *Client) ChainId() string {
 	return p.chain.Id
 }
 
-func (p *client) Type() chain.Type {
-	return chain.TypeEVM
+func (p *Client) Type() chains.Type {
+	return chains.TypeEVM
 }
 
-func (p *client) getDepositLogType(log *types.Log) string {
+func (p *Client) getDepositLogType(log *types.Log) string {
 	if log == nil || len(log.Topics) == 0 {
 		return ""
 	}
@@ -85,10 +77,10 @@ func (p *client) getDepositLogType(log *types.Log) string {
 	return ""
 }
 
-func (p *client) AddressValid(addr string) bool {
+func (p *Client) AddressValid(addr string) bool {
 	return common.IsHexAddress(addr)
 }
 
-func (p *client) TransactionHashValid(hash string) bool {
+func (p *Client) TransactionHashValid(hash string) bool {
 	return bridge.DefaultTransactionHashPattern.MatchString(hash)
 }

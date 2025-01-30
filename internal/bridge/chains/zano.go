@@ -1,4 +1,4 @@
-package chain
+package chains
 
 import (
 	"reflect"
@@ -17,7 +17,7 @@ type Zano struct {
 
 func (c Chain) Zano() Zano {
 	if c.Type != TypeZano {
-		panic("chain is not Zano")
+		panic("chains is not Zano")
 	}
 
 	chain := Zano{
@@ -29,7 +29,7 @@ func (c Chain) Zano() Zano {
 		panic(errors.Wrap(err, "failed to decode zano receivers"))
 	}
 	if err := figure.Out(&chain.Client).FromInterface(c.Rpc).With(zanoHooks).Please(); err != nil {
-		panic(errors.Wrap(err, "failed to decode zano client"))
+		panic(errors.Wrap(err, "failed to decode zano clients"))
 	}
 
 	return chain

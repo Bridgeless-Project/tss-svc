@@ -80,7 +80,6 @@ func (p *SignParty) Run(ctx context.Context) {
 		return
 	}
 
-	p.logger.Infof("Running TSS signing on set: %v", p.parties)
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
@@ -191,18 +190,11 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, 
 
 			destination := routing.To
 			if destination == nil || len(destination) > 1 {
-				if err = p.broadcaster.Broadcast(&submitReq); err != nil {
-					p.logger.WithError(err).Error("failed to broadcast message")
-				}
+				p.broadcaster.Broadcast(&submitReq)
 				continue
 			}
 
 			dst := core.AddrFromPartyId(destination[0])
-			if len(dst.String()) == 0 {
-				p.logger.WithError(err).Error("failed to get destination address")
-				continue
-			}
-
 			if err = p.broadcaster.Send(&submitReq, dst); err != nil {
 				p.logger.WithError(err).Error("failed to send message")
 			}

@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/client/evm/operations"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm/operations"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
@@ -13,7 +13,7 @@ type Operation interface {
 	CalculateHash() []byte
 }
 
-func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
+func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 	if amount.Cmp(bridge.ZeroAmount) != 1 {
 		return false
 	}
@@ -21,11 +21,11 @@ func (p *client) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
-func (p *client) GetSignHash(data db.Deposit) ([]byte, error) {
+func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	var operation Operation
 	var err error
 
-	if data.Receiver == bridge.DefaultNativeTokenAddress {
+	if *data.Receiver == bridge.DefaultNativeTokenAddress {
 		operation, err = operations.NewWithdrawNativeContent(data)
 	} else {
 		operation, err = operations.NewWithdrawERC20Content(data)

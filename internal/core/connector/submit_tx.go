@@ -1,10 +1,11 @@
 package core
 
 import (
+	"strings"
+
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 func (c *Connector) SubmitDeposits(depositTxs ...bridgetypes.Transaction) error {
@@ -18,7 +19,7 @@ func (c *Connector) SubmitDeposits(depositTxs ...bridgetypes.Transaction) error 
 		return nil
 	}
 	if strings.Contains(err.Error(), bridgetypes.ErrTranscationAlreadySubmitted.Error()) {
-		return types.ErrTransactionAlreadySubmitted
+		return ErrTransactionAlreadySubmitted
 	}
 
 	return errors.Wrap(err, "failed to submit deposits")

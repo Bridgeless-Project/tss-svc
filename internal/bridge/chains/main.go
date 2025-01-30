@@ -1,4 +1,4 @@
-package chain
+package chains
 
 import (
 	"github.com/pkg/errors"
@@ -31,7 +31,7 @@ var typesMap = map[Type]struct{}{
 
 func (c Type) Validate() error {
 	if _, ok := typesMap[c]; !ok {
-		return errors.New("invalid chain type")
+		return errors.New("invalid chains type")
 	}
 
 	return nil

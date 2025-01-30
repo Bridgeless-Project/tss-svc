@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -33,7 +34,7 @@ type EvmSigningSession struct {
 	params SigningSessionParams
 	logger *logan.Entry
 
-	processor   *withdrawal.Processor
+	processor   *clients.DepositFetcher
 	constructor *withdrawal.EvmWithdrawalConstructor
 
 	signingParty   *tss.SignParty
@@ -62,7 +63,7 @@ func NewEvmSigningSession(
 	}
 }
 
-func (s *EvmSigningSession) WithProcessor(processor *withdrawal.Processor) *EvmSigningSession {
+func (s *EvmSigningSession) WithProcessor(processor *clients.DepositFetcher) *EvmSigningSession {
 	s.processor = processor
 	return s
 }
