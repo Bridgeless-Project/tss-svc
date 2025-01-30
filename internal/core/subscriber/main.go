@@ -36,12 +36,11 @@ func NewSubmitSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan
 	}
 }
 
-func (s *Subscriber) Run(ctx context.Context) {
-	s.log.Info("starting subscriber")
-	s.log.Info("Query is ", s.query)
+func (s *Subscriber) Run(ctx context.Context) error {
+
 	out, err := s.client.Subscribe(ctx, OpServiceName, s.query, OpPoolSize)
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "subscriber init failed")
 	}
 
 	go func() {
@@ -56,7 +55,8 @@ func (s *Subscriber) Run(ctx context.Context) {
 				return
 			case c, ok := <-out:
 				if !ok {
-					s.log.Fatal("chanel closed")
+					s.log.Warn("chanel closed, stopping receiving messages")
+					return
 				}
 				deposit, err := parseSubmittedDeposit(c.Events)
 				if err != nil {
@@ -72,29 +72,35 @@ func (s *Subscriber) Run(ctx context.Context) {
 				// if deposit does not exist in db insert it
 				if tx == nil {
 					s.log.Info("Found new submitted deposit")
-					if _, err = s.db.Insert(*deposit); err != nil {
-						s.log.WithError(err).Error("Failed to insert deposit")
-						continue
-					}
-					if err = s.db.UpdateWithdrawalDetails(deposit.DepositIdentifier, *deposit.WithdrawalTxHash, *deposit.Signature); err != nil {
-						s.log.WithError(err).Error("Failed to update deposit withdrawal details")
-						continue
+					if _, err = s.db.InsertProcessedDeposit(*deposit); err != nil {
+						s.log.WithError(err).Error("Failed to insert new deposit")
 					}
 					continue
 				}
 
 				// if deposit exists and pending or processing update signature,withdrawal tx hash and status
-				s.log.Info("Found existing deposit submitted to core")
-				if tx.WithdrawalStatus == types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING || tx.WithdrawalStatus == types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING {
+				switch tx.WithdrawalStatus {
+				case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED:
+					s.log.Info("skipping processed deposit")
+				case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING:
+					s.log.Info("found existing deposit submitted to core")
 					if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, *deposit.WithdrawalTxHash, *deposit.Signature); err != nil {
 						s.log.WithError(err).Error("Failed to update deposit withdrawal details")
-						continue
 					}
+				case types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING:
+					s.log.Info("found submitted pending deposit")
+					if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, *deposit.WithdrawalTxHash, *deposit.Signature); err != nil {
+						s.log.WithError(err).Error("Failed to update deposit withdrawal details")
+					}
+				default:
+					s.log.Warnf("Received unknown deposit status: %v", tx.WithdrawalStatus)
 				}
 
 			}
 		}
 	}()
+
+	return nil
 }
 
 func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, error) {

@@ -10,7 +10,7 @@ replace (
 	github.com/cosmos/iavl => github.com/cosmos/iavl v0.19.6
 	// bridge cosmos sdk protobuf fix
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/hyle-team/bridgeless-core/v12 => /Users/em_dl/Work/bridgeless-core
+	github.com/hyle-team/bridgeless-core/v12 => github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250128220807-1943d84af686
 	// bridge cosmos sdk comebft change
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0
