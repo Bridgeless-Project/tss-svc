@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
-
+	"math/big"
 
 	"github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
@@ -87,7 +87,6 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		WithdrawalTxHash: *d.WithdrawalTxHash,
 		Depositor:        stringOrEmpty(d.Depositor),
 		// TODO: separate for deposit/withdrawal amount when added to bridge core
-		Amount:            *d.WithdrawalAmount,
 		DepositToken:      *d.DepositToken,
 		Receiver:          *d.Receiver,
 		WithdrawalToken:   *d.WithdrawalToken,

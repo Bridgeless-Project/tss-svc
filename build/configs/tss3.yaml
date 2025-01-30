@@ -40,10 +40,10 @@ parties:
 
 tss:
   keygen:
-    start_time: "2025-01-30 00:35:38"
+    start_time: "2025-01-30 01:44:48"
     session_id: 123
   signing:
-    start_time: "2025-01-30 00:35:38"
+    start_time: "2025-01-30 01:44:48"
     session_id: 123
     threshold: 2
 core_connector:
@@ -58,4 +58,4 @@ core_connector:
 
 # Configurating subscription on Tendermint events
 subscriber:
-  addr: tcp://localhost:26657
+  addr: tcp://validator:26657

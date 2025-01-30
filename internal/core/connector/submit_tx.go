@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 )
 
