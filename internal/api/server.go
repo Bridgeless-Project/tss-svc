@@ -10,9 +10,11 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hyle-team/tss-svc/api"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
+	srvgrpc "github.com/hyle-team/tss-svc/internal/api/grpc"
+	srvhttp "github.com/hyle-team/tss-svc/internal/api/http"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
-	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/api/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -23,11 +25,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var _ apiTypes.APIServer = grpcImplementation{}
-
-type grpcImplementation struct{}
-
-type server struct {
+type Server struct {
 	grpc net.Listener
 	http net.Listener
 
@@ -41,10 +39,10 @@ func NewServer(
 	http net.Listener,
 	db db.DepositsQ,
 	logger *logan.Entry,
-	clients bridgeTypes.ClientsRepository,
-	processor *bridgeTypes.DepositFetcher,
-) apiTypes.Server {
-	return &server{
+	clients clients.ClientsRepository,
+	processor *clients.DepositFetcher,
+) *Server {
+	return &Server{
 		grpc:   grpc,
 		http:   http,
 		logger: logger,
@@ -58,7 +56,7 @@ func NewServer(
 	}
 }
 
-func (s *server) RunGRPC(ctx context.Context) error {
+func (s *Server) RunGRPC(ctx context.Context) error {
 	srv := s.grpcServer()
 
 	// graceful shutdown
@@ -68,7 +66,7 @@ func (s *server) RunGRPC(ctx context.Context) error {
 	return srv.Serve(s.grpc)
 }
 
-func (s *server) RunHTTP(ctxt context.Context) error {
+func (s *Server) RunHTTP(ctxt context.Context) error {
 	srv := &http.Server{Handler: s.httpRouter(ctxt)}
 
 	// graceful shutdown
@@ -90,29 +88,27 @@ func (s *server) RunHTTP(ctxt context.Context) error {
 	return nil
 }
 
-func (s *server) httpRouter(ctxt context.Context) http.Handler {
+func (s *Server) httpRouter(ctxt context.Context) http.Handler {
 	router := chi.NewRouter()
-	router.Use(ape.LoganMiddleware(s.logger), ape.RecoverMiddleware(s.logger))
+	router.Use(
+		ape.LoganMiddleware(s.logger),
+		ape.RecoverMiddleware(s.logger),
+		ape.CtxMiddleware(s.ctxExtenders...),
+	)
 
 	// pointing to grpc implementation
 	grpcGatewayRouter := runtime.NewServeMux()
-	_ = apiTypes.RegisterAPIHandlerServer(ctxt, grpcGatewayRouter, grpcImplementation{})
+	_ = types.RegisterAPIHandlerServer(ctxt, grpcGatewayRouter, srvgrpc.Implementation{})
 
-	// grpc interceptor not working here
-	router.With(ape.CtxMiddleware(s.ctxExtenders...)).Mount("/", grpcGatewayRouter)
-	router.With(
-		ape.CtxMiddleware(s.ctxExtenders...),
-		// extending with websocket middleware
-		middlewares.HijackedConnectionCloser(ctxt),
-	).Get("/ws/check/{chain_id}/{tx_hash}/{tx_nonce}", CheckWithdrawalWs)
-	//TODO: Check for ws implementation
+	router.Mount("/", grpcGatewayRouter)
+	router.With(middlewares.HijackedConnectionCloser(ctxt)).Get("/ws/check/{chain_id}/{tx_hash}/{tx_nonce}", srvhttp.CheckWithdrawalWs)
 	router.Mount("/static/api_server.swagger.json", http.FileServer(http.FS(api.Docs)))
 	router.HandleFunc("/api", openapiconsole.Handler("Signer service", "/static/api_server.swagger.json"))
 
 	return router
 }
 
-func (s *server) grpcServer() *grpc.Server {
+func (s *Server) grpcServer() *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			middlewares.ContextExtenderInterceptor(s.ctxExtenders...),
@@ -122,7 +118,7 @@ func (s *server) grpcServer() *grpc.Server {
 		),
 	)
 
-	apiTypes.RegisterAPIServer(srv, grpcImplementation{})
+	types.RegisterAPIServer(srv, srvgrpc.Implementation{})
 	reflection.Register(srv)
 
 	return srv

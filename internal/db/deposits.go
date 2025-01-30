@@ -27,6 +27,7 @@ type DepositsQ interface {
 	Get(identifier DepositIdentifier) (*Deposit, error)
 	GetWithSelector(selector DepositsSelector) (*Deposit, error)
 
+	Exists(check DepositExistenceCheck) (bool, error)
 	UpdateWithdrawalDetails(identifier DepositIdentifier, hash string, signature string) error
 	UpdateSignature(DepositIdentifier, string) error
 	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
@@ -45,6 +46,12 @@ type DepositIdentifier struct {
 	TxHash  string `structs:"tx_hash" db:"tx_hash"`
 	TxNonce int    `structs:"tx_nonce" db:"tx_nonce"`
 	ChainId string `structs:"chain_id" db:"chain_id"`
+}
+
+type DepositExistenceCheck struct {
+	ByTxHash  *string
+	ByTxNonce *int
+	ByChainId *string
 }
 
 type DepositsSelector struct {

@@ -79,6 +79,16 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 	return id, nil
 }
 
+func (d *depositsQ) Exists(check db.DepositExistenceCheck) (bool, error) {
+	var deposit db.Deposit
+	err := d.db.Get(&deposit, d.selector.Where(existenceToPredicate(check)))
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+
+	return err == nil, err
+}
+
 func (d *depositsQ) Get(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	var deposit db.Deposit
 	err := d.db.Get(&deposit, d.selector.Where(identifierToPredicate(identifier)))
@@ -95,6 +105,23 @@ func identifierToPredicate(identifier db.DepositIdentifier) squirrel.Eq {
 		depositsTxNonce: identifier.TxNonce,
 		depositsChainId: identifier.ChainId,
 	}
+}
+
+func existenceToPredicate(check db.DepositExistenceCheck) squirrel.Eq {
+	predicate := squirrel.Eq{}
+	if check.ByTxHash != nil {
+		predicate[depositsTxHash] = *check.ByTxHash
+	}
+
+	if check.ByTxNonce != nil {
+		predicate[depositsTxNonce] = *check.ByTxNonce
+	}
+
+	if check.ByChainId != nil {
+		predicate[depositsChainId] = *check.ByChainId
+	}
+
+	return predicate
 }
 
 func (d *depositsQ) GetWithSelector(selector db.DepositsSelector) (*db.Deposit, error) {
