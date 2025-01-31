@@ -58,6 +58,18 @@ message EvmProposalData {
   bytes sigData = 2;
 }
 
+message ZanoProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+
+  // data to decrypt tx info
+  repeated string outputsAddresses = 2;
+  string unsignedTx = 3;
+  string finalizedTx = 4;
+  string txSecretKey = 5;
+
+  bytes sigData = 6;
+}
+
 message DepositDistributionData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 }

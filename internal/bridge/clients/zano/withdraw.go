@@ -17,7 +17,7 @@ func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
-func (p *Client) EmitAssetUnsigned(data db.Deposit) (*UnsignedTransaction, error) {
+func (p *Client) EmitAssetUnsigned(data db.Deposit) (*zanoTypes.EmitAssetResponse, error) {
 	amount, ok := new(big.Int).SetString(*data.WithdrawalAmount, 10)
 	if !ok {
 		return nil, errors.New("failed to convert withdrawal amount")
@@ -30,27 +30,17 @@ func (p *Client) EmitAssetUnsigned(data db.Deposit) (*UnsignedTransaction, error
 		AssetID: "",
 	}
 
-	raw, err := p.chain.Client.EmitAsset(*data.WithdrawalToken, destination)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to emit unsigned asset")
-	}
+	return p.chain.Client.EmitAsset(*data.WithdrawalToken, destination)
+}
 
-	signingData := raw.DataForExternalSigning
-	txDetails, err := p.chain.Client.TxDetails(
-		signingData.OutputsAddresses,
-		signingData.UnsignedTx,
+func (p *Client) DecryptTxDetails(data zanoTypes.DataForExternalSigning) (*zanoTypes.DecryptTxDetailsResponse, error) {
+	return p.chain.Client.TxDetails(
+		data.OutputsAddresses,
+		data.UnsignedTx,
 		// leaving empty as only unsignedTx OR txId should be specified, otherwise error
 		"",
-		signingData.TxSecretKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse tx details")
-	}
-
-	return &UnsignedTransaction{
-		ExpectedTxHash: txDetails.VerifiedTxID,
-		FinalizedTx:    signingData.FinalizedTx,
-		Data:           signingData.UnsignedTx,
-	}, nil
+		data.TxSecretKey,
+	)
 }
 
 func (p *Client) EmitAssetSigned(signedTx SignedTransaction) (string, error) {
