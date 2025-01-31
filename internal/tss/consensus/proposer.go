@@ -18,6 +18,7 @@ var pendingWithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
 
 func (c *Consensus[T]) propose(ctx context.Context) {
 	defer c.wg.Done()
+	c.logger.Info("proposing data to sign...")
 
 	depositToSign, err := c.db.GetWithSelector(db.DepositsSelector{
 		ChainId: &c.chainId,
@@ -51,7 +52,10 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 
 	// nothing to sign for this session
 	if depositToSign == nil {
+		c.logger.Info("no pending deposits found")
 		return
+	} else {
+		c.logger.Info("data proposed, waiting for acceptances...")
 	}
 
 	boundedCtx, cancel := context.WithTimeout(context.Background(), tss.BoundaryAcceptance)
@@ -65,6 +69,8 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			c.result.err = ctx.Err()
 			return
 		case <-boundedCtx.Done():
+			c.logger.Info("collecting received acceptances...")
+
 			possibleSigners := acceptances.Acceptors()
 			// including proposer in total possible signers count
 			signersCount := len(possibleSigners) + 1
@@ -88,7 +94,10 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 				Type:      p2p.RequestType_RT_SIGN_START,
 				Data:      signStartData,
 			}
+
+			c.logger.Info("signing parties selected and notified")
 			p2p.NewBroadcaster(c.result.signers).Broadcast(msg)
+			c.logger.Info("consensus finished")
 
 			return
 		case msg := <-c.msgs:

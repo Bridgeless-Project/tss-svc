@@ -60,7 +60,7 @@ func New[T withdrawal.DepositSigningData](
 		processor:   processor,
 		constructor: constructor,
 
-		logger: logger,
+		logger: logger.WithField("session_id", party.SessionId),
 
 		wg:   &sync.WaitGroup{},
 		msgs: make(chan consensusMsg, msgsCapacity),
@@ -129,11 +129,10 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 
 func (c *Consensus[T]) Run(ctx context.Context) {
 	c.proposer = c.determineProposer()
-	c.logger.Info(fmt.Sprintf("proposer is '%s'", c.proposer))
+	c.logger.Info(fmt.Sprintf("starting consensus with proposer: %s", c.proposer))
 
 	c.wg.Add(1)
 	if c.proposer == c.self {
-		c.logger.Info("proposer is MEEEEEE")
 		go c.propose(ctx)
 	} else {
 		go c.accept(ctx)

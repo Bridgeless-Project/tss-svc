@@ -80,20 +80,12 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 	}
 
 	nextSessionStartDelay := runDelay
-	skipIdChange := true
-
 	for {
-		if !skipIdChange {
-			s.incrementSessionId()
-		} else {
-			skipIdChange = false
-		}
-
 		s.mu.Lock()
-		s.signingParty = tss.NewSignParty(s.self, s.sessionId.Load(), s.logger)
+		s.logger = s.logger.WithField("session_id", s.Id())
 		s.consensusParty = consensus.New[withdrawal.EvmWithdrawalData](
 			consensus.LocalConsensusParty{
-				SessionId: s.sessionId.Load(),
+				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Address,
 				ChainId:   s.params.ChainId,
@@ -102,11 +94,12 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 			s.db,
 			s.processor,
 			s.constructor,
-			s.logger,
+			s.logger.WithField("phase", "consensus"),
 		)
+		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.mu.Unlock()
 
-		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.sessionId.Load(), nextSessionStartDelay))
+		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), nextSessionStartDelay))
 
 		select {
 		case <-ctx.Done():
@@ -116,49 +109,58 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 			nextSessionStartDelay = time.Until(time.Now().Add(tss.BoundarySigningSession))
 		}
 
-		s.logger.Info(fmt.Sprintf("signing session %s started", s.sessionId.Load()))
-
-		consensusCtx, cancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
-		s.consensusParty.Run(consensusCtx)
-		data, parties, err := s.consensusParty.WaitFor()
-
-		cancel()
-		if err != nil {
-			// TODO: check ctx done error
-			s.logger.WithError(err).Error("consensus session error occurred")
-			continue
+		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
+		if err := s.runSession(ctx); err != nil {
+			s.logger.WithError(err).Error("failed to run signing session")
 		}
-		if data == nil {
-			s.logger.Info("no data to sign in the current session")
-			continue
-		}
+		s.logger.Info(fmt.Sprintf("signing session %s finished", s.Id()))
 
-		if err = s.db.UpdateStatus(data.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
-			s.logger.WithError(err).Error("failed to update deposit status")
-			continue
-		}
-
-		if parties == nil {
-			s.logger.Info("local party is not the signer in the current session")
-			continue
-		}
-
-		signingCtx, cancel := context.WithTimeout(ctx, tss.BoundarySign)
-		s.signingParty.WithParties(parties).WithSigningData(data.ProposalData.SigData).Run(signingCtx)
-		result := s.signingParty.WaitFor()
-		cancel()
-		if result == nil {
-			s.logger.Info("signing session error occurred")
-			continue
-		}
-
-		signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
-		s.logger.Info(fmt.Sprintf("got signature: %s", signature))
-
-		if err = s.db.UpdateSignature(data.DepositIdentifier(), signature); err != nil {
-			s.logger.WithError(err).Error("failed to update deposit signature")
-		}
+		s.incrementSessionId()
 	}
+}
+
+func (s *EvmSigningSession) runSession(ctx context.Context) error {
+	// consensus phase
+	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
+	defer consCtxCancel()
+
+	s.consensusParty.Run(consensusCtx)
+	data, parties, err := s.consensusParty.WaitFor()
+	if err != nil {
+		return errors.Wrap(err, "consensus phase error occurred")
+	}
+	if data == nil {
+		s.logger.Info("no data to sign in the current session")
+		return nil
+	}
+	if err = s.db.UpdateStatus(data.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
+		return errors.Wrap(err, "failed to update deposit status")
+	}
+	if parties == nil {
+		s.logger.Info("local party is not the signer in the current session")
+		return nil
+	}
+
+	// signing phase
+	signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
+	defer sigCtxCancel()
+
+	s.signingParty.WithParties(parties).WithSigningData(data.ProposalData.SigData).Run(signingCtx)
+	result := s.signingParty.WaitFor()
+	if result == nil {
+		return errors.New("signing phase error occurred")
+	}
+
+	// finalization phase
+	// TODO: add proper finalization phase
+	signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
+	s.logger.Info(fmt.Sprintf("got signature: %s", signature))
+
+	if err = s.db.UpdateSignature(data.DepositIdentifier(), signature); err != nil {
+		return errors.Wrap(err, "failed to update deposit signature")
+	}
+
+	return nil
 }
 
 func (s *EvmSigningSession) Id() string {
@@ -166,7 +168,7 @@ func (s *EvmSigningSession) Id() string {
 }
 
 func (s *EvmSigningSession) incrementSessionId() {
-	prevSessionId := s.sessionId.Load()
+	prevSessionId := s.Id()
 	nextSessionId := IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)

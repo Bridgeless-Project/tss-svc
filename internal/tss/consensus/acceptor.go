@@ -13,12 +13,19 @@ import (
 
 func (c *Consensus[T]) accept(ctx context.Context) {
 	defer c.wg.Done()
+	c.logger.Info("accepting proposal...")
 
 	var proposalAccepted bool
 
 	for {
 		select {
 		case <-ctx.Done():
+			if proposalAccepted {
+				c.logger.Info("proposal accepted but self is not a signer party")
+				c.logger.Info("consensus finished")
+				return
+			}
+
 			c.result.err = ctx.Err()
 			return
 		case msg := <-c.msgs:
@@ -39,10 +46,13 @@ func (c *Consensus[T]) accept(ctx context.Context) {
 				}
 				// there will be no data to sign in current session
 				if c.result.sigData == nil {
+					c.logger.Info("got empty data to sign")
+					c.logger.Info("consensus finished")
 					return
 				}
 
 				proposalAccepted = true
+				c.logger.Info("proposal accepted, waiting for sign start message...")
 			case p2p.RequestType_RT_SIGN_START:
 				if !proposalAccepted {
 					c.logger.Warn("sign start message received before proposal, ignoring")
@@ -53,6 +63,8 @@ func (c *Consensus[T]) accept(ctx context.Context) {
 					c.result.err = errors.Wrap(err, "failed to handle sign start message")
 				}
 
+				c.logger.Info("sign start message with signing parties received")
+				c.logger.Info("consensus finished")
 				return
 			default:
 				c.logger.Warn(fmt.Sprintf("unsupported request type %s from proposer", msg.Type))
@@ -70,7 +82,6 @@ func (c *Consensus[T]) handleProposalMsg(msg consensusMsg) error {
 	proposalAccepted := false
 
 	defer func() {
-		// TODO: do not depend on the error
 		dataRaw, _ := anypb.New(&p2p.AcceptanceData{Accepted: proposalAccepted})
 		if err := c.broadcaster.Send(&p2p.SubmitRequest{
 			Sender:    c.self.String(),
@@ -95,6 +106,7 @@ func (c *Consensus[T]) handleProposalMsg(msg consensusMsg) error {
 	if deposit == nil {
 		deposit, err = c.processor.FetchDeposit(data.DepositIdentifier())
 		if err != nil {
+			// TODO: err check?
 			return errors.Wrap(err, "failed to fetch deposit data")
 		}
 		if _, err = c.db.Insert(*deposit); err != nil {
@@ -152,7 +164,7 @@ func (c *Consensus[T]) handleSignStartMsg(msg consensusMsg) error {
 		signingParties = append(signingParties, party)
 	}
 
-	// local party does not participate in signing
+	// local party does not participate in signing if not present in sign start message
 	if selfPresent {
 		c.result.signers = signingParties
 	}
