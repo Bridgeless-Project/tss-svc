@@ -91,12 +91,12 @@ func (s *Subscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) 
 				s.log.Info("skipping processed deposit")
 			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING:
 				s.log.Info("found existing deposit submitted to core")
-				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, *deposit.WithdrawalTxHash, *deposit.Signature); err != nil {
+				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
 					s.log.WithError(err).Error("Failed to update deposit withdrawal details")
 				}
 			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING:
 				s.log.Info("found submitted pending deposit")
-				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, *deposit.WithdrawalTxHash, *deposit.Signature); err != nil {
+				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
 					s.log.WithError(err).Error("Failed to update deposit withdrawal details")
 				}
 			default:

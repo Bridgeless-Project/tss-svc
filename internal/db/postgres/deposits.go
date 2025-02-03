@@ -145,10 +145,10 @@ func (d *depositsQ) Select(selector db.DepositsSelector) ([]db.Deposit, error) {
 	return deposits, nil
 }
 
-func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, hash string, signature string) error {
+func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, hash *string, signature *string) error {
 	query := squirrel.Update(depositsTable).
-		Set(depositsWithdrawalTxHash, hash).
-		Set(depositsSignature, signature).
+		Set(depositsWithdrawalTxHash, stringOrEmpty(hash)).
+		Set(depositsSignature, stringOrEmpty(signature)).
 		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
 		Where(identifierToPredicate(identifier))
 
@@ -236,4 +236,12 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 	}
 
 	return id, nil
+}
+
+func stringOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+
+	return *s
 }
