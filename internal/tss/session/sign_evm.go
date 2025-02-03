@@ -3,10 +3,11 @@ package session
 import (
 	"context"
 	"fmt"
+	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -34,11 +35,13 @@ type EvmSigningSession struct {
 	params SigningSessionParams
 	logger *logan.Entry
 
-	processor   *bridge.DepositFetcher
-	constructor *withdrawal.EvmWithdrawalConstructor
+	processor     *bridge.DepositFetcher
+	constructor   *withdrawal.EvmWithdrawalConstructor
+	coreConnector *connector.Connector
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.EvmWithdrawalData]
+	finalizerParty *finalizer.EvmFinalizer
 }
 
 func NewEvmSigningSession(
@@ -97,6 +100,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.finalizerParty = finalizer.NewEVMFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), nextSessionStartDelay))
@@ -150,14 +154,18 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	if result == nil {
 		return errors.New("signing phase error occurred")
 	}
-
 	// finalization phase
 	// TODO: add proper finalization phase
-	signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
-	s.logger.Info(fmt.Sprintf("got signature: %s", signature))
+	//
 
-	if err = s.db.UpdateSignature(data.DepositIdentifier(), signature); err != nil {
-		return errors.Wrap(err, "failed to update deposit signature")
+	//TODO: if local party is session proposer finalize
+	if true {
+		finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
+		defer finalizerCancel()
+
+		if err = s.finalizerParty.WithData(data).WithSignature(result).Run(finalizerCtx); err != nil {
+			return errors.Wrap(err, "finalizer phase error occurred")
+		}
 	}
 
 	return nil

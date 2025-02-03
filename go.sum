@@ -1815,8 +1815,8 @@ github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpO
 github.com/huin/goupnp v1.0.3 h1:N8No57ls+MnjlB+JPiCVSOyy/ot7MJTqlo7rn+NYSqQ=
 github.com/huin/goupnp v1.0.3/go.mod h1:ZxNlw5WqJj6wSsRK5+YfflQGXYfccj5VgQsMNixHM7Y=
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
-github.com/hyle-team/bridgeless-core v0.0.0-20241003084139-414cc4a6f73c h1:qb+y1pQTA7TriAWloTozC9uyVGY6z36Qy4wjsaS4/O0=
-github.com/hyle-team/bridgeless-core v0.0.0-20241003084139-414cc4a6f73c/go.mod h1:F0UTxyTcS5Fmu0Ecw+7lU+c5L5A/PhaInaP6wB/RLu0=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250131090418-e99cf29959ed h1:eqYJa5/gUI4Sxs7uiPg/uqW5kzipLAMf+p1bGDQ9w2E=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250131090418-e99cf29959ed/go.mod h1:l1XnKoWRqpW0e1DuaRes7rGQK971RxkYPgbRWDSxDyU=
 github.com/hyle-team/cosmos-sdk v0.46.30 h1:uyMHkM4SvNKfbQ6nKoUfTmX3uv1CGEF2Yzc7wBu27KU=
 github.com/hyle-team/cosmos-sdk v0.46.30/go.mod h1:JkEh06V4aORJl8/nrLelLCzc5xKPoDuIYgaF8M6AwFw=
 github.com/iancoleman/strcase v0.2.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=
