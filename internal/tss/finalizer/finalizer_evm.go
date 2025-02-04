@@ -11,12 +11,9 @@ import (
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
-	"sync"
 )
 
 type EvmFinalizer struct {
-	wg *sync.WaitGroup
-
 	withdrawalData *withdrawal.EvmWithdrawalData
 	signature      *common.SignatureData
 
@@ -26,23 +23,22 @@ type EvmFinalizer struct {
 	//TODO: add session proposer creds to define whether party need to submit tx to core
 
 	errChan chan error
+	done    chan struct{}
 
 	logger *logan.Entry
 }
 
 func NewEVMFinalizer(db database.DepositsQ, core *core.Connector, logger *logan.Entry) *EvmFinalizer {
 	return &EvmFinalizer{
-		wg:      &sync.WaitGroup{},
 		db:      db,
 		core:    core,
 		errChan: make(chan error),
+		done:    make(chan struct{}),
 		logger:  logger,
 	}
 }
 
 func (ef *EvmFinalizer) Run(ctx context.Context) error {
-	ef.wg.Add(1)
-
 	go ef.saveAndBroadcast(ctx)
 
 	// listen for ctx and errors
@@ -60,15 +56,14 @@ func (ef *EvmFinalizer) Run(ctx context.Context) error {
 			}
 			return errors.Wrap(err, "finalization failed")
 		}
+	case <-ef.done:
+		return nil
 	}
-
-	ef.wg.Wait()
 
 	return nil
 }
 
 func (ef *EvmFinalizer) saveAndBroadcast(ctx context.Context) {
-	defer ef.wg.Done()
 	signature := hexutil.Encode(append(ef.signature.Signature, ef.signature.SignatureRecovery...))
 	ef.logger.Info(fmt.Sprintf("got signature: %s", signature))
 
@@ -86,6 +81,8 @@ func (ef *EvmFinalizer) saveAndBroadcast(ctx context.Context) {
 
 	// TODO: add checking if local party is a session proposer
 	ef.errChan <- ef.core.SubmitDeposits(ctx, dep.ToTransaction())
+
+	ef.done <- struct{}{}
 }
 
 func (ef *EvmFinalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *EvmFinalizer {
