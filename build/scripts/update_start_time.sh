@@ -1,6 +1,6 @@
 #!/bin/bash
 
-YAML_FILES=("./configs/tss1.yaml" "./configs/tss2.yaml" "./configs/tss3.yaml")
+YAML_FILES=("./configs/tss1.local.yaml" "./configs/tss2.local.yaml" "./configs/tss3.local.yaml")
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     NEW_TIME=$(date -u -v+15S +"%Y-%m-%d %H:%M:%S")

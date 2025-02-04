@@ -34,6 +34,12 @@ type LocalConsensusParty struct {
 	ChainId   string
 }
 
+type SigningSessionData[T withdrawal.DepositSigningData] struct {
+	SigData  *T
+	Signers  []p2p.Party
+	Proposer core.Address
+}
+
 func New[T withdrawal.DepositSigningData](
 	party LocalConsensusParty,
 	parties []p2p.Party,
@@ -139,11 +145,15 @@ func (c *Consensus[T]) Run(ctx context.Context) {
 	}
 }
 
-func (c *Consensus[T]) WaitFor() (sigData *T, signers []p2p.Party, err error) {
+func (c *Consensus[T]) WaitFor() (result SigningSessionData[T], err error) {
 	c.wg.Wait()
 	c.ended.Store(true)
 
-	return c.result.sigData, c.result.signers, c.result.err
+	return SigningSessionData[T]{
+		SigData:  c.result.sigData,
+		Signers:  c.result.signers,
+		Proposer: c.proposer,
+	}, c.result.err
 }
 
 func (c *Consensus[T]) determineProposer() core.Address {

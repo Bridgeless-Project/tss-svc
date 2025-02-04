@@ -6,14 +6,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
+	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -34,11 +36,15 @@ type ZanoSigningSession struct {
 	params SigningSessionParams
 	logger *logan.Entry
 
-	fetcher     *bridge.DepositFetcher
-	constructor *withdrawal.ZanoWithdrawalConstructor
+	zanoClient *zano.Client
+
+	coreConnector *connector.Connector
+	fetcher       *bridge.DepositFetcher
+	constructor   *withdrawal.ZanoWithdrawalConstructor
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.ZanoWithdrawalData]
+	finalizer      *finalizer.ZanoFinalizer
 }
 
 func NewZanoSigningSession(
@@ -73,6 +79,16 @@ func (s *ZanoSigningSession) WithConstructor(constructor *withdrawal.ZanoWithdra
 	return s
 }
 
+func (s *ZanoSigningSession) WithCoreConnector(conn *connector.Connector) *ZanoSigningSession {
+	s.coreConnector = conn
+	return s
+}
+
+func (s *ZanoSigningSession) WithClient(client *zano.Client) *ZanoSigningSession {
+	s.zanoClient = client
+	return s
+}
+
 func (s *ZanoSigningSession) Run(ctx context.Context) error {
 	runDelay := time.Until(s.params.StartTime)
 	if runDelay <= 0 {
@@ -97,6 +113,7 @@ func (s *ZanoSigningSession) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.zanoClient, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), nextSessionStartDelay))
@@ -125,18 +142,18 @@ func (s *ZanoSigningSession) runSession(ctx context.Context) error {
 	defer consCtxCancel()
 
 	s.consensusParty.Run(consensusCtx)
-	data, parties, err := s.consensusParty.WaitFor()
+	result, err := s.consensusParty.WaitFor()
 	if err != nil {
 		return errors.Wrap(err, "consensus phase error occurred")
 	}
-	if data == nil {
+	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")
 		return nil
 	}
-	if err = s.db.UpdateStatus(data.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
+	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
-	if parties == nil {
+	if result.Signers == nil {
 		s.logger.Info("local party is not the signer in the current session")
 		return nil
 	}
@@ -145,19 +162,23 @@ func (s *ZanoSigningSession) runSession(ctx context.Context) error {
 	signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
 	defer sigCtxCancel()
 
-	s.signingParty.WithParties(parties).WithSigningData(data.ProposalData.SigData).Run(signingCtx)
-	result := s.signingParty.WaitFor()
-	if result == nil {
+	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
+	signature := s.signingParty.WaitFor()
+	if signature == nil {
 		return errors.New("signing phase error occurred")
 	}
 
 	// finalization phase
-	// TODO: add proper finalization phase
-	signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
-	s.logger.Info(fmt.Sprintf("got signature: %s", signature))
+	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
+	defer finalizerCancel()
 
-	if err = s.db.UpdateSignature(data.DepositIdentifier(), signature); err != nil {
-		return errors.Wrap(err, "failed to update deposit signature")
+	err = s.finalizer.
+		WithData(result.SigData).
+		WithSignature(signature).
+		WithLocalPartyProposer(s.self.Address == result.Proposer).
+		Finalize(finalizerCtx)
+	if err != nil {
+		return errors.Wrap(err, "finalizer phase error occurred")
 	}
 
 	return nil

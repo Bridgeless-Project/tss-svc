@@ -3,10 +3,11 @@ package session
 import (
 	"context"
 	"fmt"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector"
-	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
 	"sync"
 	"time"
+
+	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
 
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
@@ -35,14 +36,13 @@ type EvmSigningSession struct {
 	params SigningSessionParams
 	logger *logan.Entry
 
-
 	coreConnector *connector.Connector
-	fetcher     *bridge.DepositFetcher
-	constructor *withdrawal.EvmWithdrawalConstructor
+	fetcher       *bridge.DepositFetcher
+	constructor   *withdrawal.EvmWithdrawalConstructor
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.EvmWithdrawalData]
-	finalizerParty *finalizer.EvmFinalizer
+	finalizer      *finalizer.EvmFinalizer
 }
 
 func NewEvmSigningSession(
@@ -77,6 +77,11 @@ func (s *EvmSigningSession) WithConstructor(constructor *withdrawal.EvmWithdrawa
 	return s
 }
 
+func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSigningSession {
+	s.coreConnector = conn
+	return s
+}
+
 func (s *EvmSigningSession) Run(ctx context.Context) error {
 	runDelay := time.Until(s.params.StartTime)
 	if runDelay <= 0 {
@@ -101,7 +106,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.finalizerParty = finalizer.NewEVMFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
+		s.finalizer = finalizer.NewEVMFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), nextSessionStartDelay))
@@ -130,18 +135,18 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	defer consCtxCancel()
 
 	s.consensusParty.Run(consensusCtx)
-	data, parties, err := s.consensusParty.WaitFor()
+	result, err := s.consensusParty.WaitFor()
 	if err != nil {
 		return errors.Wrap(err, "consensus phase error occurred")
 	}
-	if data == nil {
+	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")
 		return nil
 	}
-	if err = s.db.UpdateStatus(data.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
+	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
-	if parties == nil {
+	if result.Signers == nil {
 		s.logger.Info("local party is not the signer in the current session")
 		return nil
 	}
@@ -150,22 +155,23 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
 	defer sigCtxCancel()
 
-	s.signingParty.WithParties(parties).WithSigningData(data.ProposalData.SigData).Run(signingCtx)
-	result := s.signingParty.WaitFor()
-	if result == nil {
+	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
+	signature := s.signingParty.WaitFor()
+	if signature == nil {
 		return errors.New("signing phase error occurred")
 	}
 
 	// finalization phase
-	//TODO: if local party is session proposer finalize
-	if true {
-		finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
-		defer finalizerCancel()
+	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
+	defer finalizerCancel()
 
-		err = s.finalizerParty.WithData(data).WithSignature(result).Run(finalizerCtx)
-		if err != nil {
-			return errors.Wrap(err, "finalizer phase error occurred")
-		}
+	err = s.finalizer.
+		WithData(result.SigData).
+		WithSignature(signature).
+		WithLocalPartyProposer(s.self.Address == result.Proposer).
+		Finalize(finalizerCtx)
+	if err != nil {
+		return errors.Wrap(err, "finalizer phase error occurred")
 	}
 
 	return nil
@@ -217,9 +223,4 @@ func (s *EvmSigningSession) Receive(request *p2p.SubmitRequest) error {
 
 func (s *EvmSigningSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
-}
-
-func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSigningSession {
-	s.coreConnector = conn
-	return s
 }

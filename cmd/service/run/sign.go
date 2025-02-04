@@ -119,7 +119,10 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				sessParams.WithChainId(client.ChainId()),
 				db,
 				logger.WithField("component", "signing_session"),
-			).WithDepositFetcher(fetcher).WithConstructor(constructor).WithCoreConnector(connector)
+			).
+				WithDepositFetcher(fetcher).
+				WithConstructor(constructor).
+				WithCoreConnector(connector)
 			sess = evmSession
 		case chains.TypeZano:
 			constructor := withdrawal.NewZanoConstructor(client.(*zano.Client))
@@ -133,7 +136,11 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				sessParams.WithChainId(client.ChainId()),
 				db,
 				logger.WithField("component", "signing_session"),
-			).WithDepositFetcher(fetcher).WithConstructor(constructor)
+			).
+				WithDepositFetcher(fetcher).
+				WithConstructor(constructor).
+				WithClient(client.(*zano.Client)).
+				WithCoreConnector(connector)
 			sess = zanoSession
 		}
 

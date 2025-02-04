@@ -70,6 +70,7 @@ func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (ZanoWit
 			UnsignedTx:       tx.DataForExternalSigning.UnsignedTx,
 			FinalizedTx:      tx.DataForExternalSigning.FinalizedTx,
 			TxSecretKey:      tx.DataForExternalSigning.TxSecretKey,
+			TxId:             tx.TxID,
 			SigData:          c.formSigData(tx.TxID),
 		},
 	}, nil

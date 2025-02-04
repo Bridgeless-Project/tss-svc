@@ -70,10 +70,11 @@ func ToExistenceCheck(identifier *types.DepositIdentifier, chainType chainTypes.
 }
 
 type DepositsSelector struct {
-	Ids     []int64
-	ChainId *string
-	One     bool
-	Status  *types.WithdrawalStatus
+	Ids               []int64
+	ChainId           *string
+	WithdrawalChainId *string
+	One               bool
+	Status            *types.WithdrawalStatus
 }
 
 func (d DepositIdentifier) String() string {

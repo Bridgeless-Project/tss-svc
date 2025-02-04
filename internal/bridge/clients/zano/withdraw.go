@@ -25,7 +25,7 @@ func (p *Client) EmitAssetUnsigned(data db.Deposit) (*zanoTypes.EmitAssetRespons
 
 	destination := zanoTypes.Destination{
 		Address: *data.Receiver,
-		Amount:  amount.Uint64(),
+		Amount:  amount,
 		// leaving empty here as this field overrides by function asset parameter
 		AssetID: "",
 	}

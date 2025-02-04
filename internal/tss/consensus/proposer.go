@@ -21,9 +21,9 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 	c.logger.Info("proposing data to sign...")
 
 	depositToSign, err := c.db.GetWithSelector(db.DepositsSelector{
-		ChainId: &c.chainId,
-		Status:  &pendingWithdrawalStatus,
-		One:     true,
+		WithdrawalChainId: &c.chainId,
+		Status:            &pendingWithdrawalStatus,
+		One:               true,
 	})
 	if err != nil {
 		c.result.err = errors.Wrap(err, "failed to get deposit to sign")

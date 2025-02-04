@@ -67,7 +67,9 @@ message ZanoProposalData {
   string finalizedTx = 4;
   string txSecretKey = 5;
 
-  bytes sigData = 6;
+  string txId = 6;
+
+  bytes sigData = 7;
 }
 
 message DepositDistributionData {

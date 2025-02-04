@@ -55,7 +55,7 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalStatus: deposit.WithdrawalStatus,
 			depositsDepositAmount:    deposit.DepositAmount,
 			depositsWithdrawalAmount: deposit.WithdrawalAmount,
-			depositsReceiver:         strings.ToLower(*deposit.Receiver),
+			depositsReceiver:         *deposit.Receiver,
 			depositsDepositBlock:     deposit.DepositBlock,
 			depositsIsWrappedToken:   deposit.IsWrappedToken,
 			// can be 0x00... in case of native ones
@@ -189,6 +189,9 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 
 	if selector.ChainId != nil {
 		sql = sql.Where(squirrel.Eq{depositsChainId: *selector.ChainId})
+	}
+	if selector.WithdrawalChainId != nil {
+		sql = sql.Where(squirrel.Eq{depositsWithdrawalChainId: *selector.WithdrawalChainId})
 	}
 
 	if selector.Status != nil {
