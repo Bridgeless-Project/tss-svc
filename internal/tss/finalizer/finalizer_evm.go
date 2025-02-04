@@ -80,8 +80,12 @@ func (ef *EvmFinalizer) saveAndBroadcast(ctx context.Context) {
 	}
 
 	// TODO: add checking if local party is a session proposer
-	ef.errChan <- ef.core.SubmitDeposits(ctx, dep.ToTransaction())
+	if err = ef.core.SubmitDeposits(ctx, dep.ToTransaction()); err != nil {
+		ef.errChan <- err
+		return
+	}
 
+	// send done signal
 	ef.done <- struct{}{}
 }
 
