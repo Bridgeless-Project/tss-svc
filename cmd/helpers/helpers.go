@@ -16,4 +16,5 @@ var Cmd = &cobra.Command{
 
 func registerHelpersCommands(cmd *cobra.Command) {
 	cmd.AddCommand(generate.Cmd)
+	cmd.AddCommand(parsePubKeyCmd)
 }

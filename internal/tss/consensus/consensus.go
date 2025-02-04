@@ -160,8 +160,6 @@ func (c *Consensus[T]) determineProposer() core.Address {
 	generator := deterministicRandSource(c.sessionId)
 	proposerIdx := int(generator.Uint64() % uint64(sortedIds.Len()))
 
-	c.logger.Info(fmt.Sprintf("proposerIdx: %d", proposerIdx))
-
 	return core.AddrFromPartyId(sortedIds[proposerIdx])
 }
 
