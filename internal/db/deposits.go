@@ -107,7 +107,7 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		DepositTxHash:     d.TxHash,
 		DepositTxIndex:    uint64(d.TxNonce),
 		DepositChainId:    d.ChainId,
-		WithdrawalTxHash:  *d.WithdrawalTxHash,
+		WithdrawalTxHash:  stringOrEmpty(d.WithdrawalTxHash),
 		Depositor:         stringOrEmpty(d.Depositor),
 		DepositAmount:     stringOrEmpty(d.DepositAmount),
 		WithdrawalAmount:  stringOrEmpty(d.WithdrawalAmount),
@@ -117,6 +117,7 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		WithdrawalChainId: *d.WithdrawalChainId,
 		DepositBlock:      uint64(*d.DepositBlock),
 		Signature:         stringOrEmpty(d.Signature),
+		IsWrapped:         boolOrEmpty(d.IsWrappedToken),
 	}
 }
 
@@ -164,4 +165,11 @@ func stringOrEmpty(s *string) string {
 	}
 
 	return *s
+}
+
+func boolOrEmpty(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
 }

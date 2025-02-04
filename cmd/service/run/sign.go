@@ -100,7 +100,7 @@ var signCmd = &cobra.Command{
 				sessParams.WithChainId(client.ChainId()),
 				db,
 				logger.WithField("component", "signing_session"),
-			).WithProcessor(pr).WithConstructor(constructor)
+			).WithProcessor(pr).WithConstructor(constructor).WithCoreConnector(connector)
 
 			wg.Add(1)
 			go func() {

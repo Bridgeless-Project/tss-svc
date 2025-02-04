@@ -26,7 +26,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1
 	github.com/hashicorp/vault/api v1.15.0
-	github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250131090418-e99cf29959ed
+	github.com/hyle-team/bridgeless-core/v12 v12.1.16-rc1
 	github.com/ignite/cli v0.26.1
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.7.0

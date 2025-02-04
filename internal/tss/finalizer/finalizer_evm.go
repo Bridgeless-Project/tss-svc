@@ -27,7 +27,6 @@ type EvmFinalizer struct {
 
 	errChan chan error
 
-	err    error
 	logger *logan.Entry
 }
 
@@ -36,53 +35,47 @@ func NewEVMFinalizer(db database.DepositsQ, core *core.Connector, logger *logan.
 		wg:      &sync.WaitGroup{},
 		db:      db,
 		core:    core,
-		errChan: make(chan error, 1),
+		errChan: make(chan error, 3),
 		logger:  logger,
 	}
 }
 
 func (ef *EvmFinalizer) Run(ctx context.Context) error {
-	ef.wg.Add(2)
+	ef.wg.Add(1)
 
-	go ef.saveAndBroadcast()
-	go ef.listen(ctx)
-
+	go ef.saveAndBroadcast(ctx)
 	ef.wg.Wait()
 
-	return ef.err
-}
-
-func (ef *EvmFinalizer) listen(ctx context.Context) {
-	defer func() {
-		ef.wg.Done()
-		ctx.Done()
-	}()
-	for {
-		select {
-		case <-ctx.Done():
-			ef.err = errors.Wrap(ctx.Err(), "finalization timed out")
-			return
-		case err, ok := <-ef.errChan:
-			if !ok {
-				ef.logger.Debug("error chanel is closed")
-				return
+	// listen for ctx and errors
+	select {
+	case <-ctx.Done():
+		return errors.Wrap(ctx.Err(), "finalization timed out")
+	case err, ok := <-ef.errChan:
+		if !ok {
+			ef.logger.Debug("error chanel is closed")
+			return nil
+		}
+		if err != nil {
+			if updErr := ef.db.UpdateStatus(ef.withdrawalData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED); updErr != nil {
+				return errors.Wrap(updErr, "finalization failed")
 			}
-			if err != nil {
-				ef.err = errors.Wrap(err, "finalization failed")
-				ef.db.UpdateStatus(ef.withdrawalData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
-				return
-			}
-			continue
+			return errors.Wrap(err, "finalization failed")
 		}
 	}
+
+	return nil
 }
 
-func (ef *EvmFinalizer) saveAndBroadcast() {
+func (ef *EvmFinalizer) saveAndBroadcast(ctx context.Context) {
 	defer ef.wg.Done()
 	signature := hexutil.Encode(append(ef.signature.Signature, ef.signature.SignatureRecovery...))
 	ef.logger.Info(fmt.Sprintf("got signature: %s", signature))
 
-	ef.errChan <- ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature)
+	err := ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature)
+	if err != nil {
+		ef.errChan <- err
+		return
+	}
 
 	dep, err := ef.db.Get(ef.withdrawalData.DepositIdentifier())
 	if err != nil {
@@ -91,8 +84,7 @@ func (ef *EvmFinalizer) saveAndBroadcast() {
 	}
 
 	// TODO: add checking if local party is a session proposer
-	ef.errChan <- ef.core.SubmitDeposits(dep.ToTransaction())
-
+	ef.errChan <- ef.core.SubmitDeposits(ctx, dep.ToTransaction())
 }
 
 func (ef *EvmFinalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *EvmFinalizer {

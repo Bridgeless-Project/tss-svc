@@ -154,16 +154,15 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	if result == nil {
 		return errors.New("signing phase error occurred")
 	}
-	// finalization phase
-	// TODO: add proper finalization phase
-	//
 
+	// finalization phase
 	//TODO: if local party is session proposer finalize
 	if true {
 		finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
 		defer finalizerCancel()
 
-		if err = s.finalizerParty.WithData(data).WithSignature(result).Run(finalizerCtx); err != nil {
+		err = s.finalizerParty.WithData(data).WithSignature(result).Run(finalizerCtx)
+		if err != nil {
 			return errors.Wrap(err, "finalizer phase error occurred")
 		}
 	}
@@ -217,4 +216,9 @@ func (s *EvmSigningSession) Receive(request *p2p.SubmitRequest) error {
 
 func (s *EvmSigningSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
+}
+
+func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSigningSession {
+	s.coreConnector = conn
+	return s
 }
