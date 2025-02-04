@@ -28,7 +28,7 @@ func init() {
 var verify bool
 
 func registerSignCmdFlags(cmd *cobra.Command) {
-	cmd.Flags().BoolVar(&verify, "verify", false, "Whether to additionally verify the signature")
+	cmd.Flags().BoolVar(&verify, "verify", true, "Whether to additionally verify the signature")
 }
 
 var signCmd = &cobra.Command{

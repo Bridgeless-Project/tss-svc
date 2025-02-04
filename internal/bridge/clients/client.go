@@ -54,7 +54,6 @@ const (
 type Client interface {
 	Type() chains.Type
 	ChainId() string
-	GetTransactionStatus(txHash string) (TransactionStatus, error)
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 
 	AddressValid(addr string) bool

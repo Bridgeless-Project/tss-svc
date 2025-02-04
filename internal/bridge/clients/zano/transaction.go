@@ -4,25 +4,9 @@ import (
 	"strings"
 
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 )
-
-func (p *Client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
-	tx, inPool, err := p.GetTransaction(txHash, true, true, true)
-	if err != nil {
-		return bridgeTypes.TransactionStatusUnknown, err
-	}
-	if tx == nil {
-		return bridgeTypes.TransactionStatusNotFound, nil
-	}
-	if inPool {
-		return bridgeTypes.TransactionStatusPending, nil
-	}
-
-	return bridgeTypes.TransactionStatusSuccessful, nil
-}
 
 func (p *Client) GetTransaction(txHash string, searchIn, searchOut, searchPool bool) (res *zanoTypes.Transaction, pool bool, err error) {
 	txHash = strings.TrimPrefix(txHash, bridge.HexPrefix)

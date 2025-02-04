@@ -11,6 +11,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
+var _ DepositSigningData = EvmWithdrawalData{}
+
 type EvmWithdrawalData struct {
 	ProposalData     *p2p.EvmProposalData
 	SignedWithdrawal string
@@ -41,9 +43,7 @@ func (e EvmWithdrawalData) FromPayload(payload *anypb.Any) (DepositSigningData, 
 		return EvmWithdrawalData{}, errors.Wrap(err, "failed to unmarshal proposal data")
 	}
 
-	return EvmWithdrawalData{
-		ProposalData: proposalData,
-	}, nil
+	return EvmWithdrawalData{ProposalData: proposalData}, nil
 }
 
 func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
@@ -51,6 +51,8 @@ func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
 		client: client,
 	}
 }
+
+var _ Constructor[EvmWithdrawalData] = &EvmWithdrawalConstructor{}
 
 type EvmWithdrawalConstructor struct {
 	client *evm.Client
@@ -84,7 +86,11 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposit db.De
 		return false, errors.Wrap(err, "failed to get signing hash")
 	}
 
-	return bytes.Equal(data.ProposalData.SigData, sigHash), nil
+	if !bytes.Equal(data.ProposalData.SigData, sigHash) {
+		return false, errors.New("sig data does not match the expected one")
+	}
+
+	return true, nil
 }
 
 func (c *EvmWithdrawalConstructor) FromPayload(payload *anypb.Any) (EvmWithdrawalData, error) {
