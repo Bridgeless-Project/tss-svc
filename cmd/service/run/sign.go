@@ -66,7 +66,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 	}
 
 	db := pg.NewDepositsQ(cfg.DB())
-	connector := core.NewConnector(cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
+	connector := core.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
 	srv := api.NewServer(
 		cfg.ApiGrpcListener(),

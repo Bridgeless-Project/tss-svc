@@ -20,12 +20,6 @@ func (c *Consensus[T]) accept(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			if proposalAccepted {
-				c.logger.Info("proposal accepted but self is not a signer party")
-				c.logger.Info("consensus finished")
-				return
-			}
-
 			c.result.err = ctx.Err()
 			return
 		case msg := <-c.msgs:

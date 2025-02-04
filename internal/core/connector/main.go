@@ -27,10 +27,9 @@ var (
 )
 
 type ConnectorSettings struct {
-	Account     core.Account `fig:"account_private_key,required"`
-	ChainId     string       `fig:"chain_id,required"`
-	Denom       string       `fig:"denom,required"`
-	MinGasPrice uint64       `fig:"min_gas_price"`
+	ChainId     string `fig:"chain_id,required"`
+	Denom       string `fig:"denom,required"`
+	MinGasPrice uint64 `fig:"min_gas_price"`
 }
 
 type Connector struct {
@@ -40,15 +39,17 @@ type Connector struct {
 	querier    bridgetypes.QueryClient
 
 	settings ConnectorSettings
+	account  core.Account
 }
 
-func NewConnector(conn *grpc.ClientConn, settings ConnectorSettings) *Connector {
+func NewConnector(account core.Account, conn *grpc.ClientConn, settings ConnectorSettings) *Connector {
 	return &Connector{
 		transactor: txclient.NewServiceClient(conn),
 		txConfiger: authtx.NewTxConfig(codec.NewProtoCodec(codectypes.NewInterfaceRegistry()), []signing.SignMode{signing.SignMode_SIGN_MODE_DIRECT}),
 		auther:     authtypes.NewQueryClient(conn),
 		querier:    bridgetypes.NewQueryClient(conn),
 		settings:   settings,
+		account:    account,
 	}
 }
 
@@ -107,7 +108,7 @@ func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msg
 
 	signMode := c.txConfiger.SignModeHandler().DefaultMode()
 	err = txBuilder.SetSignatures(signing.SignatureV2{
-		PubKey: c.settings.Account.PublicKey(),
+		PubKey: c.account.PublicKey(),
 		Data: &signing.SingleSignatureData{
 			SignMode:  signMode,
 			Signature: nil,
@@ -124,7 +125,7 @@ func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msg
 		Sequence:      acc.Sequence,
 	}
 
-	sig, err := clienttx.SignWithPrivKey(signMode, signerData, txBuilder, c.settings.Account.PrivateKey(), c.txConfiger, acc.Sequence)
+	sig, err := clienttx.SignWithPrivKey(signMode, signerData, txBuilder, c.account.PrivateKey(), c.txConfiger, acc.Sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign with private key")
 	}
@@ -137,7 +138,7 @@ func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msg
 }
 
 func (c *Connector) getAccountData(ctx context.Context) (*coretypes.EthAccount, error) {
-	resp, err := c.auther.Account(ctx, &authtypes.QueryAccountRequest{Address: c.settings.Account.CosmosAddress().String()})
+	resp, err := c.auther.Account(ctx, &authtypes.QueryAccountRequest{Address: c.account.CosmosAddress().String()})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account")
 	}

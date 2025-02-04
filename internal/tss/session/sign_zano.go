@@ -144,7 +144,22 @@ func (s *ZanoSigningSession) runSession(ctx context.Context) error {
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
 	if err != nil {
-		return errors.Wrap(err, "consensus phase error occurred")
+		if !errors.Is(err, context.DeadlineExceeded) {
+			return errors.Wrap(err, "consensus phase error occurred")
+
+		}
+		if err = ctx.Err(); err != nil {
+			s.logger.Info("session cancelled")
+			return nil
+		}
+		if err = consensusCtx.Err(); err != nil {
+			if result.SigData != nil {
+				s.logger.Info("local party is not the signer in the current session")
+			} else {
+				s.logger.Info("consensus phase timeout")
+			}
+			return nil
+		}
 	}
 	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")

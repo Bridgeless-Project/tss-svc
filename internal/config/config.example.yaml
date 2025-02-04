@@ -21,10 +21,9 @@ listener-http:
 parties:
   ## List of parties
   list:
-    ## Party 1
+    ## Concrete party configuration
     - core_address: bridge123ex5u9qqmlyzzff278ncsn7rwh65ks0urjyzn
       connection: conn
-      pubkey: pub
 
 ## Chain list configuration
 chains:
@@ -53,12 +52,16 @@ tss:
     session_id: abcd
     threshold: 2
 
+## Bridge Core connector configuration
 core_connector:
+  ## Core RPC connection settings
   connection:
+    ## Core RPC endpoint for queries and transactions
     addr: "rpc"
+    ## Whether to enable TLS connection or not
     enable_tls: false
+  ## General Core settings
   settings:
-    account_private_key: "private"
     chain_id: "00000"
     denom: "denom"
     min_gas_price: 0

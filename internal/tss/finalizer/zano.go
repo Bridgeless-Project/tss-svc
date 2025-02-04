@@ -55,6 +55,7 @@ func (f *ZanoFinalizer) WithLocalPartyProposer(proposer bool) *ZanoFinalizer {
 }
 
 func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
+	f.logger.Info("finalization started")
 	go f.finalize()
 
 	select {
@@ -62,6 +63,7 @@ func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
 		return errors.Wrap(ctx.Err(), "finalization timed out")
 	case err := <-f.errChan:
 		if err == nil {
+			f.logger.Info("finalization finished")
 			return nil
 		}
 

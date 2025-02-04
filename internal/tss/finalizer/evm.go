@@ -52,6 +52,7 @@ func (ef *EvmFinalizer) WithLocalPartyProposer(proposer bool) *EvmFinalizer {
 }
 
 func (ef *EvmFinalizer) Finalize(ctx context.Context) error {
+	ef.logger.Info("finalization started")
 	go ef.finalize(ctx)
 
 	// listen for ctx and errors
@@ -61,6 +62,7 @@ func (ef *EvmFinalizer) Finalize(ctx context.Context) error {
 		return errors.Wrap(ctx.Err(), "finalization timed out")
 	case err := <-ef.errChan:
 		if err == nil {
+			ef.logger.Info("finalization finished")
 			return nil
 		}
 

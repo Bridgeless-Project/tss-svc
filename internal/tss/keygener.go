@@ -112,7 +112,6 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 			return
 		case msg, ok := <-p.msgs:
 			if !ok {
-				p.logger.Debug("msg channel is closed")
 				return
 			}
 
