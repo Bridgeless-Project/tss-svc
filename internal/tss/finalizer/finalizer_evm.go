@@ -35,7 +35,7 @@ func NewEVMFinalizer(db database.DepositsQ, core *core.Connector, logger *logan.
 		wg:      &sync.WaitGroup{},
 		db:      db,
 		core:    core,
-		errChan: make(chan error, 3),
+		errChan: make(chan error),
 		logger:  logger,
 	}
 }
@@ -44,7 +44,6 @@ func (ef *EvmFinalizer) Run(ctx context.Context) error {
 	ef.wg.Add(1)
 
 	go ef.saveAndBroadcast(ctx)
-	ef.wg.Wait()
 
 	// listen for ctx and errors
 	select {
@@ -62,6 +61,8 @@ func (ef *EvmFinalizer) Run(ctx context.Context) error {
 			return errors.Wrap(err, "finalization failed")
 		}
 	}
+
+	ef.wg.Wait()
 
 	return nil
 }
