@@ -3,10 +3,11 @@ package session
 import (
 	"context"
 	"fmt"
+	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -34,11 +35,14 @@ type EvmSigningSession struct {
 	params SigningSessionParams
 	logger *logan.Entry
 
+
+	coreConnector *connector.Connector
 	fetcher     *bridge.DepositFetcher
 	constructor *withdrawal.EvmWithdrawalConstructor
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.EvmWithdrawalData]
+	finalizerParty *finalizer.EvmFinalizer
 }
 
 func NewEvmSigningSession(
@@ -97,6 +101,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.finalizerParty = finalizer.NewEVMFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), nextSessionStartDelay))
@@ -152,12 +157,15 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	}
 
 	// finalization phase
-	// TODO: add proper finalization phase
-	signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
-	s.logger.Info(fmt.Sprintf("got signature: %s", signature))
+	//TODO: if local party is session proposer finalize
+	if true {
+		finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
+		defer finalizerCancel()
 
-	if err = s.db.UpdateSignature(data.DepositIdentifier(), signature); err != nil {
-		return errors.Wrap(err, "failed to update deposit signature")
+		err = s.finalizerParty.WithData(data).WithSignature(result).Run(finalizerCtx)
+		if err != nil {
+			return errors.Wrap(err, "finalizer phase error occurred")
+		}
 	}
 
 	return nil
@@ -209,4 +217,9 @@ func (s *EvmSigningSession) Receive(request *p2p.SubmitRequest) error {
 
 func (s *EvmSigningSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
+}
+
+func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSigningSession {
+	s.coreConnector = conn
+	return s
 }

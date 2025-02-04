@@ -13,8 +13,8 @@ import (
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	coretypes "github.com/hyle-team/bridgeless-core/types"
-	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
+	coretypes "github.com/hyle-team/bridgeless-core/v12/types"
+	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -52,17 +52,17 @@ func NewConnector(conn *grpc.ClientConn, settings ConnectorSettings) *Connector 
 	}
 }
 
-func (c *Connector) submitMsgs(msgs ...sdk.Msg) error {
+func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 	if len(msgs) == 0 {
 		return nil
 	}
 
-	tx, err := c.buildTx(0, 0, msgs...)
+	tx, err := c.buildTx(ctx, 0, 0, msgs...)
 	if err != nil {
 		return errors.Wrap(err, "failed to build simulation transaction")
 	}
 
-	simResp, err := c.transactor.Simulate(context.Background(), &txclient.SimulateRequest{TxBytes: tx})
+	simResp, err := c.transactor.Simulate(ctx, &txclient.SimulateRequest{TxBytes: tx})
 	if err != nil {
 		return errors.Wrap(err, "failed to simulate transaction")
 	}
@@ -70,11 +70,11 @@ func (c *Connector) submitMsgs(msgs ...sdk.Msg) error {
 	gasLimit := ApproximateGasLimit(simResp.GasInfo.GasUsed)
 	feeAmount := gasLimit * c.settings.MinGasPrice
 
-	tx, err = c.buildTx(gasLimit, feeAmount, msgs...)
+	tx, err = c.buildTx(ctx, gasLimit, feeAmount, msgs...)
 	if err != nil {
 		return errors.Wrap(err, "failed to build transaction")
 	}
-	res, err := c.transactor.BroadcastTx(context.Background(), &txclient.BroadcastTxRequest{
+	res, err := c.transactor.BroadcastTx(ctx, &txclient.BroadcastTxRequest{
 		Mode:    txclient.BroadcastMode_BROADCAST_MODE_BLOCK,
 		TxBytes: tx,
 	})
@@ -89,7 +89,7 @@ func (c *Connector) submitMsgs(msgs ...sdk.Msg) error {
 }
 
 // buildTx builds a transaction from the given messages.
-func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
+func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
 	txBuilder := c.txConfiger.NewTxBuilder()
 
 	if err := txBuilder.SetMsgs(msgs...); err != nil {
@@ -97,7 +97,7 @@ func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte
 	}
 
 	// Get account to set sequence number
-	acc, err := c.getAccountData()
+	acc, err := c.getAccountData(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account")
 	}
@@ -136,8 +136,8 @@ func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte
 	return c.txConfiger.TxEncoder()(txBuilder.GetTx())
 }
 
-func (c *Connector) getAccountData() (*coretypes.EthAccount, error) {
-	resp, err := c.auther.Account(context.Background(), &authtypes.QueryAccountRequest{Address: c.settings.Account.CosmosAddress().String()})
+func (c *Connector) getAccountData(ctx context.Context) (*coretypes.EthAccount, error) {
+	resp, err := c.auther.Account(ctx, &authtypes.QueryAccountRequest{Address: c.settings.Account.CosmosAddress().String()})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account")
 	}

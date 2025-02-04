@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
+	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
@@ -104,19 +104,20 @@ type Deposit struct {
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
 	return bridgetypes.Transaction{
-		DepositTxHash:    d.TxHash,
-		DepositTxIndex:   uint64(d.TxNonce),
-		DepositChainId:   d.ChainId,
-		WithdrawalTxHash: *d.WithdrawalTxHash,
-		Depositor:        stringOrEmpty(d.Depositor),
-		// TODO: separate for deposit/withdrawal amount when added to bridge core
-		Amount:            *d.WithdrawalAmount,
+		DepositTxHash:     d.TxHash,
+		DepositTxIndex:    uint64(d.TxNonce),
+		DepositChainId:    d.ChainId,
+		WithdrawalTxHash:  stringOrEmpty(d.WithdrawalTxHash),
+		Depositor:         stringOrEmpty(d.Depositor),
+		DepositAmount:     stringOrEmpty(d.DepositAmount),
+		WithdrawalAmount:  stringOrEmpty(d.WithdrawalAmount),
 		DepositToken:      *d.DepositToken,
 		Receiver:          *d.Receiver,
 		WithdrawalToken:   *d.WithdrawalToken,
 		WithdrawalChainId: *d.WithdrawalChainId,
 		DepositBlock:      uint64(*d.DepositBlock),
 		Signature:         stringOrEmpty(d.Signature),
+		IsWrapped:         boolOrEmpty(d.IsWrappedToken),
 	}
 }
 
@@ -164,4 +165,11 @@ func stringOrEmpty(s *string) string {
 	}
 
 	return *s
+}
+
+func boolOrEmpty(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
 }
