@@ -147,8 +147,8 @@ func (d *depositsQ) Select(selector db.DepositsSelector) ([]db.Deposit, error) {
 
 func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, hash *string, signature *string) error {
 	query := squirrel.Update(depositsTable).
-		Set(depositsWithdrawalTxHash, stringOrEmpty(hash)).
-		Set(depositsSignature, stringOrEmpty(signature)).
+		Set(depositsWithdrawalTxHash, hash).
+		Set(depositsSignature, signature).
 		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
 		Where(identifierToPredicate(identifier))
 
