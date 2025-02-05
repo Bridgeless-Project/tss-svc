@@ -16,6 +16,7 @@ import (
 type LocalKeygenParty struct {
 	PreParams keygen.LocalPreParams
 	Address   core.Address
+	Threshold int
 }
 
 type KeygenParty struct {
@@ -62,7 +63,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
-		getKeygenThreshold(len(p.sortedPartyIds)),
+		p.self.Threshold,
 	)
 	out := make(chan tss.Message, OutChannelSize)
 	end := make(chan *keygen.LocalPartySaveData, EndChannelSize)
@@ -179,8 +180,4 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 			}
 		}
 	}
-}
-
-func getKeygenThreshold(partiesNum int) int {
-	return int(float32(partiesNum) * 2 / 3)
 }

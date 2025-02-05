@@ -72,9 +72,12 @@ var signCmd = &cobra.Command{
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     localSaveData,
-				Threshold: cfg.TSSParams().DefaultSigningSessionParams().Threshold,
+				Threshold: cfg.TssSessionParams().Threshold,
 			},
-			cfg.TSSParams().DefaultSigningSessionParams().WithSigningData([]byte(dataToSign)),
+			session.DefaultSigningSessionParams{
+				SessionParams: cfg.TssSessionParams(),
+				SigningData:   []byte(dataToSign),
+			},
 			cfg.Parties(),
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "signing_session"),

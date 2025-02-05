@@ -16,14 +16,9 @@ import (
 
 var _ p2p.TssSession = &KeygenSession{}
 
-type KeygenSessionParams struct {
-	Id        int64
-	StartTime time.Time
-}
-
 type KeygenSession struct {
 	sessionId string
-	params    KeygenSessionParams
+	params    tss.SessionParams
 	wg        *sync.WaitGroup
 
 	connectedPartiesCount func() int
@@ -44,7 +39,7 @@ type KeygenSession struct {
 func NewKeygenSession(
 	self tss.LocalKeygenParty,
 	parties []p2p.Party,
-	params KeygenSessionParams,
+	params tss.SessionParams,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *KeygenSession {

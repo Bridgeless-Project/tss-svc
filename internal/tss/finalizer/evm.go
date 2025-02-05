@@ -75,7 +75,7 @@ func (ef *EvmFinalizer) Finalize(ctx context.Context) error {
 }
 
 func (ef *EvmFinalizer) finalize(ctx context.Context) {
-	signature := hexutil.Encode(append(ef.signature.Signature, ef.signature.SignatureRecovery...))
+	signature := convertToEthSignature(ef.signature)
 	if err := ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature); err != nil {
 		ef.errChan <- err
 		return
@@ -98,4 +98,11 @@ func (ef *EvmFinalizer) finalize(ctx context.Context) {
 	}
 
 	ef.errChan <- nil
+}
+
+func convertToEthSignature(sig *common.SignatureData) string {
+	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+	rawSig[64] += 27
+
+	return hexutil.Encode(rawSig)
 }

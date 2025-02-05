@@ -15,15 +15,8 @@ import (
 )
 
 type DefaultSigningSessionParams struct {
-	Id          int64
-	StartTime   time.Time
-	Threshold   int
-	signingData []byte
-}
-
-func (p DefaultSigningSessionParams) WithSigningData(data []byte) DefaultSigningSessionParams {
-	p.signingData = data
-	return p
+	tss.SessionParams
+	SigningData []byte
 }
 
 type DefaultSigningSession struct {
@@ -61,7 +54,7 @@ func NewDefaultSigningSession(
 		logger:                logger,
 		connectedPartiesCount: connectedPartiesCountFunc,
 		signingParty: tss.NewSignParty(self, sessionId, logger).
-			WithSigningData(params.signingData).
+			WithSigningData(params.SigningData).
 			WithParties(parties),
 		partiesCount: len(parties),
 	}

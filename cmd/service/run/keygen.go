@@ -66,7 +66,7 @@ var keygenCmd = &cobra.Command{
 				Address:   account.CosmosAddress(),
 			},
 			cfg.Parties(),
-			cfg.TSSParams().KeygenSessionParams(),
+			cfg.TssSessionParams(),
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 		)

@@ -40,17 +40,9 @@ chains:
 
 ## TSS configuration
 tss:
-  ## Keygen configuration
-  keygen:
-    ## Keygen start time
-    start_time: "2025-01-08 00:21:20"
-    ## Keygen session ID
-    session_id: abcd
-  ## Signing configuration
-  signing:
-    start_time: "2025-01-21 15:28:00"
-    session_id: abcd
-    threshold: 2
+  start_time: "2025-01-21 15:28:00"
+  session_id: 123
+  threshold: 2
 
 ## Bridge Core connector configuration
 core_connector:

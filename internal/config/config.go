@@ -17,7 +17,7 @@ type Config interface {
 	vaulter.Vaulter
 	Listenerer
 	p2p.PartiesConfigurator
-	tss.ParamsConfigurator
+	tss.SessionParamsConfigurator
 	chains.Chainer
 	connector.ConnectorConfigurer
 }
@@ -30,21 +30,21 @@ type config struct {
 	vaulter.Vaulter
 	Listenerer
 	p2p.PartiesConfigurator
-	tss.ParamsConfigurator
+	tss.SessionParamsConfigurator
 	chains.Chainer
 	connector.ConnectorConfigurer
 }
 
 func New(getter kv.Getter) Config {
 	return &config{
-		getter:              getter,
-		Vaulter:             vaulter.NewVaulter(),
-		Logger:              comfig.NewLogger(getter, comfig.LoggerOpts{}),
-		Databaser:           pgdb.NewDatabaser(getter),
-		Listenerer:          NewListenerer(getter),
-		PartiesConfigurator: p2p.NewPartiesConfigurator(getter),
-		ParamsConfigurator:  tss.NewParamsConfigurator(getter),
-		Chainer:             chains.NewChainer(getter),
-		ConnectorConfigurer: connector.NewConnectorConfigurer(getter),
+		getter:                    getter,
+		Vaulter:                   vaulter.NewVaulter(),
+		Logger:                    comfig.NewLogger(getter, comfig.LoggerOpts{}),
+		Databaser:                 pgdb.NewDatabaser(getter),
+		Listenerer:                NewListenerer(getter),
+		PartiesConfigurator:       p2p.NewPartiesConfigurator(getter),
+		SessionParamsConfigurator: tss.NewSessionParamsConfigurator(getter),
+		Chainer:                   chains.NewChainer(getter),
+		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),
 	}
 }

@@ -3,6 +3,7 @@ package tss
 import (
 	"crypto/ecdsa"
 	"math/big"
+	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
@@ -28,8 +29,13 @@ func Verify(localParty *keygen.LocalPartySaveData, inputData []byte, signature *
 		X:     localParty.ECDSAPub.X(),
 		Y:     localParty.ECDSAPub.Y(),
 	}
+	data := big.NewInt(0).SetBytes(inputData)
 
-	data := big.NewInt(0).SetBytes(inputData).Bytes()
+	return ecdsa.Verify(&pk, data.Bytes(), new(big.Int).SetBytes(signature.R), new(big.Int).SetBytes(signature.S))
+}
 
-	return ecdsa.Verify(&pk, data, new(big.Int).SetBytes(signature.R), new(big.Int).SetBytes(signature.S))
+type SessionParams struct {
+	Id        int64     `fig:"session_id,required"`
+	StartTime time.Time `fig:"start_time,required"`
+	Threshold int       `fig:"threshold,required"`
 }

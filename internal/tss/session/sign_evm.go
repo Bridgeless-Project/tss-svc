@@ -88,7 +88,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 		return errors.New("target time is in the past")
 	}
 
-	nextSessionStartDelay := runDelay
+	nextSessionStartTime := s.params.StartTime
 	for {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
@@ -109,14 +109,14 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 		s.finalizer = finalizer.NewEVMFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
-		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), nextSessionStartDelay))
+		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(nextSessionStartTime)))
 
 		select {
 		case <-ctx.Done():
 			s.logger.Info("signing session cancelled")
 			return nil
-		case <-time.After(nextSessionStartDelay):
-			nextSessionStartDelay = time.Until(time.Now().Add(tss.BoundarySigningSession))
+		case <-time.After(time.Until(nextSessionStartTime)):
+			nextSessionStartTime = time.Now().Add(tss.BoundarySigningSession)
 		}
 
 		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
@@ -170,7 +170,10 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
 	defer sigCtxCancel()
 
-	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
+	s.signingParty.
+		WithParties(result.Signers).
+		WithSigningData(result.SigData.ProposalData.SigData).
+		Run(signingCtx)
 	signature := s.signingParty.WaitFor()
 	if signature == nil {
 		return errors.New("signing phase error occurred")

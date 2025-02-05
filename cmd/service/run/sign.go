@@ -103,7 +103,10 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 	// sessions spin-up
 	for _, chain := range chns {
 		client, _ := clientsRepo.Client(chain.Id)
-		sessParams := cfg.TSSParams().SigningSessionParams()
+		sessParams := session.SigningSessionParams{
+			SessionParams: cfg.TssSessionParams(),
+			ChainId:       client.ChainId(),
+		}
 
 		var sess RunnableTssSession
 		switch chain.Type {
@@ -116,7 +119,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 					Threshold: sessParams.Threshold,
 				},
 				cfg.Parties(),
-				sessParams.WithChainId(client.ChainId()),
+				sessParams,
 				db,
 				logger.WithField("component", "signing_session"),
 			).
@@ -133,7 +136,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 					Threshold: sessParams.Threshold,
 				},
 				cfg.Parties(),
-				sessParams.WithChainId(client.ChainId()),
+				sessParams,
 				db,
 				logger.WithField("component", "signing_session"),
 			).

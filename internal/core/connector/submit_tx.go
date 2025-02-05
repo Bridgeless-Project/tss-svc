@@ -13,7 +13,7 @@ func (c *Connector) SubmitDeposits(ctx context.Context, depositTxs ...bridgetype
 		return nil
 	}
 
-	msg := bridgetypes.NewMsgSubmitTransactions(c.settings.Account.CosmosAddress().String(), depositTxs...)
+	msg := bridgetypes.NewMsgSubmitTransactions(c.account.CosmosAddress().String(), depositTxs...)
 	err := c.submitMsgs(ctx, msg)
 	if err == nil {
 		return nil
