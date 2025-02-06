@@ -25,7 +25,8 @@ func init() {
 }
 
 var keygenCmd = &cobra.Command{
-	Use: "keygen",
+	Use:   "keygen",
+	Short: "Generates a new keypair using TSS",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")
@@ -65,7 +66,7 @@ var keygenCmd = &cobra.Command{
 				Address:   account.CosmosAddress(),
 			},
 			cfg.Parties(),
-			cfg.TSSParams().KeygenSessionParams(),
+			cfg.TssSessionParams(),
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 		)

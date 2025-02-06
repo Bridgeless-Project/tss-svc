@@ -16,9 +16,9 @@ type ServiceEntry struct {
 }
 
 type Destination struct {
-	Address string `json:"address"`
-	Amount  uint64 `json:"amount"`
-	AssetID string `json:"asset_id"`
+	Address string   `json:"address"`
+	Amount  *big.Int `json:"amount"`
+	AssetID string   `json:"asset_id"`
 }
 
 type TransferParams struct {
@@ -189,10 +189,10 @@ type DecryptTxDetailsResponse struct {
 }
 
 type TxOutput struct {
-	Address  string `json:"address"`
-	Amount   uint64 `json:"amount"`
-	AssetID  string `json:"asset_id"`
-	OutIndex int    `json:"out_index"`
+	Address  string   `json:"address"`
+	Amount   *big.Int `json:"amount"`
+	AssetID  string   `json:"asset_id"`
+	OutIndex int      `json:"out_index"`
 }
 
 type AssetDescriptorOperation struct {

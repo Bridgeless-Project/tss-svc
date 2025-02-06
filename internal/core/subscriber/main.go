@@ -3,6 +3,9 @@ package subscriber
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+
 	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -10,13 +13,11 @@ import (
 	"github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"gitlab.com/distributed_lab/logan/v3"
-	"strconv"
-	"strings"
 )
 
 const (
 	OpServiceName = "op-subscriber"
-	OpPoolSize    = 1000
+	OpPoolSize    = 50
 
 	OpQuerySubmit = "tm.event='Tx' AND message.action='/core.bridge.MsgSubmitTransactions'"
 )
@@ -38,14 +39,12 @@ func NewSubmitSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan
 }
 
 func (s *Subscriber) Run(ctx context.Context) error {
-
 	out, err := s.client.Subscribe(ctx, OpServiceName, s.query, OpPoolSize)
 	if err != nil {
 		return errors.Wrap(err, "subscriber init failed")
 	}
-	go func() {
-		s.run(ctx, out)
-	}()
+
+	go s.run(ctx, out)
 
 	return nil
 }
@@ -55,32 +54,34 @@ func (s *Subscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) 
 		select {
 		case <-ctx.Done():
 			if err := s.client.Unsubscribe(ctx, OpServiceName, s.query); err != nil {
-				s.log.WithError(err).Error("Failed to unsubscribe from new operations")
+				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 
-			s.log.Info("Context finished")
+			s.log.Info("context finished")
 			return
 		case c, ok := <-out:
 			if !ok {
 				s.log.Warn("chanel closed, stopping receiving messages")
 				return
 			}
+
 			deposit, err := parseSubmittedDeposit(c.Events)
 			if err != nil {
-				s.log.WithError(err).Error("Failed to parse submitted deposit")
+				s.log.WithError(err).Error("failed to parse submitted deposit")
 				continue
 			}
+
 			tx, err := s.db.Get(deposit.DepositIdentifier)
 			if err != nil {
-				s.log.WithError(err).Error("Failed to get deposit")
+				s.log.WithError(err).Error("failed to get deposit")
 				continue
 			}
 
 			// if deposit does not exist in db insert it
 			if tx == nil {
-				s.log.Info("Found new submitted deposit")
+				s.log.Info("found new submitted deposit")
 				if _, err = s.db.InsertProcessedDeposit(*deposit); err != nil {
-					s.log.WithError(err).Error("Failed to insert new deposit")
+					s.log.WithError(err).Error("failed to insert new deposit")
 				}
 				continue
 			}
@@ -92,17 +93,16 @@ func (s *Subscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) 
 			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING:
 				s.log.Info("found existing deposit submitted to core")
 				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
-					s.log.WithError(err).Error("Failed to update deposit withdrawal details")
+					s.log.WithError(err).Error("failed to update deposit withdrawal details")
 				}
 			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING:
 				s.log.Info("found submitted pending deposit")
 				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
-					s.log.WithError(err).Error("Failed to update deposit withdrawal details")
+					s.log.WithError(err).Error("failed to update deposit withdrawal details")
 				}
 			default:
-				s.log.Warnf("Received unknown deposit status: %v", tx.WithdrawalStatus)
+				s.log.Infof("nothing to do with deposit status %s", tx.WithdrawalStatus)
 			}
-
 		}
 	}
 }

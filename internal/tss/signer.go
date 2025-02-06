@@ -75,11 +75,6 @@ func (p *SignParty) WithSigningData(data []byte) *SignParty {
 }
 
 func (p *SignParty) Run(ctx context.Context) {
-	if p.parties == nil || p.data == nil {
-		p.logger.Error("parties or data is not set")
-		return
-	}
-
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
@@ -134,7 +129,6 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 			return
 		case msg, ok := <-p.msgs:
 			if !ok {
-				p.logger.Debug("msg channel is closed")
 				return
 			}
 

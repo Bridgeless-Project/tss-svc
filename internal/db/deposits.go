@@ -2,9 +2,10 @@ package db
 
 import (
 	"fmt"
-	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"math/big"
 
+	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
+	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -29,6 +30,7 @@ type DepositsQ interface {
 
 	Exists(check DepositExistenceCheck) (bool, error)
 	UpdateWithdrawalDetails(identifier DepositIdentifier, hash *string, signature *string) error
+	UpdateWithdrawalTx(DepositIdentifier, string) error
 	UpdateSignature(DepositIdentifier, string) error
 	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
 	InsertProcessedDeposit(deposit Deposit) (int64, error)
@@ -54,11 +56,26 @@ type DepositExistenceCheck struct {
 	ByChainId *string
 }
 
+func ToExistenceCheck(identifier *types.DepositIdentifier, chainType chainTypes.Type) DepositExistenceCheck {
+	check := DepositExistenceCheck{
+		ByTxHash:  &identifier.TxHash,
+		ByChainId: &identifier.ChainId,
+	}
+
+	if chainType != chainTypes.TypeZano {
+		nonce := int(identifier.TxNonce)
+		check.ByTxNonce = &nonce
+	}
+
+	return check
+}
+
 type DepositsSelector struct {
-	Ids     []int64
-	ChainId *string
-	One     bool
-	Status  *types.WithdrawalStatus
+	Ids               []int64
+	ChainId           *string
+	WithdrawalChainId *string
+	One               bool
+	Status            *types.WithdrawalStatus
 }
 
 func (d DepositIdentifier) String() string {
@@ -89,18 +106,20 @@ type Deposit struct {
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
 	return bridgetypes.Transaction{
-		DepositTxHash:    d.TxHash,
-		DepositTxIndex:   uint64(d.TxNonce),
-		DepositChainId:   d.ChainId,
-		WithdrawalTxHash: *d.WithdrawalTxHash,
-		Depositor:        stringOrEmpty(d.Depositor),
-		// TODO: separate for deposit/withdrawal amount when added to bridge core
+		DepositTxHash:     d.TxHash,
+		DepositTxIndex:    uint64(d.TxNonce),
+		DepositChainId:    d.ChainId,
+		WithdrawalTxHash:  stringOrEmpty(d.WithdrawalTxHash),
+		Depositor:         stringOrEmpty(d.Depositor),
+		DepositAmount:     stringOrEmpty(d.DepositAmount),
+		WithdrawalAmount:  stringOrEmpty(d.WithdrawalAmount),
 		DepositToken:      *d.DepositToken,
 		Receiver:          *d.Receiver,
 		WithdrawalToken:   *d.WithdrawalToken,
 		WithdrawalChainId: *d.WithdrawalChainId,
 		DepositBlock:      uint64(*d.DepositBlock),
 		Signature:         stringOrEmpty(d.Signature),
+		IsWrapped:         boolOrEmpty(d.IsWrappedToken),
 	}
 }
 
@@ -148,4 +167,11 @@ func stringOrEmpty(s *string) string {
 	}
 
 	return *s
+}
+
+func boolOrEmpty(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
 }

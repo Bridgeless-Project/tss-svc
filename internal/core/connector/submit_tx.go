@@ -1,19 +1,20 @@
 package core
 
 import (
+	"context"
 	"strings"
 
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
 )
 
-func (c *Connector) SubmitDeposits(depositTxs ...bridgetypes.Transaction) error {
+func (c *Connector) SubmitDeposits(ctx context.Context, depositTxs ...bridgetypes.Transaction) error {
 	if len(depositTxs) == 0 {
 		return nil
 	}
 
-	msg := bridgetypes.NewMsgSubmitTransactions(c.settings.Account.CosmosAddress().String(), depositTxs...)
-	err := c.submitMsgs(msg)
+	msg := bridgetypes.NewMsgSubmitTransactions(c.account.CosmosAddress().String(), depositTxs...)
+	err := c.submitMsgs(ctx, msg)
 	if err == nil {
 		return nil
 	}

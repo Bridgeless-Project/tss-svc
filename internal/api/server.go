@@ -14,7 +14,10 @@ import (
 	srvhttp "github.com/hyle-team/tss-svc/internal/api/http"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	"github.com/hyle-team/tss-svc/internal/api/types"
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -40,7 +43,9 @@ func NewServer(
 	db db.DepositsQ,
 	logger *logan.Entry,
 	clients clients.ClientsRepository,
-	processor *clients.DepositFetcher,
+	processor *bridge.DepositFetcher,
+	broadcaster *p2p.Broadcaster,
+	self core.Address,
 ) *Server {
 	return &Server{
 		grpc:   grpc,
@@ -51,7 +56,9 @@ func NewServer(
 			ctx.LoggerProvider(logger),
 			ctx.DBProvider(db),
 			ctx.ClientsProvider(clients),
-			ctx.ProcessorProvider(processor),
+			ctx.FetcherProvider(processor),
+			ctx.BroadcasterProvider(broadcaster),
+			ctx.SelfProvider(self),
 		},
 	}
 }

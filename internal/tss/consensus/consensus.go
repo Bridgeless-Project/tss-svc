@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -34,11 +34,17 @@ type LocalConsensusParty struct {
 	ChainId   string
 }
 
+type SigningSessionData[T withdrawal.DepositSigningData] struct {
+	SigData  *T
+	Signers  []p2p.Party
+	Proposer core.Address
+}
+
 func New[T withdrawal.DepositSigningData](
 	party LocalConsensusParty,
 	parties []p2p.Party,
 	db db.DepositsQ,
-	processor *clients.DepositFetcher,
+	processor *bridge.DepositFetcher,
 	constructor withdrawal.Constructor[T],
 	logger *logan.Entry,
 ) *Consensus[T] {
@@ -60,7 +66,7 @@ func New[T withdrawal.DepositSigningData](
 		processor:   processor,
 		constructor: constructor,
 
-		logger: logger,
+		logger: logger.WithField("session_id", party.SessionId),
 
 		wg:   &sync.WaitGroup{},
 		msgs: make(chan consensusMsg, msgsCapacity),
@@ -77,7 +83,7 @@ type Consensus[T withdrawal.DepositSigningData] struct {
 	threshold int
 
 	db        db.DepositsQ
-	processor *clients.DepositFetcher
+	processor *bridge.DepositFetcher
 
 	constructor withdrawal.Constructor[T]
 
@@ -129,22 +135,25 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 
 func (c *Consensus[T]) Run(ctx context.Context) {
 	c.proposer = c.determineProposer()
-	c.logger.Info(fmt.Sprintf("proposer is '%s'", c.proposer))
+	c.logger.Info(fmt.Sprintf("starting consensus with proposer: %s", c.proposer))
 
 	c.wg.Add(1)
 	if c.proposer == c.self {
-		c.logger.Info("proposer is MEEEEEE")
 		go c.propose(ctx)
 	} else {
 		go c.accept(ctx)
 	}
 }
 
-func (c *Consensus[T]) WaitFor() (sigData *T, signers []p2p.Party, err error) {
+func (c *Consensus[T]) WaitFor() (result SigningSessionData[T], err error) {
 	c.wg.Wait()
 	c.ended.Store(true)
 
-	return c.result.sigData, c.result.signers, c.result.err
+	return SigningSessionData[T]{
+		SigData:  c.result.sigData,
+		Signers:  c.result.signers,
+		Proposer: c.proposer,
+	}, c.result.err
 }
 
 func (c *Consensus[T]) determineProposer() core.Address {
@@ -160,8 +169,6 @@ func (c *Consensus[T]) determineProposer() core.Address {
 
 	generator := deterministicRandSource(c.sessionId)
 	proposerIdx := int(generator.Uint64() % uint64(sortedIds.Len()))
-
-	c.logger.Info(fmt.Sprintf("proposerIdx: %d", proposerIdx))
 
 	return core.AddrFromPartyId(sortedIds[proposerIdx])
 }

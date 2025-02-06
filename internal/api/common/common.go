@@ -2,8 +2,7 @@ package common
 
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	apiTyoes "github.com/hyle-team/tss-svc/internal/api/types"
-	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chains"
+	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -28,8 +27,8 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Clie
 	return nil
 }
 
-func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
-	result := &apiTyoes.CheckWithdrawalResponse{
+func ToStatusResponse(d *database.Deposit) *apiTypes.CheckWithdrawalResponse {
+	result := &apiTypes.CheckWithdrawalResponse{
 		DepositIdentifier: &types.DepositIdentifier{
 			TxHash:  d.TxHash,
 			TxNonce: uint32(d.TxNonce),
@@ -70,20 +69,6 @@ func ToDbIdentifier(identifier *types.DepositIdentifier) database.DepositIdentif
 		TxNonce: int(identifier.TxNonce),
 		ChainId: identifier.ChainId,
 	}
-}
-
-func ToExistenceCheck(identifier *types.DepositIdentifier, chainType chainTypes.Type) database.DepositExistenceCheck {
-	check := database.DepositExistenceCheck{
-		ByTxHash:  &identifier.TxHash,
-		ByChainId: &identifier.ChainId,
-	}
-
-	if chainType != chainTypes.TypeZano {
-		nonce := int(identifier.TxNonce)
-		check.ByTxNonce = &nonce
-	}
-
-	return check
 }
 
 func ProtoJsonMustMarshal(msg proto.Message) []byte {

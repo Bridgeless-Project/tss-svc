@@ -1,8 +1,9 @@
-package clients
+package bridge
 
 import (
 	"math/big"
 
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
@@ -10,10 +11,10 @@ import (
 
 type DepositFetcher struct {
 	core    *connector.Connector
-	clients ClientsRepository
+	clients clients.ClientsRepository
 }
 
-func NewDepositFetcher(clients ClientsRepository, core *connector.Connector) *DepositFetcher {
+func NewDepositFetcher(clients clients.ClientsRepository, core *connector.Connector) *DepositFetcher {
 	return &DepositFetcher{
 		clients: clients,
 		core:    core,
@@ -40,7 +41,7 @@ func (p *DepositFetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Depo
 		return nil, errors.Wrap(err, "error getting destination clients")
 	}
 	if !dstClient.AddressValid(depositData.DestinationAddress) {
-		return nil, errors.Wrap(ErrInvalidReceiverAddress, depositData.DestinationAddress)
+		return nil, errors.Wrap(clients.ErrInvalidReceiverAddress, depositData.DestinationAddress)
 	}
 
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
@@ -54,7 +55,7 @@ func (p *DepositFetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Depo
 
 	withdrawalAmount := transformAmount(depositData.DepositAmount, srcTokenInfo.Decimals, dstTokenInfo.Decimals)
 	if !dstClient.WithdrawalAmountValid(withdrawalAmount) {
-		return nil, ErrInvalidDepositedAmount
+		return nil, clients.ErrInvalidDepositedAmount
 	}
 
 	deposit := depositData.ToNewDeposit(withdrawalAmount, dstTokenInfo.Address, dstTokenInfo.IsWrapped)

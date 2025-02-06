@@ -7,8 +7,10 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-type SubscriberConfig interface {
-	Client() *http.HTTP
+const subscriberConfigKey = "subscriber"
+
+type SubscriberConfigurator interface {
+	TendermintHttpClient() *http.HTTP
 }
 
 type subscriber struct {
@@ -16,19 +18,19 @@ type subscriber struct {
 	getter kv.Getter
 }
 
-func NewSubscriberConfig(getter kv.Getter) SubscriberConfig {
+func NewSubscriberConfigurator(getter kv.Getter) SubscriberConfigurator {
 	return &subscriber{
 		getter: getter,
 	}
 }
 
-func (sc *subscriber) Client() *http.HTTP {
+func (sc *subscriber) TendermintHttpClient() *http.HTTP {
 	return sc.once.Do(func() interface{} {
 		var config struct {
 			Addr string `fig:"addr"`
 		}
 
-		if err := figure.Out(&config).From(kv.MustGetStringMap(sc.getter, "subscriber")).Please(); err != nil {
+		if err := figure.Out(&config).From(kv.MustGetStringMap(sc.getter, subscriberConfigKey)).Please(); err != nil {
 			panic(err)
 		}
 
@@ -37,7 +39,7 @@ func (sc *subscriber) Client() *http.HTTP {
 			panic(err)
 		}
 
-		if err := client.Start(); err != nil {
+		if err = client.Start(); err != nil {
 			panic(err)
 		}
 

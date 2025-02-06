@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/hyle-team/tss-svc/internal/tss"
 )
 
 const (
@@ -13,15 +14,8 @@ const (
 )
 
 type SigningSessionParams struct {
-	Id        int64
-	StartTime time.Time
-	Threshold int
-	ChainId   string
-}
-
-func (p SigningSessionParams) WithChainId(chainId string) SigningSessionParams {
-	p.ChainId = chainId
-	return p
+	tss.SessionParams
+	ChainId string
 }
 
 func GetKeygenSessionIdentifier(sessionId int64) string {
