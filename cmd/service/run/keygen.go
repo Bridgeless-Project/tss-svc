@@ -64,6 +64,7 @@ var keygenCmd = &cobra.Command{
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
 				Address:   account.CosmosAddress(),
+				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			cfg.Parties(),
 			cfg.TssSessionParams(),
