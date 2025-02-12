@@ -32,7 +32,7 @@ func NewConnectionManager(parties []Party, requiredStatus PartyStatus, logger *l
 	conns := make(map[core.Address]connection, len(parties))
 
 	for _, p := range parties {
-		conns[p.CoreAddress] = connection{conn: p.Connection(), status: PartyStatus_UNKNOWN}
+		conns[p.CoreAddress] = connection{conn: p.Connection(), status: PartyStatus_PS_UNKNOWN}
 	}
 
 	manager := &ConnectionManager{

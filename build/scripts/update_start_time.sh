@@ -1,11 +1,11 @@
 #!/bin/bash
 
-YAML_FILES=("./configs/tss1.yaml" "./configs/tss2.yaml" "./configs/tss3.yaml")
+YAML_FILES=("./configs/tss1.local.yaml" "./configs/tss2.local.yaml" "./configs/tss3.local.yaml")
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    NEW_TIME=$(date -u -v+20S +"%Y-%m-%d %H:%M:%S")
+    NEW_TIME=$(date -u -v+15S +"%Y-%m-%d %H:%M:%S")
 else
-    NEW_TIME=$(date -u -d "+20 seconds" +"%Y-%m-%d %H:%M:%S")
+    NEW_TIME=$(date -u -d "+15 seconds" +"%Y-%m-%d %H:%M:%S")
 fi
 
 echo "Updating start_time to: $NEW_TIME"

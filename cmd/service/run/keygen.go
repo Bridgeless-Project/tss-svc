@@ -25,7 +25,8 @@ func init() {
 }
 
 var keygenCmd = &cobra.Command{
-	Use: "keygen",
+	Use:   "keygen",
+	Short: "Generates a new keypair using TSS",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")
@@ -55,7 +56,7 @@ var keygenCmd = &cobra.Command{
 
 		connectionManager := p2p.NewConnectionManager(
 			cfg.Parties(),
-			p2p.PartyStatus_KEYGENING,
+			p2p.PartyStatus_PS_KEYGEN,
 			cfg.Log().WithField("component", "connection_manager"),
 		)
 
@@ -63,9 +64,10 @@ var keygenCmd = &cobra.Command{
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
 				Address:   account.CosmosAddress(),
+				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			cfg.Parties(),
-			cfg.TSSParams().KeygenSessionParams(),
+			cfg.TssSessionParams(),
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 		)
@@ -73,8 +75,8 @@ var keygenCmd = &cobra.Command{
 		sessionManager := p2p.NewSessionManager(session)
 
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.GRPCListener(), sessionManager)
-			server.SetStatus(p2p.PartyStatus_KEYGENING)
+			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager)
+			server.SetStatus(p2p.PartyStatus_PS_KEYGEN)
 			return server.Run(ctx)
 		})
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"net"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
@@ -10,51 +11,70 @@ import (
 )
 
 type Listenerer interface {
-	GRPCListener() net.Listener
-	HTTPListener() net.Listener
+	P2pGrpcListener() net.Listener
+	ApiGrpcListener() net.Listener
+	ApiHttpListener() net.Listener
 }
 
 const (
-	grpcKey = "listener-grpc"
-	httpKey = "listener-http"
+	listenersKey = "listeners"
 )
 
 func NewListenerer(getter kv.Getter) Listenerer {
 	return &listener{getter: getter}
 }
 
+type listeners struct {
+	P2pGrpc net.Listener `fig:"p2p_grpc_addr,required"`
+	ApiGrpc net.Listener `fig:"api_grpc_addr,required"`
+	ApiHttp net.Listener `fig:"api_http_addr,required"`
+}
+
 type listener struct {
-	getter   kv.Getter
-	grpcOnce comfig.Once
-	httpOnce comfig.Once
+	getter kv.Getter
+	once   comfig.Once
 }
 
-func (l *listener) GRPCListener() net.Listener {
-	return l.listener(&l.grpcOnce, grpcKey)
+func (l *listener) P2pGrpcListener() net.Listener {
+	return l.listener(listenersKey).P2pGrpc
 }
 
-func (l *listener) HTTPListener() net.Listener {
-	return l.listener(&l.httpOnce, httpKey)
+func (l *listener) ApiGrpcListener() net.Listener {
+	return l.listener(listenersKey).ApiGrpc
 }
 
-func (l *listener) listener(once *comfig.Once, key string) net.Listener {
-	return once.Do(func() interface{} {
-		var config struct {
-			Addr string `fig:"addr,required"`
-		}
+func (l *listener) ApiHttpListener() net.Listener {
+	return l.listener(listenersKey).ApiHttp
+}
+
+func (l *listener) listener(key string) listeners {
+	return l.once.Do(func() interface{} {
+		var ls listeners
 		err := figure.
-			Out(&config).
+			Out(&ls).
+			With(figure.BaseHooks, listenerHooks).
 			From(kv.MustGetStringMap(l.getter, key)).
 			Please()
 		if err != nil {
 			panic(errors.Wrap(err, "failed to load listener config"))
 		}
 
-		ls, err := net.Listen("tcp", config.Addr)
-		if err != nil {
-			panic(errors.Wrap(err, "failed to bind listener address"))
-		}
-
 		return ls
-	}).(net.Listener)
+	}).(listeners)
+}
+
+var listenerHooks = figure.Hooks{
+	"net.Listener": func(value interface{}) (reflect.Value, error) {
+		switch addr := value.(type) {
+		case string:
+			ls, err := net.Listen("tcp", addr)
+			if err != nil {
+				return reflect.Value{}, errors.Wrapf(err, "failed to listen on %s", addr)
+			}
+
+			return reflect.ValueOf(ls), nil
+		default:
+			return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
+		}
+	},
 }

@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/hyle-team/tss-svc/cmd/helpers"
 	"github.com/hyle-team/tss-svc/cmd/service"
+	"os"
 
 	"github.com/spf13/cobra"
 )

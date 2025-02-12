@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	clienttx "github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -12,21 +13,23 @@ import (
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	coretypes "github.com/hyle-team/bridgeless-core/types"
-	bridgetypes "github.com/hyle-team/bridgeless-core/x/bridge/types"
+	coretypes "github.com/hyle-team/bridgeless-core/v12/types"
+	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
-var _ types.Bridger = &Connector{}
+var (
+	ErrPairNotFound                = errors.New("pair not found")
+	ErrTokenInfoNotFound           = errors.New("token info not found")
+	ErrTransactionAlreadySubmitted = errors.New("transaction already submitted")
+)
 
 type ConnectorSettings struct {
-	Account     core.Account `fig:"account_private_key,required"`
-	ChainId     string       `fig:"chain_id,required"`
-	Denom       string       `fig:"denom,required"`
-	MinGasPrice uint64       `fig:"min_gas_price"`
+	ChainId     string `fig:"chain_id,required"`
+	Denom       string `fig:"denom,required"`
+	MinGasPrice uint64 `fig:"min_gas_price"`
 }
 
 type Connector struct {
@@ -36,29 +39,31 @@ type Connector struct {
 	querier    bridgetypes.QueryClient
 
 	settings ConnectorSettings
+	account  core.Account
 }
 
-func NewConnector(conn *grpc.ClientConn, settings ConnectorSettings) *Connector {
+func NewConnector(account core.Account, conn *grpc.ClientConn, settings ConnectorSettings) *Connector {
 	return &Connector{
 		transactor: txclient.NewServiceClient(conn),
 		txConfiger: authtx.NewTxConfig(codec.NewProtoCodec(codectypes.NewInterfaceRegistry()), []signing.SignMode{signing.SignMode_SIGN_MODE_DIRECT}),
 		auther:     authtypes.NewQueryClient(conn),
 		querier:    bridgetypes.NewQueryClient(conn),
 		settings:   settings,
+		account:    account,
 	}
 }
 
-func (c *Connector) submitMsgs(msgs ...sdk.Msg) error {
+func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 	if len(msgs) == 0 {
 		return nil
 	}
 
-	tx, err := c.buildTx(0, 0, msgs...)
+	tx, err := c.buildTx(ctx, 0, 0, msgs...)
 	if err != nil {
 		return errors.Wrap(err, "failed to build simulation transaction")
 	}
 
-	simResp, err := c.transactor.Simulate(context.Background(), &txclient.SimulateRequest{TxBytes: tx})
+	simResp, err := c.transactor.Simulate(ctx, &txclient.SimulateRequest{TxBytes: tx})
 	if err != nil {
 		return errors.Wrap(err, "failed to simulate transaction")
 	}
@@ -66,11 +71,11 @@ func (c *Connector) submitMsgs(msgs ...sdk.Msg) error {
 	gasLimit := ApproximateGasLimit(simResp.GasInfo.GasUsed)
 	feeAmount := gasLimit * c.settings.MinGasPrice
 
-	tx, err = c.buildTx(gasLimit, feeAmount, msgs...)
+	tx, err = c.buildTx(ctx, gasLimit, feeAmount, msgs...)
 	if err != nil {
 		return errors.Wrap(err, "failed to build transaction")
 	}
-	res, err := c.transactor.BroadcastTx(context.Background(), &txclient.BroadcastTxRequest{
+	res, err := c.transactor.BroadcastTx(ctx, &txclient.BroadcastTxRequest{
 		Mode:    txclient.BroadcastMode_BROADCAST_MODE_BLOCK,
 		TxBytes: tx,
 	})
@@ -85,7 +90,7 @@ func (c *Connector) submitMsgs(msgs ...sdk.Msg) error {
 }
 
 // buildTx builds a transaction from the given messages.
-func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
+func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
 	txBuilder := c.txConfiger.NewTxBuilder()
 
 	if err := txBuilder.SetMsgs(msgs...); err != nil {
@@ -93,7 +98,7 @@ func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte
 	}
 
 	// Get account to set sequence number
-	acc, err := c.getAccountData()
+	acc, err := c.getAccountData(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account")
 	}
@@ -103,7 +108,7 @@ func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte
 
 	signMode := c.txConfiger.SignModeHandler().DefaultMode()
 	err = txBuilder.SetSignatures(signing.SignatureV2{
-		PubKey: c.settings.Account.PublicKey(),
+		PubKey: c.account.PublicKey(),
 		Data: &signing.SingleSignatureData{
 			SignMode:  signMode,
 			Signature: nil,
@@ -120,7 +125,7 @@ func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte
 		Sequence:      acc.Sequence,
 	}
 
-	sig, err := clienttx.SignWithPrivKey(signMode, signerData, txBuilder, c.settings.Account.PrivateKey(), c.txConfiger, acc.Sequence)
+	sig, err := clienttx.SignWithPrivKey(signMode, signerData, txBuilder, c.account.PrivateKey(), c.txConfiger, acc.Sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign with private key")
 	}
@@ -132,8 +137,8 @@ func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte
 	return c.txConfiger.TxEncoder()(txBuilder.GetTx())
 }
 
-func (c *Connector) getAccountData() (*coretypes.EthAccount, error) {
-	resp, err := c.auther.Account(context.Background(), &authtypes.QueryAccountRequest{Address: c.settings.Account.CosmosAddress().String()})
+func (c *Connector) getAccountData(ctx context.Context) (*coretypes.EthAccount, error) {
+	resp, err := c.auther.Account(ctx, &authtypes.QueryAccountRequest{Address: c.account.CosmosAddress().String()})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account")
 	}

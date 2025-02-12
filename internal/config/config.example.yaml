@@ -21,10 +21,9 @@ listener-http:
 parties:
   ## List of parties
   list:
-    ## Party 1
+    ## Concrete party configuration
     - core_address: bridge123ex5u9qqmlyzzff278ncsn7rwh65ks0urjyzn
       connection: conn
-      pubkey: pub
 
 ## Chain list configuration
 chains:
@@ -35,30 +34,29 @@ chains:
       rpc: "your_rpc_endpoint_here"
       ## Bridge contract address
       bridge_addresses: "test_address"
-      ## Number of confirmations required for the deposit to be considered final
+      ## Number of confirmations required for the withdrawal to be considered final
       confirmations: 1
       type: "type1"
 
 ## TSS configuration
 tss:
-  ## Keygen configuration
-  keygen:
-    ## Keygen start time
-    start_time: "2025-01-08 00:21:20"
-    ## Keygen session ID
-    session_id: abcd
-  ## Signing configuration
-  signing:
-    start_time: "2025-01-21 15:28:00"
-    session_id: abcd
-    threshold: 2
+  start_time: "2025-01-21 15:28:00"
+  session_id: 123
+  threshold: 2
 
+## Bridge Core connector configuration
 core_connector:
+  ## Core RPC connection settings
   connection:
+    ## Core RPC endpoint for queries and transactions
     addr: "rpc"
+    ## Whether to enable TLS connection or not
     enable_tls: false
+  ## General Core settings
   settings:
-    account_private_key: "private"
     chain_id: "00000"
     denom: "denom"
     min_gas_price: 0
+
+subscriber:
+  addr: "tcp"

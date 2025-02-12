@@ -15,4 +15,5 @@ var Cmd = &cobra.Command{
 
 func registerCommands(cmd *cobra.Command) {
 	cmd.AddCommand(keygenCmd)
+	cmd.AddCommand(signCmd)
 }

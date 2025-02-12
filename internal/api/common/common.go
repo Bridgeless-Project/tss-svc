@@ -1,34 +1,59 @@
 package common
 
 import (
-	apiTyoes "github.com/hyle-team/tss-svc/internal/api/types"
-	chainTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
-	"strconv"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
-func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
-	result := &apiTyoes.CheckWithdrawalResponse{
+func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Client) error {
+	err := validation.Errors{
+		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
+		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
+	}.Filter()
+	if err != nil {
+		return err
+	}
+
+	if !client.TransactionHashValid(identifier.TxHash) {
+		return errors.New("invalid transaction hash")
+	}
+
+	return nil
+}
+
+func ToStatusResponse(d *database.Deposit) *apiTypes.CheckWithdrawalResponse {
+	result := &apiTypes.CheckWithdrawalResponse{
 		DepositIdentifier: &types.DepositIdentifier{
 			TxHash:  d.TxHash,
-			TxNonce: int64(d.TxNonce),
+			TxNonce: uint32(d.TxNonce),
 			ChainId: d.ChainId,
-		},
-		TransferData: &types.TransferData{
-			Sender:           d.Depositor,
-			Receiver:         *d.Receiver,
-			DepositAmount:    *d.DepositAmount,
-			WithdrawalAmount: *d.WithdrawalAmount,
-			DepositAsset:     *d.DepositToken,
-			WithdrawalAsset:  *d.WithdrawalToken,
-			IsWrappedAsset:   strconv.FormatBool(*d.IsWrappedToken),
-			DepositBlock:     *d.DepositBlock,
-			Signature:        d.Signature,
 		},
 		WithdrawalStatus: d.WithdrawalStatus,
 	}
-	if d.WithdrawalTxHash != nil && d.WithdrawalChainId != nil {
+
+	if d.WithdrawalStatus == types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID {
+		return result
+	}
+
+	result.TransferData = &types.TransferData{
+		Sender:           d.Depositor,
+		Receiver:         *d.Receiver,
+		DepositAmount:    *d.DepositAmount,
+		WithdrawalAmount: *d.WithdrawalAmount,
+		DepositAsset:     *d.DepositToken,
+		WithdrawalAsset:  *d.WithdrawalToken,
+		IsWrappedAsset:   *d.IsWrappedToken,
+		DepositBlock:     *d.DepositBlock,
+		Signature:        d.Signature,
+	}
+
+	if d.WithdrawalTxHash != nil {
 		result.WithdrawalIdentifier = &types.WithdrawalIdentifier{
 			TxHash:  *d.WithdrawalTxHash,
 			ChainId: *d.WithdrawalChainId,
@@ -38,17 +63,15 @@ func ToStatusResponse(d *database.Deposit) *apiTyoes.CheckWithdrawalResponse {
 	return result
 }
 
-func FormDepositIdentifier(identifier *types.DepositIdentifier, chainType chainTypes.Type) database.DepositIdentifier {
-	if chainType == chainTypes.TypeZano {
-		return database.DepositIdentifier{
-			TxHash:  identifier.TxHash,
-			ChainId: identifier.ChainId,
-		}
-	}
-
+func ToDbIdentifier(identifier *types.DepositIdentifier) database.DepositIdentifier {
 	return database.DepositIdentifier{
 		TxHash:  identifier.TxHash,
 		TxNonce: int(identifier.TxNonce),
 		ChainId: identifier.ChainId,
 	}
+}
+
+func ProtoJsonMustMarshal(msg proto.Message) []byte {
+	raw, _ := protojson.Marshal(msg)
+	return raw
 }

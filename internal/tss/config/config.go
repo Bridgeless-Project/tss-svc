@@ -1,10 +1,7 @@
 package config
 
 import (
-	"time"
-
-	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
@@ -13,63 +10,32 @@ import (
 
 const paramsConfigKey = "tss"
 
-type ParamsConfigurator interface {
-	TSSParams() Params
+type SessionParamsConfigurator interface {
+	TssSessionParams() tss.SessionParams
 }
 
-type Params struct {
-	Keygen  KeygenParams  `fig:"keygen"`
-	Signing SigningParams `fig:"signing"`
-}
-
-func (p Params) KeygenSessionParams() session.KeygenSessionParams {
-	return session.KeygenSessionParams{
-		Id:        p.Keygen.Id,
-		StartTime: p.Keygen.StartTime,
-	}
-}
-
-func (p Params) SigningSessionParams() session.SigningSessionParams {
-	return session.SigningSessionParams{
-		Id:        p.Signing.Id,
-		StartTime: p.Signing.StartTime,
-		Threshold: p.Signing.Threshold,
-	}
-}
-
-type KeygenParams struct {
-	Id        string    `fig:"session_id,required"`
-	StartTime time.Time `fig:"start_time,required"`
-}
-
-type SigningParams struct {
-	Id        string    `fig:"session_id,required"`
-	StartTime time.Time `fig:"start_time,required"`
-	Threshold int       `fig:"threshold,required"`
-}
-
-type tssParamsConfigurator struct {
+type configurator struct {
 	getter kv.Getter
 	once   comfig.Once
 }
 
-func NewParamsConfigurator(getter kv.Getter) ParamsConfigurator {
-	return &tssParamsConfigurator{getter: getter}
+func NewSessionParamsConfigurator(getter kv.Getter) SessionParamsConfigurator {
+	return &configurator{getter: getter}
 }
 
-func (t *tssParamsConfigurator) TSSParams() Params {
+func (t *configurator) TssSessionParams() tss.SessionParams {
 	return t.once.Do(func() interface{} {
-		var cfg Params
+		var params tss.SessionParams
 
 		err := figure.
-			Out(&cfg).
-			With(figure.BaseHooks, core.AddressHook).
+			Out(&params).
+			With(figure.BaseHooks).
 			From(kv.MustGetStringMap(t.getter, paramsConfigKey)).
 			Please()
 		if err != nil {
 			panic(errors.Wrap(err, "failed to load tss params config"))
 		}
 
-		return cfg
-	}).(Params)
+		return params
+	}).(tss.SessionParams)
 }
