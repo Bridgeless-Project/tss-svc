@@ -29,10 +29,11 @@ type DepositsQ interface {
 	GetWithSelector(selector DepositsSelector) (*Deposit, error)
 
 	Exists(check DepositExistenceCheck) (bool, error)
-
+	UpdateWithdrawalDetails(identifier DepositIdentifier, hash *string, signature *string) error
 	UpdateWithdrawalTx(DepositIdentifier, string) error
 	UpdateSignature(DepositIdentifier, string) error
 	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
+	InsertProcessedDeposit(deposit Deposit) (int64, error)
 
 	Transaction(f func() error) error
 }

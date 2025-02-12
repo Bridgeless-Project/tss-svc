@@ -57,3 +57,6 @@ core_connector:
     chain_id: "00000"
     denom: "denom"
     min_gas_price: 0
+
+subscriber:
+  addr: "tcp"

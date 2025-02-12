@@ -16,6 +16,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/config"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/core/subscriber"
 	pg "github.com/hyle-team/tss-svc/internal/db/postgres"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
@@ -67,6 +68,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 
 	db := pg.NewDepositsQ(cfg.DB())
 	connector := core.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
+	sub := subscriber.NewSubmitSubscriber(db, cfg.TendermintHttpClient(), logger)
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
 	srv := api.NewServer(
 		cfg.ApiGrpcListener(),
@@ -172,6 +174,16 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		)
 		sessionManager.Add(depositAcceptorSession)
 		depositAcceptorSession.Run(ctx)
+	}()
+
+	// Core deposit subscriber spin-up
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		if err := sub.Run(ctx); err != nil {
+			logger.WithError(err).Error("failed to run Core event subscriber")
+		}
 	}()
 
 	// p2p server spin-up

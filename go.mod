@@ -31,6 +31,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.7.0
 	github.com/spf13/cobra v1.8.1
+	github.com/tendermint/tendermint v0.34.28
 	gitlab.com/distributed_lab/ape v1.7.2
 	gitlab.com/distributed_lab/figure/v3 v3.1.4
 	gitlab.com/distributed_lab/kit v1.11.3
@@ -159,7 +160,6 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
-	github.com/tendermint/tendermint v0.34.28 // indirect
 	github.com/tendermint/tm-db v0.6.7 // indirect
 	github.com/tidwall/btree v1.6.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
