@@ -18,15 +18,17 @@ type Chain struct {
 type Type string
 
 const (
-	TypeEVM   Type = "evm"
-	TypeZano  Type = "zano"
-	TypeOther Type = "other"
+	TypeEVM     Type = "evm"
+	TypeZano    Type = "zano"
+	TypeBitcoin Type = "bitcoin"
+	TypeOther   Type = "other"
 )
 
 var typesMap = map[Type]struct{}{
-	TypeEVM:   {},
-	TypeZano:  {},
-	TypeOther: {},
+	TypeEVM:     {},
+	TypeZano:    {},
+	TypeOther:   {},
+	TypeBitcoin: {},
 }
 
 func (c Type) Validate() error {

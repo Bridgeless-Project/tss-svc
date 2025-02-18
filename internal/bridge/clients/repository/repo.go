@@ -12,7 +12,7 @@ type clientsRepository struct {
 	clients map[string]clients.Client
 }
 
-func NewClientsRepository(chs []chains.Chain) (clients.ClientsRepository, error) {
+func NewClientsRepository(chs []chains.Chain) (clients.Repository, error) {
 	clientsMap := make(map[string]clients.Client, len(chs))
 
 	for _, ch := range chs {

@@ -11,10 +11,10 @@ import (
 
 type DepositFetcher struct {
 	core    *connector.Connector
-	clients clients.ClientsRepository
+	clients clients.Repository
 }
 
-func NewDepositFetcher(clients clients.ClientsRepository, core *connector.Connector) *DepositFetcher {
+func NewDepositFetcher(clients clients.Repository, core *connector.Connector) *DepositFetcher {
 	return &DepositFetcher{
 		clients: clients,
 		core:    core,

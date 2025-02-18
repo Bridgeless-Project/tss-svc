@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/pkg/errors"
 )
@@ -39,27 +38,4 @@ func (p *Client) GetTransactionReceipt(txHash common.Hash) (*types.Receipt, *com
 	}
 
 	return receipt, &from, nil
-}
-
-func (p *Client) GetTransactionStatus(txHash string) (bridgeTypes.TransactionStatus, error) {
-	receipt, _, err := p.GetTransactionReceipt(common.HexToHash(txHash))
-	if err != nil {
-		if errors.Is(err, bridgeTypes.ErrTxPending) {
-			return bridgeTypes.TransactionStatusPending, nil
-		}
-		if errors.Is(err, bridgeTypes.ErrTxNotFound) {
-			return bridgeTypes.TransactionStatusNotFound, nil
-		}
-
-		return bridgeTypes.TransactionStatusUnknown, errors.Wrap(err, "failed to get transaction receipt")
-	}
-
-	switch receipt.Status {
-	case ethTypes.ReceiptStatusSuccessful:
-		return bridgeTypes.TransactionStatusSuccessful, nil
-	case ethTypes.ReceiptStatusFailed:
-		return bridgeTypes.TransactionStatusFailed, nil
-	default:
-		return bridgeTypes.TransactionStatusUnknown, nil
-	}
 }

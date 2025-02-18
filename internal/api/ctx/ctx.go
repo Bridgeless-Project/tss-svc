@@ -45,14 +45,14 @@ func Logger(ctx context.Context) *logan.Entry {
 	return ctx.Value(loggerKey).(*logan.Entry)
 }
 
-func ClientsProvider(cr bridgeTypes.ClientsRepository) func(context.Context) context.Context {
+func ClientsProvider(cr bridgeTypes.Repository) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, clientsKey, cr)
 	}
 }
 
-func Clients(ctx context.Context) bridgeTypes.ClientsRepository {
-	return ctx.Value(clientsKey).(bridgeTypes.ClientsRepository)
+func Clients(ctx context.Context) bridgeTypes.Repository {
+	return ctx.Value(clientsKey).(bridgeTypes.Repository)
 }
 
 func FetcherProvider(processor *bridge.DepositFetcher) func(context.Context) context.Context {

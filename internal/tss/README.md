@@ -126,6 +126,13 @@ It is responsible for:
 - providing the specific session with other parties session messages;
 - providing the requestor with the specific session information;
 
+### Bitcoin signing session
+Bitcoin signing session is a special session that is used to process the Bitcoin withdrawals.
+It is different from the EVM and Zano sessions as it requires multiple UTXOs to be signed independently.
+Thus, the session includes N signing rounds, where N is the number of UTXOs to be signed in the transaction.
+Respectively, the signing step time bounds are multiplied by N to provide enough time for the parties to sign all UTXOs.
+
+**TODO: COMPLETE BTC WITH INPUTS COLLECTOR STEP**
 
 ### Catchup
 For the initial sessions start, the parties are required to have the same session start time and initial session identifier.

@@ -28,7 +28,7 @@ type DepositAcceptorSession struct {
 	fetcher *DepositFetcher
 	data    db.DepositsQ
 	logger  *logan.Entry
-	clients bridgeTypes.ClientsRepository
+	clients bridgeTypes.Repository
 
 	distributors map[core.Address]struct{}
 
@@ -38,7 +38,7 @@ type DepositAcceptorSession struct {
 func NewDepositAcceptorSession(
 	distributors []p2p.Party,
 	fetcher *DepositFetcher,
-	clients bridgeTypes.ClientsRepository,
+	clients bridgeTypes.Repository,
 	data db.DepositsQ,
 	logger *logan.Entry,
 ) *DepositAcceptorSession {

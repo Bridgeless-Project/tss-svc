@@ -42,7 +42,7 @@ func NewServer(
 	http net.Listener,
 	db db.DepositsQ,
 	logger *logan.Entry,
-	clients clients.ClientsRepository,
+	clients clients.Repository,
 	processor *bridge.DepositFetcher,
 	broadcaster *p2p.Broadcaster,
 	self core.Address,

@@ -72,6 +72,14 @@ message ZanoProposalData {
   bytes sigData = 7;
 }
 
+message BitcoinProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+
+  bytes serializedTx = 2;
+
+  repeated bytes sigData = 3;
+}
+
 message DepositDistributionData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 }

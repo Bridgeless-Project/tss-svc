@@ -41,16 +41,6 @@ func IsInvalidDepositError(err error) bool {
 		errors.Is(err, ErrUnsupportedContract)
 }
 
-type TransactionStatus int8
-
-const (
-	TransactionStatusPending TransactionStatus = iota
-	TransactionStatusSuccessful
-	TransactionStatusFailed
-	TransactionStatusNotFound
-	TransactionStatusUnknown
-)
-
 type Client interface {
 	Type() chains.Type
 	ChainId() string
@@ -61,7 +51,7 @@ type Client interface {
 	WithdrawalAmountValid(amount *big.Int) bool
 }
 
-type ClientsRepository interface {
+type Repository interface {
 	Client(chainId string) (Client, error)
 	SupportsChain(chainId string) bool
 }
