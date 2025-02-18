@@ -1,13 +1,13 @@
 package parse
 
 import (
-	"crypto/elliptic"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 
-	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -46,8 +46,9 @@ var parseAddressBtcCmd = &cobra.Command{
 			return errors.New("invalid network type")
 		}
 
-		marshalled := elliptic.Marshal(tss.S256(), xCord, yCord)
-		pubKeyHash := btcutil.Hash160(marshalled)
+		pubkey := &ecdsa.PublicKey{Curve: crypto.S256(), X: xCord, Y: yCord}
+		compressed := crypto.CompressPubkey(pubkey)
+		pubKeyHash := btcutil.Hash160(compressed)
 
 		// Generate P2PKH address
 		addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
