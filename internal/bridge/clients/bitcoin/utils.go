@@ -6,13 +6,14 @@ import (
 	"math/big"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/btcsuite/btcd/btcec/v2"
+	ecdsabtc "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
-	"github.com/tendermint/btcd/btcec"
-	"github.com/tendermint/btcd/txscript"
 )
 
 const Decimals = 8
@@ -44,10 +45,11 @@ func EncodeSignature(sig *common.SignatureData) []byte {
 		return nil
 	}
 
-	btcSig := btcec.Signature{
-		R: new(big.Int).SetBytes(sig.R),
-		S: new(big.Int).SetBytes(sig.S),
-	}
+	r, s := new(btcec.ModNScalar), new(btcec.ModNScalar)
+	r.SetByteSlice(sig.R)
+	s.SetByteSlice(sig.S)
+
+	btcSig := ecdsabtc.NewSignature(r, s)
 
 	return append(btcSig.Serialize(), byte(SigHashType))
 }

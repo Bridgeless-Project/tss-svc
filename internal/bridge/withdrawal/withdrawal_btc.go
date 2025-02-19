@@ -3,6 +3,7 @@ package withdrawal
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -103,7 +104,7 @@ func (c *BitcoinWithdrawalConstructor) IsValid(data BitcoinWithdrawalData, depos
 	}
 
 	// validating inputs
-	inputsSum, err := c.validateInputs(&tx, data.SignedInputs, deposit)
+	inputsSum, err := c.validateInputs(&tx, data.ProposalData.SigData, deposit)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to validate inputs")
 	}
@@ -183,9 +184,13 @@ func (c *BitcoinWithdrawalConstructor) validateInputs(tx *wire.MsgTx, sigHashes 
 			}
 			usedInputs[u.TxID] = struct{}{}
 
-			sigHash, err := txscript.CalcSignatureHash([]byte(u.ScriptPubKey), txscript.SigHashAll, tx, idx)
+			scriptDecoded, err := hex.DecodeString(u.ScriptPubKey)
 			if err != nil {
-				return 0, errors.Wrap(err, "failed to calculate signature hash")
+				return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
+			}
+			sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin.SigHashType, tx, idx)
+			if err != nil {
+				return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
 			}
 
 			if !bytes.Equal(sigHashes[idx], sigHash) {

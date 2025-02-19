@@ -29,7 +29,7 @@ func (c Chain) Bitcoin() Bitcoin {
 
 	chain := Bitcoin{Id: c.Id, Confirmations: c.Confirmations}
 
-	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(figure.BaseHooks).Please(); err != nil {
+	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(bitcoinHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
 	}
 	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(bitcoinHooks).Please(); err != nil {

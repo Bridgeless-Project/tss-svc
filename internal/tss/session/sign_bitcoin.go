@@ -78,6 +78,7 @@ func (s *BitcoinSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetche
 
 func (s *BitcoinSigningSession) WithClient(client *bitcoin.Client) *BitcoinSigningSession {
 	s.constructor = withdrawal.NewBitcoinConstructor(client, s.self.Share.ECDSAPub.ToECDSAPubKey())
+	s.client = client
 	return s
 }
 

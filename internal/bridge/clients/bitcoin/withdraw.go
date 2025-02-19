@@ -1,6 +1,7 @@
 package bitcoin
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -57,7 +58,11 @@ func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr strin
 	for idx, inp := range result.Transaction.TxIn {
 		for _, u := range unspent {
 			if u.TxID == inp.PreviousOutPoint.Hash.String() {
-				sigHash, err := txscript.CalcSignatureHash([]byte(u.ScriptPubKey), SigHashType, result.Transaction, idx)
+				scriptDecoded, err := hex.DecodeString(u.ScriptPubKey)
+				if err != nil {
+					return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
+				}
+				sigHash, err := txscript.CalcSignatureHash(scriptDecoded, SigHashType, result.Transaction, idx)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
 				}

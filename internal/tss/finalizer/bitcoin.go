@@ -98,7 +98,6 @@ func (f *BitcoinFinalizer) finalize() {
 		return
 	}
 
-	f.logger.Infof("got tx hash from hashing tx: %s", tx.TxHash().String())
 	// TODO: save to db
 
 	if !f.localPartyProposer {
@@ -106,13 +105,14 @@ func (f *BitcoinFinalizer) finalize() {
 		return
 	}
 
-	hash, err := f.client.SendSignedTransaction(&tx)
+	_, err := f.client.SendSignedTransaction(&tx)
 	if err != nil {
 		f.errChan <- errors.Wrap(err, "failed to send signed transaction")
 		return
 	}
 
-	f.logger.Infof("got tx hash from SENDING TX: %s", hash.String())
-
 	// TODO: save to core
+
+	f.errChan <- nil
+
 }
