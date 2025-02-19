@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 )
@@ -41,4 +42,18 @@ func (c *Client) WithdrawalAmountValid(amount *big.Int) bool {
 	}
 
 	return true
+}
+
+func (c *Client) ChainParams() *chaincfg.Params {
+	return c.chain.Params
+}
+
+func (c *Client) IsBridgeAddr(addr btcutil.Address) bool {
+	for _, receiver := range c.chain.Receivers {
+		if addr.String() == receiver.String() {
+			return true
+		}
+	}
+
+	return false
 }

@@ -3,6 +3,7 @@ package chains
 import (
 	"reflect"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/pkg/errors"
@@ -18,6 +19,7 @@ type Bitcoin struct {
 	Confirmations uint64
 	Rpc           BitcoinRpc
 	Params        *chaincfg.Params
+	Receivers     []btcutil.Address
 }
 
 func (c Chain) Bitcoin() Bitcoin {
@@ -27,6 +29,9 @@ func (c Chain) Bitcoin() Bitcoin {
 
 	chain := Bitcoin{Id: c.Id, Confirmations: c.Confirmations}
 
+	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(figure.BaseHooks).Please(); err != nil {
+		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
+	}
 	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(bitcoinHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to init bitcoin chain rpc"))
 	}
@@ -48,6 +53,19 @@ func (c Chain) Bitcoin() Bitcoin {
 }
 
 var bitcoinHooks = figure.Hooks{
+	"btcutil.Address": func(value interface{}) (reflect.Value, error) {
+		switch v := value.(type) {
+		case string:
+			addr, err := btcutil.DecodeAddress(v, &chaincfg.MainNetParams)
+			if err != nil {
+				return reflect.Value{}, errors.Wrap(err, "failed to decode address")
+			}
+
+			return reflect.ValueOf(addr), nil
+		default:
+			return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
+		}
+	},
 	"*rpcclient.Client": func(value interface{}) (reflect.Value, error) {
 		switch v := value.(type) {
 		case map[string]interface{}:

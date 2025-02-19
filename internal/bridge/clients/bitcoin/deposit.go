@@ -18,7 +18,6 @@ import (
 )
 
 const (
-	defaultDecimals                  = 8
 	defaultDepositorAddressOutputIdx = 0
 
 	minOpReturnCodeLen = 3
@@ -184,30 +183,16 @@ func (c *Client) parseDepositOutput(out btcjson.Vout) (*big.Int, error) {
 	if err != nil {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
-
 	if !slices.Contains(supportedScriptTypes, stype) || len(addrs) != 1 {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, fmt.Sprintf("unsupported type %s", stype))
 	}
-
-	// TODO: CHECK RECEIVER
+	if !c.IsBridgeAddr(addrs[0]) {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "receiver address is not bridge")
+	}
 
 	if out.Value == 0 {
 		return nil, bridgeTypes.ErrInvalidDepositedAmount
 	}
 
-	return toBigint(out.Value, defaultDecimals), nil
-}
-
-func toBigint(val float64, decimals int64) *big.Int {
-	bigval := new(big.Float).SetFloat64(val)
-
-	coin := new(big.Float)
-	coin.SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(decimals), nil))
-
-	bigval.Mul(bigval, coin)
-
-	result := new(big.Int)
-	bigval.Int(result)
-
-	return result
+	return ToAmount(out.Value, Decimals), nil
 }

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
 
@@ -72,8 +73,8 @@ func (s *EvmSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *
 	return s
 }
 
-func (s *EvmSigningSession) WithConstructor(constructor *withdrawal.EvmWithdrawalConstructor) *EvmSigningSession {
-	s.constructor = constructor
+func (s *EvmSigningSession) WithClient(client *evm.Client) *EvmSigningSession {
+	s.constructor = withdrawal.NewEvmConstructor(client)
 	return s
 }
 
@@ -83,8 +84,7 @@ func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSig
 }
 
 func (s *EvmSigningSession) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.StartTime)
-	if runDelay <= 0 {
+	if time.Until(s.params.StartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 
@@ -116,7 +116,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 			s.logger.Info("signing session cancelled")
 			return nil
 		case <-time.After(time.Until(nextSessionStartTime)):
-			nextSessionStartTime = time.Now().Add(tss.BoundarySigningSession)
+			nextSessionStartTime = nextSessionStartTime.Add(tss.BoundarySigningSession)
 		}
 
 		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
@@ -170,10 +170,7 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
 	defer sigCtxCancel()
 
-	s.signingParty.
-		WithParties(result.Signers).
-		WithSigningData(result.SigData.ProposalData.SigData).
-		Run(signingCtx)
+	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
 	signature := s.signingParty.WaitFor()
 	if signature == nil {
 		return errors.New("signing phase error occurred")

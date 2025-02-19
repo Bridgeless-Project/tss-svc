@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
@@ -86,10 +85,8 @@ func (f *ZanoFinalizer) finalize() {
 		return
 	}
 
-	rawSig := append(f.signature.Signature, f.signature.SignatureRecovery...)
-	zanoSig := encodeToZanoSignature(rawSig)
 	_, err := f.client.EmitAssetSigned(zano.SignedTransaction{
-		Signature: zanoSig,
+		Signature: zano.EncodeSignature(f.signature),
 		UnsignedTransaction: zano.UnsignedTransaction{
 			ExpectedTxHash: f.withdrawalData.ProposalData.TxId,
 			FinalizedTx:    f.withdrawalData.ProposalData.FinalizedTx,
@@ -102,16 +99,4 @@ func (f *ZanoFinalizer) finalize() {
 	}
 
 	f.errChan <- nil
-}
-
-func encodeToZanoSignature(signature []byte) string {
-	if len(signature) == 0 {
-		return ""
-	}
-
-	encoded := hexutil.Encode(signature)
-	// stripping redundant hex-prefix and recovery byte (two hex-characters)
-	strippedSignature := encoded[2 : len(encoded)-2]
-
-	return strippedSignature
 }

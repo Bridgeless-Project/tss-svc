@@ -9,4 +9,6 @@ const (
 	BoundaryConsensus      = BoundaryAcceptance + 5*time.Second
 	BoundaryAcceptance     = 5 * time.Second
 	BoundaryFinalize       = 10 * time.Second
+
+	BoundaryBitcoinSingRoundDelay = 500 * time.Millisecond
 )

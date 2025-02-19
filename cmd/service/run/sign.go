@@ -10,10 +10,10 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chains"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/repository"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
-	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/config"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/core/subscriber"
@@ -113,7 +113,6 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		var sess RunnableTssSession
 		switch chain.Type {
 		case chains.TypeEVM:
-			constructor := withdrawal.NewEvmConstructor(client.(*evm.Client))
 			evmSession := session.NewEvmSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
@@ -124,13 +123,9 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				sessParams,
 				db,
 				logger.WithField("component", "signing_session"),
-			).
-				WithDepositFetcher(fetcher).
-				WithConstructor(constructor).
-				WithCoreConnector(connector)
+			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
 			sess = evmSession
 		case chains.TypeZano:
-			constructor := withdrawal.NewZanoConstructor(client.(*zano.Client))
 			zanoSession := session.NewZanoSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
@@ -141,12 +136,21 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				sessParams,
 				db,
 				logger.WithField("component", "signing_session"),
-			).
-				WithDepositFetcher(fetcher).
-				WithConstructor(constructor).
-				WithClient(client.(*zano.Client)).
-				WithCoreConnector(connector)
+			).WithDepositFetcher(fetcher).WithClient(client.(*zano.Client)).WithCoreConnector(connector)
 			sess = zanoSession
+		case chains.TypeBitcoin:
+			btcSession := session.NewBitcoinSigningSession(
+				tss.LocalSignParty{
+					Address:   account.CosmosAddress(),
+					Share:     share,
+					Threshold: sessParams.Threshold,
+				},
+				cfg.Parties(),
+				sessParams,
+				db,
+				logger.WithField("component", "signing_session"),
+			).WithDepositFetcher(fetcher).WithClient(client.(*bitcoin.Client)).WithCoreConnector(connector)
+			sess = btcSession
 		}
 
 		wg.Add(1)
