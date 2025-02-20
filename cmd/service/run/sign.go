@@ -68,7 +68,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 
 	db := pg.NewDepositsQ(cfg.DB())
 	connector := core.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
-	sub := subscriber.NewSubmitSubscriber(db, cfg.TendermintHttpClient(), logger)
+	sub := subscriber.NewSubmitSubscriber(db, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
 	srv := api.NewServer(
 		cfg.ApiGrpcListener(),

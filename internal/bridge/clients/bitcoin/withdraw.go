@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	defaultFeeRate = 0.00001
-	SigHashType    = txscript.SigHashAll
+	DefaultFeeRateBtcPerKvb = 0.00001
+	SigHashType             = txscript.SigHashAll
 )
 
 func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error) {
@@ -40,7 +40,7 @@ func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr strin
 		IncludeWatching: btcjson.Bool(true),
 		ChangeAddress:   btcjson.String(changeAddr),
 		ChangePosition:  btcjson.Int(0),
-		FeeRate:         btcjson.Float64(defaultFeeRate),
+		FeeRate:         btcjson.Float64(DefaultFeeRateBtcPerKvb),
 		LockUnspents:    btcjson.Bool(false),
 	}
 

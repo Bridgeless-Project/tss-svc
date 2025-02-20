@@ -67,9 +67,7 @@ Signing data validation: using the provided deposit data and the signing data, t
    - calculate the actual fee by subtracting the sum of the outputs from the sum of the inputs;
    - get the expected transaction size by firstly mocking signature scripts with fake signatures;
    - calculate the fee rate by dividing the actual fee by the transaction size;
-   - compare the calculated fee rate with the default one: 
-     - if the calculated fee rate is less than 1 satoshi per byte, the commission is considered invalid;
-     - if the calculated fee rate is not more than 1.5 satoshi per byte (can be modified), the commission is considered valid.
+   - compare the calculated fee rate with the default one: if the tolerance (10% of the default fee rate) is exceeded, the transaction is considered invalid.
 
 ### Zano network
 Signing data construction: according to the provided deposit data, the [`emit_asset`](https://docs.zano.org/docs/build/rpc-api/wallet-rpc-api/emit_asset/) request is sent to the Zano wallet RPC server, and the resulting `VerifiedTxID` field is a ready-to-sign data.

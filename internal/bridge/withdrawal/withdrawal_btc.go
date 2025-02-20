@@ -5,8 +5,11 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"math/big"
 
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -103,18 +106,56 @@ func (c *BitcoinWithdrawalConstructor) IsValid(data BitcoinWithdrawalData, depos
 		return false, errors.Wrap(err, "failed to validate outputs")
 	}
 
-	// validating inputs
-	inputsSum, err := c.validateInputs(&tx, data.ProposalData.SigData, deposit)
+	usedInputs, err := c.findUsedInputs(&tx)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to find used inputs")
+	}
+
+	inputsSum, err := c.validateInputs(&tx, usedInputs, data.ProposalData.SigData)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to validate inputs")
 	}
 
-	// validating fees
-	if err = c.validateChange(&tx, inputsSum, outputsSum); err != nil {
+	if err = c.validateChange(&tx, usedInputs, inputsSum, outputsSum); err != nil {
 		return false, errors.Wrap(err, "failed to validate change")
 	}
 
 	return true, nil
+}
+
+func (c *BitcoinWithdrawalConstructor) findUsedInputs(tx *wire.MsgTx) (map[OutPoint]btcjson.ListUnspentResult, error) {
+	unspent, err := c.client.ListUnspent()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get available UTXOs")
+	}
+
+	usedInputs := make(map[OutPoint]btcjson.ListUnspentResult, len(tx.TxIn))
+	for _, inp := range tx.TxIn {
+		if inp == nil {
+			return nil, errors.New("nil input in transaction")
+		}
+
+		for _, u := range unspent {
+			if u.TxID != inp.PreviousOutPoint.Hash.String() ||
+				u.Vout != inp.PreviousOutPoint.Index {
+				continue
+			}
+
+			outPoint := OutPoint{TxID: u.TxID, Index: u.Vout}
+			if _, found := usedInputs[outPoint]; found {
+				return nil, errors.New(fmt.Sprintf("double spending detected for %s:%d", u.TxID, u.Vout))
+			}
+
+			usedInputs[outPoint] = u
+			break
+		}
+	}
+
+	if len(usedInputs) != len(tx.TxIn) {
+		return nil, errors.New("not all inputs were found")
+	}
+
+	return usedInputs, nil
 }
 
 func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit db.Deposit) (int64, error) {
@@ -161,60 +202,89 @@ func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit d
 	return outputsSum, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) validateInputs(tx *wire.MsgTx, sigHashes [][]byte, deposit db.Deposit) (int64, error) {
-	unspent, err := c.client.ListUnspent()
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to get available UTXOs")
+func (c *BitcoinWithdrawalConstructor) validateInputs(
+	tx *wire.MsgTx,
+	inputs map[OutPoint]btcjson.ListUnspentResult,
+	sigHashes [][]byte,
+) (int64, error) {
+	if sigHashes == nil || len(sigHashes) != len(tx.TxIn) {
+		return 0, errors.New("invalid signature hashes")
 	}
 
 	inputsSum := int64(0)
-	usedInputs := make(map[string]struct{})
 	for idx, inp := range tx.TxIn {
-		if inp == nil {
-			return 0, errors.New("nil input in transaction")
+		unspent := inputs[OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+
+		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
+		if err != nil {
+			return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
+		}
+		sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin.SigHashType, tx, idx)
+		if err != nil {
+			return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
+		}
+		if !bytes.Equal(sigHashes[idx], sigHash) {
+			return 0, errors.New(fmt.Sprintf("invalid signature hash for input %d", idx))
 		}
 
-		for _, u := range unspent {
-			if u.TxID != inp.PreviousOutPoint.Hash.String() || u.Vout != inp.PreviousOutPoint.Index {
-				continue
-			}
-
-			if _, ok := usedInputs[u.TxID]; ok {
-				return 0, errors.New("double spending detected")
-			}
-			usedInputs[u.TxID] = struct{}{}
-
-			scriptDecoded, err := hex.DecodeString(u.ScriptPubKey)
-			if err != nil {
-				return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
-			}
-			sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin.SigHashType, tx, idx)
-			if err != nil {
-				return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
-			}
-
-			if !bytes.Equal(sigHashes[idx], sigHash) {
-				return 0, errors.New(fmt.Sprintf("invalid signature hash for input %d", idx))
-			}
-
-			inputsSum += bitcoin.ToAmount(u.Amount, bitcoin.Decimals).Int64()
-			break
-		}
-	}
-	if len(usedInputs) != len(tx.TxIn) {
-		return 0, errors.New("not all inputs were found")
+		inputsSum += bitcoin.ToAmount(unspent.Amount, bitcoin.Decimals).Int64()
 	}
 
 	return inputsSum, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) validateChange(tx *wire.MsgTx, inputsSum, outputsSum int64) error {
-	change := inputsSum - outputsSum
-	if change <= 0 {
+func (c *BitcoinWithdrawalConstructor) validateChange(tx *wire.MsgTx, inputs map[OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
+	actualFee := inputsSum - outputsSum
+	if actualFee <= 0 {
 		return errors.New("invalid change amount")
 	}
 
-	// TODO: add change validation
+	mockedTx, err := c.mockTransaction(tx, inputs)
+	if err != nil {
+		return errors.Wrap(err, "failed to mock transaction")
+	}
+
+	var (
+		targetFeeRate = bitcoin.DefaultFeeRateBtcPerKvb * 1e5 // btc/kB -> sat/byte
+		feeTolerance  = 0.1 * targetFeeRate                   // 10%
+		estimatedSize = mockedTx.SerializeSize()
+		actualFeeRate = float64(actualFee) / float64(estimatedSize)
+	)
+
+	if math.Abs(actualFeeRate-targetFeeRate) > feeTolerance {
+		return errors.New(fmt.Sprintf("provided fee rate %f is not within %f of target %f", actualFeeRate, feeTolerance, targetFeeRate))
+	}
 
 	return nil
+}
+
+type OutPoint struct {
+	TxID  string
+	Index uint32
+}
+
+func (c *BitcoinWithdrawalConstructor) mockTransaction(tx *wire.MsgTx, inputs map[OutPoint]btcjson.ListUnspentResult) (*wire.MsgTx, error) {
+	mockKey, err := btcec.NewPrivateKey()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create mock private key")
+	}
+
+	mockedTx := tx.Copy()
+
+	for i, inp := range mockedTx.TxIn {
+		unspent := inputs[OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", i))
+		}
+
+		sig, err := txscript.SignatureScript(mockedTx, i, scriptDecoded, bitcoin.SigHashType, mockKey, true)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to sign input %d", i))
+		}
+
+		mockedTx.TxIn[i].SignatureScript = sig
+	}
+
+	return mockedTx, nil
 }

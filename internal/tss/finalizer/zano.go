@@ -55,7 +55,7 @@ func (f *ZanoFinalizer) WithLocalPartyProposer(proposer bool) *ZanoFinalizer {
 
 func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
 	f.logger.Info("finalization started")
-	go f.finalize()
+	go f.finalize(ctx)
 
 	select {
 	case <-ctx.Done():
@@ -74,7 +74,7 @@ func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (f *ZanoFinalizer) finalize() {
+func (f *ZanoFinalizer) finalize(ctx context.Context) {
 	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), f.withdrawalData.ProposalData.TxId); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
 		return
@@ -95,6 +95,17 @@ func (f *ZanoFinalizer) finalize() {
 	})
 	if err != nil {
 		f.errChan <- errors.Wrap(err, "failed to emit signed transaction")
+		return
+	}
+
+	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
+	if err != nil {
+		f.errChan <- errors.Wrap(err, "failed to get deposit")
+		return
+	}
+
+	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction()); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to submit deposit")
 		return
 	}
 

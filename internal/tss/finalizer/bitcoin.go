@@ -68,7 +68,7 @@ func (f *BitcoinFinalizer) WithLocalPartyProposer(proposer bool) *BitcoinFinaliz
 
 func (f *BitcoinFinalizer) Finalize(ctx context.Context) error {
 	f.logger.Info("finalization started")
-	go f.finalize()
+	go f.finalize(ctx)
 
 	select {
 	case <-ctx.Done():
@@ -87,7 +87,7 @@ func (f *BitcoinFinalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (f *BitcoinFinalizer) finalize() {
+func (f *BitcoinFinalizer) finalize(ctx context.Context) {
 	tx := wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(f.withdrawalData.ProposalData.SerializedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to deserialize transaction")
@@ -98,7 +98,10 @@ func (f *BitcoinFinalizer) finalize() {
 		return
 	}
 
-	// TODO: save to db
+	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), tx.TxHash().String()); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
+		return
+	}
 
 	if !f.localPartyProposer {
 		f.errChan <- nil
@@ -111,8 +114,15 @@ func (f *BitcoinFinalizer) finalize() {
 		return
 	}
 
-	// TODO: save to core
+	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
+	if err != nil {
+		f.errChan <- errors.Wrap(err, "failed to get deposit")
+		return
+	}
+	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction()); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to submit deposit")
+		return
+	}
 
 	f.errChan <- nil
-
 }

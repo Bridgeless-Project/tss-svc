@@ -37,11 +37,11 @@ func (sc *subscriber) TendermintHttpClient() *http.HTTP {
 
 		client, err := http.New(config.Addr, "/websocket")
 		if err != nil {
-			panic(err)
+			panic(errors.Wrap(err, "failed to create tendermint http client"))
 		}
 
 		if err = client.Start(); err != nil {
-			panic(err)
+			panic(errors.Wrap(err, "failed to start tendermint http client"))
 		}
 
 		return client

@@ -65,43 +65,43 @@ func (s *Subscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) 
 				return
 			}
 
-			deposit, err := parseSubmittedDeposit(c.Events)
+			s.log.Info("received new event")
+			eventDeposit, err := parseSubmittedDeposit(c.Events)
 			if err != nil {
 				s.log.WithError(err).Error("failed to parse submitted deposit")
 				continue
 			}
 
-			tx, err := s.db.Get(deposit.DepositIdentifier)
+			existingDeposit, err := s.db.Get(eventDeposit.DepositIdentifier)
 			if err != nil {
 				s.log.WithError(err).Error("failed to get deposit")
 				continue
 			}
 
-			// if deposit does not exist in db insert it
-			if tx == nil {
+			if existingDeposit == nil {
 				s.log.Info("found new submitted deposit")
-				if _, err = s.db.InsertProcessedDeposit(*deposit); err != nil {
+				if _, err = s.db.InsertProcessedDeposit(*eventDeposit); err != nil {
 					s.log.WithError(err).Error("failed to insert new deposit")
 				}
 				continue
 			}
 
-			// if deposit exists and pending or processing update signature,withdrawal tx hash and status
-			switch tx.WithdrawalStatus {
+			switch existingDeposit.WithdrawalStatus {
 			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED:
 				s.log.Info("skipping processed deposit")
-			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING:
-				s.log.Info("found existing deposit submitted to core")
-				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
+			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING,
+				types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING:
+				s.log.Info("found new deposit data to update")
+				if err = s.db.UpdateWithdrawalDetails(
+					existingDeposit.DepositIdentifier,
+					eventDeposit.WithdrawalTxHash,
+					eventDeposit.Signature,
+				); err != nil {
 					s.log.WithError(err).Error("failed to update deposit withdrawal details")
 				}
-			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING:
-				s.log.Info("found submitted pending deposit")
-				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
-					s.log.WithError(err).Error("failed to update deposit withdrawal details")
-				}
+				s.log.Info("deposit withdrawal details successfully updated")
 			default:
-				s.log.Infof("nothing to do with deposit status %s", tx.WithdrawalStatus)
+				s.log.Infof("nothing to do with deposit status %s", existingDeposit.WithdrawalStatus)
 			}
 		}
 	}

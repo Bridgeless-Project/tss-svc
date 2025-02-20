@@ -77,7 +77,7 @@ func (ef *EvmFinalizer) Finalize(ctx context.Context) error {
 func (ef *EvmFinalizer) finalize(ctx context.Context) {
 	signature := convertToEthSignature(ef.signature)
 	if err := ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature); err != nil {
-		ef.errChan <- err
+		ef.errChan <- errors.Wrap(err, "failed to update signature")
 		return
 	}
 
@@ -88,7 +88,7 @@ func (ef *EvmFinalizer) finalize(ctx context.Context) {
 
 	dep, err := ef.db.Get(ef.withdrawalData.DepositIdentifier())
 	if err != nil {
-		ef.errChan <- err
+		ef.errChan <- errors.Wrap(err, "failed to get deposit")
 		return
 	}
 
