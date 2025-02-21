@@ -36,11 +36,11 @@ func (c Chain) Bitcoin() Bitcoin {
 		panic("invalid network")
 	}
 
-	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(btcClientHook).Please(); err != nil {
-		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
-	}
-	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(bitcoinAddrHook(chain.Params)).Please(); err != nil {
+	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(btcClientHook).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to init bitcoin chain rpc"))
+	}
+	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(bitcoinAddrHook(chain.Params)).Please(); err != nil {
+		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
 	}
 
 	// ensuring wallet is properly configured
