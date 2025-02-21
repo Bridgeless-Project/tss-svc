@@ -28,11 +28,18 @@ func (c Chain) Bitcoin() Bitcoin {
 	}
 
 	chain := Bitcoin{Id: c.Id, Confirmations: c.Confirmations}
+	if c.Network == NetworkMainnet {
+		chain.Params = &chaincfg.MainNetParams
+	} else if c.Network == NetworkTestnet {
+		chain.Params = &chaincfg.TestNet3Params
+	} else {
+		panic("invalid network")
+	}
 
-	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(bitcoinHooks).Please(); err != nil {
+	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(btcClientHook).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
 	}
-	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(bitcoinHooks).Please(); err != nil {
+	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(bitcoinAddrHook(chain.Params)).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to init bitcoin chain rpc"))
 	}
 
@@ -42,30 +49,28 @@ func (c Chain) Bitcoin() Bitcoin {
 		panic(errors.Wrap(err, "failed to get wallet info"))
 	}
 
-	if c.Network == NetworkMainnet {
-		chain.Params = &chaincfg.MainNetParams
-	}
-	if c.Network == NetworkTestnet {
-		chain.Params = &chaincfg.TestNet3Params
-	}
-
 	return chain
 }
 
-var bitcoinHooks = figure.Hooks{
-	"btcutil.Address": func(value interface{}) (reflect.Value, error) {
-		switch v := value.(type) {
-		case string:
-			addr, err := btcutil.DecodeAddress(v, &chaincfg.MainNetParams)
-			if err != nil {
-				return reflect.Value{}, errors.Wrap(err, "failed to decode address")
-			}
+func bitcoinAddrHook(params *chaincfg.Params) figure.Hooks {
+	return figure.Hooks{
+		"btcutil.Address": func(value interface{}) (reflect.Value, error) {
+			switch v := value.(type) {
+			case string:
+				addr, err := btcutil.DecodeAddress(v, params)
+				if err != nil {
+					return reflect.Value{}, errors.Wrap(err, "failed to decode address")
+				}
 
-			return reflect.ValueOf(addr), nil
-		default:
-			return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
-		}
-	},
+				return reflect.ValueOf(addr), nil
+			default:
+				return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
+			}
+		},
+	}
+}
+
+var btcClientHook = figure.Hooks{
 	"*rpcclient.Client": func(value interface{}) (reflect.Value, error) {
 		switch v := value.(type) {
 		case map[string]interface{}:
