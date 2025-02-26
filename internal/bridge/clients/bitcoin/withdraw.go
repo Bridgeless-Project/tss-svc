@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	DefaultFeeRateBtcPerKvb = 0.00001
+	// minimum fee rate is 0.00001 BTC per kilobyte
+	DefaultFeeRateBtcPerKvb = 0.00002
 	SigHashType             = txscript.SigHashAll
 )
 

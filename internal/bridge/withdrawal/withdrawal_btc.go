@@ -21,7 +21,10 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-var _ DepositSigningData = BitcoinWithdrawalData{}
+var (
+	_ DepositSigningData                 = BitcoinWithdrawalData{}
+	_ Constructor[BitcoinWithdrawalData] = &BitcoinWithdrawalConstructor{}
+)
 
 type BitcoinWithdrawalData struct {
 	ProposalData *p2p.BitcoinProposalData
@@ -62,27 +65,27 @@ func NewBitcoinConstructor(client *bitcoin.Client, tssPub *ecdsa.PublicKey) *Bit
 	return &BitcoinWithdrawalConstructor{client: client, tssPkh: tssPkh}
 }
 
-func (c *BitcoinWithdrawalConstructor) FromPayload(payload *anypb.Any) (BitcoinWithdrawalData, error) {
+func (c *BitcoinWithdrawalConstructor) FromPayload(payload *anypb.Any) (*BitcoinWithdrawalData, error) {
 	proposalData := &p2p.BitcoinProposalData{}
 	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return BitcoinWithdrawalData{}, errors.Wrap(err, "failed to unmarshal proposal data")
+		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
 	}
 
-	return BitcoinWithdrawalData{ProposalData: proposalData}, nil
+	return &BitcoinWithdrawalData{ProposalData: proposalData}, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (BitcoinWithdrawalData, error) {
+func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*BitcoinWithdrawalData, error) {
 	tx, sigHashes, err := c.client.CreateUnsignedWithdrawalTx(deposit, c.tssPkh.EncodeAddress())
 	if err != nil {
-		return BitcoinWithdrawalData{}, errors.Wrap(err, "failed to create unsigned transaction")
+		return nil, errors.Wrap(err, "failed to create unsigned transaction")
 	}
 
 	var buf bytes.Buffer
 	if err = tx.Serialize(&buf); err != nil {
-		return BitcoinWithdrawalData{}, errors.Wrap(err, "failed to serialize transaction")
+		return nil, errors.Wrap(err, "failed to serialize transaction")
 	}
 
-	return BitcoinWithdrawalData{
+	return &BitcoinWithdrawalData{
 		ProposalData: &p2p.BitcoinProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,

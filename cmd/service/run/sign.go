@@ -124,6 +124,9 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
+			if err = evmSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build EVM session")
+			}
 			sess = evmSession
 		case chains.TypeZano:
 			zanoSession := session.NewZanoSigningSession(
@@ -137,6 +140,9 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*zano.Client)).WithCoreConnector(connector)
+			if err = zanoSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build Zano session")
+			}
 			sess = zanoSession
 		case chains.TypeBitcoin:
 			btcSession := session.NewBitcoinSigningSession(
@@ -150,6 +156,9 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*bitcoin.Client)).WithCoreConnector(connector)
+			if err = btcSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build Bitcoin session")
+			}
 			sess = btcSession
 		}
 

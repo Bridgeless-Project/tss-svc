@@ -33,13 +33,14 @@ type EvmSigningSession struct {
 	parties []p2p.Party
 	self    tss.LocalSignParty
 	db      db.DepositsQ
-
-	params SigningSessionParams
-	logger *logan.Entry
+	params  SigningSessionParams
+	logger  *logan.Entry
 
 	coreConnector *connector.Connector
 	fetcher       *bridge.DepositFetcher
-	constructor   *withdrawal.EvmWithdrawalConstructor
+	client        *evm.Client
+
+	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.EvmWithdrawalData]
@@ -74,13 +75,35 @@ func (s *EvmSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *
 }
 
 func (s *EvmSigningSession) WithClient(client *evm.Client) *EvmSigningSession {
-	s.constructor = withdrawal.NewEvmConstructor(client)
+	s.client = client
 	return s
 }
 
 func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSigningSession {
 	s.coreConnector = conn
 	return s
+}
+
+// Build is a method that should be called before Run to prepare the session for execution.
+func (s *EvmSigningSession) Build() error {
+	if s.fetcher == nil {
+		return errors.New("deposit fetcher is not set")
+	}
+	if s.client == nil {
+		return errors.New("blockchain client is not set")
+	}
+	if s.coreConnector == nil {
+		return errors.New("core connector is not set")
+	}
+
+	s.mechanism = withdrawal.NewConsensusMechanism[withdrawal.EvmWithdrawalData](
+		s.params.ChainId,
+		s.db,
+		withdrawal.NewEvmConstructor(s.client),
+		s.fetcher,
+	)
+
+	return nil
 }
 
 func (s *EvmSigningSession) Run(ctx context.Context) error {
@@ -97,12 +120,9 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Address,
-				ChainId:   s.params.ChainId,
 			},
 			s.parties,
-			s.db,
-			s.fetcher,
-			s.constructor,
+			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))

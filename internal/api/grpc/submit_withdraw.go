@@ -10,6 +10,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -57,7 +58,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 			return nil, ErrDepositPending
 		}
 		if clients.IsInvalidDepositError(err) {
-			// TODO: insert in db
+			// TODO: insert in db to prevent spamming
 			return nil, status.Error(codes.InvalidArgument, "invalid deposit")
 		}
 
@@ -66,6 +67,10 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	}
 
 	if _, err = data.Insert(*deposit); err != nil {
+		if errors.Is(err, db.ErrAlreadySubmitted) {
+			return nil, ErrTxAlreadySubmitted
+		}
+
 		logger.WithError(err).Error("failed to save deposit")
 		return nil, ErrInternal
 	}

@@ -32,15 +32,14 @@ type ZanoSigningSession struct {
 	parties []p2p.Party
 	self    tss.LocalSignParty
 	db      db.DepositsQ
+	params  SigningSessionParams
+	logger  *logan.Entry
 
-	params SigningSessionParams
-	logger *logan.Entry
-
-	zanoClient *zano.Client
-
+	client        *zano.Client
 	coreConnector *connector.Connector
 	fetcher       *bridge.DepositFetcher
-	constructor   *withdrawal.ZanoWithdrawalConstructor
+
+	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.ZanoWithdrawalData]
@@ -80,9 +79,30 @@ func (s *ZanoSigningSession) WithCoreConnector(conn *connector.Connector) *ZanoS
 }
 
 func (s *ZanoSigningSession) WithClient(client *zano.Client) *ZanoSigningSession {
-	s.zanoClient = client
-	s.constructor = withdrawal.NewZanoConstructor(client)
+	s.client = client
 	return s
+}
+
+// Build is a method that should be called before Run to prepare the session for execution.
+func (s *ZanoSigningSession) Build() error {
+	if s.fetcher == nil {
+		return errors.New("deposit fetcher is not set")
+	}
+	if s.client == nil {
+		return errors.New("blockchain client is not set")
+	}
+	if s.coreConnector == nil {
+		return errors.New("core connector is not set")
+	}
+
+	s.mechanism = withdrawal.NewConsensusMechanism[withdrawal.ZanoWithdrawalData](
+		s.params.ChainId,
+		s.db,
+		withdrawal.NewZanoConstructor(s.client),
+		s.fetcher,
+	)
+
+	return nil
 }
 
 func (s *ZanoSigningSession) Run(ctx context.Context) error {
@@ -99,16 +119,13 @@ func (s *ZanoSigningSession) Run(ctx context.Context) error {
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Address,
-				ChainId:   s.params.ChainId,
 			},
 			s.parties,
-			s.db,
-			s.fetcher,
-			s.constructor,
+			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.zanoClient, s.logger.WithField("phase", "finalizing"))
+		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.client, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(nextSessionStartTime)))
