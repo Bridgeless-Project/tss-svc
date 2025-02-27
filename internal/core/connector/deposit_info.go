@@ -10,6 +10,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var errTxNotFound = status.Error(codes.NotFound, "transaction not found")
+
 func (c *Connector) GetDepositInfo(identifier *types.DepositIdentifier) (*bridgetypes.Transaction, error) {
 	req := bridgetypes.QueryTransactionByIdRequest{
 		Id: fmt.Sprintf("%s/%v/%s", identifier.TxHash, identifier.TxNonce, identifier.ChainId),
@@ -17,7 +19,7 @@ func (c *Connector) GetDepositInfo(identifier *types.DepositIdentifier) (*bridge
 
 	resp, err := c.querier.TransactionById(context.Background(), &req)
 	if err != nil {
-		if errors.Is(err, status.Error(codes.NotFound, "transaction not found")) {
+		if errors.Is(err, errTxNotFound) {
 			return nil, nil
 		}
 
