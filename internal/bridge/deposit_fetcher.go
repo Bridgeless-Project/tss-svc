@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"github.com/hyle-team/tss-svc/internal/types"
 	"math/big"
 
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
@@ -43,6 +44,7 @@ func (p *DepositFetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Depo
 	if !dstClient.AddressValid(depositData.DestinationAddress) {
 		return nil, errors.Wrap(clients.ErrInvalidReceiverAddress, depositData.DestinationAddress)
 	}
+	p.clients.Client(identifier.ChainId)
 
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
 	if err != nil {
@@ -81,4 +83,13 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 	}
 
 	return result
+}
+
+func (p *DepositFetcher) IsDepositOnCore(identifier *types.DepositIdentifier) (bool, error) {
+	info, err := p.core.GetDepositInfo(identifier)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get check deposit info existence")
+	}
+
+	return info != nil, nil
 }

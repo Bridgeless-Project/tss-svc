@@ -71,10 +71,12 @@ Signing data validation: using the provided deposit data and the signing data, t
 
 ### Zano network
 Signing data construction: according to the provided deposit data, the [`emit_asset`](https://docs.zano.org/docs/build/rpc-api/wallet-rpc-api/emit_asset/) request is sent to the Zano wallet RPC server, and the resulting `VerifiedTxID` field is a ready-to-sign data.
-  
+
 Signing data validation: using the provided deposit data and provided additional data from the `emit_asset` response by the proposer, the constructor has the ability to decrypt transaction details using [`decrypt_tx_details`](https://docs.zano.org/docs/build/rpc-api/daemon-rpc-api/decrypt_tx_details) method. 
 Constructor validates:
   - if the provided `VerifiedTxID` matches the `decrypt_tx_details` response;
   - if the amount of tokens to be minted is correct;
   - if the token receiver address is correct;
   - if no additional outputs are present in the transaction (except the change).
+
+**NOTE: Transaction nonce has always to be 0**
