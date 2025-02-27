@@ -128,29 +128,29 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 		case bridgeTypes.AttributeKeyDepositChainId:
 			deposit.ChainId = attribute[0]
 		case bridgeTypes.AttributeKeyDepositAmount:
-			deposit.DepositAmount = &attribute[0]
+			deposit.DepositAmount = attribute[0]
 		case bridgeTypes.AttributeKeyDepositToken:
-			deposit.DepositToken = &attribute[0]
+			deposit.DepositToken = attribute[0]
 		case bridgeTypes.AttributeKeyDepositBlock:
 			b, err := strconv.ParseInt(attribute[0], 10, 64)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse deposit block")
 			}
-			deposit.DepositBlock = &b
+			deposit.DepositBlock = b
 		case bridgeTypes.AttributeKeyWithdrawalAmount:
-			deposit.WithdrawalAmount = &attribute[0]
+			deposit.WithdrawalAmount = attribute[0]
 		case bridgeTypes.AttributeKeyDepositor:
 			deposit.Depositor = &attribute[0]
 		case bridgeTypes.AttributeKeyReceiver:
-			deposit.Receiver = &attribute[0]
+			deposit.Receiver = attribute[0]
 		case bridgeTypes.AttributeKeyWithdrawalChainID:
-			deposit.WithdrawalChainId = &attribute[0]
+			deposit.WithdrawalChainId = attribute[0]
 		case bridgeTypes.AttributeKeyWithdrawalTxHash:
 			if attribute[0] != "" {
 				deposit.WithdrawalTxHash = &attribute[0]
 			}
 		case bridgeTypes.AttributeKeyWithdrawalToken:
-			deposit.WithdrawalToken = &attribute[0]
+			deposit.WithdrawalToken = attribute[0]
 		case bridgeTypes.AttributeKeySignature:
 			if attribute[0] != "" {
 				deposit.Signature = &attribute[0]
@@ -160,7 +160,7 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse isWrapped attribute")
 			}
-			deposit.IsWrappedToken = &isWrapped
+			deposit.IsWrappedToken = isWrapped
 		default:
 
 			return nil, errors.Wrap(errors.New(fmt.Sprintf("unknown attribute key: %s", parts[1])), "failed to parse attribute")

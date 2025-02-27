@@ -43,20 +43,20 @@ func ToStatusResponse(d *database.Deposit) *apiTypes.CheckWithdrawalResponse {
 
 	result.TransferData = &types.TransferData{
 		Sender:           d.Depositor,
-		Receiver:         *d.Receiver,
-		DepositAmount:    *d.DepositAmount,
-		WithdrawalAmount: *d.WithdrawalAmount,
-		DepositAsset:     *d.DepositToken,
-		WithdrawalAsset:  *d.WithdrawalToken,
-		IsWrappedAsset:   *d.IsWrappedToken,
-		DepositBlock:     *d.DepositBlock,
+		Receiver:         d.Receiver,
+		DepositAmount:    d.DepositAmount,
+		WithdrawalAmount: d.WithdrawalAmount,
+		DepositAsset:     d.DepositToken,
+		WithdrawalAsset:  d.WithdrawalToken,
+		IsWrappedAsset:   d.IsWrappedToken,
+		DepositBlock:     d.DepositBlock,
 		Signature:        d.Signature,
 	}
 
 	if d.WithdrawalTxHash != nil {
 		result.WithdrawalIdentifier = &types.WithdrawalIdentifier{
 			TxHash:  *d.WithdrawalTxHash,
-			ChainId: *d.WithdrawalChainId,
+			ChainId: d.WithdrawalChainId,
 		}
 	}
 

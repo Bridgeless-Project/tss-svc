@@ -178,13 +178,13 @@ func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit d
 		fallthrough
 	case 1:
 		receiverOutput := tx.TxOut[receiverIdx]
-		withdrawalAmount, ok := new(big.Int).SetString(*deposit.WithdrawalAmount, 10)
+		withdrawalAmount, ok := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
 		if !ok || receiverOutput.Value != withdrawalAmount.Int64() {
 			return 0, errors.New("invalid withdrawal amount")
 		}
 		outputsSum += receiverOutput.Value
 
-		outAddr, err := btcutil.DecodeAddress(*deposit.Receiver, c.client.ChainParams())
+		outAddr, err := btcutil.DecodeAddress(deposit.Receiver, c.client.ChainParams())
 		if err != nil {
 			return 0, errors.Wrap(err, "failed to decode receiver address")
 		}

@@ -55,14 +55,14 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalStatus: deposit.WithdrawalStatus,
 			depositsDepositAmount:    deposit.DepositAmount,
 			depositsWithdrawalAmount: deposit.WithdrawalAmount,
-			depositsReceiver:         *deposit.Receiver,
+			depositsReceiver:         deposit.Receiver,
 			depositsDepositBlock:     deposit.DepositBlock,
 			depositsIsWrappedToken:   deposit.IsWrappedToken,
 			// can be 0x00... in case of native ones
-			depositsDepositToken: strings.ToLower(*deposit.DepositToken),
+			depositsDepositToken: strings.ToLower(deposit.DepositToken),
 			depositsDepositor:    deposit.Depositor,
 			// can be 0x00... in case of native ones
-			depositsWithdrawalToken:   strings.ToLower(*deposit.WithdrawalToken),
+			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 		}).
 		Suffix("RETURNING id")
@@ -77,16 +77,6 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 	}
 
 	return id, nil
-}
-
-func (d *depositsQ) Exists(check db.DepositExistenceCheck) (bool, error) {
-	var deposit db.Deposit
-	err := d.db.Get(&deposit, d.selector.Where(existenceToPredicate(check)))
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-
-	return err == nil, err
 }
 
 func (d *depositsQ) Get(identifier db.DepositIdentifier) (*db.Deposit, error) {
@@ -223,14 +213,14 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsChainId:          deposit.ChainId,
 			depositsDepositAmount:    deposit.DepositAmount,
 			depositsWithdrawalAmount: deposit.WithdrawalAmount,
-			depositsReceiver:         strings.ToLower(*deposit.Receiver),
+			depositsReceiver:         strings.ToLower(deposit.Receiver),
 			depositsDepositBlock:     deposit.DepositBlock,
 			depositsIsWrappedToken:   deposit.IsWrappedToken,
 			// can be 0x00... in case of native ones
-			depositsDepositToken: strings.ToLower(*deposit.DepositToken),
+			depositsDepositToken: strings.ToLower(deposit.DepositToken),
 			depositsDepositor:    deposit.Depositor,
 			// can be 0x00... in case of native ones
-			depositsWithdrawalToken:   strings.ToLower(*deposit.WithdrawalToken),
+			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 			depositsWithdrawalTxHash:  deposit.WithdrawalTxHash,
 			depositsSignature:         *deposit.Signature,

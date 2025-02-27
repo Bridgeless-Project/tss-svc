@@ -25,7 +25,7 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	var operation Operation
 	var err error
 
-	if *data.Receiver == bridge.DefaultNativeTokenAddress {
+	if data.Receiver == bridge.DefaultNativeTokenAddress {
 		operation, err = operations.NewWithdrawNativeContent(data)
 	} else {
 		operation, err = operations.NewWithdrawERC20Content(data)
