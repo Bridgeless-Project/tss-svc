@@ -78,5 +78,3 @@ Constructor validates:
   - if the amount of tokens to be minted is correct;
   - if the token receiver address is correct;
   - if no additional outputs are present in the transaction (except the change).
-
-**NOTE: Transaction nonce has always to be 0**

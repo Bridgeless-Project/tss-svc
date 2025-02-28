@@ -43,7 +43,6 @@ func (p *DepositFetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Depo
 	if !dstClient.AddressValid(depositData.DestinationAddress) {
 		return nil, errors.Wrap(clients.ErrInvalidReceiverAddress, depositData.DestinationAddress)
 	}
-	p.clients.Client(identifier.ChainId)
 
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
@@ -30,7 +29,6 @@ type DepositAcceptorSession struct {
 	fetcher *DepositFetcher
 	data    db.DepositsQ
 	logger  *logan.Entry
-	clients bridgeTypes.Repository
 
 	distributors map[core.Address]struct{}
 
@@ -40,7 +38,6 @@ type DepositAcceptorSession struct {
 func NewDepositAcceptorSession(
 	distributors []p2p.Party,
 	fetcher *DepositFetcher,
-	clients bridgeTypes.Repository,
 	data db.DepositsQ,
 	logger *logan.Entry,
 ) *DepositAcceptorSession {
@@ -54,7 +51,6 @@ func NewDepositAcceptorSession(
 		msgs:         make(chan distributedDeposit, 100),
 		data:         data,
 		logger:       logger,
-		clients:      clients,
 		distributors: distributorsMap,
 	}
 }
@@ -70,11 +66,12 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 		case msg := <-d.msgs:
 			d.logger.Info(fmt.Sprintf("received deposit from %s", msg.Distributor))
 
-			_, err := d.clients.Client(msg.Identifier.ChainId)
-			if err != nil {
-				d.logger.Error("got unsupported chain identifier")
-				continue
+			id := db.DepositIdentifier{
+				ChainId: msg.Identifier.ChainId,
+				TxHash:  msg.Identifier.TxHash,
+				TxNonce: int(msg.Identifier.TxNonce),
 			}
+
 			deposit, err := d.data.Get(db.DepositIdentifier{
 				TxHash:  msg.Identifier.TxHash,
 				TxNonce: int(msg.Identifier.TxNonce),
@@ -84,20 +81,14 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 				d.logger.WithError(err).Error("failed to check if deposit exists")
 				continue
 			} else if deposit != nil {
-				d.logger.Info("deposit already exists")
+				d.logger.Warn("deposit already exists")
 				continue
-			}
-
-			id := db.DepositIdentifier{
-				ChainId: msg.Identifier.ChainId,
-				TxHash:  msg.Identifier.TxHash,
-				TxNonce: int(msg.Identifier.TxNonce),
 			}
 
 			deposit, err = d.fetcher.FetchDeposit(id)
 			if err != nil {
 				if clients.IsPendingDepositError(err) {
-					d.logger.Info("deposit already pending")
+					d.logger.Warn("deposit still pending")
 					continue
 				}
 				if clients.IsInvalidDepositError(err) {
@@ -109,7 +100,7 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 						d.logger.WithError(err).Error("failed to process deposit")
 						continue
 					}
-					d.logger.Info("invalid deposit")
+					d.logger.Warn("invalid deposit")
 					continue
 				}
 				d.logger.WithError(err).Error("failed to fetch deposit")

@@ -3,6 +3,7 @@ package common
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -24,6 +25,11 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Clie
 		return errors.New("invalid transaction hash")
 	}
 
+	// If chain type is Zano event index always is 0
+	if client.Type() == chains.TypeZano {
+		identifier.TxNonce = 0
+	}
+	
 	return nil
 }
 

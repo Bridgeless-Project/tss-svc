@@ -173,7 +173,6 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		depositAcceptorSession := bridge.NewDepositAcceptorSession(
 			cfg.Parties(),
 			fetcher,
-			clientsRepo,
 			db,
 			logger.WithField("component", "deposit_acceptor_session"),
 		)

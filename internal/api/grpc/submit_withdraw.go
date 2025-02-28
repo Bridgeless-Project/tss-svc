@@ -2,8 +2,6 @@ package grpc
 
 import (
 	"context"
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
-
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/bridge"
@@ -34,13 +32,8 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "unsupported chain")
 	}
-	if err = common.ValidateIdentifier(identifier, client); err != nil {
+	if err = common.ValidateIdentifier(&*identifier, client); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	// If chain type is Zano event index always is 0
-	if client.Type() == chains.TypeZano {
-		identifier.TxNonce = 0
 	}
 
 	d, err := coreConnector.GetDepositInfo(identifier)
