@@ -32,7 +32,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "unsupported chain")
 	}
-	if err = common.ValidateIdentifier(&*identifier, client); err != nil {
+	if err = common.ValidateIdentifier(identifier, client); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
