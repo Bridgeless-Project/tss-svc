@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"net"
 	"net/http"
 	"time"
@@ -46,6 +47,7 @@ func NewServer(
 	processor *bridge.DepositFetcher,
 	broadcaster *p2p.Broadcaster,
 	self core.Address,
+	connector *coreConnector.Connector,
 ) *Server {
 	return &Server{
 		grpc:   grpc,
@@ -59,6 +61,7 @@ func NewServer(
 			ctx.FetcherProvider(processor),
 			ctx.BroadcasterProvider(broadcaster),
 			ctx.SelfProvider(self),
+			ctx.CoreConnectorProvider(connector),
 		},
 	}
 }

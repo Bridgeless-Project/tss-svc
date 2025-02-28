@@ -42,14 +42,14 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		identifier.TxNonce = 0
 	}
 
-	exists, err := processor.IsDepositOnCore(identifier)
-	if err != nil {
-		logger.WithError(err).Error("error checking if deposit exists on core")
-		return nil, ErrInternal
-	}
-	if exists {
-		return nil, ErrTxAlreadySubmitted
-	}
+	//d, err := coreConnector.GetDepositInfo(identifier)
+	//if err != nil {
+	//	logger.WithError(err).Error("error checking deposit info on core")
+	//	return nil, ErrInternal
+	//}
+	//if d != nil {
+	//	return nil, ErrTxAlreadySubmitted
+	//}
 
 	id := db.DepositIdentifier{
 		ChainId: identifier.ChainId,
