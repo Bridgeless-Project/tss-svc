@@ -20,6 +20,11 @@ const (
 	SigHashType             = txscript.SigHashAll
 )
 
+type OutPoint struct {
+	TxID  string
+	Index uint32
+}
+
 func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error) {
 	amount, set := new(big.Int).SetString(*deposit.WithdrawalAmount, 10)
 	if !set {
