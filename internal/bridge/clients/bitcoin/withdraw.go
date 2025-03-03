@@ -20,11 +20,11 @@ const (
 )
 
 func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error) {
-	amount, set := new(big.Int).SetString(*deposit.WithdrawalAmount, 10)
+	amount, set := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
 	if !set {
 		return nil, nil, errors.New("failed to parse amount")
 	}
-	receiverAddr, err := btcutil.DecodeAddress(*deposit.Receiver, c.chain.Params)
+	receiverAddr, err := btcutil.DecodeAddress(deposit.Receiver, c.chain.Params)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to decode receiver address")
 	}

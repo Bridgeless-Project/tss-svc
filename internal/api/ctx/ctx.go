@@ -2,6 +2,7 @@ package ctx
 
 import (
 	"context"
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
@@ -14,12 +15,13 @@ import (
 type ctxKey int
 
 const (
-	dbKey          ctxKey = iota
-	loggerKey      ctxKey = iota
-	clientsKey     ctxKey = iota
-	processorKey   ctxKey = iota
-	broadcasterKey ctxKey = iota
-	selfKey        ctxKey = iota
+	dbKey            ctxKey = iota
+	loggerKey        ctxKey = iota
+	clientsKey       ctxKey = iota
+	processorKey     ctxKey = iota
+	broadcasterKey   ctxKey = iota
+	selfKey          ctxKey = iota
+	coreConnectorKey ctxKey = iota
 )
 
 func DBProvider(q db.DepositsQ) func(context.Context) context.Context {
@@ -83,4 +85,12 @@ func SelfProvider(self core.Address) func(context.Context) context.Context {
 
 func Self(ctx context.Context) core.Address {
 	return ctx.Value(selfKey).(core.Address)
+}
+
+func CoreConnectorProvider(connector *coreConnector.Connector) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context { return context.WithValue(ctx, coreConnectorKey, connector) }
+}
+
+func CoreConnector(ctx context.Context) *coreConnector.Connector {
+	return ctx.Value(coreConnectorKey).(*coreConnector.Connector)
 }
