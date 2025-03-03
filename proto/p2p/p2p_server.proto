@@ -13,6 +13,7 @@ enum PartyStatus {
   PS_UNKNOWN = 0;
   PS_KEYGEN = 1;
   PS_SIGN = 2;
+  PS_SYNC = 3;
 }
 
 enum RequestType {
