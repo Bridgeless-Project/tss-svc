@@ -8,6 +8,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/wire"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
@@ -98,7 +99,8 @@ func (f *BitcoinFinalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), tx.TxHash().String()); err != nil {
+	withdrawalTxHash := bridge.HexPrefix + tx.TxHash().String()
+	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
 		return
 	}

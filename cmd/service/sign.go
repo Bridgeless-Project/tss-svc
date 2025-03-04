@@ -14,7 +14,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -68,13 +68,13 @@ var signCmd = &cobra.Command{
 
 		connectionManager := p2p.NewConnectionManager(cfg.Parties(), p2p.PartyStatus_PS_SIGN, cfg.Log().WithField("component", "connection_manager"))
 
-		session := session.NewDefaultSigningSession(
+		session := signing.NewDefaultSigningSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     localSaveData,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
-			session.DefaultSigningSessionParams{
+			signing.DefaultSigningSessionParams{
 				SessionParams: cfg.TssSessionParams(),
 				SigningData:   []byte(dataToSign),
 			},

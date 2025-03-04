@@ -18,7 +18,7 @@ import (
 
 type ConsolidateOutputsOptions func(*ConsolidateOutputsParams)
 
-func WithFeeRate(rate int64) ConsolidateOutputsOptions {
+func WithFeeRate(rate uint64) ConsolidateOutputsOptions {
 	return func(params *ConsolidateOutputsParams) {
 		params.FeeRate = rate
 	}
@@ -38,7 +38,7 @@ func WithOutputsCount(count int) ConsolidateOutputsOptions {
 
 type ConsolidateOutputsParams struct {
 	// satsPerByte
-	FeeRate        int64
+	FeeRate        uint64
 	MaxInputsCount int
 	OutputsCount   int
 }
@@ -133,7 +133,8 @@ func (c *Client) ConsolidateOutputs(to btcutil.Address, opts ...ConsolidateOutpu
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get available UTXOs")
 	}
-	if len(unspent) <= 1 {
+	// allow consolidation even if there is only one UTXO
+	if len(unspent) == 0 {
 		return nil, nil, errors.New("not enough UTXOs to consolidate")
 	}
 
@@ -168,7 +169,7 @@ func (c *Client) ConsolidateOutputs(to btcutil.Address, opts ...ConsolidateOutpu
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to mock transaction")
 	}
-	fees := int64(mockedTx.SerializeSize()) * options.FeeRate
+	fees := int64(mockedTx.SerializeSize()) * int64(options.FeeRate)
 	outAmount := totalAmount - fees
 	// dividing amount equally between outputs, remainder goes to fees
 	amountPerOutput := outAmount / int64(options.OutputsCount)

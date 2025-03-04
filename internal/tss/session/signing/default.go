@@ -1,4 +1,4 @@
-package session
+package signing
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -46,7 +47,7 @@ func NewDefaultSigningSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *DefaultSigningSession {
-	sessionId := GetDefaultSigningSessionIdentifier(params.Id)
+	sessionId := session.GetDefaultSigningSessionIdentifier(params.Id)
 	return &DefaultSigningSession{
 		sessionId:             sessionId,
 		params:                params,

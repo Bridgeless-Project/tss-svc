@@ -1,4 +1,4 @@
-package session
+package signing
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
@@ -33,7 +34,7 @@ type EvmSigningSession struct {
 	parties []p2p.Party
 	self    tss.LocalSignParty
 	db      db.DepositsQ
-	params  SigningSessionParams
+	params  session.SigningSessionParams
 	logger  *logan.Entry
 
 	coreConnector *connector.Connector
@@ -50,11 +51,11 @@ type EvmSigningSession struct {
 func NewEvmSigningSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
-	params SigningSessionParams,
+	params session.SigningSessionParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
 ) *EvmSigningSession {
-	sessionId := GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
+	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
 	return &EvmSigningSession{
 		sessionId: atomic.NewString(sessionId),
@@ -218,7 +219,7 @@ func (s *EvmSigningSession) Id() string {
 
 func (s *EvmSigningSession) incrementSessionId() {
 	prevSessionId := s.Id()
-	nextSessionId := IncrementSessionIdentifier(prevSessionId)
+	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -113,7 +114,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		var sess RunnableTssSession
 		switch chain.Type {
 		case chains.TypeEVM:
-			evmSession := session.NewEvmSigningSession(
+			evmSession := signing.NewEvmSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,
@@ -129,7 +130,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 			}
 			sess = evmSession
 		case chains.TypeZano:
-			zanoSession := session.NewZanoSigningSession(
+			zanoSession := signing.NewZanoSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,
@@ -145,7 +146,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 			}
 			sess = zanoSession
 		case chains.TypeBitcoin:
-			btcSession := session.NewBitcoinSigningSession(
+			btcSession := signing.NewBitcoinSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,

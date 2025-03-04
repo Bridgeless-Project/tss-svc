@@ -13,6 +13,7 @@ enum PartyStatus {
   PS_UNKNOWN = 0;
   PS_KEYGEN = 1;
   PS_SIGN = 2;
+  PS_RESHARE = 3;
 }
 
 enum RequestType {
@@ -78,6 +79,11 @@ message BitcoinProposalData {
   bytes serializedTx = 2;
 
   repeated bytes sigData = 3;
+}
+
+message BitcoinResharingProposalData {
+  bytes serializedTx = 1;
+  repeated bytes sigData = 2;
 }
 
 message DepositDistributionData {

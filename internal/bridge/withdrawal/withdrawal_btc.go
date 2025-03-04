@@ -180,6 +180,10 @@ func (c *BitcoinWithdrawalConstructor) validateInputs(
 
 	inputsSum := int64(0)
 	for idx, inp := range tx.TxIn {
+		if inp == nil {
+			return 0, errors.New(fmt.Sprintf("nil input at index %d", idx))
+		}
+
 		unspent := inputs[bitcoin.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
