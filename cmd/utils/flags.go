@@ -9,6 +9,7 @@ import (
 
 const (
 	configFlag = "config"
+	syncFlag   = "sync"
 )
 
 func RegisterOutputFlags(cmd *cobra.Command) {
@@ -21,12 +22,17 @@ func RegisterConfigFlag(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringP(configFlag, "c", "config.yaml", "Path to the config file")
 }
 
+func RegisterSyncFlag(cmd *cobra.Command) {
+	cmd.PersistentFlags().BoolVarP(&SyncEnabled, "sync", "s", SyncEnabled, "Sync enabled/disabled (disabled default)")
+}
+
 func OutputValid() bool {
 	return OutputType == "console" || OutputType == "file" || OutputType == "vault"
 }
 
 var OutputType string
 var FilePath string
+var SyncEnabled bool
 
 func ConfigFromFlags(cmd *cobra.Command) (config.Config, error) {
 	configPath, err := cmd.Flags().GetString(configFlag)
@@ -41,4 +47,13 @@ func ConfigFromFlags(cmd *cobra.Command) (config.Config, error) {
 	}
 
 	return config.New(viper), nil
+}
+
+func IsSyncEnabled(cmd *cobra.Command) bool {
+	enabled, err := cmd.Flags().GetBool(syncFlag)
+	if err != nil {
+		return false
+	}
+
+	return enabled
 }

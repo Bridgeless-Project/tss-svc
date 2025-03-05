@@ -96,7 +96,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			}
 
 			c.logger.Info("signing parties selected and notified")
-			p2p.NewBroadcaster(c.result.signers).Broadcast(msg)
+			p2p.NewBroadcaster(c.result.signers, c.logger.WithField("component", "broadcaster")).Broadcast(msg)
 			c.logger.Info("consensus finished")
 
 			return

@@ -14,6 +14,8 @@ type TssSession interface {
 	Id() string
 	Receive(request *SubmitRequest) error
 	RegisterIdChangeListener(func(oldId, newId string))
+	Info() (*SessionInfo, error)
+	ChainID() string
 }
 
 type SessionManager struct {
@@ -74,4 +76,14 @@ func (m *SessionManager) onIdChange(oldId, newId string) {
 
 	delete(m.sessions, oldId)
 	m.sessions[newId] = session
+}
+
+func (m *SessionManager) GetByChainID(chainId string) (TssSession, error) {
+	for _, session := range m.sessions {
+		if session.ChainID() == chainId {
+			return session, nil
+		}
+	}
+
+	return nil, ErrSessionNotFound
 }

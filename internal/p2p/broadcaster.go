@@ -2,7 +2,7 @@ package p2p
 
 import (
 	"context"
-	"fmt"
+	"gitlab.com/distributed_lab/logan/v3"
 	"sync"
 	"time"
 
@@ -15,11 +15,14 @@ const DefaultConnectionTimeout = time.Second
 
 type Broadcaster struct {
 	parties map[core.Address]Party
+
+	logger *logan.Entry
 }
 
-func NewBroadcaster(to []Party) *Broadcaster {
+func NewBroadcaster(to []Party, logger *logan.Entry) *Broadcaster {
 	b := &Broadcaster{
 		parties: make(map[core.Address]Party, len(to)),
+		logger:  logger,
 	}
 
 	for _, party := range to {
@@ -62,8 +65,7 @@ func (b *Broadcaster) Broadcast(msg *SubmitRequest) {
 		go func(p Party) {
 			defer wg.Done()
 			if err := b.send(ctx, msg, p.Connection()); err != nil {
-				// FIXME: log error
-				fmt.Println("failed to send message", msg.Type, "because", err.Error())
+				b.logger.Debug("failed to send message", msg.Type, "because", err.Error())
 			}
 		}(party)
 	}

@@ -2,11 +2,10 @@ package ctx
 
 import (
 	"context"
-	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
-
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -22,6 +21,7 @@ const (
 	broadcasterKey   ctxKey = iota
 	selfKey          ctxKey = iota
 	coreConnectorKey ctxKey = iota
+	syncerKey        ctxKey = iota
 )
 
 func DBProvider(q db.DepositsQ) func(context.Context) context.Context {

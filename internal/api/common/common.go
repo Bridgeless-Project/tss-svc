@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
 	"github.com/hyle-team/tss-svc/internal/bridge/chains"
@@ -29,7 +30,7 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Clie
 	if client.Type() == chains.TypeZano {
 		identifier.TxNonce = 0
 	}
-	
+
 	return nil
 }
 
@@ -80,4 +81,18 @@ func ToDbIdentifier(identifier *types.DepositIdentifier) database.DepositIdentif
 func ProtoJsonMustMarshal(msg proto.Message) []byte {
 	raw, _ := protojson.Marshal(msg)
 	return raw
+}
+
+func IsSupportedChain(repository clients.Repository) validation.Rule {
+	return validation.By(func(value interface{}) error {
+		id, ok := value.(string)
+		if !ok {
+			return errors.New(fmt.Sprintf("invalid chain type, expected string, got: %T", value))
+		}
+
+		if !repository.SupportsChain(id) {
+			return clients.ErrChainNotSupported
+		}
+		return nil
+	})
 }

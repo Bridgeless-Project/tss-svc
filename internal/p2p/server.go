@@ -2,6 +2,9 @@ package p2p
 
 import (
 	"context"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/hyle-team/tss-svc/internal/p2p/middlewares"
+	"gitlab.com/distributed_lab/logan/v3"
 	"net"
 	"sync"
 
@@ -21,13 +24,41 @@ type Server struct {
 	manager *SessionManager
 
 	listener net.Listener
+
+	logger *logan.Entry
 }
 
-func NewServer(listener net.Listener, manager *SessionManager) *Server {
+func (s *Server) GetSessionInfo(ctxt context.Context, request *SessionInfoRequest) (*SessionInfo, error) {
+	err := validation.Errors{
+		"chain_id": validation.Validate(request.ChainId, validation.Required),
+	}.Filter()
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	session, err := s.manager.GetByChainID(request.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	info, err := session.Info()
+	if err != nil {
+		s.logger.WithError(err).Error("failed to get the session info")
+		return nil, ErrInternal
+	}
+
+	return info, nil
+}
+
+func NewServer(listener net.Listener,
+	manager *SessionManager,
+	logger *logan.Entry,
+) *Server {
 	return &Server{
 		status:   PartyStatus_PS_UNKNOWN,
 		manager:  manager,
 		listener: listener,
+		logger:   logger,
 	}
 }
 
@@ -39,8 +70,11 @@ func (s *Server) SetStatus(status PartyStatus) {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	// TODO: add interceptors (log, recovery etc)
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			// RecoveryInterceptor should be the last one
+			middlewares.RecoveryInterceptor(s.logger),
+		))
 	RegisterP2PServer(srv, s)
 	reflection.Register(srv)
 

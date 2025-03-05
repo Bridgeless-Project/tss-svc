@@ -55,7 +55,7 @@ func New[T withdrawal.DepositSigningData](
 
 	return &Consensus[T]{
 		parties:     partiesMap,
-		broadcaster: p2p.NewBroadcaster(parties),
+		broadcaster: p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 
 		self:      party.Self,
 		sessionId: party.SessionId,

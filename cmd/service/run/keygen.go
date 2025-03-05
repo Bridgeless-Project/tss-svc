@@ -75,7 +75,7 @@ var keygenCmd = &cobra.Command{
 		sessionManager := p2p.NewSessionManager(session)
 
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager)
+			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
 			server.SetStatus(p2p.PartyStatus_PS_KEYGEN)
 			return server.Run(ctx)
 		})

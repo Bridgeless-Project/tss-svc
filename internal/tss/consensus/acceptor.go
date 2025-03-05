@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"fmt"
-
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"

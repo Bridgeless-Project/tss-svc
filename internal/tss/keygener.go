@@ -47,7 +47,7 @@ func NewKeygenParty(self LocalKeygenParty, parties []p2p.Party, sessionId string
 	}
 
 	return &KeygenParty{
-		broadcaster:    p2p.NewBroadcaster(parties),
+		broadcaster:    p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		sortedPartyIds: tss.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		self:           self,
