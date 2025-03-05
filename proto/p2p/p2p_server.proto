@@ -6,6 +6,8 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/any.proto";
 import "gogoproto/gogo.proto";
 import "deposit.proto";
+import "google/api/annotations.proto";
+
 
 option go_package = "github.com/hyle-team/tss-svc/internal/p2p";
 
@@ -25,9 +27,30 @@ enum RequestType {
   RT_DEPOSIT_DISTRIBUTION = 5;
 }
 
+enum SessionMode {
+  SM_UNKNOWN = 0;
+  SM_SIGN = 1;
+  SM_GROUPING = 2;
+}
+
+message SessionInfo{
+  int64 id = 1;
+  int64 nextSessionStartTime = 2;
+  SessionMode mode = 3;
+}
+
+message SessionInfoRequest{
+  string chain_id = 1;
+}
+
 service P2P {
   rpc Status (google.protobuf.Empty) returns (StatusResponse) {}
   rpc Submit (SubmitRequest) returns (google.protobuf.Empty) {}
+  rpc GetSessionInfo(p2p.SessionInfoRequest) returns (p2p.SessionInfo) {
+    option (google.api.http) = {
+      get: "/session_info/{chain_id}"
+    };
+  }
 }
 
 message StatusResponse {
