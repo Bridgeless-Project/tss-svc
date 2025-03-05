@@ -48,12 +48,3 @@ func ConfigFromFlags(cmd *cobra.Command) (config.Config, error) {
 
 	return config.New(viper), nil
 }
-
-func IsSyncEnabled(cmd *cobra.Command) bool {
-	enabled, err := cmd.Flags().GetBool(syncFlag)
-	if err != nil {
-		return false
-	}
-
-	return enabled
-}
