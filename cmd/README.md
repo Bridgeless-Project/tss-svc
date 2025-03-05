@@ -35,6 +35,7 @@ Required flags:
 
 Optional flags:
 - `--output`
+- `--sync` (flag for signing mode, default is false. It`s used to sync session data with other parties)
 
 ### Sign single message
 Commands:
