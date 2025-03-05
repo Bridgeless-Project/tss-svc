@@ -64,7 +64,7 @@ func (p *SignParty) WithParties(parties []p2p.Party) *SignParty {
 
 	p.parties = partyMap
 	p.sortedPartyIds = tss.SortPartyIDs(partyIds)
-	p.broadcaster = p2p.NewBroadcaster(parties)
+	p.broadcaster = p2p.NewBroadcaster(parties, p.logger.WithField("component", "broadcaster"))
 
 	return p
 }

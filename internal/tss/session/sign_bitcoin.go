@@ -59,8 +59,9 @@ func NewBitcoinSigningSession(
 	sessionId := GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
 	return &BitcoinSigningSession{
-		sessionId: atomic.NewString(sessionId),
-		mu:        &sync.RWMutex{},
+		sessionId:            atomic.NewString(sessionId),
+		mu:                   &sync.RWMutex{},
+		nextSessionStartTime: params.StartTime,
 
 		parties: parties,
 		self:    self,
@@ -287,4 +288,25 @@ func (s *BitcoinSigningSession) updateNextSessionStartTime(inputsToSign int) {
 	// excluding included consensus, finalizing, and one signing phase
 	additionalDelay := time.Duration(inputsToSign-1) * (tss.BoundarySign + tss.BoundaryBitcoinSingRoundDelay)
 	s.nextSessionStartTime = s.nextSessionStartTime.Add(additionalDelay)
+}
+
+func (s *BitcoinSigningSession) Info() (*p2p.SessionInfo, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	startTime := s.nextSessionStartTime.Unix()
+	id, err := GetSessionId(s.sessionId.Load())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get session id")
+	}
+
+	return &p2p.SessionInfo{
+		Id:                   id,
+		NextSessionStartTime: startTime,
+		Mode:                 p2p.SessionMode_SM_SIGN,
+	}, nil
+}
+
+func (s *BitcoinSigningSession) ChainID() string {
+	return s.params.ChainId
 }
