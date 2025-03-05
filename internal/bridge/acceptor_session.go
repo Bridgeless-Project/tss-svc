@@ -158,8 +158,8 @@ func (d *DepositAcceptorSession) RegisterIdChangeListener(func(oldId string, new
 }
 
 // Info is a no-op for DepositAcceptorSession
-func (d *DepositAcceptorSession) Info() (*p2p.SessionInfo, error) {
-	return nil, nil
+func (d *DepositAcceptorSession) Info() *p2p.SessionInfo {
+	return nil
 }
 
 // ChainID is a no-op for DepositAcceptorSession

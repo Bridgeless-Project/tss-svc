@@ -21,7 +21,6 @@ const (
 	broadcasterKey   ctxKey = iota
 	selfKey          ctxKey = iota
 	coreConnectorKey ctxKey = iota
-	syncerKey        ctxKey = iota
 )
 
 func DBProvider(q db.DepositsQ) func(context.Context) context.Context {

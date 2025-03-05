@@ -7,7 +7,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/db"
-	types2 "github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -87,11 +87,11 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		return nil, ErrInternal
 	}
 
-	raw, _ := anypb.New(&types2.DepositDistributionData{DepositId: identifier})
+	raw, _ := anypb.New(&p2p.DepositDistributionData{DepositId: identifier})
 	// broadcasting in a separate goroutine to avoid request blocking
-	go ctx.Broadcaster(ctxt).Broadcast(&types2.SubmitRequest{
+	go ctx.Broadcaster(ctxt).Broadcast(&p2p.SubmitRequest{
 		Sender:    ctx.Self(ctxt).String(),
-		Type:      types2.RequestType_RT_DEPOSIT_DISTRIBUTION,
+		Type:      p2p.RequestType_RT_DEPOSIT_DISTRIBUTION,
 		SessionId: bridge.DepositAcceptorSessionIdentifier,
 		Data:      raw,
 	})

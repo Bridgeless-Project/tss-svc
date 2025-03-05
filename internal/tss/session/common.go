@@ -2,7 +2,6 @@ package session
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 
@@ -27,13 +26,13 @@ func GetDefaultSigningSessionIdentifier(sessionId int64) string {
 	return fmt.Sprintf("%s_%d", SignSessionPrefix, sessionId)
 }
 
-func GetSessionId(sessionIdentifier string) (int64, error) {
+func GetSessionId(sessionIdentifier string) int64 {
 	str := strings.Split(sessionIdentifier, "_")[2]
 	id, err := strconv.ParseInt(str, 10, 64)
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to get session identifier")
+		return 0
 	}
-	return id, nil
+	return id
 }
 func GetConcreteSigningSessionIdentifier(chainId string, sessionId int64) string {
 	return fmt.Sprintf("%s_%s_%d", SignSessionPrefix, chainId, sessionId)

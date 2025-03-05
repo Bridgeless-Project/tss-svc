@@ -143,8 +143,8 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 func (s *DefaultSigningSession) RegisterIdChangeListener(func(oldId, newId string)) {}
 
 // Info is a no-op for DefaultSigningSession
-func (s *DefaultSigningSession) Info() (*p2p.SessionInfo, error) {
-	return nil, nil
+func (s *DefaultSigningSession) Info() *p2p.SessionInfo {
+	return nil
 }
 
 // ChainID is a no-op for DefaultSigningSession

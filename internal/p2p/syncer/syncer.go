@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"context"
-	"fmt"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -24,21 +23,6 @@ func NewSyncer(maxRetires int, ctx context.Context) *Syncer {
 }
 
 func (s *Syncer) Sync(chainId string) (info *p2p.SessionInfo, err error) {
-	if s.connection == nil {
-		return nil, errors.New("connection not initialized")
-	}
-	// validate whether provided party is eligible to sync with
-	status, err := p2p.NewP2PClient(s.connection).Status(s.ctx, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to connect to party")
-	}
-	if status == nil {
-		return nil, errors.New("got nil status")
-	}
-	if status.Status != p2p.PartyStatus_PS_SIGN {
-		return nil, errors.New(fmt.Sprintf("invalid party status: %v", status))
-	}
-
 	for i := 0; i < s.maxRetires; i++ {
 		info, err = p2p.NewP2PClient(s.connection).GetSessionInfo(s.ctx, &p2p.SessionInfoRequest{
 			ChainId: chainId,
@@ -51,7 +35,7 @@ func (s *Syncer) Sync(chainId string) (info *p2p.SessionInfo, err error) {
 			break
 		}
 
-		time.Sleep(time.Second * time.Duration(info.NextSessionStartTime/5))
+		time.Sleep(time.Second * 1)
 	}
 
 	return info, nil

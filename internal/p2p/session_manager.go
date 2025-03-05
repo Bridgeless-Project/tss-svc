@@ -14,7 +14,7 @@ type TssSession interface {
 	Id() string
 	Receive(request *SubmitRequest) error
 	RegisterIdChangeListener(func(oldId, newId string))
-	Info() (*SessionInfo, error)
+	Info() *SessionInfo
 	ChainID() string
 }
 
@@ -79,6 +79,9 @@ func (m *SessionManager) onIdChange(oldId, newId string) {
 }
 
 func (m *SessionManager) GetByChainID(chainId string) (TssSession, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
 	for _, session := range m.sessions {
 		if session.ChainID() == chainId {
 			return session, nil

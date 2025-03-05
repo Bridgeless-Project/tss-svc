@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
-	core2 "github.com/hyle-team/tss-svc/internal/core"
+	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p/syncer"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -22,7 +22,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/repository"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
 	"github.com/hyle-team/tss-svc/internal/config"
-	core "github.com/hyle-team/tss-svc/internal/core/connector"
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/core/subscriber"
 	pg "github.com/hyle-team/tss-svc/internal/db/postgres"
 	"github.com/hyle-team/tss-svc/internal/p2p"
@@ -33,8 +33,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var syncEnabled bool
+
 func init() {
-	utils.RegisterSyncFlag(signCmd)
+	registerSyncFlag(signCmd)
 }
 
 var signCmd = &cobra.Command{
@@ -83,7 +85,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 	}
 	sessionManager := p2p.NewSessionManager()
 	dtb := pg.NewDepositsQ(cfg.DB())
-	connector := core.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
+	connector := coreConnector.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
 	sub := subscriber.NewSubmitSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
 
@@ -109,7 +111,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 	go func() {
 		defer wg.Done()
 
-		if utils.SyncEnabled {
+		if syncEnabled {
 			server.SetStatus(p2p.PartyStatus_PS_SYNC)
 		} else {
 			server.SetStatus(p2p.PartyStatus_PS_SIGN)
@@ -146,12 +148,12 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		wg.Add(1)
 		go func(chain chains.Chain, server *p2p.Server) {
 			defer wg.Done()
-			
+
 			client, _ := clientsRepo.Client(chain.Id)
 			var sessParams session.SigningSessionParams
 
-			if utils.SyncEnabled {
-				cfg.Log().WithField("component", "syncer").Info("starting synchronization sessionn info")
+			if syncEnabled {
+				cfg.Log().WithField("component", "syncer").Info("starting synchronization session info")
 				connection, err := snc.FindPartyToSync(cfg.Parties())
 				if err != nil {
 					once.Do(func() {
@@ -164,6 +166,11 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 					once.Do(func() {
 						errChan <- errors.Wrap(err, "failed to sync")
 					})
+					return
+				}
+
+				if info.Id == 0 {
+					errChan <- errors.Wrap(err, "failed to get info")
 					return
 				}
 
@@ -239,13 +246,13 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 func configureSession(params session.SigningSessionParams,
 	chain chains.Chain,
 	cfg config.Config,
-	account *core2.Account,
+	account *core.Account,
 	share *keygen.LocalPartySaveData,
 	db db.DepositsQ,
 	fetcher *bridge.DepositFetcher,
 	logger *logan.Entry,
 	client clients.Client,
-	connector *core.Connector) (sess RunnableTssSession) {
+	connector *coreConnector.Connector) (sess RunnableTssSession) {
 	switch chain.Type {
 	case chains.TypeEVM:
 		evmSession := session.NewEvmSigningSession(
@@ -289,4 +296,8 @@ func configureSession(params session.SigningSessionParams,
 	}
 
 	return sess
+}
+
+func registerSyncFlag(cmd *cobra.Command) {
+	cmd.PersistentFlags().BoolVarP(&syncEnabled, "sync", "s", syncEnabled, "Sync enabled/disabled (disabled default)")
 }

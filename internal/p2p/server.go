@@ -41,13 +41,7 @@ func (s *Server) GetSessionInfo(ctxt context.Context, request *SessionInfoReques
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
 
-	info, err := session.Info()
-	if err != nil {
-		s.logger.WithError(err).Error("failed to get the session info")
-		return nil, ErrInternal
-	}
-
-	return info, nil
+	return session.Info(), nil
 }
 
 func NewServer(listener net.Listener,
