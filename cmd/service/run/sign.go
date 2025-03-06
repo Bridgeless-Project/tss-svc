@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"fmt"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -50,14 +51,16 @@ var signCmd = &cobra.Command{
 
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
+		errChan := make(chan error, 5+2*len(cfg.Chains()))
 
 		wg := &sync.WaitGroup{}
-		if err := runSigningService(ctx, cfg, wg); err != nil {
-			return errors.Wrap(err, "failed to run signing service")
+		if err = runSigningService(ctx, cfg, wg, errChan); err != nil {
+			cancel()
 		}
 		wg.Wait()
+		close(errChan)
 
-		return nil
+		return errors.Wrap(err, "failed to run signing service")
 	},
 }
 
@@ -66,7 +69,7 @@ type RunnableTssSession interface {
 	p2p.TssSession
 }
 
-func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGroup) error {
+func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGroup, errChan chan error) error {
 	logger := cfg.Log()
 	chns := cfg.Chains()
 	storage := vault.NewStorage(cfg.VaultClient())
@@ -89,8 +92,8 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 	sub := subscriber.NewSubmitSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
 
-	errChan := make(chan error, 10)
-	once := sync.Once{}
+	//
+	//	once := sync.Once{}
 
 	srv := api.NewServer(
 		cfg.ApiGrpcListener(),
@@ -117,9 +120,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 			server.SetStatus(p2p.PartyStatus_PS_SIGN)
 		}
 		if err = server.Run(ctx); err != nil {
-			once.Do(func() {
-				errChan <- errors.Wrap(err, "failed to run p2p server")
-			})
+			errChan <- errors.Wrap(err, "failed to run p2p server")
 		}
 	}()
 
@@ -128,17 +129,13 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 	go func() {
 		defer wg.Done()
 		if err = srv.RunHTTP(ctx); err != nil {
-			once.Do(func() {
-				errChan <- errors.Wrap(err, "failed to run")
-			})
+			errChan <- errors.Wrap(err, "failed to run")
 		}
 	}()
 	go func() {
 		defer wg.Done()
 		if err = srv.RunGRPC(ctx); err != nil {
-			once.Do(func() {
-				errChan <- errors.Wrap(err, "failed to run GRPC gateway")
-			})
+			errChan <- errors.Wrap(err, "failed to run GRPC gateway")
 		}
 	}()
 
@@ -153,24 +150,20 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 			var sessParams session.SigningSessionParams
 
 			if syncEnabled {
-				cfg.Log().WithField("component", "syncer").Info("starting synchronization session info")
+				cfg.Log().WithField("component", "syncer").Info(fmt.Sprintf("starting syncer for chain %s", chain.Id))
 				connection, err := snc.FindPartyToSync(cfg.Parties())
 				if err != nil {
-					once.Do(func() {
-						errChan <- errors.Wrap(err, "failed to find party to sync")
-					})
+					errChan <- errors.Wrap(err, "failed to find party to sync")
 					return
 				}
 				info, err := snc.WithParty(connection).Sync(chain.Id)
 				if err != nil {
-					once.Do(func() {
-						errChan <- errors.Wrap(err, "failed to sync")
-					})
+					errChan <- errors.Wrap(err, "failed to sync")
 					return
 				}
 
 				if info.Id == 0 {
-					errChan <- errors.Wrap(err, "failed to get info")
+					errChan <- errors.New("failed to get info, id is 0")
 					return
 				}
 
@@ -195,9 +188,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 			go func() {
 				defer wg.Done()
 				if err = sess.Run(ctx); err != nil {
-					once.Do(func() {
-						errChan <- errors.Wrap(err, "failed to run session")
-					})
+					errChan <- errors.Wrap(err, "failed to run session")
 					return
 				}
 				server.SetStatus(p2p.PartyStatus_PS_SIGN)
@@ -228,19 +219,16 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		defer wg.Done()
 
 		if err = sub.Run(ctx); err != nil {
-			once.Do(func() {
-				errChan <- errors.Wrap(err, "failed to run Core event subscriber")
-			})
+			errChan <- errors.Wrap(err, "failed to run Core event subscriber")
 		}
 	}()
 
-	for err = range errChan {
-		if err != nil {
-			return errors.Wrap(err, "failed to run service")
-		}
+	select {
+	case err := <-errChan:
+		return errors.Wrap(err, "failed to run service")
+	case <-ctx.Done():
+		return nil
 	}
-
-	return nil
 }
 
 func configureSession(params session.SigningSessionParams,
