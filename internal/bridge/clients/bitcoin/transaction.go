@@ -169,11 +169,13 @@ func (c *Client) ConsolidateOutputs(to btcutil.Address, opts ...ConsolidateOutpu
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to mock transaction")
 	}
+
 	fees := int64(mockedTx.SerializeSize()) * int64(options.FeeRate)
 	outAmount := totalAmount - fees
 	// dividing amount equally between outputs, remainder goes to fees
 	amountPerOutput := outAmount / int64(options.OutputsCount)
-	if c.WithdrawalAmountValid(big.NewInt(amountPerOutput)) {
+
+	if !c.WithdrawalAmountValid(big.NewInt(amountPerOutput)) {
 		return nil, nil, errors.New("amount per output is too small")
 	}
 	for _, out := range tx.TxOut {

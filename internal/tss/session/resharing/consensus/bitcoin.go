@@ -28,7 +28,9 @@ type SigningData struct {
 }
 
 func (s SigningData) ToPayload() *anypb.Any {
-	return &anypb.Any{}
+	pb, _ := anypb.New(s.ProposalData)
+
+	return pb
 }
 
 type Mechanism struct {
