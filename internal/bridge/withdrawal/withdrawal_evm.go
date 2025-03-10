@@ -12,6 +12,7 @@ import (
 )
 
 var _ DepositSigningData = EvmWithdrawalData{}
+var _ Constructor[EvmWithdrawalData] = &EvmWithdrawalConstructor{}
 
 type EvmWithdrawalData struct {
 	ProposalData     *p2p.EvmProposalData
@@ -37,14 +38,6 @@ func (e EvmWithdrawalData) ToPayload() *anypb.Any {
 
 	return pb
 }
-func (e EvmWithdrawalData) FromPayload(payload *anypb.Any) (DepositSigningData, error) {
-	proposalData := &p2p.EvmProposalData{}
-	if err := payload.UnmarshalTo(e.ProposalData); err != nil {
-		return EvmWithdrawalData{}, errors.Wrap(err, "failed to unmarshal proposal data")
-	}
-
-	return EvmWithdrawalData{ProposalData: proposalData}, nil
-}
 
 func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
 	return &EvmWithdrawalConstructor{
@@ -52,19 +45,17 @@ func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
 	}
 }
 
-var _ Constructor[EvmWithdrawalData] = &EvmWithdrawalConstructor{}
-
 type EvmWithdrawalConstructor struct {
 	client *evm.Client
 }
 
-func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (EvmWithdrawalData, error) {
+func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*EvmWithdrawalData, error) {
 	sigHash, err := c.client.GetSignHash(deposit)
 	if err != nil {
-		return EvmWithdrawalData{}, errors.Wrap(err, "failed to get signing hash")
+		return nil, errors.Wrap(err, "failed to get signing hash")
 	}
 
-	return EvmWithdrawalData{
+	return &EvmWithdrawalData{
 		ProposalData: &p2p.EvmProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
@@ -93,11 +84,11 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposit db.De
 	return true, nil
 }
 
-func (c *EvmWithdrawalConstructor) FromPayload(payload *anypb.Any) (EvmWithdrawalData, error) {
+func (c *EvmWithdrawalConstructor) FromPayload(payload *anypb.Any) (*EvmWithdrawalData, error) {
 	proposalData := &p2p.EvmProposalData{}
 	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return EvmWithdrawalData{}, errors.Wrap(err, "failed to unmarshal proposal data")
+		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
 	}
 
-	return EvmWithdrawalData{ProposalData: proposalData}, nil
+	return &EvmWithdrawalData{ProposalData: proposalData}, nil
 }

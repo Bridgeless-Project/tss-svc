@@ -108,7 +108,11 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 			}
 
 			if _, err = d.data.Insert(*deposit); err != nil {
-				d.logger.WithError(err).Error("failed to insert deposit")
+				if errors.Is(err, db.ErrAlreadySubmitted) {
+					d.logger.Info("deposit already found in db")
+				} else {
+					d.logger.WithError(err).Error("failed to insert deposit")
+				}
 				continue
 			}
 

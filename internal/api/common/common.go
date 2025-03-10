@@ -29,7 +29,7 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Clie
 	if client.Type() == chains.TypeZano {
 		identifier.TxNonce = 0
 	}
-	
+
 	return nil
 }
 

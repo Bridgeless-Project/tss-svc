@@ -22,6 +22,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -114,7 +115,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		var sess RunnableTssSession
 		switch chain.Type {
 		case chains.TypeEVM:
-			evmSession := session.NewEvmSigningSession(
+			evmSession := signing.NewEvmSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,
@@ -125,9 +126,12 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
+			if err = evmSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build EVM session")
+			}
 			sess = evmSession
 		case chains.TypeZano:
-			zanoSession := session.NewZanoSigningSession(
+			zanoSession := signing.NewZanoSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,
@@ -138,9 +142,12 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*zano.Client)).WithCoreConnector(connector)
+			if err = zanoSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build Zano session")
+			}
 			sess = zanoSession
 		case chains.TypeBitcoin:
-			btcSession := session.NewBitcoinSigningSession(
+			btcSession := signing.NewBitcoinSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,
@@ -151,6 +158,9 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*bitcoin.Client)).WithCoreConnector(connector)
+			if err = btcSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build Bitcoin session")
+			}
 			sess = btcSession
 		}
 

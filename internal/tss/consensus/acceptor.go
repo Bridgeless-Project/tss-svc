@@ -6,7 +6,6 @@ import (
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -41,7 +40,6 @@ func (c *Consensus[T]) accept(ctx context.Context) {
 				// there will be no data to sign in current session
 				if c.result.sigData == nil {
 					c.logger.Info("got empty data to sign")
-					c.logger.Info("consensus finished")
 					return
 				}
 
@@ -58,7 +56,6 @@ func (c *Consensus[T]) accept(ctx context.Context) {
 				}
 
 				c.logger.Info("sign start message with signing parties received")
-				c.logger.Info("consensus finished")
 				return
 			default:
 				c.logger.Warn(fmt.Sprintf("unsupported request type %s from proposer", msg.Type))
@@ -87,40 +84,15 @@ func (c *Consensus[T]) handleProposalMsg(msg consensusMsg) error {
 		}
 	}()
 
-	data, err := c.constructor.FromPayload(msg.Data)
+	signingData, err := c.mechanism.FromPayload(msg.Data)
 	if err != nil {
-		return errors.Wrap(err, "failed to load consensus payload")
+		return errors.Wrap(err, "failed to extract signing data from payload")
+	}
+	if err = c.mechanism.VerifyProposedData(*signingData); err != nil {
+		return errors.Wrap(err, "failed to verify proposed data")
 	}
 
-	deposit, err := c.db.Get(data.DepositIdentifier())
-	if err != nil {
-		return errors.Wrap(err, "failed to get deposit data")
-	}
-
-	if deposit == nil {
-		deposit, err = c.processor.FetchDeposit(data.DepositIdentifier())
-		if err != nil {
-			// TODO: err check?
-			return errors.Wrap(err, "failed to fetch deposit data")
-		}
-		if _, err = c.db.Insert(*deposit); err != nil {
-			return errors.Wrap(err, "failed to save deposit data")
-		}
-	}
-
-	if deposit.WithdrawalStatus != types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING {
-		return errors.New("deposit is not in pending status")
-	}
-
-	isValid, err := c.constructor.IsValid(data, *deposit)
-	if err != nil {
-		return errors.Wrap(err, "failed to validate signing data")
-	}
-	if !isValid {
-		return errors.New("invalid signing data")
-	}
-
-	c.result.sigData = &data
+	c.result.sigData = signingData
 	proposalAccepted = true
 
 	return nil

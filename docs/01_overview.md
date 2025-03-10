@@ -71,4 +71,13 @@ Check the available commands and flags in the [CLI documentation](../cmd/README.
 
 Check the [Running service documentation](./05_running-service.md) for more details on how to run the service in different modes.
 
+---
+
+## Key Resharing
+
+To add or remove the parties from the TSS network, the key resharing process should be executed.
+It means that the secret shares of the new general system private key should be redistributed among the old/new parties.
+Also, the entire ecosystem should be reconfigured and the funds should be migrated to the new system.
+
+Check the [Key Resharing](./06_key-resharing.md) documentation for more details on how to perform the key resharing process.
 

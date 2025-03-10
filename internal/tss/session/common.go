@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	KeygenSessionPrefix = "KEYGEN"
-	SignSessionPrefix   = "SIGN"
+	KeygenSessionPrefix  = "KEYGEN"
+	SignSessionPrefix    = "SIGN"
+	ReshareSessionPrefix = "RESHARE"
 )
 
 type SigningSessionParams struct {
@@ -20,6 +21,10 @@ type SigningSessionParams struct {
 
 func GetKeygenSessionIdentifier(sessionId int64) string {
 	return fmt.Sprintf("%s_%d", KeygenSessionPrefix, sessionId)
+}
+
+func GetReshareSessionIdentifier(sessionId int64) string {
+	return fmt.Sprintf("%s_%d", ReshareSessionPrefix, sessionId)
 }
 
 func GetDefaultSigningSessionIdentifier(sessionId int64) string {

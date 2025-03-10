@@ -1,4 +1,4 @@
-package session
+package keygen
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -43,7 +44,7 @@ func NewKeygenSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *KeygenSession {
-	sessionId := GetKeygenSessionIdentifier(params.Id)
+	sessionId := session.GetKeygenSessionIdentifier(params.Id)
 	return &KeygenSession{
 		sessionId:             sessionId,
 		params:                params,

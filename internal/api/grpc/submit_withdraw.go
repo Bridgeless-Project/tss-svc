@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/bridge"
@@ -9,6 +10,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -36,13 +38,13 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	d, err := coreConnector.GetDepositInfo(identifier)
+	existingDeposit, err := coreConnector.GetDepositInfo(identifier)
 	if err != nil {
 		logger.WithError(err).Error("error checking deposit info on core")
 		return nil, ErrInternal
 	}
-	if d != nil {
-		return nil, ErrTxAlreadySubmitted
+	if existingDeposit != nil {
+		return nil, status.Error(codes.AlreadyExists, "deposit already exists")
 	}
 
 	id := db.DepositIdentifier{
@@ -50,7 +52,6 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		TxHash:  identifier.TxHash,
 		TxNonce: int(identifier.TxNonce),
 	}
-
 	deposit, err := data.Get(id)
 	if err != nil {
 		logger.WithError(err).Error("error getting deposit")
@@ -83,6 +84,10 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	}
 
 	if _, err = data.Insert(*deposit); err != nil {
+		if errors.Is(err, db.ErrAlreadySubmitted) {
+			return nil, ErrTxAlreadySubmitted
+		}
+
 		logger.WithError(err).Error("failed to save deposit")
 		return nil, ErrInternal
 	}
