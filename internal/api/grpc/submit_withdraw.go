@@ -23,10 +23,11 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	}
 
 	var (
-		clientsRepo = ctx.Clients(ctxt)
-		data        = ctx.DB(ctxt)
-		logger      = ctx.Logger(ctxt)
-		processor   = ctx.Fetcher(ctxt)
+		clientsRepo   = ctx.Clients(ctxt)
+		data          = ctx.DB(ctxt)
+		logger        = ctx.Logger(ctxt)
+		processor     = ctx.Fetcher(ctxt)
+		coreConnector = ctx.CoreConnector(ctxt)
 	)
 
 	client, err := clientsRepo.Client(identifier.ChainId)
@@ -37,13 +38,13 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	exists, err := data.Exists(db.ToExistenceCheck(identifier, client.Type()))
+	existingDeposit, err := coreConnector.GetDepositInfo(identifier)
 	if err != nil {
-		logger.WithError(err).Error("failed to check if deposit exists")
+		logger.WithError(err).Error("error checking deposit info on core")
 		return nil, ErrInternal
 	}
-	if exists {
-		return nil, ErrTxAlreadySubmitted
+	if existingDeposit != nil {
+		return nil, status.Error(codes.AlreadyExists, "deposit already exists")
 	}
 
 	id := db.DepositIdentifier{
@@ -51,14 +52,30 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		TxHash:  identifier.TxHash,
 		TxNonce: int(identifier.TxNonce),
 	}
+	deposit, err := data.Get(id)
+	if err != nil {
+		logger.WithError(err).Error("error getting deposit")
+		return nil, ErrInternal
+	}
+	if deposit != nil {
+		return nil, status.Error(codes.AlreadyExists, "deposit already exists")
+	}
 
-	deposit, err := processor.FetchDeposit(id)
+	deposit, err = processor.FetchDeposit(id)
 	if err != nil {
 		if clients.IsPendingDepositError(err) {
 			return nil, ErrDepositPending
 		}
 		if clients.IsInvalidDepositError(err) {
-			// TODO: insert in db to prevent spamming
+			deposit = &db.Deposit{
+				DepositIdentifier: id,
+				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
+			}
+			if _, err = data.Insert(*deposit); err != nil {
+				logger.WithError(err).Error("failed to process deposit")
+				return nil, ErrInternal
+			}
+
 			return nil, status.Error(codes.InvalidArgument, "invalid deposit")
 		}
 

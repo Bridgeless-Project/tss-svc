@@ -80,6 +80,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		fetcher,
 		p2p.NewBroadcaster(cfg.Parties()),
 		account.CosmosAddress(),
+		connector,
 	)
 
 	// API servers spin-up
@@ -182,7 +183,6 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		depositAcceptorSession := bridge.NewDepositAcceptorSession(
 			cfg.Parties(),
 			fetcher,
-			clientsRepo,
 			db,
 			logger.WithField("component", "deposit_acceptor_session"),
 		)

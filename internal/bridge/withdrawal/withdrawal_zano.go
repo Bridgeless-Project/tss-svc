@@ -96,8 +96,8 @@ func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.
 	changeOutputChecked := false
 	for _, output := range details.DecodedOutputs {
 		switch {
-		case output.Address == *deposit.Receiver:
-			if output.AssetID == *deposit.WithdrawalToken {
+		case output.Address == deposit.Receiver:
+			if output.AssetID == deposit.WithdrawalToken {
 				mintedAmount.Add(mintedAmount, output.Amount)
 			}
 		default:
@@ -110,7 +110,7 @@ func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.
 		}
 	}
 
-	expectedAmount, _ := new(big.Int).SetString(*deposit.WithdrawalAmount, 10)
+	expectedAmount, _ := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
 	if mintedAmount.Cmp(expectedAmount) != 0 {
 		return false, errors.New("minted amount does not match the expected one")
 	}
