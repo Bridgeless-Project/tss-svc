@@ -85,6 +85,15 @@ func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr strin
 	return result.Transaction, sigHashes, nil
 }
 
+func (c *Client) UnspentCount() (int, error) {
+	unspent, err := c.ListUnspent()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get available UTXOs")
+	}
+
+	return len(unspent), nil
+}
+
 func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {
 	return c.chain.Rpc.Wallet.ListUnspent()
 }

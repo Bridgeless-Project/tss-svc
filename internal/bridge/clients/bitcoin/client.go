@@ -11,6 +11,8 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 )
 
+const ConsolidationThreshold = 20
+
 var dustAmount = big.NewInt(547)
 
 type Client struct {
@@ -25,6 +27,10 @@ func NewBridgeClient(chain chains.Bitcoin) *Client {
 	}
 
 	return &Client{chain, mockedKey}
+}
+
+func (c *Client) ConsolidationThreshold() int {
+	return ConsolidationThreshold
 }
 
 func (c *Client) ChainId() string {

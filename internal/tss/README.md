@@ -132,7 +132,9 @@ It is different from the EVM and Zano sessions as it requires multiple UTXOs to 
 Thus, the session includes N signing rounds, where N is the number of UTXOs to be signed in the transaction.
 Respectively, the signing step time bounds are multiplied by N to provide enough time for the parties to sign all UTXOs.
 
-**TODO: COMPLETE BTC WITH INPUTS COLLECTOR STEP**
+In order to prevent the growing number of UTXOs to be signed in the session, the consolidation process session is run periodically.
+Consolidation session is a special session that is used to group the larger number of UTXOs in one transaction with a few outputs to reduce the number of UTXOs to be signed in the future sessions.
+It is triggered automatically by reaching the threshold number of UTXOs and the next pending withdrawal request will be processed right after the consolidation process is finished.
 
 ### Catchup
 For the initial sessions start, the parties are required to have the same session start time and initial session identifier.
