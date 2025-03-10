@@ -172,15 +172,17 @@ func (c *Client) ConsolidateOutputs(to btcutil.Address, opts ...ConsolidateOutpu
 
 	fees := int64(mockedTx.SerializeSize()) * int64(options.FeeRate)
 	outAmount := totalAmount - fees
-	// dividing amount equally between outputs, remainder goes to fees
-	amountPerOutput := outAmount / int64(options.OutputsCount)
 
+	// dividing amount equally between outputs
+	amountPerOutput := outAmount / int64(options.OutputsCount)
 	if !c.WithdrawalAmountValid(big.NewInt(amountPerOutput)) {
 		return nil, nil, errors.New("amount per output is too small")
 	}
 	for _, out := range tx.TxOut {
 		out.Value = amountPerOutput
 	}
+	// adding the remainder to the first output
+	tx.TxOut[0].Value += outAmount % int64(options.OutputsCount)
 
 	sigHashes := make([][]byte, len(tx.TxIn))
 	for i := range tx.TxIn {
