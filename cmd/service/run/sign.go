@@ -10,10 +10,10 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chains"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/repository"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
-	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/config"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/core/subscriber"
@@ -22,6 +22,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -68,7 +69,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 
 	db := pg.NewDepositsQ(cfg.DB())
 	connector := core.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
-	sub := subscriber.NewSubmitSubscriber(db, cfg.TendermintHttpClient(), logger)
+	sub := subscriber.NewSubmitSubscriber(db, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
 	srv := api.NewServer(
 		cfg.ApiGrpcListener(),
@@ -79,6 +80,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		fetcher,
 		p2p.NewBroadcaster(cfg.Parties()),
 		account.CosmosAddress(),
+		connector,
 	)
 
 	// API servers spin-up
@@ -113,8 +115,7 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		var sess RunnableTssSession
 		switch chain.Type {
 		case chains.TypeEVM:
-			constructor := withdrawal.NewEvmConstructor(client.(*evm.Client))
-			evmSession := session.NewEvmSigningSession(
+			evmSession := signing.NewEvmSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,
@@ -124,14 +125,13 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				sessParams,
 				db,
 				logger.WithField("component", "signing_session"),
-			).
-				WithDepositFetcher(fetcher).
-				WithConstructor(constructor).
-				WithCoreConnector(connector)
+			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
+			if err = evmSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build EVM session")
+			}
 			sess = evmSession
 		case chains.TypeZano:
-			constructor := withdrawal.NewZanoConstructor(client.(*zano.Client))
-			zanoSession := session.NewZanoSigningSession(
+			zanoSession := signing.NewZanoSigningSession(
 				tss.LocalSignParty{
 					Address:   account.CosmosAddress(),
 					Share:     share,
@@ -141,12 +141,27 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 				sessParams,
 				db,
 				logger.WithField("component", "signing_session"),
-			).
-				WithDepositFetcher(fetcher).
-				WithConstructor(constructor).
-				WithClient(client.(*zano.Client)).
-				WithCoreConnector(connector)
+			).WithDepositFetcher(fetcher).WithClient(client.(*zano.Client)).WithCoreConnector(connector)
+			if err = zanoSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build Zano session")
+			}
 			sess = zanoSession
+		case chains.TypeBitcoin:
+			btcSession := signing.NewBitcoinSigningSession(
+				tss.LocalSignParty{
+					Address:   account.CosmosAddress(),
+					Share:     share,
+					Threshold: sessParams.Threshold,
+				},
+				cfg.Parties(),
+				sessParams,
+				db,
+				logger.WithField("component", "signing_session"),
+			).WithDepositFetcher(fetcher).WithClient(client.(*bitcoin.Client)).WithCoreConnector(connector)
+			if err = btcSession.Build(); err != nil {
+				return errors.Wrap(err, "failed to build Bitcoin session")
+			}
+			sess = btcSession
 		}
 
 		wg.Add(1)
@@ -168,7 +183,6 @@ func runSigningService(ctx context.Context, cfg config.Config, wg *sync.WaitGrou
 		depositAcceptorSession := bridge.NewDepositAcceptorSession(
 			cfg.Parties(),
 			fetcher,
-			clientsRepo,
 			db,
 			logger.WithField("component", "deposit_acceptor_session"),
 		)

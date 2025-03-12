@@ -1,7 +1,8 @@
 # /cmd
 
 ## Description
-Contains the command-line interface (CLI) for the project
+Contains the command-line interface (CLI) for the project. 
+Command-line interface for project is designed to help user to prepare and then run the service.
 
 ## Components
 - `root.go`: Contains the main entry point for the CLI
@@ -12,6 +13,7 @@ Contains the command-line interface (CLI) for the project
 Some of the commands require the mandatory or optional flags to be passed. See the [Flags](#flags) section for more details about specific flag definition and usage.
 
 ### Database Migrations
+At the start of server user has to migrate up his db to have possibility to process deposits in right way.
 Commands:
 - `tss-svc service migrate up`: Migrates the database schema to the latest version
 - `tss-svc service migrate down`: Rolls back the database schema to the previous version
@@ -20,6 +22,10 @@ Required flags:
 - `--config` (can be omitted if the default config file path is used)
 
 ### Run server
+Service can be run into two modes: keygen and signing.
+- Signing mode offers user to take part in signing sessions and proceed incoming deposits.
+- Keygen mode is designed to generate user`s shares used in signing process.
+
 Commands:
 - `tss-svc service run keygen`: Runs the TSS service in the keygen mode
 - `tss-svc service run signing`: Runs the TSS service in the sign mode
@@ -53,6 +59,15 @@ Optional flags:
 
 - `tss-svc helpers generate transaction`: Generates a new transaction based on the given data. 
     It is used for resharing purposes. Should be investigated further. 
+
+### Parsing
+Commands:
+- `tss-svc helpers parse address-btc [x-cord] [y-cord]`: Parses btc address from given point 
+- `tss-svc helpers parse address-eth [x-cord] [y-cord]`: Parses eth address from given point
+- `tss-svc helpers parse pubkey [x-cord] [y-cord]`: Parses public key from given point
+
+Optional flags:
+  - `--network` (Network type (mainnet/testnet), mainnet is used by default)
 
 ## Flags
 - `--config` (`-c`): Specifies the path to the configuration file. By default, the config file path is set to `config.yaml`. See [Configuration](../docs/04_configuration.md) for more details

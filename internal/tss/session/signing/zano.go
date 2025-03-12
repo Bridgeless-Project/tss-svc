@@ -1,4 +1,4 @@
-package session
+package signing
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/consensus"
 	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -32,15 +33,14 @@ type ZanoSigningSession struct {
 	parties []p2p.Party
 	self    tss.LocalSignParty
 	db      db.DepositsQ
+	params  session.SigningSessionParams
+	logger  *logan.Entry
 
-	params SigningSessionParams
-	logger *logan.Entry
-
-	zanoClient *zano.Client
-
+	client        *zano.Client
 	coreConnector *connector.Connector
 	fetcher       *bridge.DepositFetcher
-	constructor   *withdrawal.ZanoWithdrawalConstructor
+
+	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.ZanoWithdrawalData]
@@ -50,11 +50,11 @@ type ZanoSigningSession struct {
 func NewZanoSigningSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
-	params SigningSessionParams,
+	params session.SigningSessionParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
 ) *ZanoSigningSession {
-	sessionId := GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
+	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
 	return &ZanoSigningSession{
 		sessionId: atomic.NewString(sessionId),
@@ -74,24 +74,40 @@ func (s *ZanoSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) 
 	return s
 }
 
-func (s *ZanoSigningSession) WithConstructor(constructor *withdrawal.ZanoWithdrawalConstructor) *ZanoSigningSession {
-	s.constructor = constructor
-	return s
-}
-
 func (s *ZanoSigningSession) WithCoreConnector(conn *connector.Connector) *ZanoSigningSession {
 	s.coreConnector = conn
 	return s
 }
 
 func (s *ZanoSigningSession) WithClient(client *zano.Client) *ZanoSigningSession {
-	s.zanoClient = client
+	s.client = client
 	return s
 }
 
+// Build is a method that should be called before Run to prepare the session for execution.
+func (s *ZanoSigningSession) Build() error {
+	if s.fetcher == nil {
+		return errors.New("deposit fetcher is not set")
+	}
+	if s.client == nil {
+		return errors.New("blockchain client is not set")
+	}
+	if s.coreConnector == nil {
+		return errors.New("core connector is not set")
+	}
+
+	s.mechanism = withdrawal.NewConsensusMechanism[withdrawal.ZanoWithdrawalData](
+		s.params.ChainId,
+		s.db,
+		withdrawal.NewZanoConstructor(s.client),
+		s.fetcher,
+	)
+
+	return nil
+}
+
 func (s *ZanoSigningSession) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.StartTime)
-	if runDelay <= 0 {
+	if time.Until(s.params.StartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 
@@ -104,16 +120,13 @@ func (s *ZanoSigningSession) Run(ctx context.Context) error {
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Address,
-				ChainId:   s.params.ChainId,
 			},
 			s.parties,
-			s.db,
-			s.fetcher,
-			s.constructor,
+			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.zanoClient, s.logger.WithField("phase", "finalizing"))
+		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.client, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(nextSessionStartTime)))
@@ -123,7 +136,7 @@ func (s *ZanoSigningSession) Run(ctx context.Context) error {
 			s.logger.Info("signing session cancelled")
 			return nil
 		case <-time.After(time.Until(nextSessionStartTime)):
-			nextSessionStartTime = time.Now().Add(tss.BoundarySigningSession)
+			nextSessionStartTime = nextSessionStartTime.Add(tss.BoundarySigningSession)
 		}
 
 		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
@@ -205,7 +218,7 @@ func (s *ZanoSigningSession) Id() string {
 
 func (s *ZanoSigningSession) incrementSessionId() {
 	prevSessionId := s.Id()
-	nextSessionId := IncrementSessionIdentifier(prevSessionId)
+	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }

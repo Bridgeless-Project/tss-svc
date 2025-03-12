@@ -59,11 +59,12 @@ func (b *Broadcaster) Broadcast(msg *SubmitRequest) {
 
 	go func() { wg.Wait(); cancel() }()
 	for _, party := range b.parties {
-		go func() {
+		go func(p Party) {
 			defer wg.Done()
-			if err := b.send(ctx, msg, party.Connection()); err != nil {
+			if err := b.send(ctx, msg, p.Connection()); err != nil {
+				// FIXME: log error
 				fmt.Println("failed to send message", msg.Type, "because", err.Error())
 			}
-		}()
+		}(party)
 	}
 }

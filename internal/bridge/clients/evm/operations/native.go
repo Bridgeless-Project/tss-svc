@@ -19,19 +19,19 @@ type WithdrawNativeContent struct {
 }
 
 func NewWithdrawNativeContent(data db.Deposit) (*WithdrawNativeContent, error) {
-	destinationChainID, ok := new(big.Int).SetString(*data.WithdrawalChainId, 10)
+	destinationChainID, ok := new(big.Int).SetString(data.WithdrawalChainId, 10)
 	if !ok {
 		return nil, errors.New("invalid chains id")
 	}
 
-	withdrawalAmount, ok := new(big.Int).SetString(*data.WithdrawalAmount, 10)
+	withdrawalAmount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)
 	if !ok {
 		return nil, errors.New("invalid withdrawal amount")
 	}
 
 	return &WithdrawNativeContent{
 		Amount:   ToBytes32(withdrawalAmount.Bytes()),
-		Receiver: hexutil.MustDecode(*data.Receiver),
+		Receiver: hexutil.MustDecode(data.Receiver),
 		TxHash:   hexutil.MustDecode(data.TxHash),
 		TxNonce:  IntToBytes32(data.TxNonce),
 		ChainID:  ToBytes32(destinationChainID.Bytes()),

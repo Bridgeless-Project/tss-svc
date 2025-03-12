@@ -65,43 +65,43 @@ func (s *Subscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) 
 				return
 			}
 
-			deposit, err := parseSubmittedDeposit(c.Events)
+			s.log.Info("received new event")
+			eventDeposit, err := parseSubmittedDeposit(c.Events)
 			if err != nil {
 				s.log.WithError(err).Error("failed to parse submitted deposit")
 				continue
 			}
 
-			tx, err := s.db.Get(deposit.DepositIdentifier)
+			existingDeposit, err := s.db.Get(eventDeposit.DepositIdentifier)
 			if err != nil {
 				s.log.WithError(err).Error("failed to get deposit")
 				continue
 			}
 
-			// if deposit does not exist in db insert it
-			if tx == nil {
+			if existingDeposit == nil {
 				s.log.Info("found new submitted deposit")
-				if _, err = s.db.InsertProcessedDeposit(*deposit); err != nil {
+				if _, err = s.db.InsertProcessedDeposit(*eventDeposit); err != nil {
 					s.log.WithError(err).Error("failed to insert new deposit")
 				}
 				continue
 			}
 
-			// if deposit exists and pending or processing update signature,withdrawal tx hash and status
-			switch tx.WithdrawalStatus {
+			switch existingDeposit.WithdrawalStatus {
 			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED:
 				s.log.Info("skipping processed deposit")
-			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING:
-				s.log.Info("found existing deposit submitted to core")
-				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
+			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING,
+				types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING:
+				s.log.Info("found new deposit data to update")
+				if err = s.db.UpdateWithdrawalDetails(
+					existingDeposit.DepositIdentifier,
+					eventDeposit.WithdrawalTxHash,
+					eventDeposit.Signature,
+				); err != nil {
 					s.log.WithError(err).Error("failed to update deposit withdrawal details")
 				}
-			case types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING:
-				s.log.Info("found submitted pending deposit")
-				if err = s.db.UpdateWithdrawalDetails(tx.DepositIdentifier, deposit.WithdrawalTxHash, deposit.Signature); err != nil {
-					s.log.WithError(err).Error("failed to update deposit withdrawal details")
-				}
+				s.log.Info("deposit withdrawal details successfully updated")
 			default:
-				s.log.Infof("nothing to do with deposit status %s", tx.WithdrawalStatus)
+				s.log.Infof("nothing to do with deposit status %s", existingDeposit.WithdrawalStatus)
 			}
 		}
 	}
@@ -128,29 +128,29 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 		case bridgeTypes.AttributeKeyDepositChainId:
 			deposit.ChainId = attribute[0]
 		case bridgeTypes.AttributeKeyDepositAmount:
-			deposit.DepositAmount = &attribute[0]
+			deposit.DepositAmount = attribute[0]
 		case bridgeTypes.AttributeKeyDepositToken:
-			deposit.DepositToken = &attribute[0]
+			deposit.DepositToken = attribute[0]
 		case bridgeTypes.AttributeKeyDepositBlock:
 			b, err := strconv.ParseInt(attribute[0], 10, 64)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse deposit block")
 			}
-			deposit.DepositBlock = &b
+			deposit.DepositBlock = b
 		case bridgeTypes.AttributeKeyWithdrawalAmount:
-			deposit.WithdrawalAmount = &attribute[0]
+			deposit.WithdrawalAmount = attribute[0]
 		case bridgeTypes.AttributeKeyDepositor:
 			deposit.Depositor = &attribute[0]
 		case bridgeTypes.AttributeKeyReceiver:
-			deposit.Receiver = &attribute[0]
+			deposit.Receiver = attribute[0]
 		case bridgeTypes.AttributeKeyWithdrawalChainID:
-			deposit.WithdrawalChainId = &attribute[0]
+			deposit.WithdrawalChainId = attribute[0]
 		case bridgeTypes.AttributeKeyWithdrawalTxHash:
 			if attribute[0] != "" {
 				deposit.WithdrawalTxHash = &attribute[0]
 			}
 		case bridgeTypes.AttributeKeyWithdrawalToken:
-			deposit.WithdrawalToken = &attribute[0]
+			deposit.WithdrawalToken = attribute[0]
 		case bridgeTypes.AttributeKeySignature:
 			if attribute[0] != "" {
 				deposit.Signature = &attribute[0]
@@ -160,7 +160,7 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse isWrapped attribute")
 			}
-			deposit.IsWrappedToken = &isWrapped
+			deposit.IsWrappedToken = isWrapped
 		default:
 
 			return nil, errors.Wrap(errors.New(fmt.Sprintf("unknown attribute key: %s", parts[1])), "failed to parse attribute")

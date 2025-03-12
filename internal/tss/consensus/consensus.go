@@ -9,10 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -31,21 +28,18 @@ type LocalConsensusParty struct {
 	Self      core.Address
 	SessionId string
 	Threshold int
-	ChainId   string
 }
 
-type SigningSessionData[T withdrawal.DepositSigningData] struct {
+type SigningSessionData[T SigningData] struct {
 	SigData  *T
 	Signers  []p2p.Party
 	Proposer core.Address
 }
 
-func New[T withdrawal.DepositSigningData](
+func New[T SigningData](
 	party LocalConsensusParty,
 	parties []p2p.Party,
-	db db.DepositsQ,
-	processor *bridge.DepositFetcher,
-	constructor withdrawal.Constructor[T],
+	mechanism Mechanism[T],
 	logger *logan.Entry,
 ) *Consensus[T] {
 	partiesMap := make(map[core.Address]p2p.Party, len(parties))
@@ -54,17 +48,13 @@ func New[T withdrawal.DepositSigningData](
 	}
 
 	return &Consensus[T]{
+		mechanism:   mechanism,
 		parties:     partiesMap,
 		broadcaster: p2p.NewBroadcaster(parties),
 
 		self:      party.Self,
 		sessionId: party.SessionId,
-		chainId:   party.ChainId,
 		threshold: party.Threshold,
-
-		db:          db,
-		processor:   processor,
-		constructor: constructor,
 
 		logger: logger.WithField("session_id", party.SessionId),
 
@@ -73,19 +63,14 @@ func New[T withdrawal.DepositSigningData](
 	}
 }
 
-type Consensus[T withdrawal.DepositSigningData] struct {
+type Consensus[T SigningData] struct {
+	mechanism   Mechanism[T]
 	parties     map[core.Address]p2p.Party
 	broadcaster *p2p.Broadcaster
 
 	self      core.Address
 	sessionId string
-	chainId   string
 	threshold int
-
-	db        db.DepositsQ
-	processor *bridge.DepositFetcher
-
-	constructor withdrawal.Constructor[T]
 
 	logger *logan.Entry
 
@@ -148,6 +133,7 @@ func (c *Consensus[T]) Run(ctx context.Context) {
 func (c *Consensus[T]) WaitFor() (result SigningSessionData[T], err error) {
 	c.wg.Wait()
 	c.ended.Store(true)
+	c.logger.Info("consensus finished")
 
 	return SigningSessionData[T]{
 		SigData:  c.result.sigData,

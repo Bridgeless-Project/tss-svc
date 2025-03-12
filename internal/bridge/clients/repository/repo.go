@@ -3,6 +3,7 @@ package repository
 import (
 	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
 	"github.com/pkg/errors"
@@ -12,7 +13,7 @@ type clientsRepository struct {
 	clients map[string]clients.Client
 }
 
-func NewClientsRepository(chs []chains.Chain) (clients.ClientsRepository, error) {
+func NewClientsRepository(chs []chains.Chain) (clients.Repository, error) {
 	clientsMap := make(map[string]clients.Client, len(chs))
 
 	for _, ch := range chs {
@@ -21,7 +22,8 @@ func NewClientsRepository(chs []chains.Chain) (clients.ClientsRepository, error)
 		switch ch.Type {
 		case chains.TypeEVM:
 			cl = evm.NewBridgeClient(ch.Evm())
-		//TODO: Add Bitcoin implementation
+		case chains.TypeBitcoin:
+			cl = bitcoin.NewBridgeClient(ch.Bitcoin())
 		case chains.TypeZano:
 			cl = zano.NewBridgeClient(ch.Zano())
 		default:

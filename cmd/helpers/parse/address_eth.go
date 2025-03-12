@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var parseAddressCmd = &cobra.Command{
-	Use:   "address [x-cord] [y-cord]",
+var parseAddressEthCmd = &cobra.Command{
+	Use:   "address-eth [x-cord] [y-cord]",
 	Short: "Parse eth address from the given point",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {

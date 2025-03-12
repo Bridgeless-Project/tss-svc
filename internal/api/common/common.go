@@ -3,6 +3,7 @@ package common
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
+	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -24,6 +25,11 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Clie
 		return errors.New("invalid transaction hash")
 	}
 
+	// If chain type is Zano event index always is 0
+	if client.Type() == chains.TypeZano {
+		identifier.TxNonce = 0
+	}
+
 	return nil
 }
 
@@ -43,20 +49,20 @@ func ToStatusResponse(d *database.Deposit) *apiTypes.CheckWithdrawalResponse {
 
 	result.TransferData = &types.TransferData{
 		Sender:           d.Depositor,
-		Receiver:         *d.Receiver,
-		DepositAmount:    *d.DepositAmount,
-		WithdrawalAmount: *d.WithdrawalAmount,
-		DepositAsset:     *d.DepositToken,
-		WithdrawalAsset:  *d.WithdrawalToken,
-		IsWrappedAsset:   *d.IsWrappedToken,
-		DepositBlock:     *d.DepositBlock,
+		Receiver:         d.Receiver,
+		DepositAmount:    d.DepositAmount,
+		WithdrawalAmount: d.WithdrawalAmount,
+		DepositAsset:     d.DepositToken,
+		WithdrawalAsset:  d.WithdrawalToken,
+		IsWrappedAsset:   d.IsWrappedToken,
+		DepositBlock:     d.DepositBlock,
 		Signature:        d.Signature,
 	}
 
 	if d.WithdrawalTxHash != nil {
 		result.WithdrawalIdentifier = &types.WithdrawalIdentifier{
 			TxHash:  *d.WithdrawalTxHash,
-			ChainId: *d.WithdrawalChainId,
+			ChainId: d.WithdrawalChainId,
 		}
 	}
 

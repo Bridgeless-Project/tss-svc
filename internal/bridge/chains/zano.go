@@ -40,8 +40,8 @@ var zanoHooks = figure.Hooks{
 		switch v := value.(type) {
 		case map[string]interface{}:
 			var clientConfig struct {
-				DaemonRpc string `fig:"daemon_rpc,required"`
-				WalletRpc string `fig:"wallet_rpc,required"`
+				DaemonRpc string `fig:"daemon,required"`
+				WalletRpc string `fig:"wallet,required"`
 			}
 
 			if err := figure.Out(&clientConfig).With(figure.BaseHooks).From(v).Please(); err != nil {

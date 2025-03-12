@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
@@ -31,16 +32,16 @@ func (sc *subscriber) TendermintHttpClient() *http.HTTP {
 		}
 
 		if err := figure.Out(&config).From(kv.MustGetStringMap(sc.getter, subscriberConfigKey)).Please(); err != nil {
-			panic(err)
+			panic(errors.Wrap(err, "failed to figure out core subscriber config"))
 		}
 
 		client, err := http.New(config.Addr, "/websocket")
 		if err != nil {
-			panic(err)
+			panic(errors.Wrap(err, "failed to create tendermint http client"))
 		}
 
 		if err = client.Start(); err != nil {
-			panic(err)
+			panic(errors.Wrap(err, "failed to start tendermint http client"))
 		}
 
 		return client

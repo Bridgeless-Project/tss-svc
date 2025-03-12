@@ -126,6 +126,15 @@ It is responsible for:
 - providing the specific session with other parties session messages;
 - providing the requestor with the specific session information;
 
+### Bitcoin signing session
+Bitcoin signing session is a special session that is used to process the Bitcoin withdrawals.
+It is different from the EVM and Zano sessions as it requires multiple UTXOs to be signed independently.
+Thus, the session includes N signing rounds, where N is the number of UTXOs to be signed in the transaction.
+Respectively, the signing step time bounds are multiplied by N to provide enough time for the parties to sign all UTXOs.
+
+In order to prevent the growing number of UTXOs to be signed in the session, the consolidation process session is run periodically.
+Consolidation session is a special session that is used to group the larger number of UTXOs in one transaction with a few outputs to reduce the number of UTXOs to be signed in the future sessions.
+It is triggered automatically by reaching the threshold number of UTXOs and the next pending withdrawal request will be processed right after the consolidation process is finished.
 
 ### Catchup
 For the initial sessions start, the parties are required to have the same session start time and initial session identifier.
@@ -144,48 +153,45 @@ Using this information, the party can calculate the current session identifier a
 
 ### Description
 Consensus is a submodule for reaching an agreement between the parties in the TSS network on the data to be signed next.
-It is responsible for forming the withdrawal transaction and data to be signed on the current signing "session".
+It can be used for arbitrary data that should be signed by the parties in the network, f.e. withdrawals, resharing transactions, etc.
 
 ### Mechanism
 Consensus mechanism is based on the proposer selection and the data sharing between the parties in the network.
 There is two possible roles for the party in the consensus process:
 - `proposer` - the party that selects the data to be signed and shares it with all parties in the network;
-- `signer` - the party that validates and signs the data shared by the proposer.
+- `acceptor` - the party that validates and accepts the data shared by the proposer;
 
-Only one proposer is selected for the current signing session, while all parties can be signers.
-Proposer is the signer as well.
+Only one proposer is selected for the current signing session, while all other parties are acceptors.
+At the end of the consensus process, the proposer selects the signers set that will sign the data.
+Proposer deterministically selects the signers set from acceptors set that ACKed the signing request.
+Proposer is included in the signers set as well.
+Signers count is always equal to the signing threshold value.
 
 The consensus process is performed by the following steps:
 1. All parties in the network should deterministically choose the proposer for the current signing session.
-Proposer is selected using the deterministic function TODO:ADD-FUNCTION using the [`ChaCha8`](#dependencies) pseudo-random number generator.
-2. Proposer selects the unsigned withdrawal request based on the session context (f.e. deposit on the specific chain).
-According to the provided signing data constructor function (different for each chain), the proposer constructs the data to be signed and other metadata if needed.
-It shares the constructed data and metadata with TODO:ALL-OR-ACTIVE parties in the network.
-If there is no data to be signed, waiting for next session / broadcasting the no-signing-data message.
-3. Parties that received proposer request (signers) should:
-   - check if request provider matches the current session proposer;
-   - check if deposit is valid and unsigned yet;
-   - try to construct the same or validate existing data to sign, optionally using metadata (different for each chain);
-   - reply with acknowledgement status:
+Proposer is selected using the deterministic function `f(session_id)` using the [`ChaCha8`](#dependencies) pseudo-random number generator.
+2. Proposer forms the signing proposal (f.e. withdrawal on the specific chain) based on the provided mechanism.
+It shares the constructed data and metadata with all parties in the network.
+If there is no data to be signed, proposer broadcasts the no-signing-data message and process is finished.
+3. Parties that received proposer request (acceptors) should validate the proposal request and reply with acknowledgement status:
      - ACK if everything is fine;
-     - NACK if something isn't valid (already signed proposal, non-existent deposit etc).
-4. While signers ACKing or NACKing proposer request, the proposer collects all ACKed responses.
-It should check that number of ACKs N is equal or bigger than signing threshold value T.
-   - if true, proposer deterministically selects the T signers from the N signer that ACKed the signing request.
-   They will be the signers of the current session. They are notified by the proposer about the current session signer set. 
-   - if false, waiting for next session / broadcasting the not-enough-signers message.
-5. Notified signers receive the current session signing set and can additionally validate that all parties forming the signers set are valid and active.
-Signers that are not included in the current signers set can wait till consensus session deadline and understand that they are not the part of the current signers set.
+     - NACK if something isn't valid (already signed proposal, non-existent deposit, etc.).
+4. While acceptors ACKing or NACKing proposer request, the proposer collects all ACKed responses.
+It should check that number of ACKs N is equal or bigger than provided threshold value T.
+   - if true, proposer deterministically selects the T signers from the N acceptors that ACKed the signing request (including proposer itself).
+   They are notified about being included to the signer set. 
+   - if false, the process finishes.
+5. Notified acceptors receive the current signing set and can additionally validate that all parties forming the signers set are valid and active.
+Acceptors that are not included in the current signers set can wait till consensus deadline and understand that they are not the part of the current signers set.
 Optionally, they can be notified by proposer that they won't take part in current signing process.
 
 ### Inputs
 To start the consensus process, the following inputs are required:
 - list of active and ready parties to collaborate with;
-- session context:
-  - current session and processing chain identifier;
-  - unsigned transfer selector (based on the chain identifier);
-  - signing data constructor function (different for each chain);
-  - signing data validator function (different for each chain);
+- implemented consensus forming/validation mechanism functions to:
+  - form the signing proposal;
+  - validate the signing proposal;
+  - parse the signing proposal;
 
 ### Outputs
 After the consensus process is completed, the output is the data to be signed and the list of parties that will sign the data.

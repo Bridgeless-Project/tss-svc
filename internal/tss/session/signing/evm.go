@@ -1,4 +1,4 @@
-package session
+package signing
 
 import (
 	"context"
@@ -6,8 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
@@ -32,13 +34,14 @@ type EvmSigningSession struct {
 	parties []p2p.Party
 	self    tss.LocalSignParty
 	db      db.DepositsQ
-
-	params SigningSessionParams
-	logger *logan.Entry
+	params  session.SigningSessionParams
+	logger  *logan.Entry
 
 	coreConnector *connector.Connector
 	fetcher       *bridge.DepositFetcher
-	constructor   *withdrawal.EvmWithdrawalConstructor
+	client        *evm.Client
+
+	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[withdrawal.EvmWithdrawalData]
@@ -48,11 +51,11 @@ type EvmSigningSession struct {
 func NewEvmSigningSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
-	params SigningSessionParams,
+	params session.SigningSessionParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
 ) *EvmSigningSession {
-	sessionId := GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
+	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
 	return &EvmSigningSession{
 		sessionId: atomic.NewString(sessionId),
@@ -72,8 +75,8 @@ func (s *EvmSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *
 	return s
 }
 
-func (s *EvmSigningSession) WithConstructor(constructor *withdrawal.EvmWithdrawalConstructor) *EvmSigningSession {
-	s.constructor = constructor
+func (s *EvmSigningSession) WithClient(client *evm.Client) *EvmSigningSession {
+	s.client = client
 	return s
 }
 
@@ -82,9 +85,30 @@ func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSig
 	return s
 }
 
+// Build is a method that should be called before Run to prepare the session for execution.
+func (s *EvmSigningSession) Build() error {
+	if s.fetcher == nil {
+		return errors.New("deposit fetcher is not set")
+	}
+	if s.client == nil {
+		return errors.New("blockchain client is not set")
+	}
+	if s.coreConnector == nil {
+		return errors.New("core connector is not set")
+	}
+
+	s.mechanism = withdrawal.NewConsensusMechanism[withdrawal.EvmWithdrawalData](
+		s.params.ChainId,
+		s.db,
+		withdrawal.NewEvmConstructor(s.client),
+		s.fetcher,
+	)
+
+	return nil
+}
+
 func (s *EvmSigningSession) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.StartTime)
-	if runDelay <= 0 {
+	if time.Until(s.params.StartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 
@@ -97,12 +121,9 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Address,
-				ChainId:   s.params.ChainId,
 			},
 			s.parties,
-			s.db,
-			s.fetcher,
-			s.constructor,
+			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
@@ -116,7 +137,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 			s.logger.Info("signing session cancelled")
 			return nil
 		case <-time.After(time.Until(nextSessionStartTime)):
-			nextSessionStartTime = time.Now().Add(tss.BoundarySigningSession)
+			nextSessionStartTime = nextSessionStartTime.Add(tss.BoundarySigningSession)
 		}
 
 		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
@@ -170,10 +191,7 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
 	defer sigCtxCancel()
 
-	s.signingParty.
-		WithParties(result.Signers).
-		WithSigningData(result.SigData.ProposalData.SigData).
-		Run(signingCtx)
+	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
 	signature := s.signingParty.WaitFor()
 	if signature == nil {
 		return errors.New("signing phase error occurred")
@@ -201,7 +219,7 @@ func (s *EvmSigningSession) Id() string {
 
 func (s *EvmSigningSession) incrementSessionId() {
 	prevSessionId := s.Id()
-	nextSessionId := IncrementSessionIdentifier(prevSessionId)
+	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }

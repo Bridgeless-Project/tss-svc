@@ -13,6 +13,7 @@ enum PartyStatus {
   PS_UNKNOWN = 0;
   PS_KEYGEN = 1;
   PS_SIGN = 2;
+  PS_RESHARE = 3;
 }
 
 enum RequestType {
@@ -70,6 +71,19 @@ message ZanoProposalData {
   string txId = 6;
 
   bytes sigData = 7;
+}
+
+message BitcoinProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+
+  bytes serializedTx = 2;
+
+  repeated bytes sigData = 3;
+}
+
+message BitcoinResharingProposalData {
+  bytes serializedTx = 1;
+  repeated bytes sigData = 2;
 }
 
 message DepositDistributionData {

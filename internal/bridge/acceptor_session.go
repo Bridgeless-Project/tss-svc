@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -28,7 +29,6 @@ type DepositAcceptorSession struct {
 	fetcher *DepositFetcher
 	data    db.DepositsQ
 	logger  *logan.Entry
-	clients bridgeTypes.ClientsRepository
 
 	distributors map[core.Address]struct{}
 
@@ -38,7 +38,6 @@ type DepositAcceptorSession struct {
 func NewDepositAcceptorSession(
 	distributors []p2p.Party,
 	fetcher *DepositFetcher,
-	clients bridgeTypes.ClientsRepository,
 	data db.DepositsQ,
 	logger *logan.Entry,
 ) *DepositAcceptorSession {
@@ -52,7 +51,6 @@ func NewDepositAcceptorSession(
 		msgs:         make(chan distributedDeposit, 100),
 		data:         data,
 		logger:       logger,
-		clients:      clients,
 		distributors: distributorsMap,
 	}
 }
@@ -68,33 +66,53 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 		case msg := <-d.msgs:
 			d.logger.Info(fmt.Sprintf("received deposit from %s", msg.Distributor))
 
-			client, err := d.clients.Client(msg.Identifier.ChainId)
-			if err != nil {
-				d.logger.Error("got unsupported chain identifier")
-				continue
-			}
-
-			if exists, err := d.data.Exists(db.ToExistenceCheck(msg.Identifier, client.Type())); err != nil {
-				d.logger.WithError(err).Error("failed to check if deposit exists")
-				continue
-			} else if exists {
-				d.logger.Info("deposit already exists")
-				continue
-			}
-
-			deposit, err := d.fetcher.FetchDeposit(db.DepositIdentifier{
+			id := db.DepositIdentifier{
 				ChainId: msg.Identifier.ChainId,
 				TxHash:  msg.Identifier.TxHash,
 				TxNonce: int(msg.Identifier.TxNonce),
+			}
+
+			deposit, err := d.data.Get(db.DepositIdentifier{
+				TxHash:  msg.Identifier.TxHash,
+				TxNonce: int(msg.Identifier.TxNonce),
+				ChainId: msg.Identifier.ChainId,
 			})
 			if err != nil {
-				// TODO: checkout err type
+				d.logger.WithError(err).Error("failed to check if deposit exists")
+				continue
+			} else if deposit != nil {
+				d.logger.Warn("deposit already exists")
+				continue
+			}
+
+			deposit, err = d.fetcher.FetchDeposit(id)
+			if err != nil {
+				if clients.IsPendingDepositError(err) {
+					d.logger.Warn("deposit still pending")
+					continue
+				}
+				if clients.IsInvalidDepositError(err) {
+					deposit = &db.Deposit{
+						DepositIdentifier: id,
+						WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
+					}
+					if _, err = d.data.Insert(*deposit); err != nil {
+						d.logger.WithError(err).Error("failed to process deposit")
+						continue
+					}
+					d.logger.Warn("invalid deposit")
+					continue
+				}
 				d.logger.WithError(err).Error("failed to fetch deposit")
 				continue
 			}
 
 			if _, err = d.data.Insert(*deposit); err != nil {
-				d.logger.WithError(err).Error("failed to insert deposit")
+				if errors.Is(err, db.ErrAlreadySubmitted) {
+					d.logger.Info("deposit already found in db")
+				} else {
+					d.logger.WithError(err).Error("failed to insert deposit")
+				}
 				continue
 			}
 

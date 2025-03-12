@@ -1,6 +1,7 @@
 package run
 
 import (
+	"github.com/hyle-team/tss-svc/cmd/service/run/reshare"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +15,5 @@ var Cmd = &cobra.Command{
 }
 
 func registerCommands(cmd *cobra.Command) {
-	cmd.AddCommand(keygenCmd)
-	cmd.AddCommand(signCmd)
+	cmd.AddCommand(keygenCmd, signCmd, reshare.Cmd)
 }

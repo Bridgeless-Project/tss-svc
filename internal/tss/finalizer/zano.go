@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
@@ -56,7 +55,7 @@ func (f *ZanoFinalizer) WithLocalPartyProposer(proposer bool) *ZanoFinalizer {
 
 func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
 	f.logger.Info("finalization started")
-	go f.finalize()
+	go f.finalize(ctx)
 
 	select {
 	case <-ctx.Done():
@@ -75,7 +74,7 @@ func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (f *ZanoFinalizer) finalize() {
+func (f *ZanoFinalizer) finalize(ctx context.Context) {
 	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), f.withdrawalData.ProposalData.TxId); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
 		return
@@ -86,10 +85,8 @@ func (f *ZanoFinalizer) finalize() {
 		return
 	}
 
-	rawSig := append(f.signature.Signature, f.signature.SignatureRecovery...)
-	zanoSig := encodeToZanoSignature(rawSig)
 	_, err := f.client.EmitAssetSigned(zano.SignedTransaction{
-		Signature: zanoSig,
+		Signature: zano.EncodeSignature(f.signature),
 		UnsignedTransaction: zano.UnsignedTransaction{
 			ExpectedTxHash: f.withdrawalData.ProposalData.TxId,
 			FinalizedTx:    f.withdrawalData.ProposalData.FinalizedTx,
@@ -101,17 +98,16 @@ func (f *ZanoFinalizer) finalize() {
 		return
 	}
 
-	f.errChan <- nil
-}
-
-func encodeToZanoSignature(signature []byte) string {
-	if len(signature) == 0 {
-		return ""
+	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
+	if err != nil {
+		f.errChan <- errors.Wrap(err, "failed to get deposit")
+		return
 	}
 
-	encoded := hexutil.Encode(signature)
-	// stripping redundant hex-prefix and recovery byte (two hex-characters)
-	strippedSignature := encoded[2 : len(encoded)-2]
+	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction()); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to submit deposit")
+		return
+	}
 
-	return strippedSignature
+	f.errChan <- nil
 }

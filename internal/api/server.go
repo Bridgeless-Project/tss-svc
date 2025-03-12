@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hyle-team/tss-svc/api"
@@ -42,10 +44,11 @@ func NewServer(
 	http net.Listener,
 	db db.DepositsQ,
 	logger *logan.Entry,
-	clients clients.ClientsRepository,
+	clients clients.Repository,
 	processor *bridge.DepositFetcher,
 	broadcaster *p2p.Broadcaster,
 	self core.Address,
+	connector *coreConnector.Connector,
 ) *Server {
 	return &Server{
 		grpc:   grpc,
@@ -59,6 +62,7 @@ func NewServer(
 			ctx.FetcherProvider(processor),
 			ctx.BroadcasterProvider(broadcaster),
 			ctx.SelfProvider(self),
+			ctx.CoreConnectorProvider(connector),
 		},
 	}
 }

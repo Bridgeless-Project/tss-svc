@@ -15,7 +15,10 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-var _ DepositSigningData = ZanoWithdrawalData{}
+var (
+	_ DepositSigningData              = ZanoWithdrawalData{}
+	_ Constructor[ZanoWithdrawalData] = &ZanoWithdrawalConstructor{}
+)
 
 type ZanoWithdrawalData struct {
 	ProposalData *p2p.ZanoProposalData
@@ -41,8 +44,6 @@ func (z ZanoWithdrawalData) ToPayload() *anypb.Any {
 	return pb
 }
 
-var _ Constructor[ZanoWithdrawalData] = &ZanoWithdrawalConstructor{}
-
 type ZanoWithdrawalConstructor struct {
 	client *zano.Client
 }
@@ -53,13 +54,13 @@ func NewZanoConstructor(client *zano.Client) *ZanoWithdrawalConstructor {
 	}
 }
 
-func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (ZanoWithdrawalData, error) {
+func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*ZanoWithdrawalData, error) {
 	tx, err := c.client.EmitAssetUnsigned(deposit)
 	if err != nil {
-		return ZanoWithdrawalData{}, errors.Wrap(err, "failed to form zano withdrawal data")
+		return nil, errors.Wrap(err, "failed to form zano withdrawal data")
 	}
 
-	return ZanoWithdrawalData{
+	return &ZanoWithdrawalData{
 		ProposalData: &p2p.ZanoProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
@@ -95,8 +96,8 @@ func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.
 	changeOutputChecked := false
 	for _, output := range details.DecodedOutputs {
 		switch {
-		case output.Address == *deposit.Receiver:
-			if output.AssetID == *deposit.WithdrawalToken {
+		case output.Address == deposit.Receiver:
+			if output.AssetID == deposit.WithdrawalToken {
 				mintedAmount.Add(mintedAmount, output.Amount)
 			}
 		default:
@@ -109,7 +110,7 @@ func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.
 		}
 	}
 
-	expectedAmount, _ := new(big.Int).SetString(*deposit.WithdrawalAmount, 10)
+	expectedAmount, _ := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
 	if mintedAmount.Cmp(expectedAmount) != 0 {
 		return false, errors.New("minted amount does not match the expected one")
 	}
@@ -121,13 +122,13 @@ func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.
 	return true, nil
 }
 
-func (c *ZanoWithdrawalConstructor) FromPayload(payload *anypb.Any) (ZanoWithdrawalData, error) {
+func (c *ZanoWithdrawalConstructor) FromPayload(payload *anypb.Any) (*ZanoWithdrawalData, error) {
 	proposalData := &p2p.ZanoProposalData{}
 	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return ZanoWithdrawalData{}, errors.Wrap(err, "failed to unmarshal proposal data")
+		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
 	}
 
-	return ZanoWithdrawalData{ProposalData: proposalData}, nil
+	return &ZanoWithdrawalData{ProposalData: proposalData}, nil
 }
 
 func (c *ZanoWithdrawalConstructor) formSigData(txId string) []byte {
