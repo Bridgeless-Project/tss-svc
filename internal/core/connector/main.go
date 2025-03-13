@@ -20,12 +20,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	ErrPairNotFound                = errors.New("pair not found")
-	ErrTokenInfoNotFound           = errors.New("token info not found")
-	ErrTransactionAlreadySubmitted = errors.New("transaction already submitted")
-)
-
 type ConnectorSettings struct {
 	ChainId     string `fig:"chain_id,required"`
 	Denom       string `fig:"denom,required"`

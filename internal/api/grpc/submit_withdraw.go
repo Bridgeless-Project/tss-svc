@@ -7,6 +7,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -66,7 +67,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		if clients.IsPendingDepositError(err) {
 			return nil, ErrDepositPending
 		}
-		if clients.IsInvalidDepositError(err) {
+		if clients.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
 			deposit = &db.Deposit{
 				DepositIdentifier: id,
 				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
