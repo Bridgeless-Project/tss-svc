@@ -50,9 +50,9 @@ func NewConsensusMechanism[T DepositSigningData](
 	var pendingWithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
 	return &ConsensusMechanism[T]{
 		depositSelector: db.DepositsSelector{
-			ChainId: &chainId,
-			Status:  &pendingWithdrawalStatus,
-			One:     true,
+			WithdrawalChainId: &chainId,
+			Status:            &pendingWithdrawalStatus,
+			One:               true,
 		},
 		depositsQ:   depositsQ,
 		constructor: constructor,
