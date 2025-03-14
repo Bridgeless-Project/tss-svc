@@ -3,17 +3,16 @@ package run
 import (
 	"context"
 	"fmt"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/p2p/syncer"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
-	"os/signal"
-	"sync"
-	"syscall"
-	"time"
 
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/api"
@@ -41,6 +40,10 @@ func init() {
 	registerSyncFlag(signCmd)
 }
 
+func registerSyncFlag(cmd *cobra.Command) {
+	cmd.PersistentFlags().BoolVarP(&syncEnabled, "sync", "s", syncEnabled, "Sync mode enabled/disabled (disabled default)")
+}
+
 var signCmd = &cobra.Command{
 	Use:   "sign",
 	Short: "Starts the service in the signing mode",
@@ -53,23 +56,13 @@ var signCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
-		if err = runSigningService(ctx, cfg); err != nil {
-			cancel()
-		}
+		err = runSigningServiceMode(ctx, cfg)
+
 		return errors.Wrap(err, "failed to run signing service")
 	},
 }
 
-type RunnableTssSession interface {
-	Run(context.Context) error
-	p2p.TssSession
-}
-
-func runSigningService(ctx context.Context, cfg config.Config) error {
-	wg := new(sync.WaitGroup)
-	errGroup, ctx := errgroup.WithContext(ctx)
-	logger := cfg.Log()
-	chns := cfg.Chains()
+func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	storage := vault.NewStorage(cfg.VaultClient())
 
 	account, err := storage.GetCoreAccount()
@@ -80,101 +73,82 @@ func runSigningService(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get tss share")
 	}
-	clientsRepo, err := repository.NewClientsRepository(chns)
-	if err != nil {
-		return errors.Wrap(err, "failed to create clients repository")
-	}
+
+	wg := new(sync.WaitGroup)
+	eg, ctx := errgroup.WithContext(ctx)
+	logger := cfg.Log()
+	chns := cfg.Chains()
+	clientsRepo := repository.NewClientsRepository(chns)
 	sessionManager := p2p.NewSessionManager()
 	dtb := pg.NewDepositsQ(cfg.DB())
 	connector := coreConnector.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
-	sub := subscriber.NewSubmitSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
+	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
-
-	//
-	//	once := sync.Once{}
-
-	srv := api.NewServer(
+	apiServer := api.NewServer(
 		cfg.ApiGrpcListener(),
 		cfg.ApiHttpListener(),
 		dtb,
-		logger.WithField("component", "server"),
+		logger.WithField("component", "api_server"),
 		clientsRepo,
 		fetcher,
 		p2p.NewBroadcaster(cfg.Parties(), cfg.Log().WithField("component", "broadcaster")),
 		account.CosmosAddress(),
 		connector,
 	)
-
-	server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
+	p2pServer := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
 
 	wg.Add(1)
 
 	// p2p server spin-up
-	errGroup.Go(func() error {
+	eg.Go(func() error {
 		defer wg.Done()
+
+		status := p2p.PartyStatus_PS_SIGN
 		if syncEnabled {
-			server.SetStatus(p2p.PartyStatus_PS_SYNC)
-		} else {
-			server.SetStatus(p2p.PartyStatus_PS_SIGN)
+			status = p2p.PartyStatus_PS_SYNC
 		}
-		if err = server.Run(ctx); err != nil {
-			return errors.Wrap(err, "failed to start p2p server")
-		}
+		p2pServer.SetStatus(status)
 
-		return nil
+		return errors.Wrap(p2pServer.Run(ctx), "error while running p2p server")
 	})
 
-	// API servers spin-up
+	// API server spin-up
 	wg.Add(2)
-	errGroup.Go(func() error {
+	eg.Go(func() error {
 		defer wg.Done()
-		if err = srv.RunHTTP(ctx); err != nil {
-			return errors.Wrap(err, "failed to run HTTP gateway")
-		}
-		return nil
+		return errors.Wrap(apiServer.RunHTTP(ctx), "error while running API HTTP gateway")
+	})
+	eg.Go(func() error {
+		defer wg.Done()
+		return errors.Wrap(apiServer.RunGRPC(ctx), "error while running API GRPC server")
 	})
 
-	errGroup.Go(func() error {
-		defer wg.Done()
-		if err = srv.RunGRPC(ctx); err != nil {
-			return errors.Wrap(err, "failed to run GRPC gateway")
-		}
-		return nil
-	})
-
-	snc := syncer.NewSyncer(cfg.MaxRetries(), ctx)
 	// sessions spin-up
+	var snc *p2p.Syncer
+	if syncEnabled {
+		snc, err = p2p.NewSyncer(cfg.Parties(), p2p.PartyStatus_PS_SIGN)
+		if err != nil {
+			return errors.Wrap(err, "failed to create syncer")
+		}
+	}
+
+	chainsWg := new(sync.WaitGroup)
 	for _, chain := range chns {
-		wg.Add(1)
-		errGroup.Go(func() error {
-			defer wg.Done()
+		chainsWg.Add(1)
+		eg.Go(func() error {
+			defer chainsWg.Done()
 
 			client, _ := clientsRepo.Client(chain.Id)
 			var sessParams session.SigningSessionParams
 
 			if syncEnabled {
-				cfg.Log().WithField("component", "syncer").Info(fmt.Sprintf("starting syncer for chain %s", chain.Id))
-				connection, err := snc.FindPartyToSync(cfg.Parties())
+				logger.Infof("syncing next session params for chain %s", chain.Id)
+				sessionInfo, err := snc.Sync(ctx, chain.Id)
 				if err != nil {
-					return errors.Wrap(err, "failed to find party to sync")
+					return errors.Wrap(err, fmt.Sprintf("failed to sync session info for chain %s", chain.Id))
 				}
-				info, err := snc.WithParty(connection).Sync(chain.Id)
-				if err != nil {
-					return errors.Wrap(err, "failed to sync")
-				}
-
-				if info.Id == 0 {
-					return errors.New("failed to get info, id is 0")
-				}
-
-				sessParams = session.SigningSessionParams{
-					SessionParams: tss.SessionParams{
-						Id:        info.Id,
-						StartTime: time.Unix(info.NextSessionStartTime, 0),
-						Threshold: cfg.TssSessionParams().Threshold,
-					},
-					ChainId: client.ChainId(),
-				}
+				sessParams = session.ParamsFromSigningSessionInfo(sessionInfo)
+				logger.Infof("next session params for chain %s synced", chain.Id)
 			} else {
 				sessParams = session.SigningSessionParams{
 					SessionParams: cfg.TssSessionParams(),
@@ -182,16 +156,12 @@ func runSigningService(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSession(sessParams, chain, cfg, account, share, dtb, fetcher, logger, client, connector)
+			sess := configureSigningSession(sessParams, chain, cfg, account, share, dtb, fetcher, logger, client, connector)
 
 			wg.Add(1)
-			errGroup.Go(func() error {
+			eg.Go(func() error {
 				defer wg.Done()
-				if err = sess.Run(ctx); err != nil {
-					return errors.Wrap(err, "failed to run session")
-				}
-				server.SetStatus(p2p.PartyStatus_PS_SIGN)
-				return nil
+				return errors.Wrap(sess.Run(ctx), "error while running signing session")
 			})
 
 			sessionManager.Add(sess)
@@ -201,7 +171,7 @@ func runSigningService(ctx context.Context, cfg config.Config) error {
 
 	// additional deposit acceptor session
 	wg.Add(1)
-	errGroup.Go(func() error {
+	eg.Go(func() error {
 		defer wg.Done()
 
 		depositAcceptorSession := bridge.NewDepositAcceptorSession(
@@ -218,22 +188,31 @@ func runSigningService(ctx context.Context, cfg config.Config) error {
 
 	// Core deposit subscriber spin-up
 	wg.Add(1)
-	errGroup.Go(func() error {
+	eg.Go(func() error {
 		defer wg.Done()
 
-		if err = sub.Run(ctx); err != nil {
-			return errors.Wrap(err, "failed to run Core event subscriber")
-		}
-		return nil
+		return errors.Wrap(sub.Run(ctx), "error while running core deposit subscriber")
 	})
 
-	err = errGroup.Wait()
+	if syncEnabled {
+		eg.Go(func() error {
+			chainsWg.Wait()
+
+			logger.Info("all signing sessions are ready, starting p2p server in sign mode")
+			p2pServer.SetStatus(p2p.PartyStatus_PS_SIGN)
+
+			return nil
+		})
+	}
+
+	err = eg.Wait()
 	wg.Wait()
 
 	return err
 }
 
-func configureSession(params session.SigningSessionParams,
+func configureSigningSession(
+	params session.SigningSessionParams,
 	chain chains.Chain,
 	cfg config.Config,
 	account *core.Account,
@@ -242,7 +221,8 @@ func configureSession(params session.SigningSessionParams,
 	fetcher *bridge.DepositFetcher,
 	logger *logan.Entry,
 	client clients.Client,
-	connector *coreConnector.Connector) (sess RunnableTssSession) {
+	connector *coreConnector.Connector,
+) (sess p2p.RunnableTssSession) {
 	switch chain.Type {
 	case chains.TypeEVM:
 		evmSession := session.NewEvmSigningSession(
@@ -286,8 +266,4 @@ func configureSession(params session.SigningSessionParams,
 	}
 
 	return sess
-}
-
-func registerSyncFlag(cmd *cobra.Command) {
-	cmd.PersistentFlags().BoolVarP(&syncEnabled, "sync", "s", syncEnabled, "Sync enabled/disabled (disabled default)")
 }

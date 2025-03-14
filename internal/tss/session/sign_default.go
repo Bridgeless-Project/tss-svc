@@ -142,12 +142,7 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 // RegisterIdChangeListener is a no-op for DefaultSigningSession
 func (s *DefaultSigningSession) RegisterIdChangeListener(func(oldId, newId string)) {}
 
-// Info is a no-op for DefaultSigningSession
-func (s *DefaultSigningSession) Info() *p2p.SessionInfo {
+// SigningSessionInfo is a no-op for DefaultSigningSession
+func (s *DefaultSigningSession) SigningSessionInfo() *p2p.SigningSessionInfo {
 	return nil
-}
-
-// ChainID is a no-op for DefaultSigningSession
-func (s *DefaultSigningSession) ChainID() string {
-	return ""
 }

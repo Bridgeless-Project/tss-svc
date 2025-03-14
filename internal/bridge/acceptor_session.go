@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"fmt"
+
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -157,12 +158,7 @@ func (d *DepositAcceptorSession) RegisterIdChangeListener(func(oldId string, new
 	return
 }
 
-// Info is a no-op for DepositAcceptorSession
-func (d *DepositAcceptorSession) Info() *p2p.SessionInfo {
+// SigningSessionInfo is a no-op for DepositAcceptorSession
+func (d *DepositAcceptorSession) SigningSessionInfo() *p2p.SigningSessionInfo {
 	return nil
-}
-
-// ChainID is a no-op for DepositAcceptorSession
-func (d *DepositAcceptorSession) ChainID() string {
-	return ""
 }

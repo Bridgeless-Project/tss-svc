@@ -2,11 +2,14 @@ package p2p
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"google.golang.org/grpc"
 )
+
+const DefaultConnectionTimeout = time.Second
 
 type Party struct {
 	PubKey      string

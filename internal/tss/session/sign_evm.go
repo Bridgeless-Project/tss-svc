@@ -241,19 +241,14 @@ func (s *EvmSigningSession) RegisterIdChangeListener(f func(oldId string, newId 
 	s.idChangeListener = f
 }
 
-func (s *EvmSigningSession) Info() *p2p.SessionInfo {
+func (s *EvmSigningSession) SigningSessionInfo() *p2p.SigningSessionInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	startTime := s.nextSessionStartTime.Unix()
-
-	return &p2p.SessionInfo{
-		Id:                   GetSessionId(s.sessionId.Load()),
-		NextSessionStartTime: startTime,
-		Mode:                 p2p.SessionMode_SM_SIGN,
-	}
-}
-
-func (s *EvmSigningSession) ChainID() string {
-	return s.params.ChainId
+	return ToSigningSessionInfo(
+		s.Id(),
+		&s.nextSessionStartTime,
+		s.self.Threshold,
+		s.params.ChainId,
+	)
 }

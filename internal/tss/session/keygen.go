@@ -140,12 +140,7 @@ func (s *KeygenSession) Receive(request *p2p.SubmitRequest) error {
 // RegisterIdChangeListener is a no-op for KeygenSession
 func (s *KeygenSession) RegisterIdChangeListener(func(oldId, newId string)) {}
 
-// Info is a no-op for KeygenSession
-func (s *KeygenSession) Info() *p2p.SessionInfo {
+// SigningSessionInfo is a no-op for KeygenSession
+func (s *KeygenSession) SigningSessionInfo() *p2p.SigningSessionInfo {
 	return nil
-}
-
-// ChainID is a no-op for KeygenSession
-func (s *KeygenSession) ChainID() string {
-	return ""
 }

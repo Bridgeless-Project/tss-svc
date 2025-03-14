@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 )
 
@@ -18,12 +20,34 @@ type SigningSessionParams struct {
 	ChainId string
 }
 
-func GetKeygenSessionIdentifier(sessionId int64) string {
-	return fmt.Sprintf("%s_%d", KeygenSessionPrefix, sessionId)
+func ParamsFromSigningSessionInfo(info *p2p.SigningSessionInfo) SigningSessionParams {
+	return SigningSessionParams{
+		SessionParams: tss.SessionParams{
+			Id:        info.Id + 1, // expect the next session id to be the current id + 1
+			StartTime: time.UnixMilli(info.NextSessionStartTime),
+			Threshold: int(info.Threshold),
+		},
+		ChainId: info.ChainId,
+	}
 }
 
-func GetDefaultSigningSessionIdentifier(sessionId int64) string {
-	return fmt.Sprintf("%s_%d", SignSessionPrefix, sessionId)
+func ToSigningSessionInfo(
+	signingSessionId string,
+	nextSessionStartTime *time.Time,
+	threshold int,
+	chainId string,
+) *p2p.SigningSessionInfo {
+	sessInfo := &p2p.SigningSessionInfo{
+		Id:        GetSessionId(signingSessionId),
+		Threshold: int64(threshold),
+		ChainId:   chainId,
+	}
+
+	if nextSessionStartTime != nil {
+		sessInfo.NextSessionStartTime = nextSessionStartTime.UnixMilli()
+	}
+
+	return sessInfo
 }
 
 func GetSessionId(sessionIdentifier string) int64 {
@@ -34,6 +58,15 @@ func GetSessionId(sessionIdentifier string) int64 {
 	}
 	return id
 }
+
+func GetKeygenSessionIdentifier(sessionId int64) string {
+	return fmt.Sprintf("%s_%d", KeygenSessionPrefix, sessionId)
+}
+
+func GetDefaultSigningSessionIdentifier(sessionId int64) string {
+	return fmt.Sprintf("%s_%d", SignSessionPrefix, sessionId)
+}
+
 func GetConcreteSigningSessionIdentifier(chainId string, sessionId int64) string {
 	return fmt.Sprintf("%s_%s_%d", SignSessionPrefix, chainId, sessionId)
 }

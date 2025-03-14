@@ -20,9 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	P2P_Status_FullMethodName         = "/p2p.P2P/Status"
-	P2P_Submit_FullMethodName         = "/p2p.P2P/Submit"
-	P2P_GetSessionInfo_FullMethodName = "/p2p.P2P/GetSessionInfo"
+	P2P_Status_FullMethodName                = "/p2p.P2P/Status"
+	P2P_Submit_FullMethodName                = "/p2p.P2P/Submit"
+	P2P_GetSigningSessionInfo_FullMethodName = "/p2p.P2P/GetSigningSessionInfo"
 )
 
 // P2PClient is the client API for P2P service.
@@ -31,7 +31,7 @@ const (
 type P2PClient interface {
 	Status(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*StatusResponse, error)
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetSessionInfo(ctx context.Context, in *SessionInfoRequest, opts ...grpc.CallOption) (*SessionInfo, error)
+	GetSigningSessionInfo(ctx context.Context, in *SigningSessionInfoRequest, opts ...grpc.CallOption) (*SigningSessionInfo, error)
 }
 
 type p2PClient struct {
@@ -62,10 +62,10 @@ func (c *p2PClient) Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.
 	return out, nil
 }
 
-func (c *p2PClient) GetSessionInfo(ctx context.Context, in *SessionInfoRequest, opts ...grpc.CallOption) (*SessionInfo, error) {
+func (c *p2PClient) GetSigningSessionInfo(ctx context.Context, in *SigningSessionInfoRequest, opts ...grpc.CallOption) (*SigningSessionInfo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SessionInfo)
-	err := c.cc.Invoke(ctx, P2P_GetSessionInfo_FullMethodName, in, out, cOpts...)
+	out := new(SigningSessionInfo)
+	err := c.cc.Invoke(ctx, P2P_GetSigningSessionInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (c *p2PClient) GetSessionInfo(ctx context.Context, in *SessionInfoRequest, 
 type P2PServer interface {
 	Status(context.Context, *emptypb.Empty) (*StatusResponse, error)
 	Submit(context.Context, *SubmitRequest) (*emptypb.Empty, error)
-	GetSessionInfo(context.Context, *SessionInfoRequest) (*SessionInfo, error)
+	GetSigningSessionInfo(context.Context, *SigningSessionInfoRequest) (*SigningSessionInfo, error)
 }
 
 // UnimplementedP2PServer should be embedded to have
@@ -94,8 +94,8 @@ func (UnimplementedP2PServer) Status(context.Context, *emptypb.Empty) (*StatusRe
 func (UnimplementedP2PServer) Submit(context.Context, *SubmitRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Submit not implemented")
 }
-func (UnimplementedP2PServer) GetSessionInfo(context.Context, *SessionInfoRequest) (*SessionInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSessionInfo not implemented")
+func (UnimplementedP2PServer) GetSigningSessionInfo(context.Context, *SigningSessionInfoRequest) (*SigningSessionInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSigningSessionInfo not implemented")
 }
 func (UnimplementedP2PServer) testEmbeddedByValue() {}
 
@@ -153,20 +153,20 @@ func _P2P_Submit_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
-func _P2P_GetSessionInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SessionInfoRequest)
+func _P2P_GetSigningSessionInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SigningSessionInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(P2PServer).GetSessionInfo(ctx, in)
+		return srv.(P2PServer).GetSigningSessionInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: P2P_GetSessionInfo_FullMethodName,
+		FullMethod: P2P_GetSigningSessionInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(P2PServer).GetSessionInfo(ctx, req.(*SessionInfoRequest))
+		return srv.(P2PServer).GetSigningSessionInfo(ctx, req.(*SigningSessionInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -187,8 +187,8 @@ var P2P_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _P2P_Submit_Handler,
 		},
 		{
-			MethodName: "GetSessionInfo",
-			Handler:    _P2P_GetSessionInfo_Handler,
+			MethodName: "GetSigningSessionInfo",
+			Handler:    _P2P_GetSigningSessionInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

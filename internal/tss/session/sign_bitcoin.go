@@ -290,19 +290,14 @@ func (s *BitcoinSigningSession) updateNextSessionStartTime(inputsToSign int) {
 	s.nextSessionStartTime = s.nextSessionStartTime.Add(additionalDelay)
 }
 
-func (s *BitcoinSigningSession) Info() *p2p.SessionInfo {
+func (s *BitcoinSigningSession) SigningSessionInfo() *p2p.SigningSessionInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	startTime := s.nextSessionStartTime.Unix()
-
-	return &p2p.SessionInfo{
-		Id:                   GetSessionId(s.sessionId.Load()),
-		NextSessionStartTime: startTime,
-		Mode:                 p2p.SessionMode_SM_SIGN,
-	}
-}
-
-func (s *BitcoinSigningSession) ChainID() string {
-	return s.params.ChainId
+	return ToSigningSessionInfo(
+		s.Id(),
+		&s.nextSessionStartTime,
+		s.self.Threshold,
+		s.params.ChainId,
+	)
 }

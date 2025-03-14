@@ -2,16 +2,15 @@ package p2p
 
 import (
 	"context"
-	"gitlab.com/distributed_lab/logan/v3"
 	"sync"
 	"time"
+
+	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
-
-const DefaultConnectionTimeout = time.Second
 
 type Broadcaster struct {
 	parties map[core.Address]Party
@@ -65,7 +64,10 @@ func (b *Broadcaster) Broadcast(msg *SubmitRequest) {
 		go func(p Party) {
 			defer wg.Done()
 			if err := b.send(ctx, msg, p.Connection()); err != nil {
-				b.logger.Debug("failed to send message", msg.Type, "because", err.Error())
+				b.logger.WithFields(logan.F{
+					"receiver":   p.CoreAddress,
+					"session_id": msg.SessionId,
+				}).Debugf("failed to broadcast message: %s", err)
 			}
 		}(party)
 	}

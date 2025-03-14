@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"context"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/hyle-team/tss-svc/internal/p2p/middlewares"
-	"gitlab.com/distributed_lab/logan/v3"
 	"net"
 	"sync"
+
+	"github.com/hyle-team/tss-svc/internal/p2p/middlewares"
+	"gitlab.com/distributed_lab/logan/v3"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,30 +18,11 @@ import (
 var _ P2PServer = &Server{}
 
 type Server struct {
-	status  PartyStatus
-	statusM sync.RWMutex
-
-	manager *SessionManager
-
+	status   PartyStatus
+	statusM  sync.RWMutex
+	manager  *SessionManager
 	listener net.Listener
-
-	logger *logan.Entry
-}
-
-func (s *Server) GetSessionInfo(ctxt context.Context, request *SessionInfoRequest) (*SessionInfo, error) {
-	err := validation.Errors{
-		"chain_id": validation.Validate(request.ChainId, validation.Required),
-	}.Filter()
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	session, err := s.manager.GetByChainID(request.ChainId)
-	if err != nil {
-		return nil, status.Error(codes.NotFound, err.Error())
-	}
-
-	return session.Info(), nil
+	logger   *logan.Entry
 }
 
 func NewServer(listener net.Listener,
@@ -92,4 +73,21 @@ func (s *Server) Submit(ctx context.Context, request *SubmitRequest) (*emptypb.E
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) GetSigningSessionInfo(ctxt context.Context, request *SigningSessionInfoRequest) (*SigningSessionInfo, error) {
+	s.statusM.RLock()
+	st := s.status
+	s.statusM.RUnlock()
+
+	if st != PartyStatus_PS_SIGN {
+		return nil, status.Error(codes.FailedPrecondition, "party is not in signing state")
+	}
+
+	session, err := s.manager.GetSigningSession(request.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	return session.SigningSessionInfo(), nil
 }

@@ -243,19 +243,14 @@ func (s *ZanoSigningSession) RegisterIdChangeListener(f func(oldId string, newId
 	s.idChangeListener = f
 }
 
-func (s *ZanoSigningSession) Info() *p2p.SessionInfo {
+func (s *ZanoSigningSession) SigningSessionInfo() *p2p.SigningSessionInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	startTime := s.nextSessionStartTime.Unix()
-
-	return &p2p.SessionInfo{
-		Id:                   GetSessionId(s.sessionId.Load()),
-		NextSessionStartTime: startTime,
-		Mode:                 p2p.SessionMode_SM_SIGN,
-	}
-}
-
-func (s *ZanoSigningSession) ChainID() string {
-	return s.params.ChainId
+	return ToSigningSessionInfo(
+		s.Id(),
+		&s.nextSessionStartTime,
+		s.self.Threshold,
+		s.params.ChainId,
+	)
 }

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -10,12 +11,16 @@ var (
 	ErrSessionNotFound = errors.New("session not found")
 )
 
+type RunnableTssSession interface {
+	TssSession
+	Run(context.Context) error
+}
+
 type TssSession interface {
 	Id() string
 	Receive(request *SubmitRequest) error
 	RegisterIdChangeListener(func(oldId, newId string))
-	Info() *SessionInfo
-	ChainID() string
+	SigningSessionInfo() *SigningSessionInfo
 }
 
 type SessionManager struct {
@@ -78,12 +83,12 @@ func (m *SessionManager) onIdChange(oldId, newId string) {
 	m.sessions[newId] = session
 }
 
-func (m *SessionManager) GetByChainID(chainId string) (TssSession, error) {
+func (m *SessionManager) GetSigningSession(chainId string) (TssSession, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	for _, session := range m.sessions {
-		if session.ChainID() == chainId {
+		if session.SigningSessionInfo() != nil && session.SigningSessionInfo().ChainId == chainId {
 			return session, nil
 		}
 	}

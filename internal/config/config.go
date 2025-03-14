@@ -22,7 +22,6 @@ type Config interface {
 	chains.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
-	p2p.SyncerConfigurator
 }
 
 type config struct {
@@ -37,7 +36,6 @@ type config struct {
 	chains.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
-	p2p.SyncerConfigurator
 }
 
 func New(getter kv.Getter) Config {
@@ -52,6 +50,5 @@ func New(getter kv.Getter) Config {
 		Chainer:                   chains.NewChainer(getter),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),
 		SubscriberConfigurator:    subscriber.NewSubscriberConfigurator(getter),
-		SyncerConfigurator:        p2p.NewSyncConfigurator(getter),
 	}
 }
