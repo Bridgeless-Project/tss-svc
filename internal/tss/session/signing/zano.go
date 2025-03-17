@@ -109,7 +109,7 @@ func (s *ZanoSession) Build() error {
 }
 
 func (s *ZanoSession) Run(ctx context.Context) error {
-	if time.Until(s.params.StartTime) <= 0 {
+	if time.Until(s.nextSessionStartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 

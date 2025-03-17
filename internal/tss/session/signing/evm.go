@@ -110,7 +110,7 @@ func (s *EvmSession) Build() error {
 }
 
 func (s *EvmSession) Run(ctx context.Context) error {
-	if time.Until(s.params.StartTime) <= 0 {
+	if time.Until(s.nextSessionStartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 
