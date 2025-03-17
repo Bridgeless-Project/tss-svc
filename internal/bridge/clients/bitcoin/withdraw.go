@@ -15,9 +15,15 @@ import (
 )
 
 const (
-	DefaultFeeRateBtcPerKvb = 0.00001
+	// minimum fee rate is 0.00001 BTC per kilobyte
+	DefaultFeeRateBtcPerKvb = 0.00002
 	SigHashType             = txscript.SigHashAll
 )
+
+type OutPoint struct {
+	TxID  string
+	Index uint32
+}
 
 func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error) {
 	amount, set := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
@@ -77,6 +83,15 @@ func (c *Client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr strin
 	}
 
 	return result.Transaction, sigHashes, nil
+}
+
+func (c *Client) UnspentCount() (int, error) {
+	unspent, err := c.ListUnspent()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get available UTXOs")
+	}
+
+	return len(unspent), nil
 }
 
 func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +20,7 @@ func (c *Connector) SubmitDeposits(ctx context.Context, depositTxs ...bridgetype
 		return nil
 	}
 	if strings.Contains(err.Error(), bridgetypes.ErrTranscationAlreadySubmitted.Error()) {
-		return ErrTransactionAlreadySubmitted
+		return core.ErrTransactionAlreadySubmitted
 	}
 
 	return errors.Wrap(err, "failed to submit deposits")

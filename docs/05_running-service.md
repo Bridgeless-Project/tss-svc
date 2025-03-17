@@ -25,3 +25,4 @@ tss-svc service run keygen -c ./configs/config.yaml -o vault
 ```
 
 ## Signing mode
+TODO: ADD

@@ -1,4 +1,4 @@
-package session
+package signing
 
 import (
 	"context"
@@ -6,26 +6,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector"
-	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
-
 	"github.com/hyle-team/tss-svc/internal/bridge"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
+	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"go.uber.org/atomic"
 )
 
-var _ p2p.TssSession = &EvmSigningSession{}
+var _ p2p.TssSession = &ZanoSession{}
 
-type EvmSigningSession struct {
+type ZanoSession struct {
 	sessionId            *atomic.String
 	idChangeListener     func(oldId string, newId string)
 	mu                   *sync.RWMutex
@@ -34,29 +34,30 @@ type EvmSigningSession struct {
 	parties []p2p.Party
 	self    tss.LocalSignParty
 	db      db.DepositsQ
+	params  session.SigningSessionParams
+	logger  *logan.Entry
 
-	params SigningSessionParams
-	logger *logan.Entry
-
+	client        *zano.Client
 	coreConnector *connector.Connector
 	fetcher       *bridge.DepositFetcher
-	constructor   *withdrawal.EvmWithdrawalConstructor
+
+	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
 
 	signingParty   *tss.SignParty
-	consensusParty *consensus.Consensus[withdrawal.EvmWithdrawalData]
-	finalizer      *finalizer.EvmFinalizer
+	consensusParty *consensus.Consensus[withdrawal.ZanoWithdrawalData]
+	finalizer      *finalizer.ZanoFinalizer
 }
 
-func NewEvmSigningSession(
+func NewZanoSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
-	params SigningSessionParams,
+	params session.SigningSessionParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
-) *EvmSigningSession {
-	sessionId := GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
+) *ZanoSession {
+	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
-	return &EvmSigningSession{
+	return &ZanoSession{
 		sessionId:            atomic.NewString(sessionId),
 		mu:                   &sync.RWMutex{},
 		nextSessionStartTime: params.StartTime,
@@ -70,22 +71,44 @@ func NewEvmSigningSession(
 	}
 }
 
-func (s *EvmSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *EvmSigningSession {
+func (s *ZanoSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *ZanoSession {
 	s.fetcher = fetcher
 	return s
 }
 
-func (s *EvmSigningSession) WithClient(client *evm.Client) *EvmSigningSession {
-	s.constructor = withdrawal.NewEvmConstructor(client)
-	return s
-}
-
-func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSigningSession {
+func (s *ZanoSession) WithCoreConnector(conn *connector.Connector) *ZanoSession {
 	s.coreConnector = conn
 	return s
 }
 
-func (s *EvmSigningSession) Run(ctx context.Context) error {
+func (s *ZanoSession) WithClient(client *zano.Client) *ZanoSession {
+	s.client = client
+	return s
+}
+
+// Build is a method that should be called before Run to prepare the session for execution.
+func (s *ZanoSession) Build() error {
+	if s.fetcher == nil {
+		return errors.New("deposit fetcher is not set")
+	}
+	if s.client == nil {
+		return errors.New("blockchain client is not set")
+	}
+	if s.coreConnector == nil {
+		return errors.New("core connector is not set")
+	}
+
+	s.mechanism = withdrawal.NewConsensusMechanism[withdrawal.ZanoWithdrawalData](
+		s.params.ChainId,
+		s.db,
+		withdrawal.NewZanoConstructor(s.client),
+		s.fetcher,
+	)
+
+	return nil
+}
+
+func (s *ZanoSession) Run(ctx context.Context) error {
 	if time.Until(s.params.StartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
@@ -93,21 +116,18 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 	for {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
-		s.consensusParty = consensus.New[withdrawal.EvmWithdrawalData](
+		s.consensusParty = consensus.New[withdrawal.ZanoWithdrawalData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Address,
-				ChainId:   s.params.ChainId,
 			},
 			s.parties,
-			s.db,
-			s.fetcher,
-			s.constructor,
+			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.finalizer = finalizer.NewEVMFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
+		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.client, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(s.nextSessionStartTime)))
@@ -130,7 +150,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 	}
 }
 
-func (s *EvmSigningSession) runSession(ctx context.Context) error {
+func (s *ZanoSession) runSession(ctx context.Context) error {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
 	defer consCtxCancel()
@@ -193,18 +213,18 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	return nil
 }
 
-func (s *EvmSigningSession) Id() string {
+func (s *ZanoSession) Id() string {
 	return s.sessionId.Load()
 }
 
-func (s *EvmSigningSession) incrementSessionId() {
+func (s *ZanoSession) incrementSessionId() {
 	prevSessionId := s.Id()
-	nextSessionId := IncrementSessionIdentifier(prevSessionId)
+	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }
 
-func (s *EvmSigningSession) Receive(request *p2p.SubmitRequest) error {
+func (s *ZanoSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil {
 		return errors.New("nil request")
 	}
@@ -237,15 +257,15 @@ func (s *EvmSigningSession) Receive(request *p2p.SubmitRequest) error {
 	}
 }
 
-func (s *EvmSigningSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
+func (s *ZanoSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
 }
 
-func (s *EvmSigningSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+func (s *ZanoSession) SigningSessionInfo() *p2p.SigningSessionInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return ToSigningSessionInfo(
+	return session.ToSigningSessionInfo(
 		s.Id(),
 		&s.nextSessionStartTime,
 		s.self.Threshold,

@@ -97,23 +97,6 @@ func identifierToPredicate(identifier db.DepositIdentifier) squirrel.Eq {
 	}
 }
 
-func existenceToPredicate(check db.DepositExistenceCheck) squirrel.Eq {
-	predicate := squirrel.Eq{}
-	if check.ByTxHash != nil {
-		predicate[depositsTxHash] = *check.ByTxHash
-	}
-
-	if check.ByTxNonce != nil {
-		predicate[depositsTxNonce] = *check.ByTxNonce
-	}
-
-	if check.ByChainId != nil {
-		predicate[depositsChainId] = *check.ByChainId
-	}
-
-	return predicate
-}
-
 func (d *depositsQ) GetWithSelector(selector db.DepositsSelector) (*db.Deposit, error) {
 	query := d.applySelector(selector, d.selector)
 	var deposit db.Deposit
@@ -148,6 +131,7 @@ func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, has
 func (d *depositsQ) UpdateSignature(identifier db.DepositIdentifier, sig string) error {
 	query := squirrel.Update(depositsTable).
 		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
+		Set(depositsSignature, sig).
 		Where(identifierToPredicate(identifier))
 
 	return d.db.Exec(query)
@@ -238,12 +222,4 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 	}
 
 	return id, nil
-}
-
-func stringOrEmpty(s *string) string {
-	if s == nil {
-		return ""
-	}
-
-	return *s
 }

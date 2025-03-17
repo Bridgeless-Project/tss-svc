@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const DefautSyncRetriesCount = 5
+const DefaultSyncRetriesCount = 5
 
 type Syncer struct {
 	maxRetries     int
@@ -24,7 +24,7 @@ func NewSyncer(parties []Party, requiredStatus PartyStatus) (*Syncer, error) {
 
 	return &Syncer{
 		requiredStatus: requiredStatus,
-		maxRetries:     DefautSyncRetriesCount,
+		maxRetries:     DefaultSyncRetriesCount,
 		aliveParty:     aliveParty,
 	}, nil
 }
@@ -45,8 +45,7 @@ func (s *Syncer) Sync(ctx context.Context, chainId string) (info *SigningSession
 			return nil, errors.Wrap(err, "failed to get session info")
 		}
 		if info.NextSessionStartTime != 0 {
-			// if next session start time is received party is ready to start session
-			break
+			return info, nil
 		}
 
 		time.Sleep(time.Second * 1)

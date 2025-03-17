@@ -11,6 +11,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 
@@ -91,11 +92,11 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		logger.WithField("component", "api_server"),
 		clientsRepo,
 		fetcher,
-		p2p.NewBroadcaster(cfg.Parties(), cfg.Log().WithField("component", "broadcaster")),
+		p2p.NewBroadcaster(cfg.Parties(), logger.WithField("component", "broadcaster")),
 		account.CosmosAddress(),
 		connector,
 	)
-	p2pServer := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
+	p2pServer := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, logger.WithField("component", "p2p_server"))
 
 	wg.Add(1)
 
@@ -225,7 +226,7 @@ func configureSigningSession(
 ) (sess p2p.RunnableTssSession) {
 	switch chain.Type {
 	case chains.TypeEVM:
-		evmSession := session.NewEvmSigningSession(
+		evmSession := signing.NewEvmSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     share,
@@ -236,9 +237,12 @@ func configureSigningSession(
 			db,
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
+		if err := evmSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build evm session"))
+		}
 		sess = evmSession
 	case chains.TypeZano:
-		zanoSession := session.NewZanoSigningSession(
+		zanoSession := signing.NewZanoSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     share,
@@ -249,9 +253,12 @@ func configureSigningSession(
 			db,
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*zano.Client)).WithCoreConnector(connector)
+		if err := zanoSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build zano session"))
+		}
 		sess = zanoSession
 	case chains.TypeBitcoin:
-		btcSession := session.NewBitcoinSigningSession(
+		btcSession := signing.NewBitcoinSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     share,
@@ -262,6 +269,9 @@ func configureSigningSession(
 			db,
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*bitcoin.Client)).WithCoreConnector(connector)
+		if err := btcSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build bitcoin session"))
+		}
 		sess = btcSession
 	}
 

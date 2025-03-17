@@ -13,7 +13,7 @@ const (
 
 func RegisterOutputFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&OutputType, "output", "o", "console", "Output type: console, file, or vault")
-	cmd.Flags().StringVar(&FilePath, "path", "preparams.json", "Path to save the pre-parameters file (used when output-type is 'file')")
+	cmd.Flags().StringVar(&FilePath, "path", "output.json", "Path to save the output data (used when output-type is 'file')")
 	RegisterConfigFlag(cmd)
 }
 

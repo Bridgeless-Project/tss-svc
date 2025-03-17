@@ -2,10 +2,11 @@ package api
 
 import (
 	"context"
-	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"net"
 	"net/http"
 	"time"
+
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"

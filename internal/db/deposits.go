@@ -152,10 +152,3 @@ func stringOrEmpty(s *string) string {
 
 	return *s
 }
-
-func boolOrEmpty(b *bool) bool {
-	if b == nil {
-		return false
-	}
-	return *b
-}

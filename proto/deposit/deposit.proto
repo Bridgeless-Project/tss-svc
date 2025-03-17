@@ -20,7 +20,7 @@ message DepositIdentifier {
 }
 
 message WithdrawalIdentifier {
-  string tx_hash = 1;
+  optional string tx_hash = 1;
   string chain_id = 2;
 }
 

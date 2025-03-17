@@ -91,7 +91,7 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 					d.logger.Warn("deposit still pending")
 					continue
 				}
-				if clients.IsInvalidDepositError(err) {
+				if clients.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
 					deposit = &db.Deposit{
 						DepositIdentifier: id,
 						WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
@@ -108,7 +108,11 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 			}
 
 			if _, err = d.data.Insert(*deposit); err != nil {
-				d.logger.WithError(err).Error("failed to insert deposit")
+				if errors.Is(err, db.ErrAlreadySubmitted) {
+					d.logger.Info("deposit already found in db")
+				} else {
+					d.logger.WithError(err).Error("failed to insert deposit")
+				}
 				continue
 			}
 

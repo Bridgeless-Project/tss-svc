@@ -14,7 +14,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/secrets"
 	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
+	keygenSession "github.com/hyle-team/tss-svc/internal/tss/session/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -60,7 +60,7 @@ var keygenCmd = &cobra.Command{
 			cfg.Log().WithField("component", "connection_manager"),
 		)
 
-		session := session.NewKeygenSession(
+		session := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
 				Address:   account.CosmosAddress(),
