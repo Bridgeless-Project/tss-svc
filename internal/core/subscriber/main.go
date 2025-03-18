@@ -22,15 +22,15 @@ const (
 	OpQuerySubmit = "tm.event='Tx' AND message.action='/core.bridge.MsgSubmitTransactions'"
 )
 
-type Subscriber struct {
+type SubmitEventSubscriber struct {
 	db     database.DepositsQ
 	client *http.HTTP
 	query  string
 	log    *logan.Entry
 }
 
-func NewSubmitSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan.Entry) *Subscriber {
-	return &Subscriber{
+func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan.Entry) *SubmitEventSubscriber {
+	return &SubmitEventSubscriber{
 		db:     db,
 		client: client,
 		query:  OpQuerySubmit,
@@ -38,7 +38,7 @@ func NewSubmitSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan
 	}
 }
 
-func (s *Subscriber) Run(ctx context.Context) error {
+func (s *SubmitEventSubscriber) Run(ctx context.Context) error {
 	out, err := s.client.Subscribe(ctx, OpServiceName, s.query, OpPoolSize)
 	if err != nil {
 		return errors.Wrap(err, "subscriber init failed")
@@ -49,15 +49,15 @@ func (s *Subscriber) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *Subscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) {
+func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) {
 	for {
 		select {
 		case <-ctx.Done():
+			s.log.Info("context cancelled, stopping receiving events")
 			if err := s.client.Unsubscribe(ctx, OpServiceName, s.query); err != nil {
 				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 
-			s.log.Info("context finished")
 			return
 		case c, ok := <-out:
 			if !ok {

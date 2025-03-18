@@ -8,12 +8,9 @@ import (
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
-
-var pendingWithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
 
 func (c *Consensus[T]) propose(ctx context.Context) {
 	defer c.wg.Done()
@@ -84,7 +81,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			}
 
 			c.logger.Info("signing parties selected and notified")
-			p2p.NewBroadcaster(c.result.signers).Broadcast(msg)
+			p2p.NewBroadcaster(c.result.signers, c.logger.WithField("component", "broadcaster")).Broadcast(msg)
 
 			return
 		case msg := <-c.msgs:

@@ -15,15 +15,15 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-type DefaultSigningSessionParams struct {
+type DefaultSessionParams struct {
 	tss.SessionParams
 	SigningData []byte
 }
 
-type DefaultSigningSession struct {
+type DefaultSession struct {
 	sessionId string
 
-	params DefaultSigningSessionParams
+	params DefaultSessionParams
 	logger *logan.Entry
 	wg     *sync.WaitGroup
 
@@ -40,15 +40,15 @@ type DefaultSigningSession struct {
 	err    error
 }
 
-func NewDefaultSigningSession(
+func NewDefaultSession(
 	self tss.LocalSignParty,
-	params DefaultSigningSessionParams,
+	params DefaultSessionParams,
 	parties []p2p.Party,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
-) *DefaultSigningSession {
+) *DefaultSession {
 	sessionId := session.GetDefaultSigningSessionIdentifier(params.Id)
-	return &DefaultSigningSession{
+	return &DefaultSession{
 		sessionId:             sessionId,
 		params:                params,
 		wg:                    &sync.WaitGroup{},
@@ -61,7 +61,7 @@ func NewDefaultSigningSession(
 	}
 }
 
-func (s *DefaultSigningSession) Run(ctx context.Context) error {
+func (s *DefaultSession) Run(ctx context.Context) error {
 	runDelay := time.Until(s.params.StartTime)
 	if runDelay <= 0 {
 		return errors.New("target time is in the past")
@@ -85,7 +85,7 @@ func (s *DefaultSigningSession) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *DefaultSigningSession) run(ctx context.Context) {
+func (s *DefaultSession) run(ctx context.Context) {
 	defer s.wg.Done()
 
 	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundarySign)
@@ -105,16 +105,16 @@ func (s *DefaultSigningSession) run(ctx context.Context) {
 	}
 }
 
-func (s *DefaultSigningSession) WaitFor() (*common.SignatureData, error) {
+func (s *DefaultSession) WaitFor() (*common.SignatureData, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }
 
-func (s *DefaultSigningSession) Id() string {
+func (s *DefaultSession) Id() string {
 	return s.sessionId
 }
 
-func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
+func (s *DefaultSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil || request.Data == nil {
 		return errors.New("nil request")
 	}
@@ -140,5 +140,10 @@ func (s *DefaultSigningSession) Receive(request *p2p.SubmitRequest) error {
 	return nil
 }
 
-// RegisterIdChangeListener is a no-op for DefaultSigningSession
-func (s *DefaultSigningSession) RegisterIdChangeListener(func(oldId, newId string)) {}
+// RegisterIdChangeListener is a no-op for DefaultSession
+func (s *DefaultSession) RegisterIdChangeListener(func(oldId, newId string)) {}
+
+// SigningSessionInfo is a no-op for DefaultSession
+func (s *DefaultSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+	return nil
+}

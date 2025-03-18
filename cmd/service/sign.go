@@ -68,13 +68,13 @@ var signCmd = &cobra.Command{
 
 		connectionManager := p2p.NewConnectionManager(cfg.Parties(), p2p.PartyStatus_PS_SIGN, cfg.Log().WithField("component", "connection_manager"))
 
-		session := signing.NewDefaultSigningSession(
+		session := signing.NewDefaultSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     localSaveData,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
-			signing.DefaultSigningSessionParams{
+			signing.DefaultSessionParams{
 				SessionParams: cfg.TssSessionParams(),
 				SigningData:   []byte(dataToSign),
 			},
@@ -85,7 +85,7 @@ var signCmd = &cobra.Command{
 
 		sessionManager := p2p.NewSessionManager(session)
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager)
+			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
 			server.SetStatus(p2p.PartyStatus_PS_SIGN)
 			return server.Run(ctx)
 		})

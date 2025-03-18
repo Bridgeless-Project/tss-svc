@@ -20,17 +20,17 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-var _ p2p.TssSession = &BitcoinResharingSession{}
+var _ p2p.TssSession = &BitcoinSession{}
 
-type BitcoinResharingSessionParams struct {
+type BitcoinSessionParams struct {
 	SessionParams     tss.SessionParams
 	ConsolidateParams bitcoin.ConsolidateOutputsParams
 }
 
-type BitcoinResharingSession struct {
+type BitcoinSession struct {
 	sessionId string
 	self      tss.LocalSignParty
-	params    BitcoinResharingSessionParams
+	params    BitcoinSessionParams
 	mu        *sync.RWMutex
 	wg        *sync.WaitGroup
 
@@ -48,15 +48,15 @@ type BitcoinResharingSession struct {
 	logger *logan.Entry
 }
 
-func NewBitcoinResharingSession(
+func NewBitcoinSession(
 	self tss.LocalSignParty,
 	client *bitcoin.Client,
-	params BitcoinResharingSessionParams,
+	params BitcoinSessionParams,
 	parties []p2p.Party,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
-) *BitcoinResharingSession {
-	return &BitcoinResharingSession{
+) *BitcoinSession {
+	return &BitcoinSession{
 		sessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
 		self:      self,
 		params:    params,
@@ -84,7 +84,7 @@ func NewBitcoinResharingSession(
 	}
 }
 
-func (s *BitcoinResharingSession) Run(ctx context.Context) error {
+func (s *BitcoinSession) Run(ctx context.Context) error {
 	runDelay := time.Until(s.params.SessionParams.StartTime)
 	if runDelay <= 0 {
 		return errors.New("target time is in the past")
@@ -110,7 +110,7 @@ func (s *BitcoinResharingSession) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *BitcoinResharingSession) run(ctx context.Context) {
+func (s *BitcoinSession) run(ctx context.Context) {
 	defer s.wg.Done()
 
 	// consensus phase
@@ -179,7 +179,7 @@ func (s *BitcoinResharingSession) run(ctx context.Context) {
 	return
 }
 
-func (s *BitcoinResharingSession) Receive(request *p2p.SubmitRequest) error {
+func (s *BitcoinSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil {
 		return errors.New("nil request")
 	}
@@ -208,14 +208,19 @@ func (s *BitcoinResharingSession) Receive(request *p2p.SubmitRequest) error {
 	}
 }
 
-func (s *BitcoinResharingSession) WaitFor() (string, error) {
+func (s *BitcoinSession) WaitFor() (string, error) {
 	s.wg.Wait()
 	return s.resultTx, s.err
 }
 
-func (s *BitcoinResharingSession) Id() string {
+func (s *BitcoinSession) Id() string {
 	return s.sessionId
 }
 
 // RegisterIdChangeListener is a no-op for BitcoinResharingSession
-func (s *BitcoinResharingSession) RegisterIdChangeListener(func(oldId string, newId string)) {}
+func (s *BitcoinSession) RegisterIdChangeListener(func(oldId string, newId string)) {}
+
+// SigningSessionInfo is a no-op for DefaultSigningSession
+func (s *BitcoinSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+	return nil
+}

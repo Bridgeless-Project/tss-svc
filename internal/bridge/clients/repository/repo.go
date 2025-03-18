@@ -6,14 +6,13 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
-	"github.com/pkg/errors"
 )
 
 type clientsRepository struct {
 	clients map[string]clients.Client
 }
 
-func NewClientsRepository(chs []chains.Chain) (clients.Repository, error) {
+func NewClientsRepository(chs []chains.Chain) clients.Repository {
 	clientsMap := make(map[string]clients.Client, len(chs))
 
 	for _, ch := range chs {
@@ -27,13 +26,13 @@ func NewClientsRepository(chs []chains.Chain) (clients.Repository, error) {
 		case chains.TypeZano:
 			cl = zano.NewBridgeClient(ch.Zano())
 		default:
-			return nil, errors.Errorf("unknown chains type %s", ch.Type)
+			continue
 		}
 
 		clientsMap[ch.Id] = cl
 	}
 
-	return &clientsRepository{clients: clientsMap}, nil
+	return &clientsRepository{clients: clientsMap}
 }
 
 func (p clientsRepository) Client(chainId string) (clients.Client, error) {

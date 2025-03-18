@@ -67,14 +67,14 @@ var reshareBtcCmd = &cobra.Command{
 			cfg.Log().WithField("component", "connection_manager"),
 		)
 
-		session := resharing.NewBitcoinResharingSession(
+		session := resharing.NewBitcoinSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     share,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			client,
-			resharing.BitcoinResharingSessionParams{
+			resharing.BitcoinSessionParams{
 				ConsolidateParams: consolidateParams,
 				SessionParams:     cfg.TssSessionParams(),
 			},
@@ -90,7 +90,7 @@ var reshareBtcCmd = &cobra.Command{
 		defer cancel()
 
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager)
+			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
 			server.SetStatus(p2p.PartyStatus_PS_RESHARE)
 			return server.Run(ctx)
 		})

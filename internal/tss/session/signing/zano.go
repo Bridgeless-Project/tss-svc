@@ -23,12 +23,13 @@ import (
 	"go.uber.org/atomic"
 )
 
-var _ p2p.TssSession = &ZanoSigningSession{}
+var _ p2p.TssSession = &ZanoSession{}
 
-type ZanoSigningSession struct {
-	sessionId        *atomic.String
-	idChangeListener func(oldId string, newId string)
-	mu               *sync.RWMutex
+type ZanoSession struct {
+	sessionId            *atomic.String
+	idChangeListener     func(oldId string, newId string)
+	mu                   *sync.RWMutex
+	nextSessionStartTime time.Time
 
 	parties []p2p.Party
 	self    tss.LocalSignParty
@@ -47,18 +48,19 @@ type ZanoSigningSession struct {
 	finalizer      *finalizer.ZanoFinalizer
 }
 
-func NewZanoSigningSession(
+func NewZanoSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
 	params session.SigningSessionParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
-) *ZanoSigningSession {
+) *ZanoSession {
 	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
-	return &ZanoSigningSession{
-		sessionId: atomic.NewString(sessionId),
-		mu:        &sync.RWMutex{},
+	return &ZanoSession{
+		sessionId:            atomic.NewString(sessionId),
+		mu:                   &sync.RWMutex{},
+		nextSessionStartTime: params.StartTime,
 
 		parties: parties,
 		self:    self,
@@ -69,23 +71,23 @@ func NewZanoSigningSession(
 	}
 }
 
-func (s *ZanoSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *ZanoSigningSession {
+func (s *ZanoSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *ZanoSession {
 	s.fetcher = fetcher
 	return s
 }
 
-func (s *ZanoSigningSession) WithCoreConnector(conn *connector.Connector) *ZanoSigningSession {
+func (s *ZanoSession) WithCoreConnector(conn *connector.Connector) *ZanoSession {
 	s.coreConnector = conn
 	return s
 }
 
-func (s *ZanoSigningSession) WithClient(client *zano.Client) *ZanoSigningSession {
+func (s *ZanoSession) WithClient(client *zano.Client) *ZanoSession {
 	s.client = client
 	return s
 }
 
 // Build is a method that should be called before Run to prepare the session for execution.
-func (s *ZanoSigningSession) Build() error {
+func (s *ZanoSession) Build() error {
 	if s.fetcher == nil {
 		return errors.New("deposit fetcher is not set")
 	}
@@ -106,12 +108,11 @@ func (s *ZanoSigningSession) Build() error {
 	return nil
 }
 
-func (s *ZanoSigningSession) Run(ctx context.Context) error {
-	if time.Until(s.params.StartTime) <= 0 {
+func (s *ZanoSession) Run(ctx context.Context) error {
+	if time.Until(s.nextSessionStartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 
-	nextSessionStartTime := s.params.StartTime
 	for {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
@@ -129,14 +130,14 @@ func (s *ZanoSigningSession) Run(ctx context.Context) error {
 		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.client, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
-		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(nextSessionStartTime)))
+		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(s.nextSessionStartTime)))
 
 		select {
 		case <-ctx.Done():
 			s.logger.Info("signing session cancelled")
 			return nil
-		case <-time.After(time.Until(nextSessionStartTime)):
-			nextSessionStartTime = nextSessionStartTime.Add(tss.BoundarySigningSession)
+		case <-time.After(time.Until(s.nextSessionStartTime)):
+			s.nextSessionStartTime = s.nextSessionStartTime.Add(tss.BoundarySigningSession)
 		}
 
 		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
@@ -149,7 +150,7 @@ func (s *ZanoSigningSession) Run(ctx context.Context) error {
 	}
 }
 
-func (s *ZanoSigningSession) runSession(ctx context.Context) error {
+func (s *ZanoSession) runSession(ctx context.Context) error {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
 	defer consCtxCancel()
@@ -212,18 +213,18 @@ func (s *ZanoSigningSession) runSession(ctx context.Context) error {
 	return nil
 }
 
-func (s *ZanoSigningSession) Id() string {
+func (s *ZanoSession) Id() string {
 	return s.sessionId.Load()
 }
 
-func (s *ZanoSigningSession) incrementSessionId() {
+func (s *ZanoSession) incrementSessionId() {
 	prevSessionId := s.Id()
 	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }
 
-func (s *ZanoSigningSession) Receive(request *p2p.SubmitRequest) error {
+func (s *ZanoSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil {
 		return errors.New("nil request")
 	}
@@ -256,6 +257,18 @@ func (s *ZanoSigningSession) Receive(request *p2p.SubmitRequest) error {
 	}
 }
 
-func (s *ZanoSigningSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
+func (s *ZanoSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
+}
+
+func (s *ZanoSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return session.ToSigningSessionInfo(
+		s.Id(),
+		&s.nextSessionStartTime,
+		s.self.Threshold,
+		s.params.ChainId,
+	)
 }

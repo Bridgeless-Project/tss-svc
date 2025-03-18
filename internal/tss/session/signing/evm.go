@@ -24,12 +24,13 @@ import (
 	"go.uber.org/atomic"
 )
 
-var _ p2p.TssSession = &EvmSigningSession{}
+var _ p2p.TssSession = &EvmSession{}
 
-type EvmSigningSession struct {
-	sessionId        *atomic.String
-	idChangeListener func(oldId string, newId string)
-	mu               *sync.RWMutex
+type EvmSession struct {
+	sessionId            *atomic.String
+	idChangeListener     func(oldId string, newId string)
+	mu                   *sync.RWMutex
+	nextSessionStartTime time.Time
 
 	parties []p2p.Party
 	self    tss.LocalSignParty
@@ -48,18 +49,19 @@ type EvmSigningSession struct {
 	finalizer      *finalizer.EvmFinalizer
 }
 
-func NewEvmSigningSession(
+func NewEvmSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
 	params session.SigningSessionParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
-) *EvmSigningSession {
+) *EvmSession {
 	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
-	return &EvmSigningSession{
-		sessionId: atomic.NewString(sessionId),
-		mu:        &sync.RWMutex{},
+	return &EvmSession{
+		sessionId:            atomic.NewString(sessionId),
+		mu:                   &sync.RWMutex{},
+		nextSessionStartTime: params.StartTime,
 
 		parties: parties,
 		self:    self,
@@ -70,23 +72,23 @@ func NewEvmSigningSession(
 	}
 }
 
-func (s *EvmSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *EvmSigningSession {
+func (s *EvmSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *EvmSession {
 	s.fetcher = fetcher
 	return s
 }
 
-func (s *EvmSigningSession) WithClient(client *evm.Client) *EvmSigningSession {
+func (s *EvmSession) WithClient(client *evm.Client) *EvmSession {
 	s.client = client
 	return s
 }
 
-func (s *EvmSigningSession) WithCoreConnector(conn *connector.Connector) *EvmSigningSession {
+func (s *EvmSession) WithCoreConnector(conn *connector.Connector) *EvmSession {
 	s.coreConnector = conn
 	return s
 }
 
 // Build is a method that should be called before Run to prepare the session for execution.
-func (s *EvmSigningSession) Build() error {
+func (s *EvmSession) Build() error {
 	if s.fetcher == nil {
 		return errors.New("deposit fetcher is not set")
 	}
@@ -107,12 +109,11 @@ func (s *EvmSigningSession) Build() error {
 	return nil
 }
 
-func (s *EvmSigningSession) Run(ctx context.Context) error {
-	if time.Until(s.params.StartTime) <= 0 {
+func (s *EvmSession) Run(ctx context.Context) error {
+	if time.Until(s.nextSessionStartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 
-	nextSessionStartTime := s.params.StartTime
 	for {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
@@ -130,14 +131,14 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 		s.finalizer = finalizer.NewEVMFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
-		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(nextSessionStartTime)))
+		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(s.nextSessionStartTime)))
 
 		select {
 		case <-ctx.Done():
 			s.logger.Info("signing session cancelled")
 			return nil
-		case <-time.After(time.Until(nextSessionStartTime)):
-			nextSessionStartTime = nextSessionStartTime.Add(tss.BoundarySigningSession)
+		case <-time.After(time.Until(s.nextSessionStartTime)):
+			s.nextSessionStartTime = s.nextSessionStartTime.Add(tss.BoundarySigningSession)
 		}
 
 		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
@@ -150,7 +151,7 @@ func (s *EvmSigningSession) Run(ctx context.Context) error {
 	}
 }
 
-func (s *EvmSigningSession) runSession(ctx context.Context) error {
+func (s *EvmSession) runSession(ctx context.Context) error {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
 	defer consCtxCancel()
@@ -213,18 +214,18 @@ func (s *EvmSigningSession) runSession(ctx context.Context) error {
 	return nil
 }
 
-func (s *EvmSigningSession) Id() string {
+func (s *EvmSession) Id() string {
 	return s.sessionId.Load()
 }
 
-func (s *EvmSigningSession) incrementSessionId() {
+func (s *EvmSession) incrementSessionId() {
 	prevSessionId := s.Id()
 	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }
 
-func (s *EvmSigningSession) Receive(request *p2p.SubmitRequest) error {
+func (s *EvmSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil {
 		return errors.New("nil request")
 	}
@@ -257,6 +258,18 @@ func (s *EvmSigningSession) Receive(request *p2p.SubmitRequest) error {
 	}
 }
 
-func (s *EvmSigningSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
+func (s *EvmSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
+}
+
+func (s *EvmSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return session.ToSigningSessionInfo(
+		s.Id(),
+		&s.nextSessionStartTime,
+		s.self.Threshold,
+		s.params.ChainId,
+	)
 }

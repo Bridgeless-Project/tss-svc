@@ -15,9 +15,9 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-var _ p2p.TssSession = &KeygenSession{}
+var _ p2p.TssSession = &Session{}
 
-type KeygenSession struct {
+type Session struct {
 	sessionId string
 	params    tss.SessionParams
 	wg        *sync.WaitGroup
@@ -37,15 +37,15 @@ type KeygenSession struct {
 	logger *logan.Entry
 }
 
-func NewKeygenSession(
+func NewSession(
 	self tss.LocalKeygenParty,
 	parties []p2p.Party,
 	params tss.SessionParams,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
-) *KeygenSession {
+) *Session {
 	sessionId := session.GetKeygenSessionIdentifier(params.Id)
-	return &KeygenSession{
+	return &Session{
 		sessionId:             sessionId,
 		params:                params,
 		wg:                    &sync.WaitGroup{},
@@ -56,7 +56,7 @@ func NewKeygenSession(
 	}
 }
 
-func (s *KeygenSession) Run(ctx context.Context) error {
+func (s *Session) Run(ctx context.Context) error {
 	runDelay := time.Until(s.params.StartTime)
 	if runDelay <= 0 {
 		return errors.New("target time is in the past")
@@ -82,7 +82,7 @@ func (s *KeygenSession) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *KeygenSession) run(ctx context.Context) {
+func (s *Session) run(ctx context.Context) {
 	defer s.wg.Done()
 
 	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundaryKeygenSession)
@@ -102,16 +102,16 @@ func (s *KeygenSession) run(ctx context.Context) {
 	}
 }
 
-func (s *KeygenSession) WaitFor() (*keygen.LocalPartySaveData, error) {
+func (s *Session) WaitFor() (*keygen.LocalPartySaveData, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }
 
-func (s *KeygenSession) Id() string {
+func (s *Session) Id() string {
 	return s.sessionId
 }
 
-func (s *KeygenSession) Receive(request *p2p.SubmitRequest) error {
+func (s *Session) Receive(request *p2p.SubmitRequest) error {
 	if request == nil || request.Data == nil {
 		return errors.New("nil request")
 	}
@@ -138,5 +138,10 @@ func (s *KeygenSession) Receive(request *p2p.SubmitRequest) error {
 	return nil
 }
 
-// RegisterIdChangeListener is a no-op for KeygenSession
-func (s *KeygenSession) RegisterIdChangeListener(func(oldId, newId string)) {}
+// RegisterIdChangeListener is a no-op for Session
+func (s *Session) RegisterIdChangeListener(func(oldId, newId string)) {}
+
+// SigningSessionInfo is a no-op for Session
+func (s *Session) SigningSessionInfo() *p2p.SigningSessionInfo {
+	return nil
+}

@@ -161,3 +161,8 @@ func (d *DepositAcceptorSession) Receive(request *p2p.SubmitRequest) error {
 func (d *DepositAcceptorSession) RegisterIdChangeListener(func(oldId string, newId string)) {
 	return
 }
+
+// SigningSessionInfo is a no-op for DepositAcceptorSession
+func (d *DepositAcceptorSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+	return nil
+}

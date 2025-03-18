@@ -26,14 +26,15 @@ import (
 	"go.uber.org/atomic"
 )
 
-var _ p2p.TssSession = &BitcoinSigningSession{}
+var _ p2p.TssSession = &BitcoinSession{}
 
-type BitcoinSigningSession struct {
-	sessionId            *atomic.String
-	nextSessionStartTime time.Time
-	idChangeListener     func(oldId string, newId string)
-	isSignSession        *atomic.Bool
-	mu                   *sync.RWMutex
+type BitcoinSession struct {
+	sessionId                    *atomic.String
+	nextSessionStartTime         time.Time
+	nextSessionStartTimeConstant *atomic.Bool
+	idChangeListener             func(oldId string, newId string)
+	isSignSession                *atomic.Bool
+	mu                           *sync.RWMutex
 
 	parties []p2p.Party
 	self    tss.LocalSignParty
@@ -57,19 +58,21 @@ type BitcoinSigningSession struct {
 	signingParty *tss.SignParty
 }
 
-func NewBitcoinSigningSession(
+func NewBitcoinSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
 	params session.SigningSessionParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
-) *BitcoinSigningSession {
+) *BitcoinSession {
 	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
-	return &BitcoinSigningSession{
-		sessionId:     atomic.NewString(sessionId),
-		isSignSession: atomic.NewBool(true),
-		mu:            &sync.RWMutex{},
+	return &BitcoinSession{
+		sessionId:                    atomic.NewString(sessionId),
+		isSignSession:                atomic.NewBool(true),
+		mu:                           &sync.RWMutex{},
+		nextSessionStartTime:         params.StartTime,
+		nextSessionStartTimeConstant: atomic.NewBool(true),
 
 		parties: parties,
 		self:    self,
@@ -80,23 +83,23 @@ func NewBitcoinSigningSession(
 	}
 }
 
-func (s *BitcoinSigningSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *BitcoinSigningSession {
+func (s *BitcoinSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *BitcoinSession {
 	s.fetcher = fetcher
 	return s
 }
 
-func (s *BitcoinSigningSession) WithClient(client *bitcoin.Client) *BitcoinSigningSession {
+func (s *BitcoinSession) WithClient(client *bitcoin.Client) *BitcoinSession {
 	s.client = client
 	return s
 }
 
-func (s *BitcoinSigningSession) WithCoreConnector(conn *connector.Connector) *BitcoinSigningSession {
+func (s *BitcoinSession) WithCoreConnector(conn *connector.Connector) *BitcoinSession {
 	s.coreConnector = conn
 	return s
 }
 
 // Build is a method that should be called before Run to prepare the session for execution.
-func (s *BitcoinSigningSession) Build() error {
+func (s *BitcoinSession) Build() error {
 	if s.fetcher == nil {
 		return errors.New("deposit fetcher is not set")
 	}
@@ -123,12 +126,11 @@ func (s *BitcoinSigningSession) Build() error {
 	return nil
 }
 
-func (s *BitcoinSigningSession) Run(ctx context.Context) error {
-	if time.Until(s.params.StartTime) <= 0 {
+func (s *BitcoinSession) Run(ctx context.Context) error {
+	if time.Until(s.nextSessionStartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
 
-	s.nextSessionStartTime = s.params.StartTime
 	for {
 		// initializing required session components
 		s.mu.Lock()
@@ -173,7 +175,10 @@ func (s *BitcoinSigningSession) Run(ctx context.Context) error {
 			return nil
 		case <-time.After(time.Until(s.nextSessionStartTime)):
 			// nextSessionStartTime for Bitcoin session is a varying value and can be changed during the session
+			s.mu.Lock()
+			s.nextSessionStartTimeConstant.Store(false)
 			s.nextSessionStartTime = s.nextSessionStartTime.Add(tss.BoundarySigningSession)
+			s.mu.Unlock()
 		}
 
 		// define the next session type
@@ -204,7 +209,7 @@ func (s *BitcoinSigningSession) Run(ctx context.Context) error {
 	}
 }
 
-func (s *BitcoinSigningSession) runSigningSession(ctx context.Context) error {
+func (s *BitcoinSession) runSigningSession(ctx context.Context) error {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
 	defer consCtxCancel()
@@ -293,7 +298,7 @@ func (s *BitcoinSigningSession) runSigningSession(ctx context.Context) error {
 	return nil
 }
 
-func (s *BitcoinSigningSession) runConsolidationSession(ctx context.Context) error {
+func (s *BitcoinSession) runConsolidationSession(ctx context.Context) error {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
 	defer consCtxCancel()
@@ -381,18 +386,18 @@ func (s *BitcoinSigningSession) runConsolidationSession(ctx context.Context) err
 	return nil
 }
 
-func (s *BitcoinSigningSession) Id() string {
+func (s *BitcoinSession) Id() string {
 	return s.sessionId.Load()
 }
 
-func (s *BitcoinSigningSession) incrementSessionId() {
+func (s *BitcoinSession) incrementSessionId() {
 	prevSessionId := s.Id()
 	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }
 
-func (s *BitcoinSigningSession) Receive(request *p2p.SubmitRequest) error {
+func (s *BitcoinSession) Receive(request *p2p.SubmitRequest) error {
 	if request == nil {
 		return errors.New("nil request")
 	}
@@ -431,7 +436,7 @@ func (s *BitcoinSigningSession) Receive(request *p2p.SubmitRequest) error {
 	}
 }
 
-func (s *BitcoinSigningSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
+func (s *BitcoinSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
 }
 
@@ -443,7 +448,12 @@ func (s *BitcoinSigningSession) RegisterIdChangeListener(f func(oldId string, ne
 // if the number of inputs to sign is greater than 1, the next session start time
 // should be recalculated to include additional signing phases and
 // delays to re-setup the signing party to ensure the correct request handling
-func (s *BitcoinSigningSession) updateNextSessionStartTime(inputsToSign int) {
+func (s *BitcoinSession) updateNextSessionStartTime(inputsToSign int) {
+	s.mu.Unlock()
+	defer s.mu.Lock()
+
+	s.nextSessionStartTimeConstant.Store(true)
+
 	if inputsToSign <= 1 {
 		return
 	}
@@ -451,4 +461,21 @@ func (s *BitcoinSigningSession) updateNextSessionStartTime(inputsToSign int) {
 	// excluding included consensus, finalizing, and one signing phase
 	additionalDelay := time.Duration(inputsToSign-1) * (tss.BoundarySign + tss.BoundaryBitcoinSingRoundDelay)
 	s.nextSessionStartTime = s.nextSessionStartTime.Add(additionalDelay)
+}
+
+func (s *BitcoinSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var nextSessionStartTime *time.Time
+	if s.nextSessionStartTimeConstant.Load() {
+		nextSessionStartTime = &s.nextSessionStartTime
+	}
+
+	return session.ToSigningSessionInfo(
+		s.Id(),
+		nextSessionStartTime,
+		s.self.Threshold,
+		s.params.ChainId,
+	)
 }

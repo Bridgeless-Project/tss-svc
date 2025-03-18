@@ -5,6 +5,9 @@ import (
 	"net"
 	"sync"
 
+	"github.com/hyle-team/tss-svc/internal/p2p/middlewares"
+	"gitlab.com/distributed_lab/logan/v3"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
@@ -15,19 +18,22 @@ import (
 var _ P2PServer = &Server{}
 
 type Server struct {
-	status  PartyStatus
-	statusM sync.RWMutex
-
-	manager *SessionManager
-
+	status   PartyStatus
+	statusM  sync.RWMutex
+	manager  *SessionManager
 	listener net.Listener
+	logger   *logan.Entry
 }
 
-func NewServer(listener net.Listener, manager *SessionManager) *Server {
+func NewServer(listener net.Listener,
+	manager *SessionManager,
+	logger *logan.Entry,
+) *Server {
 	return &Server{
 		status:   PartyStatus_PS_UNKNOWN,
 		manager:  manager,
 		listener: listener,
+		logger:   logger,
 	}
 }
 
@@ -39,8 +45,11 @@ func (s *Server) SetStatus(status PartyStatus) {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	// TODO: add interceptors (log, recovery etc)
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			// RecoveryInterceptor should be the last one
+			middlewares.RecoveryInterceptor(s.logger),
+		))
 	RegisterP2PServer(srv, s)
 	reflection.Register(srv)
 
@@ -64,4 +73,21 @@ func (s *Server) Submit(ctx context.Context, request *SubmitRequest) (*emptypb.E
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (s *Server) GetSigningSessionInfo(ctxt context.Context, request *SigningSessionInfoRequest) (*SigningSessionInfo, error) {
+	s.statusM.RLock()
+	st := s.status
+	s.statusM.RUnlock()
+
+	if st != PartyStatus_PS_SIGN {
+		return nil, status.Error(codes.FailedPrecondition, "party is not in signing state")
+	}
+
+	session, err := s.manager.GetSigningSession(request.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	return session.SigningSessionInfo(), nil
 }

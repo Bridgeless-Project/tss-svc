@@ -16,7 +16,9 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
-const partiesConfigKey = "parties"
+const (
+	partiesConfigKey = "parties"
+)
 
 type PartiesConfigurator interface {
 	Parties() []p2p.Party
