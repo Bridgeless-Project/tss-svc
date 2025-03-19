@@ -8,7 +8,6 @@ import (
 
 	tss "github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/hyle-team/tss-svc/cmd/utils"
-	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -67,7 +66,7 @@ func storePreParams(cmd *cobra.Command, params *tss.LocalPreParams) error {
 			return errors.Wrap(err, "failed to get config from flags")
 		}
 
-		storage := vault.NewStorage(config.VaultClient())
+		storage := config.SecretsStorage()
 		if err := storage.SaveKeygenPreParams(params); err != nil {
 			return errors.Wrap(err, "failed to save pre-parameters to vault")
 		}

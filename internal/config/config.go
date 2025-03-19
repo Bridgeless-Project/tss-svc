@@ -5,7 +5,7 @@ import (
 	connector "github.com/hyle-team/tss-svc/internal/core/connector/config"
 	subscriber "github.com/hyle-team/tss-svc/internal/core/subscriber/config"
 	p2p "github.com/hyle-team/tss-svc/internal/p2p/config"
-	vaulter "github.com/hyle-team/tss-svc/internal/secrets/vault/config"
+	vault "github.com/hyle-team/tss-svc/internal/secrets/vault/config"
 	tss "github.com/hyle-team/tss-svc/internal/tss/config"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
@@ -15,7 +15,7 @@ import (
 type Config interface {
 	comfig.Logger
 	pgdb.Databaser
-	vaulter.Vaulter
+	vault.Secreter
 	Listenerer
 	p2p.PartiesConfigurator
 	tss.SessionParamsConfigurator
@@ -29,7 +29,7 @@ type config struct {
 
 	comfig.Logger
 	pgdb.Databaser
-	vaulter.Vaulter
+	vault.Secreter
 	Listenerer
 	p2p.PartiesConfigurator
 	tss.SessionParamsConfigurator
@@ -39,13 +39,15 @@ type config struct {
 }
 
 func New(getter kv.Getter) Config {
+	secreter := vault.NewSecreter()
+
 	return &config{
 		getter:                    getter,
-		Vaulter:                   vaulter.NewVaulter(),
+		Secreter:                  secreter,
 		Logger:                    comfig.NewLogger(getter, comfig.LoggerOpts{}),
 		Databaser:                 pgdb.NewDatabaser(getter),
 		Listenerer:                NewListenerer(getter),
-		PartiesConfigurator:       p2p.NewPartiesConfigurator(getter),
+		PartiesConfigurator:       p2p.NewPartiesConfigurator(getter, secreter.SecretsStorage()),
 		SessionParamsConfigurator: tss.NewSessionParamsConfigurator(getter),
 		Chainer:                   chains.NewChainer(getter),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),

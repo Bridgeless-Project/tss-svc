@@ -12,7 +12,6 @@ import (
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/secrets"
-	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	keygenSession "github.com/hyle-team/tss-svc/internal/tss/session/keygen"
 	"github.com/pkg/errors"
@@ -40,7 +39,7 @@ var keygenCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to get config from flags")
 		}
 
-		storage := vault.NewStorage(cfg.VaultClient())
+		storage := cfg.SecretsStorage()
 		preParams, err := storage.GetKeygenPreParams()
 		if err != nil {
 			return errors.Wrap(err, "failed to get keygen pre-parameters")
@@ -49,13 +48,18 @@ var keygenCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
 		}
+		cert, err := storage.GetLocalPartyTlsCertificate()
+		if err != nil {
+			return errors.Wrap(err, "failed to get local party TLS certificate")
+		}
+		parties := cfg.Parties()
 
 		errGroup := new(errgroup.Group)
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
 		connectionManager := p2p.NewConnectionManager(
-			cfg.Parties(),
+			parties,
 			p2p.PartyStatus_PS_KEYGEN,
 			cfg.Log().WithField("component", "connection_manager"),
 		)
@@ -66,7 +70,7 @@ var keygenCmd = &cobra.Command{
 				Address:   account.CosmosAddress(),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
-			cfg.Parties(),
+			parties,
 			cfg.TssSessionParams(),
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
@@ -75,7 +79,13 @@ var keygenCmd = &cobra.Command{
 		sessionManager := p2p.NewSessionManager(session)
 
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
+			server := p2p.NewServer(
+				cfg.P2pGrpcListener(),
+				sessionManager,
+				parties,
+				*cert,
+				cfg.Log().WithField("component", "p2p_server"),
+			)
 			server.SetStatus(p2p.PartyStatus_PS_KEYGEN)
 			return server.Run(ctx)
 		})

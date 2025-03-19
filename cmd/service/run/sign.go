@@ -28,7 +28,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/core/subscriber"
 	pg "github.com/hyle-team/tss-svc/internal/db/postgres"
 	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
@@ -64,8 +63,7 @@ var signCmd = &cobra.Command{
 }
 
 func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
-	storage := vault.NewStorage(cfg.VaultClient())
-
+	storage := cfg.SecretsStorage()
 	account, err := storage.GetCoreAccount()
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
@@ -74,17 +72,23 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get tss share")
 	}
+	cert, err := storage.GetLocalPartyTlsCertificate()
+	if err != nil {
+		return errors.Wrap(err, "failed to get local party tls certificate")
+	}
 
 	wg := new(sync.WaitGroup)
 	eg, ctx := errgroup.WithContext(ctx)
 	logger := cfg.Log()
 	chns := cfg.Chains()
+	parties := cfg.Parties()
 	clientsRepo := repository.NewClientsRepository(chns)
 	sessionManager := p2p.NewSessionManager()
 	dtb := pg.NewDepositsQ(cfg.DB())
 	connector := coreConnector.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
 	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
 	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
+
 	apiServer := api.NewServer(
 		cfg.ApiGrpcListener(),
 		cfg.ApiHttpListener(),
@@ -92,11 +96,17 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		logger.WithField("component", "api_server"),
 		clientsRepo,
 		fetcher,
-		p2p.NewBroadcaster(cfg.Parties(), logger.WithField("component", "broadcaster")),
+		p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		account.CosmosAddress(),
 		connector,
 	)
-	p2pServer := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, logger.WithField("component", "p2p_server"))
+	p2pServer := p2p.NewServer(
+		cfg.P2pGrpcListener(),
+		sessionManager,
+		parties,
+		*cert,
+		logger.WithField("component", "p2p_server"),
+	)
 
 	wg.Add(1)
 
@@ -127,7 +137,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	// sessions spin-up
 	var snc *p2p.Syncer
 	if syncEnabled {
-		snc, err = p2p.NewSyncer(cfg.Parties(), p2p.PartyStatus_PS_SIGN)
+		snc, err = p2p.NewSyncer(parties, p2p.PartyStatus_PS_SIGN)
 		if err != nil {
 			return errors.Wrap(err, "failed to create syncer")
 		}
@@ -157,7 +167,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSigningSession(sessParams, chain, cfg, account, share, dtb, fetcher, logger, client, connector)
+			sess := configureSigningSession(sessParams, chain, parties, account, share, dtb, fetcher, logger, client, connector)
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -176,7 +186,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		defer wg.Done()
 
 		depositAcceptorSession := bridge.NewDepositAcceptorSession(
-			cfg.Parties(),
+			parties,
 			fetcher,
 			dtb,
 			logger.WithField("component", "deposit_acceptor_session"),
@@ -215,7 +225,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 func configureSigningSession(
 	params session.SigningSessionParams,
 	chain chains.Chain,
-	cfg config.Config,
+	parties []p2p.Party,
 	account *core.Account,
 	share *keygen.LocalPartySaveData,
 	db db.DepositsQ,
@@ -232,7 +242,7 @@ func configureSigningSession(
 				Share:     share,
 				Threshold: params.Threshold,
 			},
-			cfg.Parties(),
+			parties,
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
@@ -248,7 +258,7 @@ func configureSigningSession(
 				Share:     share,
 				Threshold: params.Threshold,
 			},
-			cfg.Parties(),
+			parties,
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
@@ -264,7 +274,7 @@ func configureSigningSession(
 				Share:     share,
 				Threshold: params.Threshold,
 			},
-			cfg.Parties(),
+			parties,
 			params,
 			db,
 			logger.WithField("component", "signing_session"),

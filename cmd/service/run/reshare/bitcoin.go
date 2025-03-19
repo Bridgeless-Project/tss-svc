@@ -10,7 +10,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session/resharing"
 	"github.com/pkg/errors"
@@ -40,7 +39,7 @@ var reshareBtcCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to get config from flags")
 		}
 
-		storage := vault.NewStorage(cfg.VaultClient())
+		storage := cfg.SecretsStorage()
 		share, err := storage.GetTssShare()
 		if err != nil {
 			return errors.Wrap(err, "failed to get tss share")
@@ -49,6 +48,11 @@ var reshareBtcCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
 		}
+		cert, err := storage.GetLocalPartyTlsCertificate()
+		if err != nil {
+			return errors.Wrap(err, "failed to get local party TLS certificate")
+		}
+		parties := cfg.Parties()
 
 		var client *bitcoin.Client
 		for _, chain := range cfg.Chains() {
@@ -62,7 +66,7 @@ var reshareBtcCmd = &cobra.Command{
 		}
 
 		connectionManager := p2p.NewConnectionManager(
-			cfg.Parties(),
+			parties,
 			p2p.PartyStatus_PS_RESHARE,
 			cfg.Log().WithField("component", "connection_manager"),
 		)
@@ -78,7 +82,7 @@ var reshareBtcCmd = &cobra.Command{
 				ConsolidateParams: consolidateParams,
 				SessionParams:     cfg.TssSessionParams(),
 			},
-			cfg.Parties(),
+			parties,
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "btc_reshare_session"),
 		)
@@ -90,7 +94,13 @@ var reshareBtcCmd = &cobra.Command{
 		defer cancel()
 
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
+			server := p2p.NewServer(
+				cfg.P2pGrpcListener(),
+				sessionManager,
+				parties,
+				*cert,
+				cfg.Log().WithField("component", "p2p_server"),
+			)
 			server.SetStatus(p2p.PartyStatus_PS_RESHARE)
 			return server.Run(ctx)
 		})

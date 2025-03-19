@@ -1,9 +1,11 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"os"
 	"reflect"
-	"time"
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
@@ -12,8 +14,7 @@ import (
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -24,19 +25,24 @@ type PartiesConfigurator interface {
 	Parties() []p2p.Party
 }
 
-type Party struct {
-	PubKey      string       `fig:"pubkey,required"`
-	CoreAddress core.Address `fig:"core_address,required"`
-	Connection  string       `fig:"connection,required"`
+type LocalPartyTlsCertificateProvider interface {
+	GetLocalPartyTlsCertificate() (*tls.Certificate, error)
 }
 
-func NewPartiesConfigurator(getter kv.Getter) PartiesConfigurator {
-	return &partiesConfigurator{getter: getter}
+type Party struct {
+	CoreAddress        core.Address `fig:"core_address,required"`
+	Connection         string       `fig:"connection,required"`
+	TlsCertificatePath string       `fig:"tls_certificate_path,required"`
+}
+
+func NewPartiesConfigurator(getter kv.Getter, tslCertProvider LocalPartyTlsCertificateProvider) PartiesConfigurator {
+	return &partiesConfigurator{getter: getter, tlsCertProvider: tslCertProvider}
 }
 
 type partiesConfigurator struct {
-	getter kv.Getter
-	once   comfig.Once
+	getter          kv.Getter
+	once            comfig.Once
+	tlsCertProvider LocalPartyTlsCertificateProvider
 }
 
 func (p *partiesConfigurator) Parties() []p2p.Party {
@@ -48,7 +54,7 @@ func (p *partiesConfigurator) Parties() []p2p.Party {
 		err := figure.
 			Out(&cfg).
 			From(kv.MustGetStringMap(p.getter, partiesConfigKey)).
-			With(figure.BaseHooks, partyHook).
+			With(figure.BaseHooks, partyHook(p.tlsCertProvider)).
 			Please()
 		if err != nil {
 			panic(errors.Wrap(err, "failed to load parties config"))
@@ -58,35 +64,51 @@ func (p *partiesConfigurator) Parties() []p2p.Party {
 	}).([]p2p.Party)
 }
 
-var partyHook = figure.Hooks{
-	"p2p.Party": func(value interface{}) (reflect.Value, error) {
-		switch v := value.(type) {
-		case map[string]interface{}:
-			var raw Party
+func partyHook(localCertProvider LocalPartyTlsCertificateProvider) figure.Hooks {
+	return figure.Hooks{
+		"p2p.Party": func(value interface{}) (reflect.Value, error) {
+			raw, ok := value.(map[string]interface{})
+			if !ok {
+				return reflect.Value{}, fmt.Errorf("unexpected type %T", value)
+			}
 
-			if err := figure.Out(&raw).From(v).With(figure.BaseHooks, core.AddressHook).Please(); err != nil {
+			var partyConf Party
+			if err := figure.Out(&partyConf).From(raw).With(figure.BaseHooks, core.AddressHook).Please(); err != nil {
 				return reflect.Value{}, errors.Wrap(err, "failed to unmarshal party")
 			}
 
-			conn, err := connect(raw)
+			partyCert, err := os.ReadFile(partyConf.TlsCertificatePath)
+			if err != nil {
+				return reflect.Value{}, errors.Wrap(err, "failed to read party certificate")
+			}
+
+			conn, err := configureConnection(partyConf, partyCert, localCertProvider)
 			if err != nil {
 				return reflect.Value{}, errors.Wrap(err, "failed to connect party")
 			}
 
-			return reflect.ValueOf(p2p.NewParty(raw.PubKey, raw.CoreAddress, conn)), nil
-		default:
-			return reflect.Value{}, fmt.Errorf("unexpected type %T", value)
-		}
-	},
+			return reflect.ValueOf(p2p.NewParty(partyConf.CoreAddress, conn, partyCert)), nil
+
+		},
+	}
 }
 
-// TODO: expand with mTLS
-func connect(party Party) (*grpc.ClientConn, error) {
-	insecureOpt := grpc.WithTransportCredentials(insecure.NewCredentials())
-	keepaliveOpt := grpc.WithKeepaliveParams(keepalive.ClientParameters{
-		Time:    20 * time.Second, // wait time before ping if no activity
-		Timeout: 5 * time.Second,  // ping timeout
-	})
+func configureConnection(party Party, partyCertPEM []byte, certProvider LocalPartyTlsCertificateProvider) (*grpc.ClientConn, error) {
+	selfCert, err := certProvider.GetLocalPartyTlsCertificate()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get local party tls certificate")
+	}
 
-	return grpc.NewClient(party.Connection, insecureOpt, keepaliveOpt)
+	rootCAs := x509.NewCertPool()
+	if !rootCAs.AppendCertsFromPEM(partyCertPEM) {
+		return nil, errors.New("invalid party certificate")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{*selfCert},
+		RootCAs:      rootCAs,
+	}
+	creds := credentials.NewTLS(tlsConfig)
+
+	return grpc.NewClient(party.Connection, grpc.WithTransportCredentials(creds))
 }

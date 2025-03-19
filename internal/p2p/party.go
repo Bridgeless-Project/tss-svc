@@ -12,10 +12,10 @@ import (
 const DefaultConnectionTimeout = time.Second
 
 type Party struct {
-	PubKey      string
 	CoreAddress core.Address
 
 	connection *grpc.ClientConn
+	pemCert    []byte
 	identifier *tss.PartyID
 }
 
@@ -31,9 +31,13 @@ func (p *Party) Key() *big.Int {
 	return p.CoreAddress.PartyKey()
 }
 
-func NewParty(pubKey string, coreAddr core.Address, connection *grpc.ClientConn) Party {
+func (p *Party) PEMCert() []byte {
+	return p.pemCert
+}
+
+func NewParty(coreAddr core.Address, connection *grpc.ClientConn, pemCert []byte) Party {
 	return Party{
-		PubKey:      pubKey,
+		pemCert:     pemCert,
 		connection:  connection,
 		CoreAddress: coreAddr,
 		identifier:  coreAddr.PartyIdentifier(),

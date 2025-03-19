@@ -27,7 +27,7 @@ services:
   ## Databases
 
   tss-1-db:
-    image: postgres:13
+    image: postgres:13.3
     restart: unless-stopped
     environment:
       - POSTGRES_USER=tss
@@ -38,7 +38,7 @@ services:
       - tss-1-data:/pgdata
 
   tss-2-db:
-    image: postgres:13
+    image: postgres:13.3
     restart: unless-stopped
     environment:
       - POSTGRES_USER=tss
@@ -49,7 +49,7 @@ services:
       - tss-2-data:/pgdata
 
   tss-3-db:
-    image: postgres:13
+    image: postgres:13.3
     restart: unless-stopped
     environment:
       - POSTGRES_USER=tss
@@ -72,6 +72,8 @@ services:
       VAULT_TOKEN: root
       MOUNT_PATH: tss1
     volumes:
+      - ./configs/certs/party2.crt:/party2.crt
+      - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss1.local.yaml:/config.yaml
       - ./configs/shares/preparams1.json:/preparams.json
     entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign" #reshare bitcoin mjMvBFWrjoGNPkQV6YJgUz2MghnMUVi1VN --fee-rate=2 --outputs-count=5 --max-inputs-count=5"
@@ -92,6 +94,8 @@ services:
       VAULT_TOKEN: root
       MOUNT_PATH: tss2
     volumes:
+      - ./configs/certs/party1.crt:/party1.crt
+      - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss2.local.yaml:/config.yaml
       - ./configs/shares/preparams2.json:/preparams.json
     entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign" #reshare bitcoin mjMvBFWrjoGNPkQV6YJgUz2MghnMUVi1VN --fee-rate=2 --outputs-count=5 --max-inputs-count=5"
@@ -112,6 +116,8 @@ services:
       VAULT_TOKEN: root
       MOUNT_PATH: tss3
     volumes:
+      - ./configs/certs/party1.crt:/party1.crt
+      - ./configs/certs/party2.crt:/party2.crt
       - ./configs/tss3.local.yaml:/config.yaml
       - ./configs/shares/preparams3.json:/preparams.json
     entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign" #reshare bitcoin mjMvBFWrjoGNPkQV6YJgUz2MghnMUVi1VN --fee-rate=2 --outputs-count=5 --max-inputs-count=5"
