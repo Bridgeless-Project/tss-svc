@@ -90,18 +90,24 @@ func (p *SignParty) Run(ctx context.Context) {
 
 	go func() {
 		defer p.wg.Done()
+
 		if err := p.party.Start(); err != nil {
-			p.logger.WithError(err).Error("failed to run signer party")
+			p.logger.WithError(err).Error("failed to run signing")
 			close(end)
 		}
 	}()
 	go p.receiveMsgs(ctx)
 	go p.receiveUpdates(ctx, out, end)
+
+	p.logger.Info("signing started")
 }
 
 func (p *SignParty) WaitFor() *common.SignatureData {
 	p.wg.Wait()
 	p.ended.Store(true)
+
+	p.logger.Info("signing finished")
+
 	return p.result
 }
 

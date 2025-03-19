@@ -76,17 +76,21 @@ func (p *KeygenParty) Run(ctx context.Context) {
 		defer p.wg.Done()
 
 		if err := p.party.Start(); err != nil {
-			p.logger.WithError(err).Error("failed to run keygen party")
+			p.logger.WithError(err).Error("failed to run keygen")
 			close(end)
 		}
 	}()
 	go p.receiveMsgs(ctx)
 	go p.receiveUpdates(ctx, out, end)
+
+	p.logger.Info("keygen started")
 }
 
 func (p *KeygenParty) WaitFor() *keygen.LocalPartySaveData {
 	p.wg.Wait()
 	p.ended.Store(true)
+
+	p.logger.Info("keygen finished")
 
 	return p.result
 }
