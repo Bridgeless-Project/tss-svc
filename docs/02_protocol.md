@@ -41,6 +41,19 @@ See [Session boundaries](../internal/tss/README.md#session-boundaries) for more 
 
 ---
 
+## Security 
+To ensure the system security, parties should keep their secret shares of the private key in secret and secure.
+The secret shares should not be shared with anyone, even with the other parties. For this purpose, they are securely stored in the [Vault](../internal/secrets/README.md) and accessed only when required.
+
+Communication (messages transport) between parties is built using mTLS over gRPC, which ensures the secure data exchange between parties.
+It ensures that both parties are authenticated and the data is encrypted during the transmission.
+
+Additionally, within the transport, each message is wrapped with a session ID that is unique to a single run of the keygen, signing or re-sharing session.
+This session ID is agreed upon out-of-band and known only by the participating parties before the session begin.
+For a series of signing sessions, the session ID is incremented by one for each next session.
+
+--- 
+
 ## Key Resharing
 To ensure the system scalability and security, parties can join or leave the TSS network.
 It means that the secret shares of the general system private key should be redistributed among the old/new parties.
