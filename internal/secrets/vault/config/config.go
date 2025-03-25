@@ -4,7 +4,9 @@ import (
 	"cmp"
 	"os"
 
-	vault "github.com/hashicorp/vault/api"
+	vaultApi "github.com/hashicorp/vault/api"
+	"github.com/hyle-team/tss-svc/internal/secrets"
+	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"gitlab.com/distributed_lab/kit/comfig"
 )
 
@@ -14,24 +16,24 @@ const (
 	VaultMountPath = "MOUNT_PATH"
 )
 
-type Vaulter interface {
-	VaultClient() *vault.KVv2
+type Secreter interface {
+	SecretsStorage() secrets.Storage
 }
 
 type vaulter struct {
 	once comfig.Once
 }
 
-func NewVaulter() Vaulter {
+func NewSecreter() Secreter {
 	return &vaulter{}
 }
 
-func (v *vaulter) VaultClient() *vault.KVv2 {
+func (v *vaulter) SecretsStorage() secrets.Storage {
 	return v.once.Do(func() interface{} {
-		conf := vault.DefaultConfig()
+		conf := vaultApi.DefaultConfig()
 		conf.Address = os.Getenv(VaultPathEnv)
 
-		client, err := vault.NewClient(conf)
+		client, err := vaultApi.NewClient(conf)
 		if err != nil {
 			panic(err)
 		}
@@ -39,6 +41,7 @@ func (v *vaulter) VaultClient() *vault.KVv2 {
 		client.SetToken(os.Getenv(VaultTokenEnv))
 
 		mountPath := cmp.Or(os.Getenv(VaultMountPath), "secret")
-		return client.KVv2(mountPath)
-	}).(*vault.KVv2)
+
+		return vault.NewStorage(client.KVv2(mountPath))
+	}).(secrets.Storage)
 }

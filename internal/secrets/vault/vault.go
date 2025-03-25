@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
@@ -16,6 +17,9 @@ const (
 	keyPreParams = "keygen_preparams"
 	keyAccount   = "core_account"
 	keyTssShare  = "tss_share"
+	KeyTlsCert   = "tls_cert"
+	TlsCertData  = "cert_data"
+	TlsKeyData   = "key_data"
 )
 
 type Storage struct {
@@ -117,11 +121,11 @@ func (s *Storage) SaveCoreAccount(account *core.Account) error {
 func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
 	kvData, err := s.load(keyTssShare)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load share")
+		return nil, errors.Wrap(err, "failed to load share data")
 	}
 	val, ok := kvData["value"].(string)
 	if !ok {
-		return nil, errors.Wrap(errors.New("no value"), "share value not found")
+		return nil, errors.New("share data not found")
 	}
 	data := new(keygen.LocalPartySaveData)
 	err = json.Unmarshal([]byte(val), data)
@@ -129,4 +133,26 @@ func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
 		return nil, errors.Wrap(err, "failed to decode share data")
 	}
 	return data, nil
+}
+
+func (s *Storage) GetLocalPartyTlsCertificate() (*tls.Certificate, error) {
+	kvData, err := s.load(KeyTlsCert)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load tls certificate data")
+	}
+	rawCert, ok := kvData[TlsCertData].(string)
+	if !ok {
+		return nil, errors.New("tls certificate data not found")
+	}
+	rawKey, ok := kvData[TlsKeyData].(string)
+	if !ok {
+		return nil, errors.New("tls key data not found")
+	}
+
+	cert, err := tls.X509KeyPair([]byte(rawCert), []byte(rawKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse tls certificate")
+	}
+
+	return &cert, nil
 }

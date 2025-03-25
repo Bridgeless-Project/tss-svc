@@ -9,7 +9,6 @@ import (
 	secp256k1 "github.com/hyle-team/bridgeless-core/v12/crypto/ethsecp256k1"
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -70,7 +69,7 @@ func storeAccount(cmd *cobra.Command, account *core.Account) error {
 			return errors.Wrap(err, "failed to get config from flags")
 		}
 
-		storage := vault.NewStorage(config.VaultClient())
+		storage := config.SecretsStorage()
 		if err = storage.SaveCoreAccount(account); err != nil {
 			return errors.Wrap(err, "failed to save account to vault")
 		}

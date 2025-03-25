@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/secrets/vault"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/pkg/errors"
@@ -52,7 +51,7 @@ var signCmd = &cobra.Command{
 			return errors.Wrap(errors.New("empty data to-sign"), "invalid data")
 		}
 
-		storage := vault.NewStorage(cfg.VaultClient())
+		storage := cfg.SecretsStorage()
 		account, err := storage.GetCoreAccount()
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
@@ -61,12 +60,19 @@ var signCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to get local share")
 		}
+		cert, err := storage.GetLocalPartyTlsCertificate()
+		if err != nil {
+			return errors.Wrap(err, "failed to get local party TLS certificate")
+		}
+		parties := cfg.Parties()
 
 		errGroup := new(errgroup.Group)
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
-		connectionManager := p2p.NewConnectionManager(cfg.Parties(), p2p.PartyStatus_PS_SIGN, cfg.Log().WithField("component", "connection_manager"))
+		connectionManager := p2p.NewConnectionManager(
+			parties, p2p.PartyStatus_PS_SIGN, cfg.Log().WithField("component", "connection_manager"),
+		)
 
 		session := signing.NewDefaultSession(
 			tss.LocalSignParty{
@@ -78,14 +84,20 @@ var signCmd = &cobra.Command{
 				SessionParams: cfg.TssSessionParams(),
 				SigningData:   []byte(dataToSign),
 			},
-			cfg.Parties(),
+			parties,
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "signing_session"),
 		)
 
 		sessionManager := p2p.NewSessionManager(session)
 		errGroup.Go(func() error {
-			server := p2p.NewServer(cfg.P2pGrpcListener(), sessionManager, cfg.Log().WithField("component", "p2p_server"))
+			server := p2p.NewServer(
+				cfg.P2pGrpcListener(),
+				sessionManager,
+				parties,
+				*cert,
+				cfg.Log().WithField("component", "p2p_server"),
+			)
 			server.SetStatus(p2p.PartyStatus_PS_SIGN)
 			return server.Run(ctx)
 		})
@@ -107,8 +119,11 @@ var signCmd = &cobra.Command{
 			}
 
 			if verify {
-				valid := tss.Verify(localSaveData, []byte(dataToSign), result)
-				cfg.Log().Infof("Verified signature valid: %t", valid)
+				if valid := tss.Verify(localSaveData, []byte(dataToSign), result); !valid {
+					return errors.New("signature verification failed")
+				} else {
+					cfg.Log().Info("Signature verification passed")
+				}
 			}
 
 			return nil

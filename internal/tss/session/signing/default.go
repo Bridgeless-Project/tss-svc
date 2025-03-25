@@ -93,7 +93,6 @@ func (s *DefaultSession) run(ctx context.Context) {
 
 	s.signingParty.Run(boundedCtx)
 	s.result = s.signingParty.WaitFor()
-	s.logger.Info("signing session finished")
 	if s.result != nil {
 		return
 	}

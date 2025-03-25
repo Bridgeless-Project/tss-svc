@@ -26,15 +26,10 @@ Different parts of the system can request a list of successfully-connected peers
 
 A successful connection is a connection that has been established by checking the peer public key and a service mode match.
 
-As the party server can be run in TLS enabled/disabled mode, the connection manager should be able to handle both cases.
-In case of a TLS-enabled party server, the connection manager should configure clients with the TLS certificates.
-Otherwise, no additional configuration is required.
-
 ### Inputs
 Manager accepts: 
 - the list of peers to connect to;
 - current service mode to identify ready-to-serve peers;
-- client TLS certificate to identify itself to other peers (optional, in case of TLS-enabled mode).
 
 ### Outputs
 Manager provides:
@@ -52,18 +47,9 @@ To see the API specification and available methods, check the
 - [OpenAPI/Swagger specs](../../api/README.md);
 - [Protocol Buffer definitions](../../proto/README.md).
 
-### TLS enabled/disabled modes
-As the TSS protocol requires a secure connection between the parties, the server should be able to handle both TLS-enabled and disabled modes.
+## Messages transport
 
-In case of a TLS-disabled party server, the server should be able to accept incoming connections without any additional configuration.
-To identify the peer, server will use the public key from the peer's request.
+To ensure the secure and reliable message transport, the P2P module uses the gRPC protocol and the mTLS encryption.
+It maps provided parties' certificates to their Bridge Core addresses for authentication and authorization purposes.
 
-**NOTE: do not use the TLS-disabled mode in production environments as everyone can use someones' public key to connect to the party.**
-
-In case of a TLS-enabled party server, the server should be configured with the TLS certificates.
-It includes:
-- server certificate;
-- server private key;
-- pool of CA certificates to verify the party certificates.
-- party's public keys to identify the peers.
 
