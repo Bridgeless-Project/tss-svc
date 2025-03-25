@@ -148,6 +148,7 @@ func (s *Server) authorizeParty(ctx context.Context) (*core.Address, error) {
 		return nil, status.Error(codes.Unauthenticated, "no client certificate found")
 	}
 
+	// using ONLY the first provided certificate to identify the party
 	clientCert := tlsInfo.State.PeerCertificates[0]
 
 	return s.authParties.Get(clientCert), nil
