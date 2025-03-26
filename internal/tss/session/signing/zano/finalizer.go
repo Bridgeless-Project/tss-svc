@@ -1,4 +1,4 @@
-package finalizer
+package zano
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-type ZanoFinalizer struct {
+type Finalizer struct {
 	withdrawalData *withdrawal.ZanoWithdrawalData
 	signature      *common.SignatureData
 
@@ -28,8 +28,8 @@ type ZanoFinalizer struct {
 	logger  *logan.Entry
 }
 
-func NewZanoFinalizer(db database.DepositsQ, core *core.Connector, client *zano.Client, logger *logan.Entry) *ZanoFinalizer {
-	return &ZanoFinalizer{
+func NewFinalizer(db database.DepositsQ, core *core.Connector, client *zano.Client, logger *logan.Entry) *Finalizer {
+	return &Finalizer{
 		db:      db,
 		core:    core,
 		errChan: make(chan error),
@@ -38,22 +38,22 @@ func NewZanoFinalizer(db database.DepositsQ, core *core.Connector, client *zano.
 	}
 }
 
-func (f *ZanoFinalizer) WithData(withdrawalData *withdrawal.ZanoWithdrawalData) *ZanoFinalizer {
+func (f *Finalizer) WithData(withdrawalData *withdrawal.ZanoWithdrawalData) *Finalizer {
 	f.withdrawalData = withdrawalData
 	return f
 }
 
-func (f *ZanoFinalizer) WithSignature(signature *common.SignatureData) *ZanoFinalizer {
+func (f *Finalizer) WithSignature(signature *common.SignatureData) *Finalizer {
 	f.signature = signature
 	return f
 }
 
-func (f *ZanoFinalizer) WithLocalPartyProposer(proposer bool) *ZanoFinalizer {
+func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
 	f.localPartyProposer = proposer
 	return f
 }
 
-func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
+func (f *Finalizer) Finalize(ctx context.Context) error {
 	f.logger.Info("finalization started")
 	go f.finalize(ctx)
 
@@ -74,7 +74,7 @@ func (f *ZanoFinalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (f *ZanoFinalizer) finalize(ctx context.Context) {
+func (f *Finalizer) finalize(ctx context.Context) {
 	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), f.withdrawalData.ProposalData.TxId); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
 		return

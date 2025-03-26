@@ -1,4 +1,4 @@
-package finalizer
+package evm
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-type EvmFinalizer struct {
+type Finalizer struct {
 	withdrawalData *withdrawal.EvmWithdrawalData
 	signature      *common.SignatureData
 
@@ -27,8 +27,8 @@ type EvmFinalizer struct {
 	logger *logan.Entry
 }
 
-func NewEVMFinalizer(db database.DepositsQ, core *core.Connector, logger *logan.Entry) *EvmFinalizer {
-	return &EvmFinalizer{
+func NewFinalizer(db database.DepositsQ, core *core.Connector, logger *logan.Entry) *Finalizer {
+	return &Finalizer{
 		db:      db,
 		core:    core,
 		errChan: make(chan error),
@@ -36,22 +36,22 @@ func NewEVMFinalizer(db database.DepositsQ, core *core.Connector, logger *logan.
 	}
 }
 
-func (ef *EvmFinalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *EvmFinalizer {
+func (ef *Finalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *Finalizer {
 	ef.withdrawalData = withdrawalData
 	return ef
 }
 
-func (ef *EvmFinalizer) WithSignature(sig *common.SignatureData) *EvmFinalizer {
+func (ef *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
 	ef.signature = sig
 	return ef
 }
 
-func (ef *EvmFinalizer) WithLocalPartyProposer(proposer bool) *EvmFinalizer {
+func (ef *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
 	ef.localPartyProposer = proposer
 	return ef
 }
 
-func (ef *EvmFinalizer) Finalize(ctx context.Context) error {
+func (ef *Finalizer) Finalize(ctx context.Context) error {
 	ef.logger.Info("finalization started")
 	go ef.finalize(ctx)
 
@@ -74,7 +74,7 @@ func (ef *EvmFinalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (ef *EvmFinalizer) finalize(ctx context.Context) {
+func (ef *Finalizer) finalize(ctx context.Context) {
 	signature := convertToEthSignature(ef.signature)
 	if err := ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature); err != nil {
 		ef.errChan <- errors.Wrap(err, "failed to update signature")

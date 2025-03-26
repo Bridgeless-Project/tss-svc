@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 
 	"github.com/go-chi/chi/v5"
@@ -16,7 +17,6 @@ import (
 	srvhttp "github.com/hyle-team/tss-svc/internal/api/http"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	"github.com/hyle-team/tss-svc/internal/api/types"
-	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
@@ -45,7 +45,7 @@ func NewServer(
 	db db.DepositsQ,
 	logger *logan.Entry,
 	clients clients.Repository,
-	processor *bridge.DepositFetcher,
+	processor *deposit.Fetcher,
 	broadcaster *p2p.Broadcaster,
 	self core.Address,
 	connector *coreConnector.Connector,

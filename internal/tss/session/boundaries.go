@@ -1,4 +1,4 @@
-package tss
+package session
 
 import "time"
 

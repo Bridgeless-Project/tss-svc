@@ -1,10 +1,11 @@
-package bridge
+package acceptor
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
@@ -26,7 +27,7 @@ type distributedDeposit struct {
 }
 
 type DepositAcceptorSession struct {
-	fetcher *DepositFetcher
+	fetcher *deposit.Fetcher
 	data    db.DepositsQ
 	logger  *logan.Entry
 
@@ -37,7 +38,7 @@ type DepositAcceptorSession struct {
 
 func NewDepositAcceptorSession(
 	distributors []p2p.Party,
-	fetcher *DepositFetcher,
+	fetcher *deposit.Fetcher,
 	data db.DepositsQ,
 	logger *logan.Entry,
 ) *DepositAcceptorSession {

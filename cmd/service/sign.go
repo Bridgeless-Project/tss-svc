@@ -81,8 +81,8 @@ var signCmd = &cobra.Command{
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			signing.DefaultSessionParams{
-				SessionParams: cfg.TssSessionParams(),
-				SigningData:   []byte(dataToSign),
+				Params:      cfg.TssSessionParams(),
+				SigningData: []byte(dataToSign),
 			},
 			parties,
 			connectionManager.GetReadyCount,

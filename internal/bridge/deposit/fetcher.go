@@ -1,4 +1,4 @@
-package bridge
+package deposit
 
 import (
 	"math/big"
@@ -9,19 +9,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DepositFetcher struct {
+type Fetcher struct {
 	core    *connector.Connector
 	clients clients.Repository
 }
 
-func NewDepositFetcher(clients clients.Repository, core *connector.Connector) *DepositFetcher {
-	return &DepositFetcher{
+func NewFetcher(clients clients.Repository, core *connector.Connector) *Fetcher {
+	return &Fetcher{
 		clients: clients,
 		core:    core,
 	}
 }
 
-func (p *DepositFetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
+func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	sourceClient, err := p.clients.Client(identifier.ChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting source clients")

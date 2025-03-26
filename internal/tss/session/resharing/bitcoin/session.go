@@ -1,4 +1,4 @@
-package resharing
+package bitcoin
 
 import (
 	"context"
@@ -9,28 +9,25 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
-	"github.com/hyle-team/tss-svc/internal/tss/session/resharing/finalizer"
-
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/consensus"
-	resharingCons "github.com/hyle-team/tss-svc/internal/tss/session/resharing/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-var _ p2p.TssSession = &BitcoinSession{}
+var _ p2p.TssSession = &Session{}
 
-type BitcoinSessionParams struct {
-	SessionParams     tss.SessionParams
+type SessionParams struct {
+	SessionParams     session.Params
 	ConsolidateParams bitcoin.ConsolidateOutputsParams
 }
 
-type BitcoinSession struct {
+type Session struct {
 	sessionId string
 	self      tss.LocalSignParty
-	params    BitcoinSessionParams
+	params    SessionParams
 	mu        *sync.RWMutex
 	wg        *sync.WaitGroup
 
@@ -39,8 +36,8 @@ type BitcoinSession struct {
 
 	client         *bitcoin.Client
 	signingParty   *tss.SignParty
-	consensusParty *consensus.Consensus[resharingCons.SigningData]
-	finalizer      *finalizer.BitcoinResharingFinalizer
+	consensusParty *consensus.Consensus[SigningData]
+	finalizer      *Finalizer
 
 	resultTx string
 	err      error
@@ -48,15 +45,15 @@ type BitcoinSession struct {
 	logger *logan.Entry
 }
 
-func NewBitcoinSession(
+func NewSession(
 	self tss.LocalSignParty,
 	client *bitcoin.Client,
-	params BitcoinSessionParams,
+	params SessionParams,
 	parties []p2p.Party,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
-) *BitcoinSession {
-	return &BitcoinSession{
+) *Session {
+	return &Session{
 		sessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
 		self:      self,
 		params:    params,
@@ -68,23 +65,23 @@ func NewBitcoinSession(
 
 		client:       client,
 		signingParty: tss.NewSignParty(self, session.GetReshareSessionIdentifier(params.SessionParams.Id), logger.WithField("phase", "signing")),
-		consensusParty: consensus.New[resharingCons.SigningData](
+		consensusParty: consensus.New[SigningData](
 			consensus.LocalConsensusParty{
 				SessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
 				Threshold: self.Threshold,
 				Self:      self.Address,
 			},
 			parties,
-			resharingCons.NewMechanism(client, self.Share.ECDSAPub.ToECDSAPubKey(), params.ConsolidateParams),
+			NewConsensusMechanism(client, self.Share.ECDSAPub.ToECDSAPubKey(), params.ConsolidateParams),
 			logger.WithField("phase", "consensus"),
 		),
-		finalizer: finalizer.NewBitcoinResharingFinalizer(client, self.Share.ECDSAPub.ToECDSAPubKey(), logger.WithField("phase", "finalization")),
+		finalizer: NewFinalizer(client, self.Share.ECDSAPub.ToECDSAPubKey(), logger.WithField("phase", "finalization")),
 
 		logger: logger,
 	}
 }
 
-func (s *BitcoinSession) Run(ctx context.Context) error {
+func (s *Session) Run(ctx context.Context) error {
 	runDelay := time.Until(s.params.SessionParams.StartTime)
 	if runDelay <= 0 {
 		return errors.New("target time is in the past")
@@ -110,11 +107,11 @@ func (s *BitcoinSession) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *BitcoinSession) run(ctx context.Context) {
+func (s *Session) run(ctx context.Context) {
 	defer s.wg.Done()
 
 	// consensus phase
-	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
+	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
 
 	s.consensusParty.Run(consensusCtx)
@@ -137,7 +134,7 @@ func (s *BitcoinSession) run(ctx context.Context) {
 		currentSigData := result.SigData.ProposalData.SigData[idx]
 
 		s.logger.Info(fmt.Sprintf("signing round %d started", idx+1))
-		signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
+		signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
 
 		s.signingParty.WithParties(result.Signers).WithSigningData(currentSigData).Run(signingCtx)
 		signature := s.signingParty.WaitFor()
@@ -162,12 +159,12 @@ func (s *BitcoinSession) run(ctx context.Context) {
 		case <-ctx.Done():
 			s.err = errors.New("signing session cancelled")
 			return
-		case <-time.After(tss.BoundaryBitcoinSingRoundDelay):
+		case <-time.After(session.BoundaryBitcoinSingRoundDelay):
 		}
 	}
 
 	// finalization phase
-	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
+	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, session.BoundaryFinalize)
 	defer finalizerCancel()
 
 	s.resultTx, s.err = s.finalizer.
@@ -179,7 +176,7 @@ func (s *BitcoinSession) run(ctx context.Context) {
 	return
 }
 
-func (s *BitcoinSession) Receive(request *p2p.SubmitRequest) error {
+func (s *Session) Receive(request *p2p.SubmitRequest) error {
 	if request == nil {
 		return errors.New("nil request")
 	}
@@ -208,19 +205,19 @@ func (s *BitcoinSession) Receive(request *p2p.SubmitRequest) error {
 	}
 }
 
-func (s *BitcoinSession) WaitFor() (string, error) {
+func (s *Session) WaitFor() (string, error) {
 	s.wg.Wait()
 	return s.resultTx, s.err
 }
 
-func (s *BitcoinSession) Id() string {
+func (s *Session) Id() string {
 	return s.sessionId
 }
 
-// RegisterIdChangeListener is a no-op for BitcoinResharingSession
-func (s *BitcoinSession) RegisterIdChangeListener(func(oldId string, newId string)) {}
+// RegisterIdChangeListener is a no-op
+func (s *Session) RegisterIdChangeListener(func(oldId string, newId string)) {}
 
-// SigningSessionInfo is a no-op for DefaultSigningSession
-func (s *BitcoinSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+// SigningSessionInfo is a no-op
+func (s *Session) SigningSessionInfo() *p2p.SigningSessionInfo {
 	return nil
 }

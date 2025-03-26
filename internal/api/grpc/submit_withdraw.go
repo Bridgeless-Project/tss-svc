@@ -5,11 +5,11 @@ import (
 
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
-	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -98,7 +98,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	go ctx.Broadcaster(ctxt).Broadcast(&p2p.SubmitRequest{
 		Sender:    ctx.Self(ctxt).String(),
 		Type:      p2p.RequestType_RT_DEPOSIT_DISTRIBUTION,
-		SessionId: bridge.DepositAcceptorSessionIdentifier,
+		SessionId: acceptor.DepositAcceptorSessionIdentifier,
 		Data:      raw,
 	})
 

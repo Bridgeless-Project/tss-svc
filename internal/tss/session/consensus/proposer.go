@@ -7,7 +7,7 @@ import (
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/tss"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -43,7 +43,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 		c.logger.Info("data proposed, waiting for acceptances...")
 	}
 
-	boundedCtx, cancel := context.WithTimeout(context.Background(), tss.BoundaryAcceptance)
+	boundedCtx, cancel := context.WithTimeout(context.Background(), session.BoundaryAcceptance)
 	defer cancel()
 
 	acceptances := Acceptances{}

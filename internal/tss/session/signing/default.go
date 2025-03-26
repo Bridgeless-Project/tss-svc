@@ -16,7 +16,7 @@ import (
 )
 
 type DefaultSessionParams struct {
-	tss.SessionParams
+	session.Params
 	SigningData []byte
 }
 
@@ -88,7 +88,7 @@ func (s *DefaultSession) Run(ctx context.Context) error {
 func (s *DefaultSession) run(ctx context.Context) {
 	defer s.wg.Done()
 
-	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundarySign)
+	boundedCtx, cancel := context.WithTimeout(ctx, session.BoundarySign)
 	defer cancel()
 
 	s.signingParty.Run(boundedCtx)

@@ -1,4 +1,4 @@
-package consensus
+package bitcoin
 
 import (
 	"bytes"
@@ -13,14 +13,14 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/tss/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var (
 	_ consensus.SigningData            = SigningData{}
-	_ consensus.Mechanism[SigningData] = &Mechanism{}
+	_ consensus.Mechanism[SigningData] = &ConsensusMechanism{}
 )
 
 type SigningData struct {
@@ -33,22 +33,22 @@ func (s SigningData) ToPayload() *anypb.Any {
 	return pb
 }
 
-type Mechanism struct {
+type ConsensusMechanism struct {
 	client *bitcoin.Client
 	dstPkh *btcutil.AddressPubKeyHash
 	params bitcoin.ConsolidateOutputsParams
 }
 
-func NewMechanism(client *bitcoin.Client, dst *ecdsa.PublicKey, params bitcoin.ConsolidateOutputsParams) *Mechanism {
+func NewConsensusMechanism(client *bitcoin.Client, dst *ecdsa.PublicKey, params bitcoin.ConsolidateOutputsParams) *ConsensusMechanism {
 	dstPkh, err := bitcoin.PubKeyToPkhCompressed(dst, client.ChainParams())
 	if err != nil {
 		panic(errors.Wrap(err, "failed to convert public key to public key hash"))
 	}
 
-	return &Mechanism{client, dstPkh, params}
+	return &ConsensusMechanism{client, dstPkh, params}
 }
 
-func (m *Mechanism) FormProposalData() (*SigningData, error) {
+func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	tx, sigHashes, err := m.client.ConsolidateOutputs(
 		m.dstPkh,
 		bitcoin.WithFeeRate(m.params.FeeRate),
@@ -72,7 +72,7 @@ func (m *Mechanism) FormProposalData() (*SigningData, error) {
 	}, nil
 }
 
-func (m *Mechanism) FromPayload(payload *anypb.Any) (*SigningData, error) {
+func (m *ConsensusMechanism) FromPayload(payload *anypb.Any) (*SigningData, error) {
 	proposalData := &p2p.BitcoinResharingProposalData{}
 	if err := payload.UnmarshalTo(proposalData); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
@@ -81,7 +81,7 @@ func (m *Mechanism) FromPayload(payload *anypb.Any) (*SigningData, error) {
 	return &SigningData{ProposalData: proposalData}, nil
 }
 
-func (m *Mechanism) VerifyProposedData(data SigningData) error {
+func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {
 	tx := wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(data.ProposalData.SerializedTx)); err != nil {
 		return errors.Wrap(err, "failed to deserialize transaction")
@@ -109,7 +109,7 @@ func (m *Mechanism) VerifyProposedData(data SigningData) error {
 	return nil
 }
 
-func (m *Mechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
+func (m *ConsensusMechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 	var outputsSum int64
 
 	targetScript, err := txscript.PayToAddrScript(m.dstPkh)
@@ -131,7 +131,7 @@ func (m *Mechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 	return outputsSum, nil
 }
 
-func (m *Mechanism) validateInputs(
+func (m *ConsensusMechanism) validateInputs(
 	tx *wire.MsgTx,
 	inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult,
 	sigHashes [][]byte,
@@ -163,7 +163,7 @@ func (m *Mechanism) validateInputs(
 	return inputsSum, nil
 }
 
-func (m *Mechanism) validateChange(tx *wire.MsgTx, inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
+func (m *ConsensusMechanism) validateChange(tx *wire.MsgTx, inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
 	actualFee := inputsSum - outputsSum
 	if actualFee <= 0 {
 		return errors.New("invalid change amount")

@@ -1,4 +1,4 @@
-package finalizer
+package bitcoin
 
 import (
 	"bytes"
@@ -10,16 +10,15 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
-	resharingCons "github.com/hyle-team/tss-svc/internal/tss/session/resharing/consensus"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-type BitcoinResharingFinalizer struct {
+type Finalizer struct {
 	tssPub []byte
 	client *bitcoin.Client
 
-	data               *resharingCons.SigningData
+	data               *SigningData
 	signatures         []*common.SignatureData
 	localPartyProposer bool
 
@@ -29,8 +28,8 @@ type BitcoinResharingFinalizer struct {
 	logger *logan.Entry
 }
 
-func NewBitcoinResharingFinalizer(client *bitcoin.Client, pubKey *ecdsa.PublicKey, logger *logan.Entry) *BitcoinResharingFinalizer {
-	return &BitcoinResharingFinalizer{
+func NewFinalizer(client *bitcoin.Client, pubKey *ecdsa.PublicKey, logger *logan.Entry) *Finalizer {
+	return &Finalizer{
 		client:  client,
 		errChan: make(chan error),
 		logger:  logger,
@@ -38,22 +37,22 @@ func NewBitcoinResharingFinalizer(client *bitcoin.Client, pubKey *ecdsa.PublicKe
 	}
 }
 
-func (f *BitcoinResharingFinalizer) WithData(data *resharingCons.SigningData) *BitcoinResharingFinalizer {
+func (f *Finalizer) WithData(data *SigningData) *Finalizer {
 	f.data = data
 	return f
 }
 
-func (f *BitcoinResharingFinalizer) WithSignatures(signatures []*common.SignatureData) *BitcoinResharingFinalizer {
+func (f *Finalizer) WithSignatures(signatures []*common.SignatureData) *Finalizer {
 	f.signatures = signatures
 	return f
 }
 
-func (f *BitcoinResharingFinalizer) WithLocalPartyProposer(proposer bool) *BitcoinResharingFinalizer {
+func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
 	f.localPartyProposer = proposer
 	return f
 }
 
-func (f *BitcoinResharingFinalizer) Finalize(ctx context.Context) (string, error) {
+func (f *Finalizer) Finalize(ctx context.Context) (string, error) {
 	f.logger.Info("finalization started")
 	go f.finalize()
 
@@ -67,7 +66,7 @@ func (f *BitcoinResharingFinalizer) Finalize(ctx context.Context) (string, error
 	}
 }
 
-func (f *BitcoinResharingFinalizer) finalize() {
+func (f *Finalizer) finalize() {
 	defer close(f.errChan)
 
 	tx := wire.MsgTx{}

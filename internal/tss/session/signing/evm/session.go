@@ -1,4 +1,4 @@
-package signing
+package evm
 
 import (
 	"context"
@@ -6,26 +6,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
+	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
+	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/tss/session"
+	consensus2 "github.com/hyle-team/tss-svc/internal/tss/session/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
+
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/consensus"
-	"github.com/hyle-team/tss-svc/internal/tss/finalizer"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"go.uber.org/atomic"
 )
 
-var _ p2p.TssSession = &ZanoSession{}
+var _ p2p.TssSession = &Session{}
 
-type ZanoSession struct {
+type Session struct {
 	sessionId            *atomic.String
 	idChangeListener     func(oldId string, newId string)
 	mu                   *sync.RWMutex
@@ -34,30 +35,30 @@ type ZanoSession struct {
 	parties []p2p.Party
 	self    tss.LocalSignParty
 	db      db.DepositsQ
-	params  session.SigningSessionParams
+	params  session.SigningParams
 	logger  *logan.Entry
 
-	client        *zano.Client
 	coreConnector *connector.Connector
-	fetcher       *bridge.DepositFetcher
+	fetcher       *deposit.Fetcher
+	client        *evm.Client
 
-	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
+	mechanism consensus2.Mechanism[withdrawal.EvmWithdrawalData]
 
 	signingParty   *tss.SignParty
-	consensusParty *consensus.Consensus[withdrawal.ZanoWithdrawalData]
-	finalizer      *finalizer.ZanoFinalizer
+	consensusParty *consensus2.Consensus[withdrawal.EvmWithdrawalData]
+	finalizer      *Finalizer
 }
 
-func NewZanoSession(
+func NewEvmSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
-	params session.SigningSessionParams,
+	params session.SigningParams,
 	db db.DepositsQ,
 	logger *logan.Entry,
-) *ZanoSession {
+) *Session {
 	sessionId := session.GetConcreteSigningSessionIdentifier(params.ChainId, params.Id)
 
-	return &ZanoSession{
+	return &Session{
 		sessionId:            atomic.NewString(sessionId),
 		mu:                   &sync.RWMutex{},
 		nextSessionStartTime: params.StartTime,
@@ -71,23 +72,23 @@ func NewZanoSession(
 	}
 }
 
-func (s *ZanoSession) WithDepositFetcher(fetcher *bridge.DepositFetcher) *ZanoSession {
+func (s *Session) WithDepositFetcher(fetcher *deposit.Fetcher) *Session {
 	s.fetcher = fetcher
 	return s
 }
 
-func (s *ZanoSession) WithCoreConnector(conn *connector.Connector) *ZanoSession {
-	s.coreConnector = conn
-	return s
-}
-
-func (s *ZanoSession) WithClient(client *zano.Client) *ZanoSession {
+func (s *Session) WithClient(client *evm.Client) *Session {
 	s.client = client
 	return s
 }
 
+func (s *Session) WithCoreConnector(conn *connector.Connector) *Session {
+	s.coreConnector = conn
+	return s
+}
+
 // Build is a method that should be called before Run to prepare the session for execution.
-func (s *ZanoSession) Build() error {
+func (s *Session) Build() error {
 	if s.fetcher == nil {
 		return errors.New("deposit fetcher is not set")
 	}
@@ -98,17 +99,17 @@ func (s *ZanoSession) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.mechanism = withdrawal.NewConsensusMechanism[withdrawal.ZanoWithdrawalData](
+	s.mechanism = signing.NewConsensusMechanism[withdrawal.EvmWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewZanoConstructor(s.client),
+		withdrawal.NewEvmConstructor(s.client),
 		s.fetcher,
 	)
 
 	return nil
 }
 
-func (s *ZanoSession) Run(ctx context.Context) error {
+func (s *Session) Run(ctx context.Context) error {
 	if time.Until(s.nextSessionStartTime) <= 0 {
 		return errors.New("target time is in the past")
 	}
@@ -116,8 +117,8 @@ func (s *ZanoSession) Run(ctx context.Context) error {
 	for {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
-		s.consensusParty = consensus.New[withdrawal.ZanoWithdrawalData](
-			consensus.LocalConsensusParty{
+		s.consensusParty = consensus2.New[withdrawal.EvmWithdrawalData](
+			consensus2.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Address,
@@ -127,7 +128,7 @@ func (s *ZanoSession) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.finalizer = finalizer.NewZanoFinalizer(s.db, s.coreConnector, s.client, s.logger.WithField("phase", "finalizing"))
+		s.finalizer = NewFinalizer(s.db, s.coreConnector, s.logger.WithField("phase", "finalizing"))
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(s.nextSessionStartTime)))
@@ -137,7 +138,7 @@ func (s *ZanoSession) Run(ctx context.Context) error {
 			s.logger.Info("signing session cancelled")
 			return nil
 		case <-time.After(time.Until(s.nextSessionStartTime)):
-			s.nextSessionStartTime = s.nextSessionStartTime.Add(tss.BoundarySigningSession)
+			s.nextSessionStartTime = s.nextSessionStartTime.Add(session.BoundarySigningSession)
 		}
 
 		s.logger.Info(fmt.Sprintf("signing session %s started", s.Id()))
@@ -150,9 +151,9 @@ func (s *ZanoSession) Run(ctx context.Context) error {
 	}
 }
 
-func (s *ZanoSession) runSession(ctx context.Context) error {
+func (s *Session) runSession(ctx context.Context) error {
 	// consensus phase
-	consensusCtx, consCtxCancel := context.WithTimeout(ctx, tss.BoundaryConsensus)
+	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
 
 	s.consensusParty.Run(consensusCtx)
@@ -188,7 +189,7 @@ func (s *ZanoSession) runSession(ctx context.Context) error {
 	}
 
 	// signing phase
-	signingCtx, sigCtxCancel := context.WithTimeout(ctx, tss.BoundarySign)
+	signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
 	defer sigCtxCancel()
 
 	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
@@ -198,7 +199,7 @@ func (s *ZanoSession) runSession(ctx context.Context) error {
 	}
 
 	// finalization phase
-	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, tss.BoundaryFinalize)
+	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, session.BoundaryFinalize)
 	defer finalizerCancel()
 
 	err = s.finalizer.
@@ -213,18 +214,18 @@ func (s *ZanoSession) runSession(ctx context.Context) error {
 	return nil
 }
 
-func (s *ZanoSession) Id() string {
+func (s *Session) Id() string {
 	return s.sessionId.Load()
 }
 
-func (s *ZanoSession) incrementSessionId() {
+func (s *Session) incrementSessionId() {
 	prevSessionId := s.Id()
 	nextSessionId := session.IncrementSessionIdentifier(prevSessionId)
 	s.sessionId.Store(nextSessionId)
 	s.idChangeListener(prevSessionId, nextSessionId)
 }
 
-func (s *ZanoSession) Receive(request *p2p.SubmitRequest) error {
+func (s *Session) Receive(request *p2p.SubmitRequest) error {
 	if request == nil {
 		return errors.New("nil request")
 	}
@@ -257,11 +258,11 @@ func (s *ZanoSession) Receive(request *p2p.SubmitRequest) error {
 	}
 }
 
-func (s *ZanoSession) RegisterIdChangeListener(f func(oldId string, newId string)) {
+func (s *Session) RegisterIdChangeListener(f func(oldId string, newId string)) {
 	s.idChangeListener = f
 }
 
-func (s *ZanoSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+func (s *Session) SigningSessionInfo() *p2p.SigningSessionInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

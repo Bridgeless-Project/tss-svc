@@ -1,51 +1,29 @@
-package withdrawal
+package signing
 
 import (
-	"github.com/hyle-team/tss-svc/internal/bridge"
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
+	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/tss/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-type DepositSigningData interface {
-	consensus.SigningData
-	DepositIdentifier() db.DepositIdentifier
-}
+var _ consensus.Mechanism[withdrawal.DepositSigningData] = &ConsensusMechanism[withdrawal.DepositSigningData]{}
 
-type SigDataFormer[T DepositSigningData] interface {
-	FormSigningData(deposit db.Deposit) (*T, error)
-}
-
-type SigDataPayloader[T DepositSigningData] interface {
-	FromPayload(payload *anypb.Any) (*T, error)
-}
-
-type SigDataValidator[T DepositSigningData] interface {
-	IsValid(data T, deposit db.Deposit) (bool, error)
-}
-
-type Constructor[T DepositSigningData] interface {
-	SigDataFormer[T]
-	SigDataValidator[T]
-	SigDataPayloader[T]
-}
-
-var _ consensus.Mechanism[DepositSigningData] = &ConsensusMechanism[DepositSigningData]{}
-
-type ConsensusMechanism[T DepositSigningData] struct {
+type ConsensusMechanism[T withdrawal.DepositSigningData] struct {
 	depositSelector db.DepositsSelector
 	depositsQ       db.DepositsQ
-	constructor     Constructor[T]
-	fetcher         bridge.DepositFetcher
+	constructor     withdrawal.Constructor[T]
+	fetcher         deposit.Fetcher
 }
 
-func NewConsensusMechanism[T DepositSigningData](
+func NewConsensusMechanism[T withdrawal.DepositSigningData](
 	chainId string,
 	depositsQ db.DepositsQ,
-	constructor Constructor[T],
-	fetcher *bridge.DepositFetcher,
+	constructor withdrawal.Constructor[T],
+	fetcher *deposit.Fetcher,
 ) *ConsensusMechanism[T] {
 	var pendingWithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
 	return &ConsensusMechanism[T]{

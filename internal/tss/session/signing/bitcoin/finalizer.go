@@ -1,4 +1,4 @@
-package finalizer
+package bitcoin
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-type BitcoinFinalizer struct {
+type Finalizer struct {
 	withdrawalData *withdrawal.BitcoinWithdrawalData
 	signatures     []*common.SignatureData
 
@@ -35,14 +35,14 @@ type BitcoinFinalizer struct {
 	logger  *logan.Entry
 }
 
-func NewBitcoinFinalizer(
+func NewFinalizer(
 	db database.DepositsQ,
 	core *core.Connector,
 	client *bitcoin.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
-) *BitcoinFinalizer {
-	return &BitcoinFinalizer{
+) *Finalizer {
+	return &Finalizer{
 		db:      db,
 		core:    core,
 		errChan: make(chan error),
@@ -52,22 +52,22 @@ func NewBitcoinFinalizer(
 	}
 }
 
-func (f *BitcoinFinalizer) WithData(withdrawalData *withdrawal.BitcoinWithdrawalData) *BitcoinFinalizer {
+func (f *Finalizer) WithData(withdrawalData *withdrawal.BitcoinWithdrawalData) *Finalizer {
 	f.withdrawalData = withdrawalData
 	return f
 }
 
-func (f *BitcoinFinalizer) WithSignatures(signatures []*common.SignatureData) *BitcoinFinalizer {
+func (f *Finalizer) WithSignatures(signatures []*common.SignatureData) *Finalizer {
 	f.signatures = signatures
 	return f
 }
 
-func (f *BitcoinFinalizer) WithLocalPartyProposer(proposer bool) *BitcoinFinalizer {
+func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
 	f.localPartyProposer = proposer
 	return f
 }
 
-func (f *BitcoinFinalizer) Finalize(ctx context.Context) error {
+func (f *Finalizer) Finalize(ctx context.Context) error {
 	f.logger.Info("finalization started")
 	go f.finalize(ctx)
 
@@ -88,7 +88,7 @@ func (f *BitcoinFinalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (f *BitcoinFinalizer) finalize(ctx context.Context) {
+func (f *Finalizer) finalize(ctx context.Context) {
 	tx := wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(f.withdrawalData.ProposalData.SerializedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to deserialize transaction")

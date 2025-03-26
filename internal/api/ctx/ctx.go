@@ -2,8 +2,9 @@ package ctx
 
 import (
 	"context"
-	"github.com/hyle-team/tss-svc/internal/bridge"
+
 	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -56,14 +57,14 @@ func Clients(ctx context.Context) bridgeTypes.Repository {
 	return ctx.Value(clientsKey).(bridgeTypes.Repository)
 }
 
-func FetcherProvider(processor *bridge.DepositFetcher) func(context.Context) context.Context {
+func FetcherProvider(processor *deposit.Fetcher) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, processorKey, processor)
 	}
 }
 
-func Fetcher(ctx context.Context) *bridge.DepositFetcher {
-	return ctx.Value(processorKey).(*bridge.DepositFetcher)
+func Fetcher(ctx context.Context) *deposit.Fetcher {
+	return ctx.Value(processorKey).(*deposit.Fetcher)
 }
 
 func BroadcasterProvider(b *p2p.Broadcaster) func(context.Context) context.Context {
