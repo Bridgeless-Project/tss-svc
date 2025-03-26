@@ -1,25 +1,26 @@
-package chains
+package evm
 
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )
 
-type EvmChain struct {
+type Chain struct {
 	Id            string
 	Rpc           *ethclient.Client
 	BridgeAddress common.Address
 	Confirmations uint64
 }
 
-func (c Chain) Evm() EvmChain {
-	if c.Type != TypeEVM {
-		panic("chains is not EVM")
+func FromChain(c chain.Chain) Chain {
+	if c.Type != chain.TypeEVM {
+		panic("chain is not EVM")
 	}
 
-	chain := EvmChain{
+	chain := Chain{
 		Id:            c.Id,
 		Confirmations: c.Confirmations}
 

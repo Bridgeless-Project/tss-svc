@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
+	zano2 "github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
 	database "github.com/hyle-team/tss-svc/internal/db"
@@ -20,7 +20,7 @@ type Finalizer struct {
 	db   database.DepositsQ
 	core *core.Connector
 
-	client *zano.Client
+	client *zano2.Client
 
 	localPartyProposer bool
 
@@ -28,7 +28,7 @@ type Finalizer struct {
 	logger  *logan.Entry
 }
 
-func NewFinalizer(db database.DepositsQ, core *core.Connector, client *zano.Client, logger *logan.Entry) *Finalizer {
+func NewFinalizer(db database.DepositsQ, core *core.Connector, client *zano2.Client, logger *logan.Entry) *Finalizer {
 	return &Finalizer{
 		db:      db,
 		core:    core,
@@ -85,9 +85,9 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	_, err := f.client.EmitAssetSigned(zano.SignedTransaction{
-		Signature: zano.EncodeSignature(f.signature),
-		UnsignedTransaction: zano.UnsignedTransaction{
+	_, err := f.client.EmitAssetSigned(zano2.SignedTransaction{
+		Signature: zano2.EncodeSignature(f.signature),
+		UnsignedTransaction: zano2.UnsignedTransaction{
 			ExpectedTxHash: f.withdrawalData.ProposalData.TxId,
 			FinalizedTx:    f.withdrawalData.ProposalData.FinalizedTx,
 			Data:           f.withdrawalData.ProposalData.UnsignedTx,

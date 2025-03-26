@@ -7,8 +7,8 @@ import (
 	"syscall"
 
 	"github.com/hyle-team/tss-svc/cmd/utils"
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	bitcoin3 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	bitcoin2 "github.com/hyle-team/tss-svc/internal/tss/session/resharing/bitcoin"
@@ -17,7 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var consolidateParams = bitcoin.DefaultConsolidateOutputsParams
+var consolidateParams = bitcoin3.DefaultConsolidateOutputsParams
 
 func init() {
 	registerReshareBtcOptions(reshareBtcCmd)
@@ -54,10 +54,10 @@ var reshareBtcCmd = &cobra.Command{
 		}
 		parties := cfg.Parties()
 
-		var client *bitcoin.Client
-		for _, chain := range cfg.Chains() {
-			if chain.Type == chains.TypeBitcoin {
-				client = bitcoin.NewBridgeClient(chain.Bitcoin())
+		var client *bitcoin3.Client
+		for _, ch := range cfg.Chains() {
+			if ch.Type == chain.TypeBitcoin {
+				client = bitcoin3.NewBridgeClient(bitcoin3.FromChain(ch))
 				break
 			}
 		}

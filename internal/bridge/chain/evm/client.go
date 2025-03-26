@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm/contracts"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm/contracts"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -25,14 +25,14 @@ var events = []string{
 }
 
 type Client struct {
-	chain         chains.EvmChain
+	chain         Chain
 	contractABI   abi.ABI
 	depositEvents []abi.Event
 	logger        *logan.Entry
 }
 
-// NewBridgeClient creates a new bridge Client for the given chains.
-func NewBridgeClient(chain chains.EvmChain) *Client {
+// NewBridgeClient creates a new bridge Client for the given chain.
+func NewBridgeClient(chain Chain) *Client {
 	bridgeAbi, err := abi.JSON(strings.NewReader(contracts.BridgeMetaData.ABI))
 	if err != nil {
 		panic(errors.Wrap(err, "failed to parse bridge ABI"))
@@ -58,8 +58,8 @@ func (p *Client) ChainId() string {
 	return p.chain.Id
 }
 
-func (p *Client) Type() chains.Type {
-	return chains.TypeEVM
+func (p *Client) Type() chain.Type {
+	return chain.TypeEVM
 }
 
 func (p *Client) getDepositLogType(log *types.Log) string {

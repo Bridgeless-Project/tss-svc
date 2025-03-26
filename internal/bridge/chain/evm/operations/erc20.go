@@ -24,7 +24,7 @@ type WithdrawERC20Content struct {
 func NewWithdrawERC20Content(data db.Deposit) (*WithdrawERC20Content, error) {
 	destinationChainID, ok := new(big.Int).SetString(data.WithdrawalChainId, 10)
 	if !ok {
-		return nil, errors.New("invalid chains id")
+		return nil, errors.New("invalid chain id")
 	}
 
 	withdrawalAmount, ok := new(big.Int).SetString(data.WithdrawalAmount, 10)

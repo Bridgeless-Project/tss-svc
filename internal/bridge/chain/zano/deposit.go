@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/db"
 
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"

@@ -1,4 +1,4 @@
-package chains
+package bitcoin
 
 import (
 	"reflect"
@@ -6,53 +6,54 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )
 
-type BitcoinRpc struct {
+type Rpc struct {
 	Wallet *rpcclient.Client `fig:"wallet,required"`
 	Node   *rpcclient.Client `fig:"node,required"`
 }
-type Bitcoin struct {
+type Chain struct {
 	Id            string
 	Confirmations uint64
-	Rpc           BitcoinRpc
+	Rpc           Rpc
 	Params        *chaincfg.Params
 	Receivers     []btcutil.Address
 }
 
-func (c Chain) Bitcoin() Bitcoin {
-	if c.Type != TypeBitcoin {
+func FromChain(c chain.Chain) Chain {
+	if c.Type != chain.TypeBitcoin {
 		panic("invalid chain type")
 	}
 
-	chain := Bitcoin{Id: c.Id, Confirmations: c.Confirmations}
-	if c.Network == NetworkMainnet {
-		chain.Params = &chaincfg.MainNetParams
-	} else if c.Network == NetworkTestnet {
-		chain.Params = &chaincfg.TestNet3Params
+	ch := Chain{Id: c.Id, Confirmations: c.Confirmations}
+	if c.Network == chain.NetworkMainnet {
+		ch.Params = &chaincfg.MainNetParams
+	} else if c.Network == chain.NetworkTestnet {
+		ch.Params = &chaincfg.TestNet3Params
 	} else {
 		panic("invalid network")
 	}
 
-	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(btcClientHook).Please(); err != nil {
+	if err := figure.Out(&ch.Rpc).FromInterface(c.Rpc).With(clientHook).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to init bitcoin chain rpc"))
 	}
-	if err := figure.Out(&chain.Receivers).FromInterface(c.BridgeAddresses).With(bitcoinAddrHook(chain.Params)).Please(); err != nil {
+	if err := figure.Out(&ch.Receivers).FromInterface(c.BridgeAddresses).With(addrHook(ch.Params)).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
 	}
 
 	// ensuring wallet is properly configured
-	_, err := chain.Rpc.Wallet.GetWalletInfo()
+	_, err := ch.Rpc.Wallet.GetWalletInfo()
 	if err != nil {
 		panic(errors.Wrap(err, "failed to get wallet info"))
 	}
 
-	return chain
+	return ch
 }
 
-func bitcoinAddrHook(params *chaincfg.Params) figure.Hooks {
+func addrHook(params *chaincfg.Params) figure.Hooks {
 	return figure.Hooks{
 		"btcutil.Address": func(value interface{}) (reflect.Value, error) {
 			switch v := value.(type) {
@@ -70,7 +71,7 @@ func bitcoinAddrHook(params *chaincfg.Params) figure.Hooks {
 	}
 }
 
-var btcClientHook = figure.Hooks{
+var clientHook = figure.Hooks{
 	"*rpcclient.Client": func(value interface{}) (reflect.Value, error) {
 		switch v := value.(type) {
 		case map[string]interface{}:

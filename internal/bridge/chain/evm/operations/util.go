@@ -3,8 +3,9 @@ package operations
 import (
 	"bytes"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func ToBytes32(arr []byte) []byte {

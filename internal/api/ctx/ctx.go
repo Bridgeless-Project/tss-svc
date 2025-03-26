@@ -3,7 +3,7 @@ package ctx
 import (
 	"context"
 
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"

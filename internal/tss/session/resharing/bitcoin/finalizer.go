@@ -9,14 +9,14 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
+	bitcoin2 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Finalizer struct {
 	tssPub []byte
-	client *bitcoin.Client
+	client *bitcoin2.Client
 
 	data               *SigningData
 	signatures         []*common.SignatureData
@@ -28,7 +28,7 @@ type Finalizer struct {
 	logger *logan.Entry
 }
 
-func NewFinalizer(client *bitcoin.Client, pubKey *ecdsa.PublicKey, logger *logan.Entry) *Finalizer {
+func NewFinalizer(client *bitcoin2.Client, pubKey *ecdsa.PublicKey, logger *logan.Entry) *Finalizer {
 	return &Finalizer{
 		client:  client,
 		errChan: make(chan error),
@@ -74,7 +74,7 @@ func (f *Finalizer) finalize() {
 		f.errChan <- errors.Wrap(err, "failed to deserialize transaction")
 		return
 	}
-	if err := bitcoin.InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
+	if err := bitcoin2.InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to inject signatures")
 		return
 	}

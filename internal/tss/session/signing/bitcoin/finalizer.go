@@ -9,7 +9,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
+	bitcoin2 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	core "github.com/hyle-team/tss-svc/internal/core/connector"
 	database "github.com/hyle-team/tss-svc/internal/db"
@@ -27,7 +27,7 @@ type Finalizer struct {
 	db   database.DepositsQ
 	core *core.Connector
 
-	client *bitcoin.Client
+	client *bitcoin2.Client
 
 	localPartyProposer bool
 
@@ -38,7 +38,7 @@ type Finalizer struct {
 func NewFinalizer(
 	db database.DepositsQ,
 	core *core.Connector,
-	client *bitcoin.Client,
+	client *bitcoin2.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
 ) *Finalizer {
@@ -94,7 +94,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		f.errChan <- errors.Wrap(err, "failed to deserialize transaction")
 		return
 	}
-	if err := bitcoin.InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
+	if err := bitcoin2.InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to inject signatures")
 		return
 	}

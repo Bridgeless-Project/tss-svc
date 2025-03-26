@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -88,11 +88,11 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 
 			deposit, err = d.fetcher.FetchDeposit(id)
 			if err != nil {
-				if clients.IsPendingDepositError(err) {
+				if chain.IsPendingDepositError(err) {
 					d.logger.Warn("deposit still pending")
 					continue
 				}
-				if clients.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
+				if chain.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
 					deposit = &db.Deposit{
 						DepositIdentifier: id,
 						WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,

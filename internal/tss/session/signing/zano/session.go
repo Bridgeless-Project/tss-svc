@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"

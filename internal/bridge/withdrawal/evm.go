@@ -3,7 +3,7 @@ package withdrawal
 import (
 	"bytes"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"

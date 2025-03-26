@@ -12,7 +12,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )

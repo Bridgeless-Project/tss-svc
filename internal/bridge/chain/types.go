@@ -1,15 +1,14 @@
-package clients
+package chain
 
 import (
 	"math/big"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 
 var (
-	ErrChainNotSupported      = errors.New("chains not supported")
+	ErrChainNotSupported      = errors.New("chain not supported")
 	ErrTxPending              = errors.New("transaction is pending")
 	ErrTxFailed               = errors.New("transaction failed")
 	ErrTxNotFound             = errors.New("transaction not found")
@@ -42,7 +41,7 @@ func IsInvalidDepositError(err error) bool {
 }
 
 type Client interface {
-	Type() chains.Type
+	Type() Type
 	ChainId() string
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 
@@ -54,4 +53,59 @@ type Client interface {
 type Repository interface {
 	Client(chainId string) (Client, error)
 	SupportsChain(chainId string) bool
+}
+
+type Chain struct {
+	Id              string `fig:"id,required"`
+	Type            Type   `fig:"type,required"`
+	Confirmations   uint64 `fig:"confirmations,required"`
+	Rpc             any    `fig:"rpc,required"`
+	BridgeAddresses any    `fig:"bridge_addresses,required"`
+
+	Wallet  string  `fig:"wallet"`
+	Network Network `fig:"network"`
+}
+
+type Type string
+
+const (
+	TypeEVM     Type = "evm"
+	TypeZano    Type = "zano"
+	TypeBitcoin Type = "bitcoin"
+	TypeOther   Type = "other"
+)
+
+var typesMap = map[Type]struct{}{
+	TypeEVM:     {},
+	TypeZano:    {},
+	TypeOther:   {},
+	TypeBitcoin: {},
+}
+
+func (c Type) Validate() error {
+	if _, ok := typesMap[c]; !ok {
+		return errors.New("invalid chain type")
+	}
+
+	return nil
+}
+
+type Network string
+
+const (
+	NetworkMainnet Network = "mainnet"
+	NetworkTestnet Network = "testnet"
+)
+
+var networksMap = map[Network]struct{}{
+	NetworkMainnet: {},
+	NetworkTestnet: {},
+}
+
+func (n Network) Validate() error {
+	if _, ok := networksMap[n]; !ok {
+		return errors.New("invalid network")
+	}
+
+	return nil
 }

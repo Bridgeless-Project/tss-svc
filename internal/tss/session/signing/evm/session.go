@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	connector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/tss/session"

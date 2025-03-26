@@ -8,7 +8,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 )
 
 const ConsolidationThreshold = 20
@@ -16,11 +16,11 @@ const ConsolidationThreshold = 20
 var dustAmount = big.NewInt(547)
 
 type Client struct {
-	chain     chains.Bitcoin
+	chain     Chain
 	mockedKey *btcec.PrivateKey
 }
 
-func NewBridgeClient(chain chains.Bitcoin) *Client {
+func NewBridgeClient(chain Chain) *Client {
 	mockedKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		panic(fmt.Sprintf("failed to create mocked private key: %v", err))
@@ -37,8 +37,8 @@ func (c *Client) ChainId() string {
 	return c.chain.Id
 }
 
-func (c *Client) Type() chains.Type {
-	return chains.TypeBitcoin
+func (c *Client) Type() chain.Type {
+	return chain.TypeBitcoin
 }
 
 func (c *Client) AddressValid(addr string) bool {

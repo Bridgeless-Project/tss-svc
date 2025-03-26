@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
+	bitcoin2 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -43,7 +43,7 @@ type Session struct {
 
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
-	client        *bitcoin.Client
+	client        *bitcoin2.Client
 
 	signConsMechanism          consensus2.Mechanism[withdrawal.BitcoinWithdrawalData]
 	consolidationConsMechanism consensus2.Mechanism[resharingConsensus.SigningData]
@@ -87,7 +87,7 @@ func (s *Session) WithDepositFetcher(fetcher *deposit.Fetcher) *Session {
 	return s
 }
 
-func (s *Session) WithClient(client *bitcoin.Client) *Session {
+func (s *Session) WithClient(client *bitcoin2.Client) *Session {
 	s.client = client
 	return s
 }
@@ -119,7 +119,7 @@ func (s *Session) Build() error {
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
 		s.self.Share.ECDSAPub.ToECDSAPubKey(),
-		bitcoin.DefaultConsolidateOutputsParams,
+		bitcoin2.DefaultConsolidateOutputsParams,
 	)
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 
@@ -17,7 +18,6 @@ import (
 	srvhttp "github.com/hyle-team/tss-svc/internal/api/http"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	"github.com/hyle-team/tss-svc/internal/api/types"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -44,7 +44,7 @@ func NewServer(
 	http net.Listener,
 	db db.DepositsQ,
 	logger *logan.Entry,
-	clients clients.Repository,
+	clients chain.Repository,
 	processor *deposit.Fetcher,
 	broadcaster *p2p.Broadcaster,
 	self core.Address,

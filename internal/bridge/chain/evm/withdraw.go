@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm/operations"
+	operations2 "github.com/hyle-team/tss-svc/internal/bridge/chain/evm/operations"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
@@ -26,16 +26,16 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	var err error
 
 	if data.WithdrawalToken == bridge.DefaultNativeTokenAddress {
-		operation, err = operations.NewWithdrawNativeContent(data)
+		operation, err = operations2.NewWithdrawNativeContent(data)
 	} else {
-		operation, err = operations.NewWithdrawERC20Content(data)
+		operation, err = operations2.NewWithdrawERC20Content(data)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create operation")
 	}
 
 	hash := operation.CalculateHash()
-	prefixedHash := operations.SetSignaturePrefix(hash)
+	prefixedHash := operations2.SetSignaturePrefix(hash)
 
 	return prefixedHash, nil
 }

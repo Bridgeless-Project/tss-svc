@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/clients"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm/contracts"
+	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm/contracts"
 	"github.com/hyle-team/tss-svc/internal/db"
 
 	"github.com/pkg/errors"
