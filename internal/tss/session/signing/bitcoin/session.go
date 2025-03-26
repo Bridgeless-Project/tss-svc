@@ -57,7 +57,7 @@ type Session struct {
 	signingParty *tss.SignParty
 }
 
-func NewBitcoinSession(
+func NewSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
 	params session.SigningParams,

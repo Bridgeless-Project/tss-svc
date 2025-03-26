@@ -48,7 +48,7 @@ type Session struct {
 	finalizer      *Finalizer
 }
 
-func NewZanoSession(
+func NewSession(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
 	params session.SigningParams,

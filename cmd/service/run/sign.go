@@ -16,9 +16,9 @@ import (
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
-	bitcoin2 "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
-	evm2 "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
-	zano2 "github.com/hyle-team/tss-svc/internal/tss/session/signing/zano"
+	btcSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
+	evmSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
+	zanoSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/zano"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 
@@ -145,11 +145,11 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		}
 	}
 
-	chainsWg := new(sync.WaitGroup)
+	sessionsWg := new(sync.WaitGroup)
 	for _, client := range clients {
-		chainsWg.Add(1)
+		sessionsWg.Add(1)
 		eg.Go(func() error {
-			defer chainsWg.Done()
+			defer sessionsWg.Done()
 
 			var sessParams session.SigningParams
 
@@ -177,6 +177,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 			})
 
 			sessionManager.Add(sess)
+
 			return nil
 		})
 	}
@@ -208,7 +209,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 
 	if syncEnabled {
 		eg.Go(func() error {
-			chainsWg.Wait()
+			sessionsWg.Wait()
 
 			logger.Info("all signing sessions are ready, starting p2p server in sign mode")
 			p2pServer.SetStatus(p2p.PartyStatus_PS_SIGN)
@@ -236,7 +237,7 @@ func configureSigningSession(
 ) (sess p2p.RunnableTssSession) {
 	switch client.Type() {
 	case chain.TypeEVM:
-		evmSession := evm2.NewEvmSession(
+		evmSession := evmSigning.NewSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     share,
@@ -252,7 +253,7 @@ func configureSigningSession(
 		}
 		sess = evmSession
 	case chain.TypeZano:
-		zanoSession := zano2.NewZanoSession(
+		zanoSession := zanoSigning.NewSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     share,
@@ -268,7 +269,7 @@ func configureSigningSession(
 		}
 		sess = zanoSession
 	case chain.TypeBitcoin:
-		btcSession := bitcoin2.NewBitcoinSession(
+		btcSession := btcSigning.NewSession(
 			tss.LocalSignParty{
 				Address:   account.CosmosAddress(),
 				Share:     share,
