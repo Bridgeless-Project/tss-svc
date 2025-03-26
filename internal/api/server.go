@@ -114,7 +114,7 @@ func (s *Server) httpRouter(ctxt context.Context) http.Handler {
 	router.Mount("/", grpcGatewayRouter)
 	router.With(middlewares.HijackedConnectionCloser(ctxt)).Get("/ws/check/{chain_id}/{tx_hash}/{tx_nonce}", srvhttp.CheckWithdrawalWs)
 	router.Mount("/static/api_server.swagger.json", http.FileServer(http.FS(api.Docs)))
-	router.HandleFunc("/api", openapiconsole.Handler("Signer service", "/static/api_server.swagger.json"))
+	router.HandleFunc("/api", openapiconsole.Handler("TSS service API", "/static/api_server.swagger.json"))
 
 	return router
 }
