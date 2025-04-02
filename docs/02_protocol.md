@@ -4,44 +4,174 @@
 Before starting the TSS signing process, parties should generate the general system private key.
 It will be used to sign the transactions or data required to perform the cross-chain transfer.
 Actually, the private key is not generated directly.
+
 By communicating with each other, parties generate the secret shares of the private key that, if combined (and number of shares is bigger than threshold), will be able to sign the provided data just like using the private key.
 As the result, each party will have its own secret share of the private key, which they should keep secure and in secret.
+The secret shares are generated using the third-party [tss-lib](https://github.com/bnb-chain/tss-lib) library.
 
-Check the [keygener](../internal/tss/README.md#keygener) documentation for more details on key generation process.
+**Note**:
+- The keygen process is performed by all parties in the network (they should be active and set with the appropriate service mode);
+- The keygen process can be reused in case of resharing the secret shares or adding new parties to the network to generate the new party private key.
+
+After the keygen process is completed, the output for the local party is the key secret share that is used with other parties to sign the data with the system private party key.
 
 ## TSS Signing
+
+### Signing sessions
 TSS signing process is performed as a series of signing sessions, which are responsible for signing the data required to perform the specific transfer.
-See the [session](../internal/tss/README.md#session) documentation for more session details.
+A TSS signing session is a set of operations that are performed by the parties in the network to process the withdrawal request.
+The main goal of the session is to define the current signers set, the data to be signed, sign the data, and finalize the transfer process.
 
-Signing session process consists of the following steps:
+There are as many active sessions as the total number of supported chains in the system.
+Each session is responsible for processing the withdrawal requests on the specific chain.
+This is done to:
+- prevent the mixing of the withdrawal requests from the same chains (f.e trying to sign the same data twice, use the same UTXO in different transactions etc);
+- speed up the signing process by parallelizing the non-conflicting withdrawal requests processing.
 
-### Acceptance
-To start signing the data, parties should firstly define and accept the transfer to be signed.
-[Consenus](../internal/tss/README.md#consensus) module is responsible for choosing the data to be signed and the list of current session signers.
-Check it for more details on how the data is chosen and how the signers are defined.
+Each session has its own lifecycle and identifier that changes with each new session.
+New session in this context is an old finished session with new (incremented) session identifier that is ready to process new withdrawal requests (for the same chain as previous session) and waits for its start.
 
-### Signing
-After the data is accepted, parties should start the process of signing it and communicate with each other to produce the final transfer signature.
-This process is handled by the [Signer](../internal/tss/README.md#signer) module, check it for more details.
+Signing session process can be divided into three main stages:
+1. `Acceptance` - reaching an agreement between the parties in the TSS network on the data to be signed next;
+2. `Signing` - signing the provided data by communicating with other parties in the TSS network;
+3. `Finalization` - finalizing the signing process by saving data/executing other finalization steps.
 
-### Finalization
+
+#### Acceptance
+To start signing operations, parties should reach a consensus on arbitrary data that should be signed, f.e. withdrawals, resharing transactions, etc.
+
+Consensus mechanism is based on the proposer selection and the data sharing between the parties in the network.
+There are two possible roles for the single TSS party in the consensus process:
+- `proposer` - the party that selects the data to be signed and shares it with all parties in the network;
+- `acceptor` - the party that validates and accepts the data shared by the proposer;
+
+Only one proposer is selected for the current session, while all other parties are acceptors.
+At the end of the consensus process, the proposer selects the signers set that will sign the data.
+Proposer deterministically selects the signers set from acceptors set that ACKed the signing request.
+Proposer is included in the signers set as well.
+Signers count is always equal to the signing threshold value.
+
+The consensus process is performed by the following steps:
+1. All parties in the network should deterministically choose the proposer for the current signing session.
+   Proposer is selected using the deterministic function `f(session_id)` using the [ChaCha8](https://pkg.go.dev/math/rand/v2) pseudo-random number generator.
+2. Proposer forms the signing proposal (f.e. withdrawal on the specific chain) based on the provided mechanism.
+   It shares the constructed data and metadata with all parties in the network.
+   If there is no data to be signed, proposer broadcasts the message with empty data and the consensus process is finished.
+3. Parties that received proposer request (acceptors) should validate the proposal request and reply with acknowledgement status:
+    - ACK if everything is fine;
+    - NACK if something isn't valid (already signed proposal, non-existent deposit, etc.).
+4. While acceptors ACKing or NACKing proposer request, the proposer collects all ACKed responses.
+   It should check that number of ACKs N is equal or bigger than provided threshold value T:
+    - if true, proposer deterministically selects the T signers from the N acceptors that ACKed the signing request (including proposer itself).
+      They are notified about being included to the signer set.
+    - if false, the process finishes.
+5. Notified acceptors receive the current signing set and can additionally validate that all parties forming the signers set are valid and active.
+   Acceptors that are not included in the current signers set can wait till consensus deadline and understand that they are not the part of the current signers set.
+   Optionally, they can be notified by proposer that they won't take part in current signing process.
+
+After the consensus process is completed, the output is the data to be signed and the list of parties that will sign the data.
+If the party is not included in the signers list, the signing data will be empty, and it should wait till the next session will be started.
+
+#### Signing
+After the data is accepted, the signing process, based on  [tss-lib](https://github.com/bnb-chain/tss-lib) ECDSA signing rounds, is started.
+
+**Note:**
+- No signing data validation is performed at this step;
+- All parties should start the signing process at the same time;
+- All parties should sing exactly the same data;
+- There are enough parties to reach the threshold.
+
+After the signing process is completed, the output is the signature of the data and the error if any (timeout, not enough parties, signing error, etc.).
+
+#### Finalization
 After the data is signed by the required number of parties, the final signature is produced and sent to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core).
-Additionally, the withdrawal transaction can be broadcast to the network (varies depending on the network).
-The finalization process is described in the [Finalizer](../internal/tss/README.md#finalizer) module.
+Additionally, it can be used to broadcast the signed transfers to the network or do other finalization steps (different for each chain).
+
+##### EVM networks
+For EVM networks, the finalization process is performed only by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core).
+Then it can be used by anyone to construct and broadcast the withdrawal transaction to the destination network.
+
+**Note:** TSS network does not broadcast the signed EVM transactions to the network, user should do it manually and pay the gas fee.
+
+##### Bitcoin network
+For the Bitcoin network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core)., also broadcasts the signed transaction to the Bitcoin network.
+
+##### Zano network
+For the Zano network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core)., also broadcasts the signed transaction to the Zano network.
+
+
+**Note:** currently, the finalization process should be performed by the session proposer.
 
 ---
 
-After the session signing process is finished, parties should start the new session to sign the next transfer. 
+After the session signing process is finished, parties should start the new session to sign the next transfer.
+
+### Bitcoin signing session
+Bitcoin signing session is a special session used to process the Bitcoin withdrawals.
+It is different from the EVM and Zano sessions as it requires multiple UTXOs to be signed independently.
+Thus, the session includes N signing rounds, where N is the number of UTXOs to be signed in the transaction.
+Respectively, the signing step time bounds are multiplied by N to provide enough time for the parties to sign all UTXOs.
+
+In order to prevent the growing number of UTXOs from being signed in the session, the consolidation process session is run periodically.
+Consolidation session is a special session that is used to group the larger number of UTXOs in one transaction with a few outputs to reduce the number of UTXOs to be signed in the future sessions.
+It is triggered automatically by reaching the threshold number of UTXOs and the next pending withdrawal request will be processed right after the consolidation process is finished.
+
+
+### Session catchup
+For the initial sessions start, the parties are required to have the same session start time and initial session identifier.
+
+In case when some party lost the connection, it requests the session information from other parties for each existing session.
+Session information can include:
+- current session identifier;
+- next session start time.
+
+Using this information, the party calculates the next session identifier, current session time bounds,
+and catches up with the other parties by waiting for the current session deadline.
 
 ## Synchronization
 To prevent system failures, reach the consensus, and ensure the correct signing process, parties should be synchronized with each other.
 The synchronization process is based on using timestamps for each session duration and its steps.
 The time bounds are strongly defined for each session stage and type, so the result session duration is also constant (although there can be some exceptions).
-See [Session boundaries](../internal/tss/README.md#session-boundaries) for more details on time bounds.
+To control the session duration, the session should be bounded by the time limits.
+
+Here is the list of the signing session time bounds:
+- EVM session:
+    - acceptance: 10 seconds;
+    - signing: 10 seconds;
+    - finalization step: 10 seconds;
+    - new session period: 30 seconds.
+- Zano session:
+    - acceptance: 10 seconds;
+    - signing: 10 seconds;
+    - finalization step: 10 seconds;
+    - new session period: 30 seconds.
+- Bitcoin session:
+    - acceptance: 10 seconds;
+    - signing: 10 seconds * number N of UTXOs to be signed in the transaction;
+    - signing rounds delay (if more than 1 singing round needed): 500 ms;
+    - finalization step: 10 seconds;
+    - new session period: calculated based on the number of UTXOs to be signed in the transaction.
+
+In case of the session step timeout, the session should be finished,
+and the new session should be initialized and wait for its start.
+
+Keygen session deadline is 1 minute.
+Resharing session deadline calculated based on the amount of data needed to be processed.
+
+--- 
+
+## Key Resharing
+To ensure the system scalability and security, parties can join or leave the TSS network.
+It means that the secret shares of the general system private key should be redistributed among the old/new parties.
+The change in the number of parties can cause the change of the threshold value for the number of signers required to sign the data.
+In that case, the key resharing process cannot be executed by the means of resharing process from the [tss-lib](https://github.com/bnb-chain/tss-lib) library.
+
+Moreover, the change of private key shares causes the additional processes of fund migration and ecosystem reconfiguration.
+Thus, the key resharing process is not performed automatically and should be handled manually by the system administrators in cooperation with the network parties.
 
 ---
 
-## Security 
+## Security
 To ensure the system security, parties should keep their secret shares of the private key in secret and secure.
 The secret shares should not be shared with anyone, even with the other parties. For this purpose, they are securely stored in the [Vault](../internal/secrets/README.md) and accessed only when required.
 
@@ -51,13 +181,3 @@ It ensures that both parties are authenticated and the data is encrypted during 
 Additionally, within the transport, each message is wrapped with a session ID that is unique to a single run of the keygen, signing or re-sharing session.
 This session ID is agreed upon out-of-band and known only by the participating parties before the session begin.
 For a series of signing sessions, the session ID is incremented by one for each next session.
-
---- 
-
-## Key Resharing
-To ensure the system scalability and security, parties can join or leave the TSS network.
-It means that the secret shares of the general system private key should be redistributed among the old/new parties.
-The change in a number of parties can cause the change of the threshold value for number of signers required to sign the data.
-In that case, the key resharing process cannot be executed by the means of [tss-lib](https://github.com/bnb-chain/tss-lib) library.
-Moreover, the change of private key shares causes the additional processes of funds migration and ecosystem reconfiguration.
-Thus, the key resharing process is not performed automatically and should be handled manually by the system administrators in a cooperation with the network parties.
