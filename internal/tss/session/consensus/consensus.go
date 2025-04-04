@@ -55,6 +55,7 @@ func New[T SigningData](
 			party.SessionId,
 			parties,
 			party.Self,
+			// FIXME: SET TO T+1
 			party.Threshold,
 			p2p.RequestType_RT_PROPOSAL,
 			logger.WithField("component", "proposal_broadcaster"),
@@ -63,6 +64,7 @@ func New[T SigningData](
 			party.SessionId,
 			parties,
 			party.Self,
+			// FIXME: SET TO T+1
 			party.Threshold,
 			p2p.RequestType_RT_SIGN_START,
 			logger.WithField("component", "sign_start_broadcaster"),
@@ -134,7 +136,7 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to decode round message")
 		}
-		if roundMsg.Round == 1 {
+		if roundMsg.Round == 0 {
 			c.msgs <- consensusMsg{
 				Sender: sender,
 				Type:   request.Type,
@@ -156,7 +158,7 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to decode round message")
 		}
-		if roundMsg.Round == 1 {
+		if roundMsg.Round == 0 {
 			c.msgs <- consensusMsg{
 				Sender: sender,
 				Type:   request.Type,

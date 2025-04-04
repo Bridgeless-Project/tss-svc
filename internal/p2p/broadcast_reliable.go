@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/gob"
 	"fmt"
@@ -93,6 +94,8 @@ type ReliableBroadcastMsg[T Hashable] struct {
 	Sender core.Address
 }
 
+// todo: add description about Dolev-Strong method
+
 type ReliableBroadcaster[T Hashable] struct {
 	sessionId   string
 	parties     []Party
@@ -107,10 +110,10 @@ type ReliableBroadcaster[T Hashable] struct {
 	originMsgSender core.Address
 
 	// sender -> round -> received
-	receivedMsgs           map[core.Address]map[int]bool
-	values                 map[string]*T
-	msgs                   chan ReliableBroadcastMsg[T]
-	longestSigChainReached bool
+	receivedMsgs         map[core.Address]map[int]bool
+	values               map[string]*T
+	msgs                 chan ReliableBroadcastMsg[T]
+	finalSigChainReached bool
 }
 
 func NewReliableBroadcaster[T Hashable](
@@ -121,8 +124,18 @@ func NewReliableBroadcaster[T Hashable](
 	requestType RequestType,
 	logger *logan.Entry,
 ) *ReliableBroadcaster[T] {
-	// relay rounds = t + 1, where t is the number of maximum malicious parties
-	relayRounds := len(parties) - threshold + 1
+	// relay rounds are calculated as the t + 1,
+	// where t is the maximum number of possible malicious parties,
+	// which is equal to the total number of parties minus the threshold
+	relayRounds := (len(parties) + 1) - threshold + 1
+
+	receivedMsgsMap := make(map[core.Address]map[int]bool, len(parties))
+	partiesMap := make(map[core.Address]bool, len(parties)+1)
+	for _, party := range parties {
+		receivedMsgsMap[party.CoreAddress] = make(map[int]bool, relayRounds)
+		partiesMap[party.CoreAddress] = true
+	}
+	partiesMap[self.CosmosAddress()] = true
 
 	return &ReliableBroadcaster[T]{
 		sessionId:   sessionId,
@@ -133,9 +146,9 @@ func NewReliableBroadcaster[T Hashable](
 
 		relayRounds: relayRounds,
 		broadcaster: NewBroadcaster(parties, logger),
-		partiesMap:  make(map[core.Address]bool, len(parties)),
+		partiesMap:  partiesMap,
 
-		receivedMsgs: make(map[core.Address]map[int]bool, len(parties)),
+		receivedMsgs: receivedMsgsMap,
 		values:       make(map[string]*T, 1),
 		msgs:         make(chan ReliableBroadcastMsg[T], defaultChanCapacity),
 	}
@@ -148,7 +161,7 @@ func (b *ReliableBroadcaster[T]) Broadcast(msg *T) bool {
 	roundMsg := RoundMessage[T]{
 		SessionId: b.sessionId,
 		Value:     msg,
-		Round:     1,
+		Round:     0,
 	}
 	signHash := roundMsg.SignHash()
 	sig, err := b.self.PrivateKey().Sign(signHash)
@@ -187,35 +200,15 @@ func (b *ReliableBroadcaster[T]) Receive(msg ReliableBroadcastMsg[T]) error {
 }
 
 func (b *ReliableBroadcaster[T]) startRounds() {
-	ticker := time.NewTicker(roundTimeout)
-	defer ticker.Stop()
+	// excluding the first round, which is the sender's message
+	roundsDuration := time.Duration(b.relayRounds) * roundTimeout
+	ctx, cancel := context.WithTimeout(context.Background(), roundsDuration)
+	defer cancel()
 
-	// the first round is the sender's message
-	for round := 2; round <= b.relayRounds; round++ {
-		b.logger.Debugf("starting round %d", round)
-
-		msgs := b.drainValidMsgs()
-
-		b.logger.Debugf("round %d received %d messages", round, len(msgs))
-		for _, msg := range msgs {
-			b.processMsg(msg)
-		}
-
-		// no need to wait for receiving any values on the last round
-		if round != b.relayRounds {
-			return
-		}
-
-		<-ticker.C
-	}
-}
-
-func (b *ReliableBroadcaster[T]) drainValidMsgs() []ReliableBroadcastMsg[T] {
-	msgs := make([]ReliableBroadcastMsg[T], len(b.parties))
-
-MsgDraining:
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case msg := <-b.msgs:
 			if msg.Msg.SessionId != b.sessionId {
 				b.logger.Warn(fmt.Sprintf("malicious party %q sending message with different session id", msg.Sender))
@@ -231,32 +224,25 @@ MsgDraining:
 			}
 			b.receivedMsgs[msg.Sender][msg.Msg.Round] = true
 
-			msgs = append(msgs, msg)
-		default:
-			break MsgDraining
+			b.processMsg(msg)
 		}
 	}
-
-	return msgs
 }
 
 func (b *ReliableBroadcaster[T]) processMsg(msg ReliableBroadcastMsg[T]) {
 	signaturesValid, selfSigned := b.validateSignatures(msg)
 	if !signaturesValid {
-		b.logger.Warn(fmt.Sprintf("malicious party %q sending invalid signatures", msg.Sender))
-		return
-	}
-
-	if selfSigned {
-		// nothing to do
 		return
 	}
 
 	b.addToValuesSet(msg.Msg.Value)
+	if msg.Msg.Round == b.relayRounds {
+		b.finalSigChainReached = true
+		return
+	}
 
-	if len(msg.Msg.Signatures)+1 == b.relayRounds {
-		b.longestSigChainReached = true
-		// no need to relay own signature in the last round
+	// no need to sign and/or broadcast messages already signed by self
+	if selfSigned {
 		return
 	}
 
@@ -271,6 +257,7 @@ func (b *ReliableBroadcaster[T]) processMsg(msg ReliableBroadcastMsg[T]) {
 		Signer: b.self.CosmosAddress(),
 		Value:  sig,
 	})
+	msg.Msg.Round += 1
 
 	b.broadcastMsg(msg.Msg)
 }
@@ -282,7 +269,7 @@ func (b *ReliableBroadcaster[T]) decideValid() bool {
 		return false
 	}
 
-	if !b.longestSigChainReached {
+	if !b.finalSigChainReached {
 		b.logger.Warn("longest signature chain not reached, too much malicious parties")
 		return false
 	}
@@ -325,28 +312,30 @@ func (b *ReliableBroadcaster[T]) validateSignatures(msg ReliableBroadcastMsg[T])
 	// the first signature in the chain must be from the msg broadcaster
 	// the last signature in the chain must be from the original sender
 	// the rest must be from the distinct parties in the group
+	tempMsg := roundMsg
 	senderChecked := make(map[core.Address]bool, len(roundMsg.Signatures))
 	for idx, signature := range slices.Backward(roundMsg.Signatures) {
 		if !b.partiesMap[signature.Signer] {
+			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid signer", msg.Sender))
 			return false, selfSigned
 		}
 		if idx == 0 && signature.Signer != b.originMsgSender {
+			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid first signer", msg.Sender))
 			return false, selfSigned
 		}
 		if idx == len(roundMsg.Signatures)-1 && signature.Signer != msg.Sender {
+			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid last signer", msg.Sender))
 			return false, selfSigned
 		}
 		if senderChecked[signature.Signer] {
+			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with duplicate signer", msg.Sender))
 			return false, selfSigned
 		}
 
-		previousMsg := RoundMessage[T]{
-			Value:     roundMsg.Value,
-			SessionId: roundMsg.SessionId,
-			// popping the last
-			Signatures: msg.Msg.Signatures[:len(msg.Msg.Signatures)-1],
-		}
-		if !previousMsg.SignatureValid(signature) {
+		// popping the last signature
+		tempMsg.Signatures = tempMsg.Signatures[:len(tempMsg.Signatures)-1]
+		if !tempMsg.SignatureValid(signature) {
+			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid signature", msg.Sender))
 			return false, selfSigned
 		}
 
