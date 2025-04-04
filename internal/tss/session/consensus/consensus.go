@@ -25,7 +25,7 @@ type consensusMsg struct {
 }
 
 type LocalConsensusParty struct {
-	Self      core.Address
+	Self      core.Account
 	SessionId string
 	Threshold int
 }
@@ -48,8 +48,25 @@ func New[T SigningData](
 	}
 
 	return &Consensus[T]{
-		mechanism:   mechanism,
-		parties:     partiesMap,
+		mechanism: mechanism,
+		parties:   partiesMap,
+
+		proposalBroadcaster: p2p.NewReliableBroadcaster[T](
+			party.SessionId,
+			parties,
+			party.Self,
+			party.Threshold,
+			p2p.RequestType_RT_PROPOSAL,
+			logger.WithField("component", "proposal_broadcaster"),
+		),
+		signStartBroadcaster: p2p.NewReliableBroadcaster[SignStartData](
+			party.SessionId,
+			parties,
+			party.Self,
+			party.Threshold,
+			p2p.RequestType_RT_SIGN_START,
+			logger.WithField("component", "sign_start_broadcaster"),
+		),
 		broadcaster: p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 
 		self:      party.Self,
@@ -64,11 +81,14 @@ func New[T SigningData](
 }
 
 type Consensus[T SigningData] struct {
-	mechanism   Mechanism[T]
-	parties     map[core.Address]p2p.Party
-	broadcaster *p2p.Broadcaster
+	mechanism Mechanism[T]
+	parties   map[core.Address]p2p.Party
 
-	self      core.Address
+	proposalBroadcaster  *p2p.ReliableBroadcaster[T]
+	signStartBroadcaster *p2p.ReliableBroadcaster[SignStartData]
+	broadcaster          *p2p.Broadcaster
+
+	self      core.Account
 	sessionId string
 	threshold int
 
@@ -105,7 +125,51 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 	}
 
 	switch request.Type {
-	case p2p.RequestType_RT_PROPOSAL, p2p.RequestType_RT_ACCEPTANCE, p2p.RequestType_RT_SIGN_START:
+	case p2p.RequestType_RT_PROPOSAL:
+		data := &p2p.ReliableBroadcastData{}
+		if err = request.Data.UnmarshalTo(data); err != nil {
+			return errors.Wrap(err, "failed to unmarshal reliable broadcast data")
+		}
+		roundMsg, err := p2p.DecodeRoundMessage[T](data.GetRoundMsg())
+		if err != nil {
+			return errors.Wrap(err, "failed to decode round message")
+		}
+		if roundMsg.Round == 1 {
+			c.msgs <- consensusMsg{
+				Sender: sender,
+				Type:   request.Type,
+				Data:   request.Data,
+			}
+			return nil
+		}
+
+		return c.proposalBroadcaster.Receive(p2p.ReliableBroadcastMsg[T]{
+			Sender: sender,
+			Msg:    roundMsg,
+		})
+	case p2p.RequestType_RT_SIGN_START:
+		data := &p2p.ReliableBroadcastData{}
+		if err = request.Data.UnmarshalTo(data); err != nil {
+			return errors.Wrap(err, "failed to unmarshal reliable broadcast data")
+		}
+		roundMsg, err := p2p.DecodeRoundMessage[SignStartData](data.GetRoundMsg())
+		if err != nil {
+			return errors.Wrap(err, "failed to decode round message")
+		}
+		if roundMsg.Round == 1 {
+			c.msgs <- consensusMsg{
+				Sender: sender,
+				Type:   request.Type,
+				Data:   request.Data,
+			}
+			return nil
+		}
+
+		return c.signStartBroadcaster.Receive(p2p.ReliableBroadcastMsg[SignStartData]{
+			Sender: sender,
+			Msg:    roundMsg,
+		})
+	case p2p.RequestType_RT_ACCEPTANCE:
 		c.msgs <- consensusMsg{
 			Sender: sender,
 			Type:   request.Type,
@@ -123,7 +187,7 @@ func (c *Consensus[T]) Run(ctx context.Context) {
 	c.logger.Info(fmt.Sprintf("starting consensus with proposer: %s", c.proposer))
 
 	c.wg.Add(1)
-	if c.proposer == c.self {
+	if c.proposer == c.self.CosmosAddress() {
 		go c.propose(ctx)
 	} else {
 		go c.accept(ctx)
@@ -149,7 +213,7 @@ func (c *Consensus[T]) determineProposer() core.Address {
 		partyIds[idx] = party.Identifier()
 		idx++
 	}
-	partyIds[idx] = c.self.PartyIdentifier()
+	partyIds[idx] = c.self.CosmosAddress().PartyIdentifier()
 
 	sortedIds := tss.SortPartyIDs(partyIds)
 

@@ -2,12 +2,15 @@ package withdrawal
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -37,6 +40,19 @@ func (e EvmWithdrawalData) ToPayload() *anypb.Any {
 	pb, _ := anypb.New(e.ProposalData)
 
 	return pb
+}
+
+func (e EvmWithdrawalData) HashString() string {
+	if e.ProposalData == nil {
+		return ""
+	}
+
+	data, err := proto.MarshalOptions{Deterministic: true}.Marshal(e.ProposalData)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {

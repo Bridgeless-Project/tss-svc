@@ -76,7 +76,7 @@ var signCmd = &cobra.Command{
 
 		session := signing.NewDefaultSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   *account,
 				Share:     localSaveData,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},

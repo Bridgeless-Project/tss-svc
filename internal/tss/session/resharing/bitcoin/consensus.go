@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -15,6 +16,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -31,6 +33,19 @@ func (s SigningData) ToPayload() *anypb.Any {
 	pb, _ := anypb.New(s.ProposalData)
 
 	return pb
+}
+
+func (s SigningData) HashString() string {
+	if s.ProposalData == nil {
+		return ""
+	}
+
+	data, err := proto.MarshalOptions{Deterministic: true}.Marshal(s.ProposalData)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 type ConsensusMechanism struct {

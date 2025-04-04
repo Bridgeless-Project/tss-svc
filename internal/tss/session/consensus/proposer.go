@@ -9,31 +9,23 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func (c *Consensus[T]) propose(ctx context.Context) {
 	defer c.wg.Done()
 	c.logger.Info("proposing data to sign...")
 
-	proposalReq := &p2p.SubmitRequest{
-		Sender:    c.self.String(),
-		SessionId: c.sessionId,
-		Type:      p2p.RequestType_RT_PROPOSAL,
-		Data:      nil,
-	}
-
 	signingData, err := c.mechanism.FormProposalData()
 	if err != nil {
 		c.result.err = errors.Wrap(err, "failed to form proposal data")
 		return
 	}
-	if signingData != nil {
-		c.result.sigData = signingData
-		proposalReq.Data = (*signingData).ToPayload()
-	}
 
-	c.broadcaster.Broadcast(proposalReq)
+	broadcast := c.proposalBroadcaster.Broadcast(signingData)
+	if !broadcast {
+		c.result.err = errors.New("proposal data broadcast failure")
+		return
+	}
 
 	// nothing to sign for this session
 	if signingData == nil {
@@ -57,7 +49,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			c.logger.Info("collecting received acceptances...")
 
 			possibleSigners := acceptances.Acceptors()
-			// including proposer in total possible signers count
+			// including proposer in total, possible signers count
 			signersCount := len(possibleSigners) + 1
 			// T+1 parties required for signing
 			if signersCount <= c.threshold {
@@ -72,16 +64,18 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 				c.result.signers[idx] = c.parties[party]
 			}
 
-			signStartData, _ := anypb.New(&p2p.SignStartData{Parties: append(signersToStr(signers), c.self.String())})
-			msg := &p2p.SubmitRequest{
-				Sender:    c.self.String(),
-				SessionId: c.sessionId,
-				Type:      p2p.RequestType_RT_SIGN_START,
-				Data:      signStartData,
+			signStartMsg := &SignStartData{
+				SignStartData: &p2p.SignStartData{
+					Parties: append(signersToStr(signers), c.self.CosmosAddress().String()),
+				},
+			}
+			broadcast = c.signStartBroadcaster.Broadcast(signStartMsg)
+			if !broadcast {
+				c.result.err = errors.New("sign start message broadcast failure")
+				return
 			}
 
 			c.logger.Info("signing parties selected and notified")
-			p2p.NewBroadcaster(c.result.signers, c.logger.WithField("component", "broadcaster")).Broadcast(msg)
 
 			return
 		case msg := <-c.msgs:

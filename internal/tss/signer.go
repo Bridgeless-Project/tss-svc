@@ -17,7 +17,7 @@ import (
 )
 
 type LocalSignParty struct {
-	Address   core.Address
+	Account   core.Account
 	Share     *keygen.LocalPartySaveData
 	Threshold int
 }
@@ -55,7 +55,7 @@ func NewSignParty(self LocalSignParty, sessionId string, logger *logan.Entry) *S
 func (p *SignParty) WithParties(parties []p2p.Party) *SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
-	partyIds[0] = p.self.Address.PartyIdentifier()
+	partyIds[0] = p.self.Account.CosmosAddress().PartyIdentifier()
 
 	for i, party := range parties {
 		partyMap[party.CoreAddress] = struct{}{}
@@ -77,7 +77,7 @@ func (p *SignParty) WithSigningData(data []byte) *SignParty {
 func (p *SignParty) Run(ctx context.Context) {
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
-		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
+		p.sortedPartyIds.FindByKey(p.self.Account.CosmosAddress().PartyKey()),
 		len(p.sortedPartyIds),
 		p.self.Threshold,
 	)
@@ -182,7 +182,7 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, 
 
 			tssReq, _ := anypb.New(tssData)
 			submitReq := p2p.SubmitRequest{
-				Sender:    p.self.Address.String(),
+				Sender:    p.self.Account.CosmosAddress().String(),
 				SessionId: p.sessionId,
 				Type:      p2p.RequestType_RT_SIGN,
 				Data:      tssReq,

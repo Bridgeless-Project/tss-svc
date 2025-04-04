@@ -73,7 +73,7 @@ var reshareBtcCmd = &cobra.Command{
 
 		session := bitcoinResharing.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   *account,
 				Share:     share,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},

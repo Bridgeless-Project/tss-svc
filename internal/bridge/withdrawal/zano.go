@@ -2,6 +2,8 @@ package withdrawal
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -12,6 +14,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/types"
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -42,6 +45,19 @@ func (z ZanoWithdrawalData) ToPayload() *anypb.Any {
 	pb, _ := anypb.New(z.ProposalData)
 
 	return pb
+}
+
+func (z ZanoWithdrawalData) HashString() string {
+	if z.ProposalData == nil {
+		return ""
+	}
+
+	data, err := proto.MarshalOptions{Deterministic: true}.Marshal(z.ProposalData)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 type ZanoWithdrawalConstructor struct {

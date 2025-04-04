@@ -69,7 +69,7 @@ func NewSession(
 			consensus.LocalConsensusParty{
 				SessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
 				Threshold: self.Threshold,
-				Self:      self.Address,
+				Self:      self.Account,
 			},
 			parties,
 			NewConsensusMechanism(client, self.Share.ECDSAPub.ToECDSAPubKey(), params.ConsolidateParams),
@@ -170,7 +170,7 @@ func (s *Session) run(ctx context.Context) {
 	s.resultTx, s.err = s.finalizer.
 		WithData(result.SigData).
 		WithSignatures(signatures).
-		WithLocalPartyProposer(s.self.Address == result.Proposer).
+		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 
 	return

@@ -3,6 +3,7 @@ package withdrawal
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -17,6 +18,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -48,6 +50,19 @@ func (e BitcoinWithdrawalData) ToPayload() *anypb.Any {
 	pb, _ := anypb.New(e.ProposalData)
 
 	return pb
+}
+
+func (e BitcoinWithdrawalData) HashString() string {
+	if e.ProposalData == nil {
+		return ""
+	}
+
+	data, err := proto.MarshalOptions{Deterministic: true}.Marshal(e.ProposalData)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 type BitcoinWithdrawalConstructor struct {

@@ -120,7 +120,7 @@ func (s *Session) Run(ctx context.Context) error {
 			consensus2.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
-				Self:      s.self.Address,
+				Self:      s.self.Account,
 			},
 			s.parties,
 			s.mechanism,
@@ -204,7 +204,7 @@ func (s *Session) runSession(ctx context.Context) error {
 	err = s.finalizer.
 		WithData(result.SigData).
 		WithSignature(signature).
-		WithLocalPartyProposer(s.self.Address == result.Proposer).
+		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")

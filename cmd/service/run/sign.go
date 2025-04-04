@@ -168,7 +168,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSigningSession(sessParams, parties, account, share, dtb, fetcher, logger, client, connector)
+			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector)
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -227,7 +227,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 func configureSigningSession(
 	params session.SigningParams,
 	parties []p2p.Party,
-	account *core.Account,
+	account core.Account,
 	share *keygen.LocalPartySaveData,
 	db db.DepositsQ,
 	fetcher *deposit.Fetcher,
@@ -239,7 +239,7 @@ func configureSigningSession(
 	case chain.TypeEVM:
 		evmSession := evmSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},
@@ -255,7 +255,7 @@ func configureSigningSession(
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},
@@ -271,7 +271,7 @@ func configureSigningSession(
 	case chain.TypeBitcoin:
 		btcSession := btcSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},
