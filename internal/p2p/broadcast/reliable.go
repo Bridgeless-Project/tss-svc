@@ -100,7 +100,7 @@ type ReliableBroadcastMsg[T Hashable] struct {
 // It is designed to work in a synchronous network with n > t,
 // where n is the number of parties and t is the maximum number of malicious parties.
 //
-// Instead of running the rounds one by one, it runs all rounds in parallel,
+// Instead of running the relay rounds one by one, it runs one big round and processes all incoming messages,
 // ensuring each early or late but valid message is processed.
 type ReliableBroadcaster[T Hashable] struct {
 	sessionId   string
