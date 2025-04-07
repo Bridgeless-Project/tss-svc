@@ -7,7 +7,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var _ consensus.Mechanism[withdrawal.DepositSigningData] = &ConsensusMechanism[withdrawal.DepositSigningData]{}
@@ -53,10 +52,6 @@ func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
 	}
 
 	return proposalData, nil
-}
-
-func (c *ConsensusMechanism[T]) FromPayload(payload *anypb.Any) (*T, error) {
-	return c.constructor.FromPayload(payload)
 }
 
 func (c *ConsensusMechanism[T]) VerifyProposedData(data T) error {

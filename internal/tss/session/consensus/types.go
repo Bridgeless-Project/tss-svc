@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type SignStartData struct {
@@ -27,13 +27,10 @@ func (s SignStartData) HashString() string {
 }
 
 type SigningData interface {
-	ToPayload() *anypb.Any
-	p2p.Hashable
+	broadcast.Hashable
 }
 
 type Mechanism[T SigningData] interface {
 	FormProposalData() (*T, error)
-
-	FromPayload(payload *anypb.Any) (*T, error)
 	VerifyProposedData(T) error
 }

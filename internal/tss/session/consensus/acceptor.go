@@ -6,6 +6,7 @@ import (
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -69,12 +70,12 @@ func (c *Consensus[T]) handleProposalMsg(msg consensusMsg) error {
 	if err := msg.Data.UnmarshalTo(broadcastData); err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal data")
 	}
-	roundMsg, err := p2p.DecodeRoundMessage[T](broadcastData.GetRoundMsg())
+	roundMsg, err := broadcast.DecodeRoundMessage[T](broadcastData.GetRoundMsg())
 	if err != nil {
 		return errors.Wrap(err, "failed to decode round message")
 	}
 
-	valid := c.proposalBroadcaster.EnsureValid(p2p.ReliableBroadcastMsg[T]{
+	valid := c.proposalBroadcaster.EnsureValid(broadcast.ReliableBroadcastMsg[T]{
 		Sender: msg.Sender,
 		Msg:    roundMsg,
 	})
@@ -114,11 +115,11 @@ func (c *Consensus[T]) handleSignStartMsg(msg consensusMsg) error {
 	if err := msg.Data.UnmarshalTo(broadcastData); err != nil {
 		return errors.Wrap(err, "failed to unmarshal proposal data")
 	}
-	roundMsg, err := p2p.DecodeRoundMessage[SignStartData](broadcastData.GetRoundMsg())
+	roundMsg, err := broadcast.DecodeRoundMessage[SignStartData](broadcastData.GetRoundMsg())
 	if err != nil {
 		return errors.Wrap(err, "failed to decode round message")
 	}
-	valid := c.signStartBroadcaster.EnsureValid(p2p.ReliableBroadcastMsg[SignStartData]{
+	valid := c.signStartBroadcaster.EnsureValid(broadcast.ReliableBroadcastMsg[SignStartData]{
 		Sender: msg.Sender,
 		Msg:    roundMsg,
 	})

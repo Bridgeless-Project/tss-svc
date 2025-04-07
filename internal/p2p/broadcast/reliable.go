@@ -1,4 +1,4 @@
-package p2p
+package broadcast
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -94,14 +95,19 @@ type ReliableBroadcastMsg[T Hashable] struct {
 	Sender core.Address
 }
 
-// todo: add description about Dolev-Strong method
-
+// ReliableBroadcaster is a reliable broadcast protocol implementation based on the Dolev-Strong protocol.
+// It ensures that a same message is delivered to all parties in the group.
+// It is designed to work in a synchronous network with n > t,
+// where n is the number of parties and t is the maximum number of malicious parties.
+//
+// Instead of running the rounds one by one, it runs all rounds in parallel,
+// ensuring each early or late but valid message is processed.
 type ReliableBroadcaster[T Hashable] struct {
 	sessionId   string
-	parties     []Party
+	parties     []p2p.Party
 	self        core.Account
 	logger      *logan.Entry
-	requestType RequestType
+	requestType p2p.RequestType
 
 	relayRounds int
 	broadcaster *Broadcaster
@@ -116,12 +122,12 @@ type ReliableBroadcaster[T Hashable] struct {
 	finalSigChainReached bool
 }
 
-func NewReliableBroadcaster[T Hashable](
+func NewReliable[T Hashable](
 	sessionId string,
-	parties []Party,
+	parties []p2p.Party,
 	self core.Account,
 	threshold int,
-	requestType RequestType,
+	requestType p2p.RequestType,
 	logger *logan.Entry,
 ) *ReliableBroadcaster[T] {
 	// relay rounds are calculated as the t + 1,
@@ -293,8 +299,8 @@ func (b *ReliableBroadcaster[T]) addToValuesSet(value *T) {
 }
 
 func (b *ReliableBroadcaster[T]) broadcastMsg(msg RoundMessage[T]) {
-	rawReq, _ := anypb.New(&ReliableBroadcastData{RoundMsg: msg.Encode()})
-	b.broadcaster.Broadcast(&SubmitRequest{
+	rawReq, _ := anypb.New(&p2p.ReliableBroadcastData{RoundMsg: msg.Encode()})
+	b.broadcaster.Broadcast(&p2p.SubmitRequest{
 		Sender:    b.self.CosmosAddress().String(),
 		SessionId: b.sessionId,
 		Type:      b.requestType,

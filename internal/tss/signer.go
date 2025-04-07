@@ -12,6 +12,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -33,7 +34,7 @@ type SignParty struct {
 	logger      *logan.Entry
 	party       tss.Party
 	msgs        chan partyMsg
-	broadcaster *p2p.Broadcaster
+	broadcaster *broadcast.Broadcaster
 
 	data []byte
 
@@ -64,7 +65,7 @@ func (p *SignParty) WithParties(parties []p2p.Party) *SignParty {
 
 	p.parties = partyMap
 	p.sortedPartyIds = tss.SortPartyIDs(partyIds)
-	p.broadcaster = p2p.NewBroadcaster(parties, p.logger.WithField("component", "broadcaster"))
+	p.broadcaster = broadcast.NewBroadcaster(parties, p.logger.WithField("component", "broadcaster"))
 
 	return p
 }

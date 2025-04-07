@@ -11,7 +11,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var _ DepositSigningData = EvmWithdrawalData{}
@@ -34,12 +33,6 @@ func (e EvmWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	identifier.TxNonce = int(e.ProposalData.DepositId.TxNonce)
 
 	return identifier
-}
-
-func (e EvmWithdrawalData) ToPayload() *anypb.Any {
-	pb, _ := anypb.New(e.ProposalData)
-
-	return pb
 }
 
 func (e EvmWithdrawalData) HashString() string {
@@ -98,13 +91,4 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposit db.De
 	}
 
 	return true, nil
-}
-
-func (c *EvmWithdrawalConstructor) FromPayload(payload *anypb.Any) (*EvmWithdrawalData, error) {
-	proposalData := &p2p.EvmProposalData{}
-	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
-	}
-
-	return &EvmWithdrawalData{ProposalData: proposalData}, nil
 }

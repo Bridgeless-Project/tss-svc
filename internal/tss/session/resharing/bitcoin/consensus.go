@@ -17,7 +17,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var (
@@ -27,12 +26,6 @@ var (
 
 type SigningData struct {
 	ProposalData *p2p.BitcoinResharingProposalData
-}
-
-func (s SigningData) ToPayload() *anypb.Any {
-	pb, _ := anypb.New(s.ProposalData)
-
-	return pb
 }
 
 func (s SigningData) HashString() string {
@@ -85,15 +78,6 @@ func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 			SigData:      sigHashes,
 		},
 	}, nil
-}
-
-func (m *ConsensusMechanism) FromPayload(payload *anypb.Any) (*SigningData, error) {
-	proposalData := &p2p.BitcoinResharingProposalData{}
-	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
-	}
-
-	return &SigningData{ProposalData: proposalData}, nil
 }
 
 func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {

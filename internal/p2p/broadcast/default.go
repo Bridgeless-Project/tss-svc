@@ -1,10 +1,11 @@
-package p2p
+package broadcast
 
 import (
 	"context"
 	"sync"
 	"time"
 
+	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -13,14 +14,14 @@ import (
 )
 
 type Broadcaster struct {
-	parties map[core.Address]Party
+	parties map[core.Address]p2p.Party
 
 	logger *logan.Entry
 }
 
-func NewBroadcaster(to []Party, logger *logan.Entry) *Broadcaster {
+func NewBroadcaster(to []p2p.Party, logger *logan.Entry) *Broadcaster {
 	b := &Broadcaster{
-		parties: make(map[core.Address]Party, len(to)),
+		parties: make(map[core.Address]p2p.Party, len(to)),
 		logger:  logger,
 	}
 
@@ -31,13 +32,13 @@ func NewBroadcaster(to []Party, logger *logan.Entry) *Broadcaster {
 	return b
 }
 
-func (b *Broadcaster) Send(msg *SubmitRequest, to core.Address) error {
+func (b *Broadcaster) Send(msg *p2p.SubmitRequest, to core.Address) error {
 	party, exists := b.parties[to]
 	if !exists {
 		return errors.New("party not found")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultConnectionTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), p2p.DefaultConnectionTimeout)
 	defer cancel()
 
 	if err := b.send(ctx, msg, party.Connection()); err != nil {
@@ -47,21 +48,21 @@ func (b *Broadcaster) Send(msg *SubmitRequest, to core.Address) error {
 	return nil
 }
 
-func (b *Broadcaster) send(ctx context.Context, msg *SubmitRequest, conn *grpc.ClientConn) error {
-	_, err := NewP2PClient(conn).Submit(ctx, msg)
+func (b *Broadcaster) send(ctx context.Context, msg *p2p.SubmitRequest, conn *grpc.ClientConn) error {
+	_, err := p2p.NewP2PClient(conn).Submit(ctx, msg)
 
 	return err
 }
 
-func (b *Broadcaster) Broadcast(msg *SubmitRequest) {
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultConnectionTimeout+time.Second)
+func (b *Broadcaster) Broadcast(msg *p2p.SubmitRequest) {
+	ctx, cancel := context.WithTimeout(context.Background(), p2p.DefaultConnectionTimeout+time.Second)
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(b.parties))
 
 	go func() { wg.Wait(); cancel() }()
 	for _, party := range b.parties {
-		go func(p Party) {
+		go func(p p2p.Party) {
 			defer wg.Done()
 			if err := b.send(ctx, msg, p.Connection()); err != nil {
 				b.logger.WithFields(logan.F{

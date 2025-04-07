@@ -19,7 +19,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var (
@@ -44,12 +43,6 @@ func (e BitcoinWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	identifier.TxNonce = int(e.ProposalData.DepositId.TxNonce)
 
 	return identifier
-}
-
-func (e BitcoinWithdrawalData) ToPayload() *anypb.Any {
-	pb, _ := anypb.New(e.ProposalData)
-
-	return pb
 }
 
 func (e BitcoinWithdrawalData) HashString() string {
@@ -77,15 +70,6 @@ func NewBitcoinConstructor(client *bitcoin2.Client, tssPub *ecdsa.PublicKey) *Bi
 	}
 
 	return &BitcoinWithdrawalConstructor{client: client, tssPkh: tssPkh}
-}
-
-func (c *BitcoinWithdrawalConstructor) FromPayload(payload *anypb.Any) (*BitcoinWithdrawalData, error) {
-	proposalData := &p2p.BitcoinProposalData{}
-	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
-	}
-
-	return &BitcoinWithdrawalData{ProposalData: proposalData}, nil
 }
 
 func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*BitcoinWithdrawalData, error) {

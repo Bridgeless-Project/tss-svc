@@ -11,6 +11,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -51,25 +52,25 @@ func New[T SigningData](
 		mechanism: mechanism,
 		parties:   partiesMap,
 
-		proposalBroadcaster: p2p.NewReliableBroadcaster[T](
+		proposalBroadcaster: broadcast.NewReliable[T](
 			party.SessionId,
 			parties,
 			party.Self,
-			// FIXME: SET TO T+1
-			party.Threshold,
+			// T+1 parties required for signing
+			party.Threshold+1,
 			p2p.RequestType_RT_PROPOSAL,
 			logger.WithField("component", "proposal_broadcaster"),
 		),
-		signStartBroadcaster: p2p.NewReliableBroadcaster[SignStartData](
+		signStartBroadcaster: broadcast.NewReliable[SignStartData](
 			party.SessionId,
 			parties,
 			party.Self,
-			// FIXME: SET TO T+1
-			party.Threshold,
+			// T+1 parties required for signing
+			party.Threshold+1,
 			p2p.RequestType_RT_SIGN_START,
 			logger.WithField("component", "sign_start_broadcaster"),
 		),
-		broadcaster: p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		broadcaster: broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 
 		self:      party.Self,
 		sessionId: party.SessionId,
@@ -86,9 +87,9 @@ type Consensus[T SigningData] struct {
 	mechanism Mechanism[T]
 	parties   map[core.Address]p2p.Party
 
-	proposalBroadcaster  *p2p.ReliableBroadcaster[T]
-	signStartBroadcaster *p2p.ReliableBroadcaster[SignStartData]
-	broadcaster          *p2p.Broadcaster
+	proposalBroadcaster  *broadcast.ReliableBroadcaster[T]
+	signStartBroadcaster *broadcast.ReliableBroadcaster[SignStartData]
+	broadcaster          *broadcast.Broadcaster
 
 	self      core.Account
 	sessionId string
@@ -132,7 +133,7 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 		if err = request.Data.UnmarshalTo(data); err != nil {
 			return errors.Wrap(err, "failed to unmarshal reliable broadcast data")
 		}
-		roundMsg, err := p2p.DecodeRoundMessage[T](data.GetRoundMsg())
+		roundMsg, err := broadcast.DecodeRoundMessage[T](data.GetRoundMsg())
 		if err != nil {
 			return errors.Wrap(err, "failed to decode round message")
 		}
@@ -145,7 +146,7 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 			return nil
 		}
 
-		return c.proposalBroadcaster.Receive(p2p.ReliableBroadcastMsg[T]{
+		return c.proposalBroadcaster.Receive(broadcast.ReliableBroadcastMsg[T]{
 			Sender: sender,
 			Msg:    roundMsg,
 		})
@@ -154,7 +155,7 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 		if err = request.Data.UnmarshalTo(data); err != nil {
 			return errors.Wrap(err, "failed to unmarshal reliable broadcast data")
 		}
-		roundMsg, err := p2p.DecodeRoundMessage[SignStartData](data.GetRoundMsg())
+		roundMsg, err := broadcast.DecodeRoundMessage[SignStartData](data.GetRoundMsg())
 		if err != nil {
 			return errors.Wrap(err, "failed to decode round message")
 		}
@@ -167,7 +168,7 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 			return nil
 		}
 
-		return c.signStartBroadcaster.Receive(p2p.ReliableBroadcastMsg[SignStartData]{
+		return c.signStartBroadcaster.Receive(broadcast.ReliableBroadcastMsg[SignStartData]{
 			Sender: sender,
 			Msg:    roundMsg,
 		})

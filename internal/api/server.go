@@ -9,6 +9,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -19,7 +20,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	"github.com/hyle-team/tss-svc/internal/api/types"
 	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -46,7 +46,7 @@ func NewServer(
 	logger *logan.Entry,
 	clients chain.Repository,
 	processor *deposit.Fetcher,
-	broadcaster *p2p.Broadcaster,
+	broadcaster *broadcast.Broadcaster,
 	self core.Address,
 	connector *coreConnector.Connector,
 ) *Server {

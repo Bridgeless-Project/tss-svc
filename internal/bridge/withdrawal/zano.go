@@ -15,7 +15,6 @@ import (
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var (
@@ -39,12 +38,6 @@ func (z ZanoWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	identifier.TxNonce = int(z.ProposalData.DepositId.TxNonce)
 
 	return identifier
-}
-
-func (z ZanoWithdrawalData) ToPayload() *anypb.Any {
-	pb, _ := anypb.New(z.ProposalData)
-
-	return pb
 }
 
 func (z ZanoWithdrawalData) HashString() string {
@@ -136,15 +129,6 @@ func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.
 	}
 
 	return true, nil
-}
-
-func (c *ZanoWithdrawalConstructor) FromPayload(payload *anypb.Any) (*ZanoWithdrawalData, error) {
-	proposalData := &p2p.ZanoProposalData{}
-	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
-	}
-
-	return &ZanoWithdrawalData{ProposalData: proposalData}, nil
 }
 
 func (c *ZanoWithdrawalConstructor) formSigData(txId string) []byte {

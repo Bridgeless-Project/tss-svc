@@ -9,6 +9,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -23,7 +24,7 @@ type KeygenParty struct {
 	wg    *sync.WaitGroup
 	ended atomic.Bool
 
-	broadcaster    *p2p.Broadcaster
+	broadcaster    *broadcast.Broadcaster
 	party          tss.Party
 	sortedPartyIds tss.SortedPartyIDs
 	parties        map[core.Address]struct{}
@@ -47,7 +48,7 @@ func NewKeygenParty(self LocalKeygenParty, parties []p2p.Party, sessionId string
 	}
 
 	return &KeygenParty{
-		broadcaster:    p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		broadcaster:    broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		sortedPartyIds: tss.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		self:           self,

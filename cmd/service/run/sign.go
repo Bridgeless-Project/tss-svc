@@ -15,6 +15,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
 	btcSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
 	evmSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
@@ -98,7 +99,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		logger.WithField("component", "api_server"),
 		clientsRepo,
 		fetcher,
-		p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		account.CosmosAddress(),
 		connector,
 	)

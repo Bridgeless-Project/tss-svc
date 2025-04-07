@@ -31,9 +31,10 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 	if signingData == nil {
 		c.logger.Info("no signing data were found")
 		return
-	} else {
-		c.logger.Info("data proposed, waiting for acceptances...")
 	}
+
+	c.result.sigData = signingData
+	c.logger.Info("data proposed, waiting for acceptances...")
 
 	boundedCtx, cancel := context.WithTimeout(context.Background(), session.BoundaryAcceptance)
 	defer cancel()
