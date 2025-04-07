@@ -12,7 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	bitcoin2 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
@@ -42,13 +42,13 @@ func (s SigningData) HashString() string {
 }
 
 type ConsensusMechanism struct {
-	client *bitcoin2.Client
+	client *bitcoin.Client
 	dstPkh *btcutil.AddressPubKeyHash
-	params bitcoin2.ConsolidateOutputsParams
+	params bitcoin.ConsolidateOutputsParams
 }
 
-func NewConsensusMechanism(client *bitcoin2.Client, dst *ecdsa.PublicKey, params bitcoin2.ConsolidateOutputsParams) *ConsensusMechanism {
-	dstPkh, err := bitcoin2.PubKeyToPkhCompressed(dst, client.ChainParams())
+func NewConsensusMechanism(client *bitcoin.Client, dst *ecdsa.PublicKey, params bitcoin.ConsolidateOutputsParams) *ConsensusMechanism {
+	dstPkh, err := bitcoin.PubKeyToPkhCompressed(dst, client.ChainParams())
 	if err != nil {
 		panic(errors.Wrap(err, "failed to convert public key to public key hash"))
 	}
@@ -59,9 +59,9 @@ func NewConsensusMechanism(client *bitcoin2.Client, dst *ecdsa.PublicKey, params
 func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	tx, sigHashes, err := m.client.ConsolidateOutputs(
 		m.dstPkh,
-		bitcoin2.WithFeeRate(m.params.FeeRate),
-		bitcoin2.WithOutputsCount(m.params.OutputsCount),
-		bitcoin2.WithMaxInputsCount(m.params.MaxInputsCount),
+		bitcoin.WithFeeRate(m.params.FeeRate),
+		bitcoin.WithOutputsCount(m.params.OutputsCount),
+		bitcoin.WithMaxInputsCount(m.params.MaxInputsCount),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to consolidate outputs")
@@ -132,7 +132,7 @@ func (m *ConsensusMechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 
 func (m *ConsensusMechanism) validateInputs(
 	tx *wire.MsgTx,
-	inputs map[bitcoin2.OutPoint]btcjson.ListUnspentResult,
+	inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult,
 	sigHashes [][]byte,
 ) (int64, error) {
 	var inputsSum int64
@@ -142,13 +142,13 @@ func (m *ConsensusMechanism) validateInputs(
 			return 0, errors.New(fmt.Sprintf("nil input at index %d", idx))
 		}
 
-		unspent := inputs[bitcoin2.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		unspent := inputs[bitcoin.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
 		}
-		sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin2.SigHashType, tx, idx)
+		sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin.SigHashType, tx, idx)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
 		}
@@ -156,13 +156,13 @@ func (m *ConsensusMechanism) validateInputs(
 			return 0, errors.New(fmt.Sprintf("invalid signature hash for input %d", idx))
 		}
 
-		inputsSum += bitcoin2.ToAmount(unspent.Amount, bitcoin2.Decimals).Int64()
+		inputsSum += bitcoin.ToAmount(unspent.Amount, bitcoin.Decimals).Int64()
 	}
 
 	return inputsSum, nil
 }
 
-func (m *ConsensusMechanism) validateChange(tx *wire.MsgTx, inputs map[bitcoin2.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
+func (m *ConsensusMechanism) validateChange(tx *wire.MsgTx, inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
 	actualFee := inputsSum - outputsSum
 	if actualFee <= 0 {
 		return errors.New("invalid change amount")

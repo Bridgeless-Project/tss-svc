@@ -2,8 +2,11 @@ package config
 
 import (
 	"crypto/tls"
-	core "github.com/hyle-team/tss-svc/internal/core"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"reflect"
+	"time"
+
+	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
@@ -11,8 +14,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-	"reflect"
-	"time"
 )
 
 type ConnectorConfigurer interface {

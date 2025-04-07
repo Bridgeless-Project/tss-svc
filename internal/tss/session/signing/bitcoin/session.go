@@ -7,16 +7,16 @@ import (
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	bitcoin2 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
-	consensus2 "github.com/hyle-team/tss-svc/internal/tss/session/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	resharingConsensus "github.com/hyle-team/tss-svc/internal/tss/session/resharing/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -43,13 +43,13 @@ type Session struct {
 
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
-	client        *bitcoin2.Client
+	client        *bitcoin.Client
 
-	signConsMechanism          consensus2.Mechanism[withdrawal.BitcoinWithdrawalData]
-	consolidationConsMechanism consensus2.Mechanism[resharingConsensus.SigningData]
+	signConsMechanism          consensus.Mechanism[withdrawal.BitcoinWithdrawalData]
+	consolidationConsMechanism consensus.Mechanism[resharingConsensus.SigningData]
 
-	signConsParty          *consensus2.Consensus[withdrawal.BitcoinWithdrawalData]
-	consolidationConsParty *consensus2.Consensus[resharingConsensus.SigningData]
+	signConsParty          *consensus.Consensus[withdrawal.BitcoinWithdrawalData]
+	consolidationConsParty *consensus.Consensus[resharingConsensus.SigningData]
 
 	signFinalizer          *Finalizer
 	consolidationFinalizer *resharingConsensus.Finalizer
@@ -87,7 +87,7 @@ func (s *Session) WithDepositFetcher(fetcher *deposit.Fetcher) *Session {
 	return s
 }
 
-func (s *Session) WithClient(client *bitcoin2.Client) *Session {
+func (s *Session) WithClient(client *bitcoin.Client) *Session {
 	s.client = client
 	return s
 }
@@ -119,7 +119,7 @@ func (s *Session) Build() error {
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
 		s.self.Share.ECDSAPub.ToECDSAPubKey(),
-		bitcoin2.DefaultConsolidateOutputsParams,
+		bitcoin.DefaultConsolidateOutputsParams,
 	)
 
 	return nil
@@ -135,8 +135,8 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.logger = s.logger.WithField("session_id", s.Id())
-		s.signConsParty = consensus2.New[withdrawal.BitcoinWithdrawalData](
-			consensus2.LocalConsensusParty{
+		s.signConsParty = consensus.New[withdrawal.BitcoinWithdrawalData](
+			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Account,
@@ -150,8 +150,8 @@ func (s *Session) Run(ctx context.Context) error {
 			s.self.Share.ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "finalizing"),
 		)
-		s.consolidationConsParty = consensus2.New[resharingConsensus.SigningData](
-			consensus2.LocalConsensusParty{
+		s.consolidationConsParty = consensus.New[resharingConsensus.SigningData](
+			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
 				Self:      s.self.Account,

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	bitcoin2 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
@@ -21,7 +21,7 @@ var _ p2p.TssSession = &Session{}
 
 type SessionParams struct {
 	SessionParams     session.Params
-	ConsolidateParams bitcoin2.ConsolidateOutputsParams
+	ConsolidateParams bitcoin.ConsolidateOutputsParams
 }
 
 type Session struct {
@@ -34,7 +34,7 @@ type Session struct {
 	connectedPartiesCount func() int
 	parties               []p2p.Party
 
-	client         *bitcoin2.Client
+	client         *bitcoin.Client
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[SigningData]
 	finalizer      *Finalizer
@@ -47,7 +47,7 @@ type Session struct {
 
 func NewSession(
 	self tss.LocalSignParty,
-	client *bitcoin2.Client,
+	client *bitcoin.Client,
 	params SessionParams,
 	parties []p2p.Party,
 	connectedPartiesCountFunc func() int,

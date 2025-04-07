@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	zano2 "github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
-	core "github.com/hyle-team/tss-svc/internal/core/connector"
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
@@ -18,9 +18,9 @@ type Finalizer struct {
 	signature      *common.SignatureData
 
 	db   database.DepositsQ
-	core *core.Connector
+	core *coreConnector.Connector
 
-	client *zano2.Client
+	client *zano.Client
 
 	localPartyProposer bool
 
@@ -28,7 +28,7 @@ type Finalizer struct {
 	logger  *logan.Entry
 }
 
-func NewFinalizer(db database.DepositsQ, core *core.Connector, client *zano2.Client, logger *logan.Entry) *Finalizer {
+func NewFinalizer(db database.DepositsQ, core *coreConnector.Connector, client *zano.Client, logger *logan.Entry) *Finalizer {
 	return &Finalizer{
 		db:      db,
 		core:    core,
@@ -85,9 +85,9 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	_, err := f.client.EmitAssetSigned(zano2.SignedTransaction{
-		Signature: zano2.EncodeSignature(f.signature),
-		UnsignedTransaction: zano2.UnsignedTransaction{
+	_, err := f.client.EmitAssetSigned(zano.SignedTransaction{
+		Signature: zano.EncodeSignature(f.signature),
+		UnsignedTransaction: zano.UnsignedTransaction{
 			ExpectedTxHash: f.withdrawalData.ProposalData.TxId,
 			FinalizedTx:    f.withdrawalData.ProposalData.FinalizedTx,
 			Data:           f.withdrawalData.ProposalData.UnsignedTx,
