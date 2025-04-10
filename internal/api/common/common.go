@@ -51,6 +51,7 @@ func ToStatusResponse(d *database.Deposit) *apiTypes.CheckWithdrawalResponse {
 		Receiver:         d.Receiver,
 		DepositAmount:    d.DepositAmount,
 		WithdrawalAmount: d.WithdrawalAmount,
+		CommissionAmount: d.CommissionAmount,
 		DepositAsset:     d.DepositToken,
 		WithdrawalAsset:  d.WithdrawalToken,
 		IsWrappedAsset:   d.IsWrappedToken,

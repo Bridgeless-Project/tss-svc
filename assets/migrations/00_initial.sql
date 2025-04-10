@@ -12,6 +12,7 @@ CREATE TABLE deposits
     receiver            VARCHAR(100) NOT NULL,
     deposit_amount      TEXT        NOT NULL,
     withdrawal_amount   TEXT       NOT NULL,
+    commission_amount TEXT NOT NULL,
     deposit_token       VARCHAR(100) NOT NULL,
     withdrawal_token    VARCHAR(100) NOT NULL,
     is_wrapped_token    BOOLEAN DEFAULT false,

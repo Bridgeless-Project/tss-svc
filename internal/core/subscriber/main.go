@@ -161,6 +161,8 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 				return nil, errors.Wrap(err, "failed to parse isWrapped attribute")
 			}
 			deposit.IsWrappedToken = isWrapped
+		case bridgeTypes.AttributeKeyCommissionAmount:
+			deposit.CommissionAmount = attribute[0]
 		default:
 
 			return nil, errors.Wrap(errors.New(fmt.Sprintf("unknown attribute key: %s", parts[1])), "failed to parse attribute")
