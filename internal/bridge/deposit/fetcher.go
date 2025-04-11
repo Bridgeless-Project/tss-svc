@@ -2,14 +2,13 @@ package deposit
 
 import (
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
-	"github.com/hyle-team/tss-svc/internal/core"
-	"math"
-	"math/big"
-
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
+	"math"
+	"math/big"
 )
 
 type Fetcher struct {
