@@ -72,6 +72,10 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(err, "failed to get commission amount")
 	}
 
+	if !dstClient.WithdrawalAmountValid(big.NewInt(0).Sub(withdrawalAmount, commissionAmount)) {
+		return nil, chain.ErrInvalidDepositedAmount
+	}
+
 	deposit := depositData.ToNewDeposit(big.NewInt(0).Sub(withdrawalAmount, commissionAmount), commissionAmount,
 		dstTokenInfo.Address, dstTokenInfo.IsWrapped)
 
