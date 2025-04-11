@@ -2,6 +2,8 @@ package deposit
 
 import (
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
+	"github.com/hyle-team/tss-svc/internal/core"
+	"math"
 	"math/big"
 
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
@@ -9,8 +11,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
-
-const prec = 128
 
 type Fetcher struct {
 	core    *connector.Connector
@@ -97,27 +97,16 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 
 	return result
 }
-func getCommissionAmount(withdrawalAmount *big.Int, commissionRate string) (*big.Int, error) {
-	rate, ok := new(big.Float).SetString(commissionRate)
-	if !ok {
-		return nil, errors.New("invalid commission rate")
+func getCommissionAmount(withdrawalAmount *big.Int, commissionRate float32) (*big.Int, error) {
+	rate := int(commissionRate * float32(math.Pow10(bridgetypes.Precision)))
+
+	if rate == 0 {
+		return big.NewInt(0), nil
 	}
 
-	rate.SetPrec(prec)
-	amount := new(big.Float).SetInt(withdrawalAmount).SetPrec(prec)
-	commission := new(big.Float).SetPrec(prec).Mul(amount, rate)
-	commission.Quo(commission, big.NewFloat(100).SetPrec(prec))
+	comissionAmount := big.NewInt(0).Mul(withdrawalAmount, big.NewInt(int64(rate)))
 
-	commission.SetMode(big.ToNearestEven)
-
-	if commission.Sign() >= 0 {
-		commission.Add(commission, new(big.Float).SetPrec(prec).SetFloat64(0.5))
-	} else {
-		commission.Sub(commission, new(big.Float).SetPrec(prec).SetFloat64(0.5))
-	}
-
-	commissionInt, _ := commission.Int(nil)
-	return commissionInt, nil
+	return big.NewInt(0).Quo(comissionAmount, big.NewInt(int64(math.Pow10(bridgetypes.Precision+2)))), nil
 }
 
 func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.TokenInfo, error) {
@@ -127,5 +116,5 @@ func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.To
 		}
 	}
 
-	return bridgetypes.TokenInfo{}, errors.New("dst token info not found")
+	return bridgetypes.TokenInfo{}, core.ErrDestinationTokenInfoNotFound
 }

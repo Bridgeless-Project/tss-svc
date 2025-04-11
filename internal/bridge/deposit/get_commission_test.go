@@ -10,31 +10,26 @@ func Test_GetCommissionAmount(t *testing.T) {
 
 	type tc struct {
 		withdrawalAmount *big.Int
-		commissionRate   string
+		commissionRate   float32
 		expected         *big.Int
 	}
 
 	testCases := map[string]tc{
 		"should get commission amount for integer rate": {
 			withdrawalAmount: big.NewInt(1000),
-			commissionRate:   "1",
+			commissionRate:   1,
 			expected:         big.NewInt(10),
 		},
 
 		"should get commission amount for float rate": {
 			withdrawalAmount: big.NewInt(1000_000_000),
-			commissionRate:   "5.322",
-			expected:         big.NewInt(53220000),
+			commissionRate:   0.5,
+			expected:         big.NewInt(5000000),
 		},
 		"should get commission amount for float rate with many decimals": {
 			withdrawalAmount: big.NewInt(1000_000_000),
-			commissionRate:   "5.3225666754754754674675674567456",
-			expected:         big.NewInt(53225667),
-		},
-		"should not return commission amount for invalid rate": {
-			withdrawalAmount: big.NewInt(1000_000_000),
-			commissionRate:   "abc",
-			expected:         nil,
+			commissionRate:   5.32256666,
+			expected:         big.NewInt(53225600),
 		},
 	}
 
