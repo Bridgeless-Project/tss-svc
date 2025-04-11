@@ -67,16 +67,14 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, chain.ErrInvalidDepositedAmount
 	}
 
-	commissionAmount, err := getCommissionAmount(withdrawalAmount, token.CommissionRate)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get commission amount")
+	commissionAmount := getCommissionAmount(withdrawalAmount, token.CommissionRate)
+
+	finalWithdrawalAmount := big.NewInt(0).Sub(withdrawalAmount, commissionAmount)
+	if !dstClient.WithdrawalAmountValid(finalWithdrawalAmount) {
+		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, "invalid final withdrawal amount")
 	}
 
-	if !dstClient.WithdrawalAmountValid(big.NewInt(0).Sub(withdrawalAmount, commissionAmount)) {
-		return nil, chain.ErrInvalidDepositedAmount
-	}
-
-	deposit := depositData.ToNewDeposit(big.NewInt(0).Sub(withdrawalAmount, commissionAmount), commissionAmount,
+	deposit := depositData.ToNewDeposit(finalWithdrawalAmount, commissionAmount,
 		dstTokenInfo.Address, dstTokenInfo.IsWrapped)
 
 	return &deposit, nil
@@ -101,16 +99,20 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 
 	return result
 }
-func getCommissionAmount(withdrawalAmount *big.Int, commissionRate float32) (*big.Int, error) {
+
+// getCommissionAmount returns a commission amount basing on provided withdrawal amount and token commission rate.
+// Function works with precision provided on core. All decimal digits not in range of precision are ignored.
+// For instance, rate 0.0000001 and precision is 5, it will be treated as 0, as 1 does not fit precision.
+func getCommissionAmount(withdrawalAmount *big.Int, commissionRate float32) *big.Int {
 	rate := int(commissionRate * float32(math.Pow10(bridgetypes.Precision)))
 
 	if rate == 0 {
-		return big.NewInt(0), nil
+		return new(big.Int)
 	}
 
-	comissionAmount := big.NewInt(0).Mul(withdrawalAmount, big.NewInt(int64(rate)))
+	commissionAmount := new(big.Int).Mul(withdrawalAmount, big.NewInt(int64(rate)))
 
-	return big.NewInt(0).Quo(comissionAmount, big.NewInt(int64(math.Pow10(bridgetypes.Precision+2)))), nil
+	return new(big.Int).Quo(commissionAmount, big.NewInt(int64(math.Pow10(bridgetypes.Precision+2))))
 }
 
 func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.TokenInfo, error) {
