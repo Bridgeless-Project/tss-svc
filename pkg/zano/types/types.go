@@ -120,6 +120,16 @@ type EmitAssetResponse struct {
 	TxID                   string                 `json:"tx_id"`
 }
 
+type TransferAssetOwnershipParams struct {
+	AssetID           string `json:"asset_id"`
+	NewOwnerEthPubKey string `json:"new_owner_eth_pubkey"`
+}
+
+type TransferAssetOwnershipResponse struct {
+	DataForExternalSigning DataForExternalSigning `json:"data_for_external_signing"`
+	TxID                   string                 `json:"tx_id"`
+}
+
 type BurnAssetParams struct {
 	AssetID    string `json:"asset_id"`
 	BurnAmount string `json:"burn_amount"`

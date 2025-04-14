@@ -33,6 +33,10 @@ func (p *Client) EmitAssetUnsigned(data db.Deposit) (*zanoTypes.EmitAssetRespons
 	return p.chain.Client.EmitAsset(data.WithdrawalToken, destination)
 }
 
+func (p *Client) TransferAssetOwnershipUnsigned(assetId, ownerEthPubKey string) (*zanoTypes.TransferAssetOwnershipResponse, error) {
+	return p.chain.Client.TransferAssetOwnership(assetId, ownerEthPubKey)
+}
+
 func (p *Client) DecryptTxDetails(data zanoTypes.DataForExternalSigning) (*zanoTypes.DecryptTxDetailsResponse, error) {
 	return p.chain.Client.TxDetails(
 		data.OutputsAddresses,
@@ -43,7 +47,7 @@ func (p *Client) DecryptTxDetails(data zanoTypes.DataForExternalSigning) (*zanoT
 	)
 }
 
-func (p *Client) EmitAssetSigned(signedTx SignedTransaction) (string, error) {
+func (p *Client) SendSignedTransaction(signedTx SignedTransaction) (string, error) {
 	_, err := p.chain.Client.SendExtSignedAssetTX(
 		signedTx.Signature,
 		signedTx.ExpectedTxHash,

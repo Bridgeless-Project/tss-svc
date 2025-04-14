@@ -22,7 +22,7 @@ func NewSDK(walletRPC, nodeRPC string) *Sdk {
 
 // Transfer Make new payment transaction from the wallet
 // service []types.ServiceEntry can be empty.
-// wallet rpc api method
+// Wallet rpc api method
 func (z Sdk) Transfer(comment string, service []types.ServiceEntry, destinations []types.Destination) (*types.TransferResponse, error) {
 	if service == nil || len(service) == 0 {
 		service = []types.ServiceEntry{}
@@ -88,6 +88,23 @@ func (z Sdk) EmitAsset(assetId string, destinations ...types.Destination) (*type
 
 	resp := new(types.EmitAssetResponse)
 	if err := z.client.Call(types.EmitAssetMethod, resp, req, true); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+// TransferAssetOwnership Transfer asset ownership to another wallet.
+// assetId must be non-empty and without prefix 0x
+// wallet rpc api method
+func (z Sdk) TransferAssetOwnership(assetId, ownerEthPubKey string) (*types.TransferAssetOwnershipResponse, error) {
+	req := types.TransferAssetOwnershipParams{
+		AssetID:           assetId,
+		NewOwnerEthPubKey: ownerEthPubKey,
+	}
+
+	resp := new(types.TransferAssetOwnershipResponse)
+	if err := z.client.Call(types.TransferAssetOwnershipMethod, resp, req, true); err != nil {
 		return nil, err
 	}
 
