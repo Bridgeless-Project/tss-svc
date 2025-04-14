@@ -48,6 +48,10 @@ func New[T SigningData](
 		partiesMap[p.CoreAddress] = p
 	}
 
+	// maxMaliciousParties are calculated as a total number of parties (len+1) minus
+	// the required signing threshold (T+1)
+	maxMaliciousParties := len(parties) - party.Threshold
+
 	return &Consensus[T]{
 		mechanism: mechanism,
 		parties:   partiesMap,
@@ -56,8 +60,7 @@ func New[T SigningData](
 			party.SessionId,
 			parties,
 			party.Self,
-			// T+1 parties required for signing
-			party.Threshold+1,
+			maxMaliciousParties,
 			p2p.RequestType_RT_PROPOSAL,
 			logger.WithField("component", "proposal_broadcaster"),
 		),
@@ -65,8 +68,7 @@ func New[T SigningData](
 			party.SessionId,
 			parties,
 			party.Self,
-			// T+1 parties required for signing
-			party.Threshold+1,
+			maxMaliciousParties,
 			p2p.RequestType_RT_SIGN_START,
 			logger.WithField("component", "sign_start_broadcaster"),
 		),
