@@ -36,12 +36,12 @@ func Test_GetCommissionAmount(t *testing.T) {
 			commissionRate:   0.0000000000004,
 			expected:         big.NewInt(0),
 		},
-		"should make make 50% commission": {
+		"should make 50% commission": {
 			withdrawalAmount: big.NewInt(100),
 			commissionRate:   50,
 			expected:         big.NewInt(50),
 		},
-		"should make make 100% commission": {
+		"should make 100% commission": {
 			withdrawalAmount: big.NewInt(100),
 			commissionRate:   100,
 			expected:         big.NewInt(100),

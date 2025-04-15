@@ -106,7 +106,7 @@ func getCommissionAmount(withdrawalAmount *big.Int, commissionRate float32) *big
 	rate := int(commissionRate * float32(math.Pow10(bridgetypes.Precision)))
 
 	if rate == 0 {
-		return new(big.Int)
+		return big.NewInt(0)
 	}
 
 	commissionAmount := new(big.Int).Mul(withdrawalAmount, big.NewInt(int64(rate)))
