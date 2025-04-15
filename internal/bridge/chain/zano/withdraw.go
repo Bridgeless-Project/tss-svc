@@ -57,7 +57,7 @@ func (p *Client) SendSignedTransaction(signedTx SignedTransaction) (string, erro
 		true,
 	)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to emit signed asset")
+		return "", errors.Wrap(err, "failed to send signed transaction")
 	}
 
 	return bridge.HexPrefix + signedTx.ExpectedTxHash, nil

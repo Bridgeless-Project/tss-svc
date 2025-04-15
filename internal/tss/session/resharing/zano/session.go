@@ -79,6 +79,7 @@ func NewSession(
 			logger.WithField("phase", "consensus"),
 		),
 		finalizer: NewFinalizer(client, logger.WithField("phase", "finalizer")),
+		logger:    logger,
 	}
 }
 
