@@ -51,7 +51,7 @@ Proposer deterministically selects the signers set from acceptors set that ACKed
 Proposer is included in the signers set as well.
 Signers count is always equal to the signing threshold value.
 
-The consensus process is performed by the following steps:
+The following steps perform the consensus process:
 1. All parties in the network should deterministically choose the proposer for the current signing session.
    Proposer is selected using the deterministic function `f(session_id)` using the [ChaCha8](https://pkg.go.dev/math/rand/v2) pseudo-random number generator.
 2. Proposer forms the signing proposal (f.e. withdrawal on the specific chain) based on the provided mechanism.
@@ -61,19 +61,19 @@ The consensus process is performed by the following steps:
     - ACK if everything is fine;
     - NACK if something isn't valid (already signed proposal, non-existent deposit, etc.).
 4. While acceptors ACKing or NACKing proposer request, the proposer collects all ACKed responses.
-   It should check that number of ACKs N is equal or bigger than provided threshold value T:
+   It should check that the number of ACKs N is equal or bigger than the provided threshold value T:
     - if true, proposer deterministically selects the T signers from the N acceptors that ACKed the signing request (including proposer itself).
-      They are notified about being included to the signer set.
+      They are notified about being included in the signer set.
     - if false, the process finishes.
 5. Notified acceptors receive the current signing set and can additionally validate that all parties forming the signers set are valid and active.
-   Acceptors that are not included in the current signers set can wait till consensus deadline and understand that they are not the part of the current signers set.
-   Optionally, they can be notified by proposer that they won't take part in current signing process.
+   Acceptors that are not included in the current signers set can wait till the consensus deadline and understand that they are not the part of the current signers set.
+   Optionally, they can be notified by proposer that they won't take part in the current signing process.
 
 After the consensus process is completed, the output is the data to be signed and the list of parties that will sign the data.
 If the party is not included in the signers list, the signing data will be empty, and it should wait till the next session will be started.
 
 #### Signing
-After the data is accepted, the signing process, based on  [tss-lib](https://github.com/bnb-chain/tss-lib) ECDSA signing rounds, is started.
+After the data is accepted, the signing process, based on [tss-lib](https://github.com/bnb-chain/tss-lib) ECDSA signing rounds, is started.
 
 **Note:**
 - No signing data validation is performed at this step;
@@ -112,7 +112,7 @@ It is different from the EVM and Zano sessions as it requires multiple UTXOs to 
 Thus, the session includes N signing rounds, where N is the number of UTXOs to be signed in the transaction.
 Respectively, the signing step time bounds are multiplied by N to provide enough time for the parties to sign all UTXOs.
 
-In order to prevent the growing number of UTXOs from being signed in the session, the consolidation process session is run periodically.
+To prevent the growing number of UTXOs from being signed in the session, the consolidation process session is run periodically.
 Consolidation session is a special session that is used to group the larger number of UTXOs in one transaction with a few outputs to reduce the number of UTXOs to be signed in the future sessions.
 It is triggered automatically by reaching the threshold number of UTXOs and the next pending withdrawal request will be processed right after the consolidation process is finished.
 
@@ -172,12 +172,25 @@ Thus, the key resharing process is not performed automatically and should be han
 ---
 
 ## Security
+Protocol security satisfies the [TSS library recommendations](https://github.com/bnb-chain/tss-lib?tab=readme-ov-file#how-to-use-this-securely).
+
+### Secret shares
 To ensure the system security, parties should keep their secret shares of the private key in secret and secure.
 The secret shares should not be shared with anyone, even with the other parties. For this purpose, they are securely stored in the [Vault](../internal/secrets/README.md) and accessed only when required.
 
+### Transport
 Communication (messages transport) between parties is built using mTLS over gRPC, which ensures the secure data exchange between parties.
 It ensures that both parties are authenticated and the data is encrypted during the transmission.
 
 Additionally, within the transport, each message is wrapped with a session ID that is unique to a single run of the keygen, signing or re-sharing session.
-This session ID is agreed upon out-of-band and known only by the participating parties before the session begin.
+This session ID is agreed upon out-of-band and known only by the participating parties before the session begins.
 For a series of signing sessions, the session ID is incremented by one for each next session.
+
+### Broadcast
+There is a mechanism in transport that allows "reliable broadcasts", meaning parties can broadcast a message to other parties
+such that it's guaranteed each one receives the same message. Reliable broadcasts are implemented based on the 
+[Dolev-Strong algorithm](https://www.cs.huji.ac.il/~dolev/pubs/authenticated.pdf).
+
+As the message validation is not the part of the algorithm, the session ID is used to secure the signing message.
+It prevents the malicious parties from replacing the original proposer message and signature with the
+valid one from the previous sessions.

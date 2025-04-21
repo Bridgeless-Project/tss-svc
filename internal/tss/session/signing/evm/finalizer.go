@@ -6,7 +6,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
-	core "github.com/hyle-team/tss-svc/internal/core/connector"
+	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
@@ -18,7 +18,7 @@ type Finalizer struct {
 	signature      *common.SignatureData
 
 	db   database.DepositsQ
-	core *core.Connector
+	core *coreConnector.Connector
 
 	localPartyProposer bool
 
@@ -27,7 +27,7 @@ type Finalizer struct {
 	logger *logan.Entry
 }
 
-func NewFinalizer(db database.DepositsQ, core *core.Connector, logger *logan.Entry) *Finalizer {
+func NewFinalizer(db database.DepositsQ, core *coreConnector.Connector, logger *logan.Entry) *Finalizer {
 	return &Finalizer{
 		db:      db,
 		core:    core,

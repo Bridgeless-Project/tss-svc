@@ -3,6 +3,7 @@ package withdrawal
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -17,7 +18,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -44,10 +45,17 @@ func (e BitcoinWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	return identifier
 }
 
-func (e BitcoinWithdrawalData) ToPayload() *anypb.Any {
-	pb, _ := anypb.New(e.ProposalData)
+func (e BitcoinWithdrawalData) HashString() string {
+	if e.ProposalData == nil {
+		return ""
+	}
 
-	return pb
+	data, err := proto.MarshalOptions{Deterministic: true}.Marshal(e.ProposalData)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 type BitcoinWithdrawalConstructor struct {
@@ -62,15 +70,6 @@ func NewBitcoinConstructor(client *bitcoin2.Client, tssPub *ecdsa.PublicKey) *Bi
 	}
 
 	return &BitcoinWithdrawalConstructor{client: client, tssPkh: tssPkh}
-}
-
-func (c *BitcoinWithdrawalConstructor) FromPayload(payload *anypb.Any) (*BitcoinWithdrawalData, error) {
-	proposalData := &p2p.BitcoinProposalData{}
-	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
-	}
-
-	return &BitcoinWithdrawalData{ProposalData: proposalData}, nil
 }
 
 func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*BitcoinWithdrawalData, error) {

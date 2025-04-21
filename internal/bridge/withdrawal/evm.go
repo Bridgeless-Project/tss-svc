@@ -2,13 +2,15 @@ package withdrawal
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ DepositSigningData = EvmWithdrawalData{}
@@ -33,10 +35,17 @@ func (e EvmWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	return identifier
 }
 
-func (e EvmWithdrawalData) ToPayload() *anypb.Any {
-	pb, _ := anypb.New(e.ProposalData)
+func (e EvmWithdrawalData) HashString() string {
+	if e.ProposalData == nil {
+		return ""
+	}
 
-	return pb
+	data, err := proto.MarshalOptions{Deterministic: true}.Marshal(e.ProposalData)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
@@ -82,13 +91,4 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposit db.De
 	}
 
 	return true, nil
-}
-
-func (c *EvmWithdrawalConstructor) FromPayload(payload *anypb.Any) (*EvmWithdrawalData, error) {
-	proposalData := &p2p.EvmProposalData{}
-	if err := payload.UnmarshalTo(proposalData); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal proposal data")
-	}
-
-	return &EvmWithdrawalData{ProposalData: proposalData}, nil
 }

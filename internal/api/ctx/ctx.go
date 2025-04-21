@@ -8,7 +8,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/core"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -67,14 +67,14 @@ func Fetcher(ctx context.Context) *deposit.Fetcher {
 	return ctx.Value(processorKey).(*deposit.Fetcher)
 }
 
-func BroadcasterProvider(b *p2p.Broadcaster) func(context.Context) context.Context {
+func BroadcasterProvider(b *broadcast.Broadcaster) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, broadcasterKey, b)
 	}
 }
 
-func Broadcaster(ctx context.Context) *p2p.Broadcaster {
-	return ctx.Value(broadcasterKey).(*p2p.Broadcaster)
+func Broadcaster(ctx context.Context) *broadcast.Broadcaster {
+	return ctx.Value(broadcasterKey).(*broadcast.Broadcaster)
 }
 
 func SelfProvider(self core.Address) func(context.Context) context.Context {

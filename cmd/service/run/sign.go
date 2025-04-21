@@ -15,6 +15,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
 	btcSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
 	evmSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
@@ -98,7 +99,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		logger.WithField("component", "api_server"),
 		clientsRepo,
 		fetcher,
-		p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		account.CosmosAddress(),
 		connector,
 	)
@@ -168,7 +169,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSigningSession(sessParams, parties, account, share, dtb, fetcher, logger, client, connector)
+			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector)
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -227,7 +228,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 func configureSigningSession(
 	params session.SigningParams,
 	parties []p2p.Party,
-	account *core.Account,
+	account core.Account,
 	share *keygen.LocalPartySaveData,
 	db db.DepositsQ,
 	fetcher *deposit.Fetcher,
@@ -239,7 +240,7 @@ func configureSigningSession(
 	case chain.TypeEVM:
 		evmSession := evmSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},
@@ -255,7 +256,7 @@ func configureSigningSession(
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},
@@ -271,7 +272,7 @@ func configureSigningSession(
 	case chain.TypeBitcoin:
 		btcSession := btcSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},

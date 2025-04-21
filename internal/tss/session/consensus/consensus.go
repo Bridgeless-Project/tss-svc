@@ -11,6 +11,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -25,7 +26,7 @@ type consensusMsg struct {
 }
 
 type LocalConsensusParty struct {
-	Self      core.Address
+	Self      core.Account
 	SessionId string
 	Threshold int
 }
@@ -47,10 +48,31 @@ func New[T SigningData](
 		partiesMap[p.CoreAddress] = p
 	}
 
+	// maxMaliciousParties are calculated as a total number of parties (len+1) minus
+	// the required signing threshold (T+1)
+	maxMaliciousParties := len(parties) - party.Threshold
+
 	return &Consensus[T]{
-		mechanism:   mechanism,
-		parties:     partiesMap,
-		broadcaster: p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		mechanism: mechanism,
+		parties:   partiesMap,
+
+		proposalBroadcaster: broadcast.NewReliable[T](
+			party.SessionId,
+			parties,
+			party.Self,
+			maxMaliciousParties,
+			p2p.RequestType_RT_PROPOSAL,
+			logger.WithField("component", "proposal_broadcaster"),
+		),
+		signStartBroadcaster: broadcast.NewReliable[SignStartData](
+			party.SessionId,
+			parties,
+			party.Self,
+			maxMaliciousParties,
+			p2p.RequestType_RT_SIGN_START,
+			logger.WithField("component", "sign_start_broadcaster"),
+		),
+		broadcaster: broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 
 		self:      party.Self,
 		sessionId: party.SessionId,
@@ -64,11 +86,14 @@ func New[T SigningData](
 }
 
 type Consensus[T SigningData] struct {
-	mechanism   Mechanism[T]
-	parties     map[core.Address]p2p.Party
-	broadcaster *p2p.Broadcaster
+	mechanism Mechanism[T]
+	parties   map[core.Address]p2p.Party
 
-	self      core.Address
+	proposalBroadcaster  *broadcast.ReliableBroadcaster[T]
+	signStartBroadcaster *broadcast.ReliableBroadcaster[SignStartData]
+	broadcaster          *broadcast.Broadcaster
+
+	self      core.Account
 	sessionId string
 	threshold int
 
@@ -105,7 +130,51 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 	}
 
 	switch request.Type {
-	case p2p.RequestType_RT_PROPOSAL, p2p.RequestType_RT_ACCEPTANCE, p2p.RequestType_RT_SIGN_START:
+	case p2p.RequestType_RT_PROPOSAL:
+		data := &p2p.ReliableBroadcastData{}
+		if err = request.Data.UnmarshalTo(data); err != nil {
+			return errors.Wrap(err, "failed to unmarshal reliable broadcast data")
+		}
+		roundMsg, err := broadcast.DecodeRoundMessage[T](data.GetRoundMsg())
+		if err != nil {
+			return errors.Wrap(err, "failed to decode round message")
+		}
+		if roundMsg.Round == 0 {
+			c.msgs <- consensusMsg{
+				Sender: sender,
+				Type:   request.Type,
+				Data:   request.Data,
+			}
+			return nil
+		}
+
+		return c.proposalBroadcaster.Receive(broadcast.ReliableBroadcastMsg[T]{
+			Sender: sender,
+			Msg:    roundMsg,
+		})
+	case p2p.RequestType_RT_SIGN_START:
+		data := &p2p.ReliableBroadcastData{}
+		if err = request.Data.UnmarshalTo(data); err != nil {
+			return errors.Wrap(err, "failed to unmarshal reliable broadcast data")
+		}
+		roundMsg, err := broadcast.DecodeRoundMessage[SignStartData](data.GetRoundMsg())
+		if err != nil {
+			return errors.Wrap(err, "failed to decode round message")
+		}
+		if roundMsg.Round == 0 {
+			c.msgs <- consensusMsg{
+				Sender: sender,
+				Type:   request.Type,
+				Data:   request.Data,
+			}
+			return nil
+		}
+
+		return c.signStartBroadcaster.Receive(broadcast.ReliableBroadcastMsg[SignStartData]{
+			Sender: sender,
+			Msg:    roundMsg,
+		})
+	case p2p.RequestType_RT_ACCEPTANCE:
 		c.msgs <- consensusMsg{
 			Sender: sender,
 			Type:   request.Type,
@@ -123,7 +192,7 @@ func (c *Consensus[T]) Run(ctx context.Context) {
 	c.logger.Info(fmt.Sprintf("starting consensus with proposer: %s", c.proposer))
 
 	c.wg.Add(1)
-	if c.proposer == c.self {
+	if c.proposer == c.self.CosmosAddress() {
 		go c.propose(ctx)
 	} else {
 		go c.accept(ctx)
@@ -149,7 +218,7 @@ func (c *Consensus[T]) determineProposer() core.Address {
 		partyIds[idx] = party.Identifier()
 		idx++
 	}
-	partyIds[idx] = c.self.PartyIdentifier()
+	partyIds[idx] = c.self.CosmosAddress().PartyIdentifier()
 
 	sortedIds := tss.SortPartyIDs(partyIds)
 

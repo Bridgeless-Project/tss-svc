@@ -10,12 +10,12 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	"github.com/hyle-team/tss-svc/internal/core"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
-	consensus2 "github.com/hyle-team/tss-svc/internal/tss/session/consensus"
+	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
@@ -41,10 +41,10 @@ type Session struct {
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
 
-	mechanism consensus2.Mechanism[withdrawal.ZanoWithdrawalData]
+	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
 
 	signingParty   *tss.SignParty
-	consensusParty *consensus2.Consensus[withdrawal.ZanoWithdrawalData]
+	consensusParty *consensus.Consensus[withdrawal.ZanoWithdrawalData]
 	finalizer      *Finalizer
 }
 
@@ -116,11 +116,11 @@ func (s *Session) Run(ctx context.Context) error {
 	for {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
-		s.consensusParty = consensus2.New[withdrawal.ZanoWithdrawalData](
-			consensus2.LocalConsensusParty{
+		s.consensusParty = consensus.New[withdrawal.ZanoWithdrawalData](
+			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
-				Self:      s.self.Address,
+				Self:      s.self.Account,
 			},
 			s.parties,
 			s.mechanism,
@@ -204,7 +204,7 @@ func (s *Session) runSession(ctx context.Context) error {
 	err = s.finalizer.
 		WithData(result.SigData).
 		WithSignature(signature).
-		WithLocalPartyProposer(s.self.Address == result.Proposer).
+		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")
