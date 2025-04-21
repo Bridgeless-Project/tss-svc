@@ -97,8 +97,8 @@ type ReliableBroadcastMsg[T Hashable] struct {
 
 // ReliableBroadcaster is a reliable broadcast protocol implementation based on the Dolev-Strong protocol.
 // It ensures that a same message is delivered to all parties in the group.
-// It is designed to work in a synchronous network with n > t,
-// where n is the number of parties and t is the maximum number of malicious parties.
+// It is designed to work in a synchronous network with n > f,
+// where n is the number of parties, and f is the maximum number of malicious parties.
 //
 // Instead of running the relay rounds one by one, it runs one big round and processes all incoming messages,
 // ensuring each early or late but valid message is processed.
