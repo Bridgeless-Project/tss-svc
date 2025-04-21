@@ -8,16 +8,11 @@ To provide the service with the required settings, you need to:
 The configuration file is based on the YAML format and should be provided to the service during the launch or commands execution.
 It stores the service settings, network settings, and other required parameters.
 
-Check the [configuration description](../internal/config/README.md) to
-- check the available configurable fields and their descriptions;
-- see the configuration file examples.
 
 ## Vault configuration
 
 [HashiCorp Vault](https://www.vaultproject.io/) is used to store the most sensitive data like keys, private TSS key shares etc.
 
-### Configuration
-See the secrets module [docs](../internal/secrets/README.md) for more details on how to configure the Vault secrets.
 
 ### Environment variables
 To configure the Vault credentials, the following environment variables should be set:

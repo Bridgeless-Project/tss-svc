@@ -19,7 +19,7 @@ var _ p2p.TssSession = &Session{}
 
 type Session struct {
 	sessionId string
-	params    tss.SessionParams
+	params    session.Params
 	wg        *sync.WaitGroup
 
 	connectedPartiesCount func() int
@@ -40,7 +40,7 @@ type Session struct {
 func NewSession(
 	self tss.LocalKeygenParty,
 	parties []p2p.Party,
-	params tss.SessionParams,
+	params session.Params,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *Session {
@@ -85,7 +85,7 @@ func (s *Session) Run(ctx context.Context) error {
 func (s *Session) run(ctx context.Context) {
 	defer s.wg.Done()
 
-	boundedCtx, cancel := context.WithTimeout(ctx, tss.BoundaryKeygenSession)
+	boundedCtx, cancel := context.WithTimeout(ctx, session.BoundaryKeygenSession)
 	defer cancel()
 
 	s.keygenParty.Run(boundedCtx)

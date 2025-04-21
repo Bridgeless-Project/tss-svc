@@ -7,11 +7,11 @@ import (
 	"syscall"
 
 	"github.com/hyle-team/tss-svc/cmd/utils"
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/session/resharing"
+	bitcoinResharing "github.com/hyle-team/tss-svc/internal/tss/session/resharing/bitcoin"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -55,9 +55,9 @@ var reshareBtcCmd = &cobra.Command{
 		parties := cfg.Parties()
 
 		var client *bitcoin.Client
-		for _, chain := range cfg.Chains() {
-			if chain.Type == chains.TypeBitcoin {
-				client = bitcoin.NewBridgeClient(chain.Bitcoin())
+		for _, ch := range cfg.Chains() {
+			if ch.Type == chain.TypeBitcoin {
+				client = bitcoin.NewBridgeClient(bitcoin.FromChain(ch))
 				break
 			}
 		}
@@ -71,14 +71,14 @@ var reshareBtcCmd = &cobra.Command{
 			cfg.Log().WithField("component", "connection_manager"),
 		)
 
-		session := resharing.NewBitcoinSession(
+		session := bitcoinResharing.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   *account,
 				Share:     share,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			client,
-			resharing.BitcoinSessionParams{
+			bitcoinResharing.SessionParams{
 				ConsolidateParams: consolidateParams,
 				SessionParams:     cfg.TssSessionParams(),
 			},

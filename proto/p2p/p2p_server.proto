@@ -102,3 +102,7 @@ message BitcoinResharingProposalData {
 message DepositDistributionData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 }
+
+message ReliableBroadcastData {
+  bytes roundMsg = 1;
+}

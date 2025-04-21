@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/tss"
 )
 
 const (
@@ -16,14 +15,20 @@ const (
 	ReshareSessionPrefix = "RESHARE"
 )
 
-type SigningSessionParams struct {
-	tss.SessionParams
+type Params struct {
+	Id        int64     `fig:"session_id,required"`
+	StartTime time.Time `fig:"start_time,required"`
+	Threshold int       `fig:"threshold,required"`
+}
+
+type SigningParams struct {
+	Params
 	ChainId string
 }
 
-func ParamsFromSigningSessionInfo(info *p2p.SigningSessionInfo) SigningSessionParams {
-	return SigningSessionParams{
-		SessionParams: tss.SessionParams{
+func ParamsFromSigningSessionInfo(info *p2p.SigningSessionInfo) SigningParams {
+	return SigningParams{
+		Params: Params{
 			Id:        info.Id + 1, // expect the next session id to be the current id + 1
 			StartTime: time.UnixMilli(info.NextSessionStartTime),
 			Threshold: int(info.Threshold),

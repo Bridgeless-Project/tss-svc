@@ -76,13 +76,13 @@ var signCmd = &cobra.Command{
 
 		session := signing.NewDefaultSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   *account,
 				Share:     localSaveData,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			signing.DefaultSessionParams{
-				SessionParams: cfg.TssSessionParams(),
-				SigningData:   []byte(dataToSign),
+				Params:      cfg.TssSessionParams(),
+				SigningData: []byte(dataToSign),
 			},
 			parties,
 			connectionManager.GetReadyCount,

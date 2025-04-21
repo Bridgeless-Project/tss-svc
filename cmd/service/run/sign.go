@@ -8,21 +8,24 @@ import (
 	"syscall"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/repository"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
+	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
+	btcSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
+	evmSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
+	zanoSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/zano"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/api"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/bitcoin"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/evm"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/repository"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients/zano"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/config"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/core/subscriber"
@@ -80,14 +83,14 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	wg := new(sync.WaitGroup)
 	eg, ctx := errgroup.WithContext(ctx)
 	logger := cfg.Log()
-	chns := cfg.Chains()
+	clients := cfg.Clients()
 	parties := cfg.Parties()
-	clientsRepo := repository.NewClientsRepository(chns)
+	clientsRepo := repository.NewClientsRepository(clients)
 	sessionManager := p2p.NewSessionManager()
 	dtb := pg.NewDepositsQ(cfg.DB())
 	connector := coreConnector.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
 	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
-	fetcher := bridge.NewDepositFetcher(clientsRepo, connector)
+	fetcher := deposit.NewFetcher(clientsRepo, connector)
 
 	apiServer := api.NewServer(
 		cfg.ApiGrpcListener(),
@@ -96,7 +99,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		logger.WithField("component", "api_server"),
 		clientsRepo,
 		fetcher,
-		p2p.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		account.CosmosAddress(),
 		connector,
 	)
@@ -143,31 +146,30 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		}
 	}
 
-	chainsWg := new(sync.WaitGroup)
-	for _, chain := range chns {
-		chainsWg.Add(1)
+	sessionsWg := new(sync.WaitGroup)
+	for _, client := range clients {
+		sessionsWg.Add(1)
 		eg.Go(func() error {
-			defer chainsWg.Done()
+			defer sessionsWg.Done()
 
-			client, _ := clientsRepo.Client(chain.Id)
-			var sessParams session.SigningSessionParams
+			var sessParams session.SigningParams
 
 			if syncEnabled {
-				logger.Infof("syncing next session params for chain %s", chain.Id)
-				sessionInfo, err := snc.Sync(ctx, chain.Id)
+				logger.Infof("syncing next session params for chain %s", client.ChainId())
+				sessionInfo, err := snc.Sync(ctx, client.ChainId())
 				if err != nil {
-					return errors.Wrap(err, fmt.Sprintf("failed to sync session info for chain %s", chain.Id))
+					return errors.Wrap(err, fmt.Sprintf("failed to sync session info for chain %s", client.ChainId()))
 				}
 				sessParams = session.ParamsFromSigningSessionInfo(sessionInfo)
-				logger.Infof("next session params for chain %s synced", chain.Id)
+				logger.Infof("next session params for chain %s synced", client.ChainId())
 			} else {
-				sessParams = session.SigningSessionParams{
-					SessionParams: cfg.TssSessionParams(),
-					ChainId:       client.ChainId(),
+				sessParams = session.SigningParams{
+					Params:  cfg.TssSessionParams(),
+					ChainId: client.ChainId(),
 				}
 			}
 
-			sess := configureSigningSession(sessParams, chain, parties, account, share, dtb, fetcher, logger, client, connector)
+			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector)
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -176,6 +178,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 			})
 
 			sessionManager.Add(sess)
+
 			return nil
 		})
 	}
@@ -185,7 +188,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	eg.Go(func() error {
 		defer wg.Done()
 
-		depositAcceptorSession := bridge.NewDepositAcceptorSession(
+		depositAcceptorSession := acceptor.NewDepositAcceptorSession(
 			parties,
 			fetcher,
 			dtb,
@@ -207,7 +210,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 
 	if syncEnabled {
 		eg.Go(func() error {
-			chainsWg.Wait()
+			sessionsWg.Wait()
 
 			logger.Info("all signing sessions are ready, starting p2p server in sign mode")
 			p2pServer.SetStatus(p2p.PartyStatus_PS_SIGN)
@@ -223,22 +226,21 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 }
 
 func configureSigningSession(
-	params session.SigningSessionParams,
-	chain chains.Chain,
+	params session.SigningParams,
 	parties []p2p.Party,
-	account *core.Account,
+	account core.Account,
 	share *keygen.LocalPartySaveData,
 	db db.DepositsQ,
-	fetcher *bridge.DepositFetcher,
+	fetcher *deposit.Fetcher,
 	logger *logan.Entry,
-	client clients.Client,
+	client chain.Client,
 	connector *coreConnector.Connector,
 ) (sess p2p.RunnableTssSession) {
-	switch chain.Type {
-	case chains.TypeEVM:
-		evmSession := signing.NewEvmSession(
+	switch client.Type() {
+	case chain.TypeEVM:
+		evmSession := evmSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},
@@ -251,10 +253,10 @@ func configureSigningSession(
 			panic(errors.Wrap(err, "failed to build evm session"))
 		}
 		sess = evmSession
-	case chains.TypeZano:
-		zanoSession := signing.NewZanoSession(
+	case chain.TypeZano:
+		zanoSession := zanoSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},
@@ -267,10 +269,10 @@ func configureSigningSession(
 			panic(errors.Wrap(err, "failed to build zano session"))
 		}
 		sess = zanoSession
-	case chains.TypeBitcoin:
-		btcSession := signing.NewBitcoinSession(
+	case chain.TypeBitcoin:
+		btcSession := btcSigning.NewSession(
 			tss.LocalSignParty{
-				Address:   account.CosmosAddress(),
+				Account:   account,
 				Share:     share,
 				Threshold: params.Threshold,
 			},

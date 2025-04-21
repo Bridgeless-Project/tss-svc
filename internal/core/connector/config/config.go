@@ -2,17 +2,19 @@ package config
 
 import (
 	"crypto/tls"
-	core "github.com/hyle-team/tss-svc/internal/core"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"reflect"
+	"time"
+
+	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
-	"reflect"
-	"time"
 )
 
 type ConnectorConfigurer interface {
@@ -56,7 +58,7 @@ func (c *configurer) CoreConnectorConfig() ConnectorConfig {
 			panic(errors.Wrap(err, "failed to configure core connector"))
 		}
 
-		connectSecurityOptions := grpc.WithInsecure()
+		connectSecurityOptions := grpc.WithTransportCredentials(insecure.NewCredentials())
 		if cfg.Connection.EnableTLS {
 			tlsConfig := &tls.Config{
 				MinVersion: tls.VersionTLS13,

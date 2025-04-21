@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
+	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -16,10 +19,7 @@ import (
 	srvhttp "github.com/hyle-team/tss-svc/internal/api/http"
 	"github.com/hyle-team/tss-svc/internal/api/middlewares"
 	"github.com/hyle-team/tss-svc/internal/api/types"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
 	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -44,9 +44,9 @@ func NewServer(
 	http net.Listener,
 	db db.DepositsQ,
 	logger *logan.Entry,
-	clients clients.Repository,
-	processor *bridge.DepositFetcher,
-	broadcaster *p2p.Broadcaster,
+	clients chain.Repository,
+	processor *deposit.Fetcher,
+	broadcaster *broadcast.Broadcaster,
 	self core.Address,
 	connector *coreConnector.Connector,
 ) *Server {
@@ -114,7 +114,7 @@ func (s *Server) httpRouter(ctxt context.Context) http.Handler {
 	router.Mount("/", grpcGatewayRouter)
 	router.With(middlewares.HijackedConnectionCloser(ctxt)).Get("/ws/check/{chain_id}/{tx_hash}/{tx_nonce}", srvhttp.CheckWithdrawalWs)
 	router.Mount("/static/api_server.swagger.json", http.FileServer(http.FS(api.Docs)))
-	router.HandleFunc("/api", openapiconsole.Handler("Signer service", "/static/api_server.swagger.json"))
+	router.HandleFunc("/api", openapiconsole.Handler("TSS service API", "/static/api_server.swagger.json"))
 
 	return router
 }

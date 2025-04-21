@@ -3,8 +3,7 @@ package common
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	"github.com/hyle-team/tss-svc/internal/bridge/chains"
-	"github.com/hyle-team/tss-svc/internal/bridge/clients"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
@@ -12,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Client) error {
+func ValidateIdentifier(identifier *types.DepositIdentifier, client chain.Client) error {
 	err := validation.Errors{
 		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
 		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
@@ -26,7 +25,7 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client clients.Clie
 	}
 
 	// If chain type is Zano event index always is 0
-	if client.Type() == chains.TypeZano {
+	if client.Type() == chain.TypeZano {
 		identifier.TxNonce = 0
 	}
 
