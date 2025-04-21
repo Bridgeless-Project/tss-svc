@@ -3,7 +3,6 @@ package types
 const (
 	// wallet methods
 	SearchForTransactionsMethod  = "search_for_transactions"
-	DeployAssetMethod            = "deploy_asset"
 	EmitAssetMethod              = "emit_asset"
 	TransferAssetOwnershipMethod = "transfer_asset_ownership"
 	BurnAssetMethod              = "burn_asset"

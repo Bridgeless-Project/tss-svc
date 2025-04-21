@@ -3,7 +3,8 @@ package types
 import "math/big"
 
 const (
-	AssetBurnOperationType = 4
+	OperationTypeTransferAssetOwnership = 3
+	OperationTypeAssetBurn              = 4
 )
 
 // wallet
@@ -147,29 +148,6 @@ type DataForExternalSigning struct {
 	UnsignedTx       string   `json:"unsigned_tx"`
 }
 
-type AssetDescriptor struct {
-	DecimalPoint   int    `json:"decimal_point"`
-	FullName       string `json:"full_name"`
-	HiddenSupply   bool   `json:"hidden_supply"`
-	MetaInfo       string `json:"meta_info"`
-	Owner          string `json:"owner"`
-	Ticker         string `json:"ticker"`
-	TotalMaxSupply string `json:"total_max_supply"`
-	OwnerEthPubKey string `json:"owner_eth_pub_key"`
-	CurrentSupply  string `json:"current_supply"`
-}
-
-type DeployAssetParams struct {
-	AssetDescriptor        `json:"asset_descriptor"`
-	Destinations           []Destination `json:"destinations"`
-	DoNotSplitDestinations bool          `json:"do_not_split_destinations"`
-}
-
-type DeployAssetResponse struct {
-	NewAssetId string `json:"new_asset_id"`
-	TxID       string `json:"tx_id"`
-}
-
 type DecryptTxDetailsParams struct {
 	OutputsAddresses []string `json:"outputs_addresses"`
 	TxBlob           string   `json:"tx_blob"`
@@ -210,7 +188,7 @@ type AssetDescriptorOperation struct {
 	OptAmount           *big.Int `json:"opt_amount"`
 	OptAmountCommitment *string  `json:"opt_amount_commitment"`
 	OptAssetId          *string  `json:"opt_asset_id"`
-	Version             uint64   `json:"version"`
+	Version             uint64   `json:"VERSION"`
 }
 
 func (o *AssetDescriptorOperation) IsValidAssetBurn() bool {
@@ -222,7 +200,7 @@ func (o *AssetDescriptorOperation) IsValidAssetBurn() bool {
 }
 
 func (o *AssetDescriptorOperation) IsAssetBurnOperation() bool {
-	return o.OperationType == AssetBurnOperationType
+	return o.OperationType == OperationTypeAssetBurn
 }
 
 type GetHeightResponse struct {

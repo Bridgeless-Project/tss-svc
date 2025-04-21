@@ -1,6 +1,7 @@
 package zano
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	zanoSdk "github.com/hyle-team/tss-svc/pkg/zano"
+	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -75,6 +77,42 @@ func (c ConsensusMechanism) FormProposalData() (*SigningData, error) {
 }
 
 func (c ConsensusMechanism) VerifyProposedData(data SigningData) error {
-	//TODO implement me
+	details, err := c.client.DecryptTxDetails(zanoTypes.DataForExternalSigning{
+		OutputsAddresses: data.ProposalData.OutputsAddresses,
+		UnsignedTx:       data.ProposalData.UnsignedTx,
+		FinalizedTx:      data.ProposalData.FinalizedTx,
+		TxSecretKey:      data.ProposalData.TxSecretKey,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to decrypt tx details")
+	}
+
+	assetInfo, err := details.GetAssetInfo()
+	if err != nil {
+		return errors.Wrap(err, "failed to get asset info from tx details")
+	}
+	if !assetInfo.IsValidTransferAssetOwnershipOperation() {
+		return errors.New("invalid transfer asset ownership operation")
+	}
+
+	if *assetInfo.OptAssetId != c.assetId {
+		return errors.New(
+			fmt.Sprintf("asset id mismatch: expected %s, got %s", c.assetId, *assetInfo.OptAssetId),
+		)
+	}
+	if assetInfo.OptDescriptor.OwnerEthPubKey != c.ownerEthPubKey {
+		return errors.New(
+			fmt.Sprintf(
+				"owner eth pub key mismatch: expected %s, got %s",
+				c.ownerEthPubKey,
+				assetInfo.OptDescriptor.OwnerEthPubKey,
+			),
+		)
+	}
+
+	if !bytes.Equal(data.ProposalData.SigData, zanoSdk.FormSigningData(details.VerifiedTxID)) {
+		return errors.New("sign data does not match the expected one")
+	}
+
 	return nil
 }

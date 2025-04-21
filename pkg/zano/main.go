@@ -129,25 +129,6 @@ func (z Sdk) BurnAsset(assetId string, amount string) (*types.BurnAssetResponse,
 	return resp, nil
 }
 
-// DeployAsset Deploy new asset in the system.
-// https://docs.zano.org/docs/build/rpc-api/wallet-rpc-api/deploy_asset
-// Asset ID inside destinations can be omitted
-// wallet rpc api method
-func (z Sdk) DeployAsset(assetDescriptor types.AssetDescriptor, destinations []types.Destination) (*types.DeployAssetResponse, error) {
-	req := types.DeployAssetParams{
-		AssetDescriptor:        assetDescriptor,
-		Destinations:           destinations,
-		DoNotSplitDestinations: false,
-	}
-
-	resp := new(types.DeployAssetResponse)
-	if err := z.client.Call(types.DeployAssetMethod, resp, req, true); err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
-
 // TxDetails Decrypts transaction private information. Should be used only with your own local daemon for security reasons.
 // node rpc api method
 func (z Sdk) TxDetails(outputAddress []string, txBlob, txID, txSecretKey string) (*types.DecryptTxDetailsResponse, error) {
