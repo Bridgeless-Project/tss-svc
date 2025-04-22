@@ -100,10 +100,10 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 }
 
 // getCommissionAmount returns a commission amount basing on provided withdrawal amount and token commission rate.
-// Function works with precision provided on core. All decimal digits not in range of precision are ignored.
-// For instance, rate 0.0000001 and precision is 5, it will be treated as 0, as 1 does not fit precision.
+// Function works with CommissionPrecision provided on core. All decimal digits not in range of CommissionPrecision are ignored.
+// For instance, rate 0.0000001 and CommissionPrecision is 5, it will be treated as 0, as 1 does not fit CommissionPrecision.
 func getCommissionAmount(withdrawalAmount *big.Int, commissionRate float32) *big.Int {
-	rate := int(commissionRate * float32(math.Pow10(bridgetypes.Precision)))
+	rate := int(commissionRate * float32(math.Pow10(bridgetypes.CommissionPrecision)))
 
 	if rate == 0 {
 		return big.NewInt(0)
@@ -111,7 +111,7 @@ func getCommissionAmount(withdrawalAmount *big.Int, commissionRate float32) *big
 
 	commissionAmount := new(big.Int).Mul(withdrawalAmount, big.NewInt(int64(rate)))
 
-	return new(big.Int).Quo(commissionAmount, big.NewInt(int64(math.Pow10(bridgetypes.Precision+2))))
+	return new(big.Int).Quo(commissionAmount, big.NewInt(int64(math.Pow10(bridgetypes.CommissionPrecision+2))))
 }
 
 func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.TokenInfo, error) {
