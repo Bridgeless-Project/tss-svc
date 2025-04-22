@@ -10,7 +10,7 @@ replace (
 	github.com/cosmos/iavl => github.com/cosmos/iavl v0.19.6
 	// bridge cosmos sdk protobuf fix
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/hyle-team/bridgeless-core/v12 => github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250411081137-4595c4f84094
+	github.com/hyle-team/bridgeless-core/v12 => github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250415080539-1e6cb9ae8319
 	// bridge cosmos sdk comebft change
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0
@@ -35,7 +35,6 @@ require (
 	github.com/ignite/cli v0.26.1
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.7.0
-	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 	github.com/tendermint/tendermint v0.34.28

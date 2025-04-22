@@ -1862,8 +1862,8 @@ github.com/huin/goupnp v1.0.3/go.mod h1:ZxNlw5WqJj6wSsRK5+YfflQGXYfccj5VgQsMNixH
 github.com/huin/goupnp v1.3.0 h1:UvLUlWDNpoUdYzb2TCn+MuTWtcjXKSza2n6CBdQ0xXc=
 github.com/huin/goupnp v1.3.0/go.mod h1:gnGPsThkYa7bFi/KWmEysQRf48l2dvR5bxr2OFckNX8=
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
-github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250411081137-4595c4f84094 h1:asy9IiPmwZORHbZrEZNat/usqOIQFKIOz7uSuL6Juyk=
-github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250411081137-4595c4f84094/go.mod h1:B+nEBUmR+8Si7LwlpOgfi/nzeeMl5+bfxF+D2sGAFNM=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250415080539-1e6cb9ae8319 h1:ZfWtmaMt22qxe3ZOFFRhB95MzpjITBp1XBX/wWes2n4=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250415080539-1e6cb9ae8319/go.mod h1:B+nEBUmR+8Si7LwlpOgfi/nzeeMl5+bfxF+D2sGAFNM=
 github.com/hyle-team/cosmos-sdk v0.46.30 h1:uyMHkM4SvNKfbQ6nKoUfTmX3uv1CGEF2Yzc7wBu27KU=
 github.com/hyle-team/cosmos-sdk v0.46.30/go.mod h1:JkEh06V4aORJl8/nrLelLCzc5xKPoDuIYgaF8M6AwFw=
 github.com/iancoleman/strcase v0.2.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=
@@ -2279,8 +2279,6 @@ github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAm
 github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible h1:Bn1aCHHRnjv4Bl16T8rcaFjYSrGrIZvpiGO6P3Q4GpU=
 github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
 github.com/shirou/gopsutil/v3 v3.23.2/go.mod h1:gv0aQw33GLo3pG8SiWKiQrbDzbRY1K80RyZJ7V4Th1M=
-github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp81k=
-github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
