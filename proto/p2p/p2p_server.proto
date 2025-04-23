@@ -24,6 +24,7 @@ enum RequestType {
   RT_ACCEPTANCE = 3;
   RT_SIGN_START = 4;
   RT_DEPOSIT_DISTRIBUTION = 5;
+  RT_SIGNATURE_DISTRIBUTION = 6;
 }
 
 service P2P {

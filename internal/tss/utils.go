@@ -5,17 +5,11 @@ import (
 	"math/big"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/bnb-chain/tss-lib/v2/tss"
 )
 
-func Verify(localParty *keygen.LocalPartySaveData, inputData []byte, signature *common.SignatureData) bool {
-	pk := ecdsa.PublicKey{
-		Curve: tss.EC(),
-		X:     localParty.ECDSAPub.X(),
-		Y:     localParty.ECDSAPub.Y(),
-	}
+func Verify(pk *ecdsa.PublicKey, inputData []byte, signature *common.SignatureData) bool {
 	data := big.NewInt(0).SetBytes(inputData)
+	r, s := new(big.Int).SetBytes(signature.R), new(big.Int).SetBytes(signature.S)
 
-	return ecdsa.Verify(&pk, data.Bytes(), new(big.Int).SetBytes(signature.R), new(big.Int).SetBytes(signature.S))
+	return ecdsa.Verify(pk, data.Bytes(), r, s)
 }

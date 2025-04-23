@@ -36,7 +36,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 	c.result.sigData = signingData
 	c.logger.Info("data proposed, waiting for acceptances...")
 
-	boundedCtx, cancel := context.WithTimeout(context.Background(), session.BoundaryAcceptance)
+	boundedCtx, cancel := context.WithTimeout(context.Background(), session.BoundaryProposalAcceptance)
 	defer cancel()
 
 	acceptances := Acceptances{}

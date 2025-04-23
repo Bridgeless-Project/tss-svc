@@ -1,6 +1,12 @@
 package tss
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
+	"fmt"
+
+	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/hyle-team/tss-svc/internal/core"
 )
 
@@ -14,4 +20,17 @@ type partyMsg struct {
 	Sender      core.Address
 	WireMsg     []byte
 	IsBroadcast bool
+}
+
+type Signatures struct {
+	Data []*common.SignatureData
+}
+
+func (s Signatures) HashString() string {
+	var buff bytes.Buffer
+
+	encoder := gob.NewEncoder(&buff)
+	_ = encoder.Encode(s)
+
+	return fmt.Sprintf("%x", sha256.Sum256(buff.Bytes()))
 }
