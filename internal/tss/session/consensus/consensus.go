@@ -2,13 +2,10 @@ package consensus
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
-	"math/rand/v2"
 	"sync"
 	"sync/atomic"
 
-	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
@@ -32,14 +29,14 @@ type LocalConsensusParty struct {
 }
 
 type SigningSessionData[T SigningData] struct {
-	SigData  *T
-	Signers  []p2p.Party
-	Proposer core.Address
+	SigData *T
+	Signers []p2p.Party
 }
 
 func New[T SigningData](
 	party LocalConsensusParty,
 	parties []p2p.Party,
+	proposer core.Address,
 	mechanism Mechanism[T],
 	logger *logan.Entry,
 ) *Consensus[T] {
@@ -75,6 +72,7 @@ func New[T SigningData](
 		broadcaster: broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 
 		self:      party.Self,
+		proposer:  proposer,
 		sessionId: party.SessionId,
 		threshold: party.Threshold,
 
@@ -188,7 +186,6 @@ func (c *Consensus[T]) Receive(request *p2p.SubmitRequest) error {
 }
 
 func (c *Consensus[T]) Run(ctx context.Context) {
-	c.proposer = c.determineProposer()
 	c.logger.Info(fmt.Sprintf("starting consensus with proposer: %s", c.proposer))
 
 	c.wg.Add(1)
@@ -205,30 +202,7 @@ func (c *Consensus[T]) WaitFor() (result SigningSessionData[T], err error) {
 	c.logger.Info("consensus finished")
 
 	return SigningSessionData[T]{
-		SigData:  c.result.sigData,
-		Signers:  c.result.signers,
-		Proposer: c.proposer,
+		SigData: c.result.sigData,
+		Signers: c.result.signers,
 	}, c.result.err
-}
-
-func (c *Consensus[T]) determineProposer() core.Address {
-	partyIds := make([]*tss.PartyID, len(c.parties)+1)
-	idx := 0
-	for _, party := range c.parties {
-		partyIds[idx] = party.Identifier()
-		idx++
-	}
-	partyIds[idx] = c.self.CosmosAddress().PartyIdentifier()
-
-	sortedIds := tss.SortPartyIDs(partyIds)
-
-	generator := deterministicRandSource(c.sessionId)
-	proposerIdx := int(generator.Uint64() % uint64(sortedIds.Len()))
-
-	return core.AddrFromPartyId(sortedIds[proposerIdx])
-}
-
-func deterministicRandSource(sessionId string) rand.Source {
-	seed := sha256.Sum256([]byte(sessionId))
-	return rand.NewChaCha8(seed)
 }

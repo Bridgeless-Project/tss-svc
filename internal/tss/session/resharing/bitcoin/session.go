@@ -53,8 +53,12 @@ func NewSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *Session {
+	sessionId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
+	sortedPartyIds := session.SortAllParties(parties, self.Account.CosmosAddress())
+	leader := session.DetermineLeader(sessionId, sortedPartyIds)
+
 	return &Session{
-		sessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
+		sessionId: sessionId,
 		self:      self,
 		params:    params,
 		mu:        &sync.RWMutex{},
@@ -72,10 +76,15 @@ func NewSession(
 				Self:      self.Account,
 			},
 			parties,
+			leader,
 			NewConsensusMechanism(client, self.Share.ECDSAPub.ToECDSAPubKey(), params.ConsolidateParams),
 			logger.WithField("phase", "consensus"),
 		),
-		finalizer: NewFinalizer(client, self.Share.ECDSAPub.ToECDSAPubKey(), logger.WithField("phase", "finalization")),
+		finalizer: NewFinalizer(
+			client, self.Share.ECDSAPub.ToECDSAPubKey(),
+			logger.WithField("phase", "finalization"),
+			self.Account.CosmosAddress() == leader,
+		),
 
 		logger: logger,
 	}
@@ -170,7 +179,6 @@ func (s *Session) run(ctx context.Context) {
 	s.resultTx, s.err = s.finalizer.
 		WithData(result.SigData).
 		WithSignatures(signatures).
-		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 
 	return

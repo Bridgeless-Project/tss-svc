@@ -20,19 +20,24 @@ type Finalizer struct {
 	db   database.DepositsQ
 	core *coreConnector.Connector
 
-	localPartyProposer bool
+	sessionLeader bool
 
 	errChan chan error
 
 	logger *logan.Entry
 }
 
-func NewFinalizer(db database.DepositsQ, core *coreConnector.Connector, logger *logan.Entry) *Finalizer {
+func NewFinalizer(
+	db database.DepositsQ,
+	core *coreConnector.Connector,
+	logger *logan.Entry,
+	sessionLeader bool) *Finalizer {
 	return &Finalizer{
-		db:      db,
-		core:    core,
-		errChan: make(chan error),
-		logger:  logger,
+		db:            db,
+		core:          core,
+		errChan:       make(chan error),
+		logger:        logger,
+		sessionLeader: sessionLeader,
 	}
 }
 
@@ -43,11 +48,6 @@ func (ef *Finalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *Fin
 
 func (ef *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
 	ef.signature = sig
-	return ef
-}
-
-func (ef *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
-	ef.localPartyProposer = proposer
 	return ef
 }
 
@@ -81,7 +81,7 @@ func (ef *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	if !ef.localPartyProposer {
+	if !ef.sessionLeader {
 		ef.errChan <- nil
 		return
 	}

@@ -22,19 +22,25 @@ type Finalizer struct {
 
 	client *zano.Client
 
-	localPartyProposer bool
+	sessionLeader bool
 
 	errChan chan error
 	logger  *logan.Entry
 }
 
-func NewFinalizer(db database.DepositsQ, core *coreConnector.Connector, client *zano.Client, logger *logan.Entry) *Finalizer {
+func NewFinalizer(
+	db database.DepositsQ,
+	core *coreConnector.Connector,
+	client *zano.Client,
+	logger *logan.Entry,
+	sessionLeader bool) *Finalizer {
 	return &Finalizer{
-		db:      db,
-		core:    core,
-		errChan: make(chan error),
-		logger:  logger,
-		client:  client,
+		db:            db,
+		core:          core,
+		errChan:       make(chan error),
+		logger:        logger,
+		client:        client,
+		sessionLeader: sessionLeader,
 	}
 }
 
@@ -45,11 +51,6 @@ func (f *Finalizer) WithData(withdrawalData *withdrawal.ZanoWithdrawalData) *Fin
 
 func (f *Finalizer) WithSignature(signature *common.SignatureData) *Finalizer {
 	f.signature = signature
-	return f
-}
-
-func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
-	f.localPartyProposer = proposer
 	return f
 }
 
@@ -80,7 +81,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	if !f.localPartyProposer {
+	if !f.sessionLeader {
 		f.errChan <- nil
 		return
 	}

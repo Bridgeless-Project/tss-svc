@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
@@ -27,15 +28,18 @@ var _ p2p.TssSession = &Session{}
 
 type Session struct {
 	sessionId            *atomic.String
+	sessionLeader        core.Address
 	idChangeListener     func(oldId string, newId string)
 	mu                   *sync.RWMutex
 	nextSessionStartTime time.Time
 
-	parties []p2p.Party
-	self    tss.LocalSignParty
-	db      db.DepositsQ
-	params  session.SigningParams
-	logger  *logan.Entry
+	parties        []p2p.Party
+	sortedPartyIds tsslib.SortedPartyIDs
+
+	self   tss.LocalSignParty
+	db     db.DepositsQ
+	params session.SigningParams
+	logger *logan.Entry
 
 	client        *zano.Client
 	coreConnector *connector.Connector
@@ -62,9 +66,10 @@ func NewSession(
 		mu:                   &sync.RWMutex{},
 		nextSessionStartTime: params.StartTime,
 
-		parties: parties,
-		self:    self,
-		db:      db,
+		parties:        parties,
+		self:           self,
+		db:             db,
+		sortedPartyIds: session.SortAllParties(parties, self.Account.CosmosAddress()),
 
 		params: params,
 		logger: logger,
@@ -116,6 +121,7 @@ func (s *Session) Run(ctx context.Context) error {
 	for {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
+		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
 		s.consensusParty = consensus.New[withdrawal.ZanoWithdrawalData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
@@ -123,11 +129,18 @@ func (s *Session) Run(ctx context.Context) error {
 				Self:      s.self.Account,
 			},
 			s.parties,
+			s.sessionLeader,
 			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.finalizer = NewFinalizer(s.db, s.coreConnector, s.client, s.logger.WithField("phase", "finalizing"))
+		s.finalizer = NewFinalizer(
+			s.db,
+			s.coreConnector,
+			s.client,
+			s.logger.WithField("phase", "finalizing"),
+			s.self.Account.CosmosAddress() == s.sessionLeader,
+		)
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next signing session %s to start in %s", s.Id(), time.Until(s.nextSessionStartTime)))
@@ -204,7 +217,6 @@ func (s *Session) runSession(ctx context.Context) error {
 	err = s.finalizer.
 		WithData(result.SigData).
 		WithSignature(signature).
-		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")

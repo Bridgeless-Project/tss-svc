@@ -59,7 +59,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			}
 
 			// Selecting T signers (excluding proposer)
-			signers := getSignersSet(possibleSigners, c.threshold, deterministicRandSource(c.sessionId))
+			signers := getSignersSet(possibleSigners, c.threshold, session.DeterministicRandSource(c.sessionId))
 			c.result.signers = make([]p2p.Party, len(signers))
 			for idx, party := range signers {
 				c.result.signers[idx] = c.parties[party]

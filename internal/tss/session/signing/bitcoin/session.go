@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
+	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
@@ -29,17 +30,19 @@ var _ p2p.TssSession = &Session{}
 
 type Session struct {
 	sessionId                    *atomic.String
+	sessionLeader                core.Address
 	nextSessionStartTime         time.Time
 	nextSessionStartTimeConstant *atomic.Bool
 	idChangeListener             func(oldId string, newId string)
 	isSignSession                *atomic.Bool
 	mu                           *sync.RWMutex
 
-	parties []p2p.Party
-	self    tss.LocalSignParty
-	db      db.DepositsQ
-	params  session.SigningParams
-	logger  *logan.Entry
+	parties        []p2p.Party
+	sortedPartyIds tsslib.SortedPartyIDs
+	self           tss.LocalSignParty
+	db             db.DepositsQ
+	params         session.SigningParams
+	logger         *logan.Entry
 
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
@@ -73,9 +76,10 @@ func NewSession(
 		nextSessionStartTime:         params.StartTime,
 		nextSessionStartTimeConstant: atomic.NewBool(true),
 
-		parties: parties,
-		self:    self,
-		db:      db,
+		parties:        parties,
+		self:           self,
+		db:             db,
+		sortedPartyIds: session.SortAllParties(parties, self.Account.CosmosAddress()),
 
 		params: params,
 		logger: logger,
@@ -133,6 +137,8 @@ func (s *Session) Run(ctx context.Context) error {
 	for {
 		// initializing required session components
 		s.mu.Lock()
+		s.logger = s.logger.WithField("session_id", s.Id())
+		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.signConsParty = consensus.New[withdrawal.BitcoinWithdrawalData](
@@ -142,6 +148,7 @@ func (s *Session) Run(ctx context.Context) error {
 				Self:      s.self.Account,
 			},
 			s.parties,
+			s.sessionLeader,
 			s.signConsMechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
@@ -149,7 +156,9 @@ func (s *Session) Run(ctx context.Context) error {
 			s.db, s.coreConnector, s.client,
 			s.self.Share.ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "finalizing"),
+			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
+
 		s.consolidationConsParty = consensus.New[resharingConsensus.SigningData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
@@ -157,13 +166,16 @@ func (s *Session) Run(ctx context.Context) error {
 				Self:      s.self.Account,
 			},
 			s.parties,
+			s.sessionLeader,
 			s.consolidationConsMechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.consolidationFinalizer = resharingConsensus.NewFinalizer(
 			s.client, s.self.Share.ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "finalizing"),
+			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
+
 		s.mu.Unlock()
 
 		s.logger.Info(fmt.Sprintf("waiting for next session to start in %s", time.Until(s.nextSessionStartTime)))
@@ -288,7 +300,6 @@ func (s *Session) runSigningSession(ctx context.Context) error {
 	err = s.signFinalizer.
 		WithData(result.SigData).
 		WithSignatures(signatures).
-		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")
@@ -374,7 +385,6 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 	txHash, err := s.consolidationFinalizer.
 		WithData(result.SigData).
 		WithSignatures(signatures).
-		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")

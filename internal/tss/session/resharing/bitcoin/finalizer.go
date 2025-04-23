@@ -18,9 +18,9 @@ type Finalizer struct {
 	tssPub []byte
 	client *bitcoin.Client
 
-	data               *SigningData
-	signatures         []*common.SignatureData
-	localPartyProposer bool
+	data          *SigningData
+	signatures    []*common.SignatureData
+	sessionLeader bool
 
 	errChan chan error
 	result  string
@@ -28,12 +28,18 @@ type Finalizer struct {
 	logger *logan.Entry
 }
 
-func NewFinalizer(client *bitcoin.Client, pubKey *ecdsa.PublicKey, logger *logan.Entry) *Finalizer {
+func NewFinalizer(
+	client *bitcoin.Client,
+	pubKey *ecdsa.PublicKey,
+	logger *logan.Entry,
+	sessionLeader bool,
+) *Finalizer {
 	return &Finalizer{
-		client:  client,
-		errChan: make(chan error),
-		logger:  logger,
-		tssPub:  ethcrypto.CompressPubkey(pubKey),
+		client:        client,
+		errChan:       make(chan error),
+		logger:        logger,
+		tssPub:        ethcrypto.CompressPubkey(pubKey),
+		sessionLeader: sessionLeader,
 	}
 }
 
@@ -44,11 +50,6 @@ func (f *Finalizer) WithData(data *SigningData) *Finalizer {
 
 func (f *Finalizer) WithSignatures(signatures []*common.SignatureData) *Finalizer {
 	f.signatures = signatures
-	return f
-}
-
-func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
-	f.localPartyProposer = proposer
 	return f
 }
 
@@ -82,7 +83,7 @@ func (f *Finalizer) finalize() {
 	withdrawalTxHash := bridge.HexPrefix + tx.TxHash().String()
 	f.result = withdrawalTxHash
 
-	if !f.localPartyProposer {
+	if !f.sessionLeader {
 		return
 	}
 

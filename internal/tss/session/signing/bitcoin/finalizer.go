@@ -29,7 +29,7 @@ type Finalizer struct {
 
 	client *bitcoin.Client
 
-	localPartyProposer bool
+	sessionLeader bool
 
 	errChan chan error
 	logger  *logan.Entry
@@ -41,14 +41,16 @@ func NewFinalizer(
 	client *bitcoin.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
+	sessionLeader bool,
 ) *Finalizer {
 	return &Finalizer{
-		db:      db,
-		core:    core,
-		errChan: make(chan error),
-		logger:  logger,
-		client:  client,
-		tssPub:  ethcrypto.CompressPubkey(pubKey),
+		db:            db,
+		core:          core,
+		errChan:       make(chan error),
+		logger:        logger,
+		client:        client,
+		tssPub:        ethcrypto.CompressPubkey(pubKey),
+		sessionLeader: sessionLeader,
 	}
 }
 
@@ -59,11 +61,6 @@ func (f *Finalizer) WithData(withdrawalData *withdrawal.BitcoinWithdrawalData) *
 
 func (f *Finalizer) WithSignatures(signatures []*common.SignatureData) *Finalizer {
 	f.signatures = signatures
-	return f
-}
-
-func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
-	f.localPartyProposer = proposer
 	return f
 }
 
@@ -105,7 +102,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	if !f.localPartyProposer {
+	if !f.sessionLeader {
 		f.errChan <- nil
 		return
 	}
