@@ -10,50 +10,50 @@ func Test_GetCommissionAmount(t *testing.T) {
 
 	type tc struct {
 		withdrawalAmount *big.Int
-		commissionRate   float32
+		commissionRate   string
 		expected         *big.Int
 	}
 
 	testCases := map[string]tc{
 		"should get commission amount for integer rate": {
 			withdrawalAmount: big.NewInt(1000),
-			commissionRate:   1,
-			expected:         big.NewInt(10),
+			commissionRate:   "1",
+			expected:         big.NewInt(1000),
 		},
 
 		"should get commission amount for float rate": {
 			withdrawalAmount: big.NewInt(1000_000_000),
-			commissionRate:   0.5,
-			expected:         big.NewInt(5000000),
+			commissionRate:   "0.5",
+			expected:         big.NewInt(500_000_000),
 		},
 		"should get commission amount for float rate with many decimals": {
 			withdrawalAmount: big.NewInt(1000_000_000),
-			commissionRate:   5.32256666,
-			expected:         big.NewInt(53225600),
+			commissionRate:   "0.532256666",
+			expected:         big.NewInt(532256666),
 		},
 		"should make zero commission as precision is too small": {
 			withdrawalAmount: big.NewInt(100),
-			commissionRate:   0.0000000000004,
+			commissionRate:   "0.0000000000004",
 			expected:         big.NewInt(0),
 		},
 		"should make 50% commission": {
 			withdrawalAmount: big.NewInt(100),
-			commissionRate:   50,
+			commissionRate:   "0.5",
 			expected:         big.NewInt(50),
 		},
 		"should make 100% commission": {
 			withdrawalAmount: big.NewInt(100),
-			commissionRate:   100,
+			commissionRate:   "1",
 			expected:         big.NewInt(100),
 		},
 		"should make minimal commission with precision 5": {
 			withdrawalAmount: big.NewInt(100_000_000),
-			commissionRate:   0.00001,
-			expected:         big.NewInt(10),
+			commissionRate:   "0.00001",
+			expected:         big.NewInt(1000),
 		},
 		"should make zero commission amount": {
 			withdrawalAmount: big.NewInt(100),
-			commissionRate:   0,
+			commissionRate:   "0",
 			expected:         big.NewInt(0),
 		},
 	}

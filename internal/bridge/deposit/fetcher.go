@@ -1,13 +1,13 @@
 package deposit
 
 import (
+	sdkmath "cosmossdk.io/math"
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/core/connector"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
-	"math"
 	"math/big"
 )
 
@@ -100,18 +100,14 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 }
 
 // getCommissionAmount returns a commission amount basing on provided withdrawal amount and token commission rate.
-// Function works with CommissionPrecision provided on core. All decimal digits not in range of CommissionPrecision are ignored.
-// For instance, rate 0.0000001 and CommissionPrecision is 5, it will be treated as 0, as 1 does not fit CommissionPrecision.
-func getCommissionAmount(withdrawalAmount *big.Int, commissionRate float32) *big.Int {
-	rate := int(commissionRate * float32(math.Pow10(bridgetypes.CommissionPrecision)))
+func getCommissionAmount(withdrawalAmount *big.Int, commissionRate string) *big.Int {
+	rate, err := sdkmath.LegacyNewDecFromStr(commissionRate)
 
-	if rate == 0 {
+	if err != nil {
 		return big.NewInt(0)
 	}
 
-	commissionAmount := new(big.Int).Mul(withdrawalAmount, big.NewInt(int64(rate)))
-
-	return new(big.Int).Quo(commissionAmount, big.NewInt(int64(math.Pow10(bridgetypes.CommissionPrecision+2))))
+	return rate.Mul(sdkmath.LegacyNewDecFromBigInt(withdrawalAmount)).TruncateInt().BigInt()
 }
 
 func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.TokenInfo, error) {
