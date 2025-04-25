@@ -78,7 +78,7 @@ func (m RoundMessage[T]) SignHash() []byte {
 	_ = encoder.Encode(m.SessionId)
 	// gob cannot encode nil values, but they are valid
 	if m.Value != (*T)(nil) {
-		_ = encoder.Encode(m.Value)
+		_ = encoder.Encode((*m.Value).HashString())
 	}
 
 	for _, sig := range m.Signatures {
@@ -87,6 +87,7 @@ func (m RoundMessage[T]) SignHash() []byte {
 	}
 
 	hash := sha256.Sum256(buf.Bytes())
+
 	return hash[:]
 }
 
@@ -178,6 +179,12 @@ func (b *ReliableBroadcaster[T]) Broadcast(msg *T) bool {
 
 	b.broadcastMsg(roundMsg)
 
+	if b.relayRounds == 1 {
+		// there will be no incoming messages from other parties
+		// as at the last round no messages are sent, only validated
+		b.finalSigChainReached = true
+	}
+
 	// validating the incoming round messages from parties
 	b.startRounds()
 
@@ -241,13 +248,24 @@ func (b *ReliableBroadcaster[T]) processMsg(msg ReliableBroadcastMsg[T]) {
 	}
 
 	b.addToValuesSet(msg.Msg.Value)
-	if msg.Msg.Round == b.relayRounds {
+
+	signaturesCount := len(msg.Msg.Signatures)
+	if !selfSigned {
+		// including our acknowledgment
+		signaturesCount += 1
+	}
+	if signaturesCount == b.relayRounds {
 		b.finalSigChainReached = true
+	}
+
+	if selfSigned {
+		// no need to sign and/or broadcast messages already signed by self
 		return
 	}
 
-	// no need to sign and/or broadcast messages already signed by self
-	if selfSigned {
+	msg.Msg.Round += 1
+	if msg.Msg.Round == b.relayRounds {
+		// no need to broadcast the last round message
 		return
 	}
 
@@ -262,7 +280,6 @@ func (b *ReliableBroadcaster[T]) processMsg(msg ReliableBroadcastMsg[T]) {
 		Signer: b.self.CosmosAddress(),
 		Value:  sig,
 	})
-	msg.Msg.Round += 1
 
 	b.broadcastMsg(msg.Msg)
 }
