@@ -22,6 +22,11 @@ type partyMsg struct {
 	IsBroadcast bool
 }
 
+func MaxMaliciousParties(partiesCount, threshold int) int {
+	// T+1 parties are required to function
+	return partiesCount - (threshold + 1)
+}
+
 type Signatures struct {
 	Data []*common.SignatureData
 }

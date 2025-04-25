@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bnb-chain/tss-lib/v2/common"
 	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
@@ -47,9 +48,10 @@ type Session struct {
 
 	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
-	signingParty   *tss.SignParty
-	consensusParty *consensus.Consensus[withdrawal.EvmWithdrawalData]
-	finalizer      *Finalizer
+	signingParty          *tss.SignParty
+	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
+	signaturesDistributor *signing.SignaturesDistributor
+	finalizer             *Finalizer
 }
 
 func NewSession(
@@ -134,6 +136,14 @@ func (s *Session) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signaturesDistributor = signing.NewSignaturesDistributor(
+			s.Id(),
+			s.parties,
+			s.self,
+			s.sessionLeader,
+			s.self.Share.ECDSAPub.ToECDSAPubKey(),
+			s.logger.WithField("phase", "signatures_distributing"),
+		)
 		s.finalizer = NewFinalizer(
 			s.db,
 			s.coreConnector,
@@ -162,7 +172,7 @@ func (s *Session) Run(ctx context.Context) error {
 	}
 }
 
-func (s *Session) runSession(ctx context.Context) error {
+func (s *Session) runSession(ctx context.Context) (err error) {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
@@ -170,43 +180,66 @@ func (s *Session) runSession(ctx context.Context) error {
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
 	if err != nil {
-		if !errors.Is(err, context.DeadlineExceeded) {
-			return errors.Wrap(err, "consensus phase error occurred")
-
-		}
-		if err = ctx.Err(); err != nil {
-			s.logger.Info("session cancelled")
-			return nil
-		}
-		if err = consensusCtx.Err(); err != nil {
-			if result.SigData != nil {
-				s.logger.Info("local party is not the signer in the current session")
-			} else {
-				s.logger.Info("consensus phase timeout")
-			}
-			return nil
-		}
+		return errors.Wrap(err, "consensus phase error occurred")
 	}
 	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")
 		return nil
 	}
+
 	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
-	if result.Signers == nil {
-		s.logger.Info("local party is not the signer in the current session")
-		return nil
+	defer func() {
+		// compensating status update in case of error
+		if err != nil {
+			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
+		}
+	}()
+
+	var (
+		distributionCtx    context.Context
+		distributionCancel context.CancelFunc
+		signatures         *tss.Signatures
+	)
+	if result.Signers != nil {
+		// the party takes part in a signing process
+		signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
+		defer sigCtxCancel()
+
+		s.signingParty.
+			WithParties(result.Signers).
+			WithSigningData(result.SigData.ProposalData.SigData).
+			Run(signingCtx)
+		signature := s.signingParty.WaitFor()
+		if signature == nil {
+			return errors.New("signing phase error occurred")
+		}
+
+		signatures = &tss.Signatures{
+			Data: []*common.SignatureData{signature},
+		}
+
+		// signature distribution phase should be started not later than
+		// a second after the signing phase
+		distributionCtx, distributionCancel = context.WithTimeout(ctx, time.Second)
+	} else {
+		// party is not a signer
+		// signature distribution phase should be started not later than
+		// the signing phase deadline plus some extra time
+		distributionCtx, distributionCancel = context.WithTimeout(ctx, session.BoundarySign+time.Second)
 	}
 
-	// signing phase
-	signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
-	defer sigCtxCancel()
+	// signature distribution phase
+	defer distributionCancel()
 
-	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
-	signature := s.signingParty.WaitFor()
-	if signature == nil {
-		return errors.New("signing phase error occurred")
+	s.signaturesDistributor.
+		WithSignatures(signatures).
+		WithSigData([][]byte{result.SigData.ProposalData.SigData}).
+		Run(distributionCtx)
+	signatures, err = s.signaturesDistributor.WaitFor()
+	if err != nil {
+		return errors.Wrap(err, "signature distribution phase error occurred")
 	}
 
 	// finalization phase
@@ -215,7 +248,7 @@ func (s *Session) runSession(ctx context.Context) error {
 
 	err = s.finalizer.
 		WithData(result.SigData).
-		WithSignature(signature).
+		WithSignature(signatures.Data[0]).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")
@@ -263,6 +296,12 @@ func (s *Session) Receive(request *p2p.SubmitRequest) error {
 		s.mu.RUnlock()
 
 		return nil
+	case p2p.RequestType_RT_SIGNATURE_DISTRIBUTION:
+		s.mu.RLock()
+		err := s.signaturesDistributor.Receive(request)
+		s.mu.RUnlock()
+
+		return err
 	default:
 		return errors.New(fmt.Sprintf("unsupported request type %s from '%s'", request.Type, request.Sender))
 	}

@@ -104,7 +104,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 }
 
 func getSignersSet(signers []core.Address, threshold int, rand rand.Source) []core.Address {
-	signersToRemove := threshold - len(signers)
+	signersToRemove := len(signers) - threshold
 	if signersToRemove <= 0 {
 		return signers
 	}

@@ -76,7 +76,7 @@ services:
       - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss1.local.yaml:/config.yaml
       - ./configs/shares/preparams1.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign" #reshare bitcoin mjMvBFWrjoGNPkQV6YJgUz2MghnMUVi1VN --fee-rate=2 --outputs-count=5 --max-inputs-count=5"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -98,7 +98,7 @@ services:
       - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss2.local.yaml:/config.yaml
       - ./configs/shares/preparams2.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign" #reshare bitcoin mjMvBFWrjoGNPkQV6YJgUz2MghnMUVi1VN --fee-rate=2 --outputs-count=5 --max-inputs-count=5"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -120,7 +120,7 @@ services:
       - ./configs/certs/party2.crt:/party2.crt
       - ./configs/tss3.local.yaml:/config.yaml
       - ./configs/shares/preparams3.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign" #reshare bitcoin mjMvBFWrjoGNPkQV6YJgUz2MghnMUVi1VN --fee-rate=2 --outputs-count=5 --max-inputs-count=5"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully

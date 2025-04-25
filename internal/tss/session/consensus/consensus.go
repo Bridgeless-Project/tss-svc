@@ -9,6 +9,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
+	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -45,9 +46,7 @@ func New[T SigningData](
 		partiesMap[p.CoreAddress] = p
 	}
 
-	// maxMaliciousParties are calculated as a total number of parties (len+1) minus
-	// the required signing threshold (T+1)
-	maxMaliciousParties := len(parties) - party.Threshold
+	maxMaliciousParties := tss.MaxMaliciousParties(len(parties)+1, party.Threshold)
 
 	return &Consensus[T]{
 		mechanism: mechanism,

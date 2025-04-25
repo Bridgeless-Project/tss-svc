@@ -24,7 +24,7 @@ type SignaturesDistributor struct {
 	sigData     [][]byte
 	sigPubKey   *ecdsa.PublicKey
 
-	broadcaster broadcast.ReliableBroadcaster[tss.Signatures]
+	broadcaster *broadcast.ReliableBroadcaster[tss.Signatures]
 
 	initSigChan     chan broadcast.ReliableBroadcastMsg[tss.Signatures]
 	initSigAccepted atomic.Bool
@@ -33,6 +33,47 @@ type SignaturesDistributor struct {
 	err        error
 
 	logger *logan.Entry
+}
+
+func NewSignaturesDistributor(
+	sessionId string,
+	parties []p2p.Party,
+	self tss.LocalSignParty,
+	distributor core.Address,
+	sigPubKey *ecdsa.PublicKey,
+	logger *logan.Entry,
+) *SignaturesDistributor {
+	return &SignaturesDistributor{
+		wg:          &sync.WaitGroup{},
+		sessionId:   sessionId,
+		distributor: distributor,
+		self:        self.Account.CosmosAddress(),
+		sigPubKey:   sigPubKey,
+
+		broadcaster: broadcast.NewReliable[tss.Signatures](
+			sessionId,
+			parties,
+			self.Account,
+			tss.MaxMaliciousParties(len(parties)+1, self.Threshold),
+			p2p.RequestType_RT_SIGNATURE_DISTRIBUTION,
+			logger.WithField("component", "signatures_broadcaster"),
+		),
+
+		initSigChan:     make(chan broadcast.ReliableBroadcastMsg[tss.Signatures], 1),
+		initSigAccepted: atomic.Bool{},
+
+		logger: logger,
+	}
+}
+
+func (s *SignaturesDistributor) WithSignatures(signatures *tss.Signatures) *SignaturesDistributor {
+	s.signatures = signatures
+	return s
+}
+
+func (s *SignaturesDistributor) WithSigData(sigData [][]byte) *SignaturesDistributor {
+	s.sigData = sigData
+	return s
 }
 
 func (s *SignaturesDistributor) Run(ctx context.Context) {
@@ -59,7 +100,7 @@ func (s *SignaturesDistributor) distribute() {
 	}
 
 	// additionally validating signatures
-	if err := s.validateSignatures(s.signatures); err != nil {
+	if err := s.validateSignatures(); err != nil {
 		s.err = errors.Wrap(err, "failed to validate signatures")
 		return
 	}
@@ -82,23 +123,22 @@ func (s *SignaturesDistributor) receive(ctx context.Context) {
 		return
 	}
 
-	signatures := msg.Msg.Value
-	if signatures == nil {
-		s.err = errors.New("no signatures received")
-		return
-	}
-	if err := s.validateSignatures(signatures); err != nil {
+	s.signatures = msg.Msg.Value
+	if err := s.validateSignatures(); err != nil {
 		s.err = errors.Wrap(err, "failed to validate received signatures")
 		return
 	}
 }
 
-func (s *SignaturesDistributor) validateSignatures(signatures *tss.Signatures) error {
-	if len(signatures.Data) != len(s.sigData) {
+func (s *SignaturesDistributor) validateSignatures() error {
+	if s.signatures == nil {
+		return errors.New("no signatures received")
+	}
+	if len(s.signatures.Data) != len(s.sigData) {
 		return errors.New("received signatures count does not match expected")
 	}
 
-	for i, signature := range signatures.Data {
+	for i, signature := range s.signatures.Data {
 		if !tss.Verify(s.sigPubKey, s.sigData[i], signature) {
 			return errors.New("got invalid signature")
 		}
