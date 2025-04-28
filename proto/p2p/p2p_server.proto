@@ -100,6 +100,21 @@ message BitcoinResharingProposalData {
   repeated bytes sigData = 2;
 }
 
+message ZanoResharingProposalData {
+  string assetId = 1;
+  string ownerEthPubKey = 2;
+
+  // data to decrypt tx info
+  repeated string outputsAddresses = 3;
+  string unsignedTx = 4;
+  string finalizedTx = 5;
+  string txSecretKey = 6;
+  string txId = 7;
+
+  bytes sigData = 8;
+
+}
+
 message DepositDistributionData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 }
