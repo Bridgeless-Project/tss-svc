@@ -60,7 +60,7 @@ func Test_GetCommissionAmount(t *testing.T) {
 
 	for name, tCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := getCommissionAmount(tCase.withdrawalAmount, tCase.commissionRate)
+			result, _ := getCommissionAmount(tCase.withdrawalAmount, tCase.commissionRate)
 			require.Equal(t, tCase.expected, result)
 		})
 	}

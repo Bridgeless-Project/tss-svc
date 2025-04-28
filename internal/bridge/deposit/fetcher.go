@@ -66,7 +66,11 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, chain.ErrInvalidDepositedAmount
 	}
 
-	commissionAmount := getCommissionAmount(withdrawalAmount, token.CommissionRate)
+	commissionAmount, err := getCommissionAmount(withdrawalAmount, token.CommissionRate)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get commission amount")
+	}
 
 	finalWithdrawalAmount := big.NewInt(0).Sub(withdrawalAmount, commissionAmount)
 	if !dstClient.WithdrawalAmountValid(finalWithdrawalAmount) {
@@ -100,14 +104,14 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 }
 
 // getCommissionAmount returns a commission amount basing on provided withdrawal amount and token commission rate.
-func getCommissionAmount(withdrawalAmount *big.Int, commissionRate string) *big.Int {
+func getCommissionAmount(withdrawalAmount *big.Int, commissionRate string) (*big.Int, error) {
 	rate, err := sdkmath.LegacyNewDecFromStr(commissionRate)
 
 	if err != nil {
-		return big.NewInt(0)
+		return big.NewInt(0), errors.Wrap(err, "failed to parse commission rate")
 	}
 
-	return rate.Mul(sdkmath.LegacyNewDecFromBigInt(withdrawalAmount)).TruncateInt().BigInt()
+	return rate.Mul(sdkmath.LegacyNewDecFromBigInt(withdrawalAmount)).TruncateInt().BigInt(), nil
 }
 
 func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.TokenInfo, error) {
