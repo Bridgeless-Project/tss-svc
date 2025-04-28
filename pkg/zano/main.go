@@ -22,7 +22,7 @@ func NewSDK(walletRPC, nodeRPC string) *Sdk {
 
 // Transfer Make new payment transaction from the wallet
 // service []types.ServiceEntry can be empty.
-// wallet rpc api method
+// Wallet rpc api method
 func (z Sdk) Transfer(comment string, service []types.ServiceEntry, destinations []types.Destination) (*types.TransferResponse, error) {
 	if service == nil || len(service) == 0 {
 		service = []types.ServiceEntry{}
@@ -94,6 +94,23 @@ func (z Sdk) EmitAsset(assetId string, destinations ...types.Destination) (*type
 	return resp, nil
 }
 
+// TransferAssetOwnership Transfer asset ownership to another wallet.
+// assetId must be non-empty and without prefix 0x
+// wallet rpc api method
+func (z Sdk) TransferAssetOwnership(assetId, ownerEthPubKey string) (*types.TransferAssetOwnershipResponse, error) {
+	req := types.TransferAssetOwnershipParams{
+		AssetID:           assetId,
+		NewOwnerEthPubKey: ownerEthPubKey,
+	}
+
+	resp := new(types.TransferAssetOwnershipResponse)
+	if err := z.client.Call(types.TransferAssetOwnershipMethod, resp, req, true); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 // BurnAsset Burn some owned amount of the coins for the given asset.
 // https://docs.zano.org/docs/build/rpc-api/wallet-rpc-api/burn_asset/
 // assetId must be non-empty and without prefix 0x
@@ -106,25 +123,6 @@ func (z Sdk) BurnAsset(assetId string, amount string) (*types.BurnAssetResponse,
 
 	resp := new(types.BurnAssetResponse)
 	if err := z.client.Call(types.BurnAssetMethod, resp, req, true); err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
-
-// DeployAsset Deploy new asset in the system.
-// https://docs.zano.org/docs/build/rpc-api/wallet-rpc-api/deploy_asset
-// Asset ID inside destinations can be omitted
-// wallet rpc api method
-func (z Sdk) DeployAsset(assetDescriptor types.AssetDescriptor, destinations []types.Destination) (*types.DeployAssetResponse, error) {
-	req := types.DeployAssetParams{
-		AssetDescriptor:        assetDescriptor,
-		Destinations:           destinations,
-		DoNotSplitDestinations: false,
-	}
-
-	resp := new(types.DeployAssetResponse)
-	if err := z.client.Call(types.DeployAssetMethod, resp, req, true); err != nil {
 		return nil, err
 	}
 
