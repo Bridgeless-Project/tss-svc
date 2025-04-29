@@ -83,6 +83,9 @@ func (f *Finalizer) finalize() {
 	withdrawalTxHash := bridge.HexPrefix + tx.TxHash().String()
 	f.result = withdrawalTxHash
 
+	// ignoring error here, as the mempool tx can be already observed by the wallet
+	_ = f.client.LockOutputs(tx)
+
 	if !f.sessionLeader {
 		return
 	}
