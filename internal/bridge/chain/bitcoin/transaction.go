@@ -201,3 +201,12 @@ func (c *Client) ConsolidateOutputs(to btcutil.Address, opts ...ConsolidateOutpu
 
 	return tx, sigHashes, nil
 }
+
+func (c *Client) LockOutputs(tx wire.MsgTx) error {
+	outs := make([]*wire.OutPoint, len(tx.TxIn))
+	for i, inp := range tx.TxIn {
+		outs[i] = &inp.PreviousOutPoint
+	}
+
+	return c.chain.Rpc.Wallet.LockUnspent(false, outs)
+}

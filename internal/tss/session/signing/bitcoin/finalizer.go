@@ -102,6 +102,9 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
+	// ignoring error here, as the mempool tx can be already observed by the wallet
+	_ = f.client.LockOutputs(tx)
+
 	if !f.sessionLeader {
 		f.errChan <- nil
 		return
