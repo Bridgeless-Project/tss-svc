@@ -148,7 +148,7 @@ func (s *Session) run(ctx context.Context) {
 	}
 
 	// finalization phase
-	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, session.BoundaryFinalize)
+	finalizerCtx, finalizerCancel := context.WithTimeout(context.Background(), session.BoundaryFinalize)
 	defer finalizerCancel()
 
 	s.resultTx, s.err = s.finalizer.

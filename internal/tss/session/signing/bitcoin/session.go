@@ -321,7 +321,7 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 	}
 
 	// finalization phase
-	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, session.BoundaryFinalize)
+	finalizerCtx, finalizerCancel := context.WithTimeout(context.Background(), session.BoundaryFinalize)
 	defer finalizerCancel()
 
 	err = s.signFinalizer.
@@ -418,7 +418,7 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 	}
 
 	// finalization phase
-	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, session.BoundaryFinalize)
+	finalizerCtx, finalizerCancel := context.WithTimeout(context.Background(), session.BoundaryFinalize)
 	defer finalizerCancel()
 
 	txHash, err := s.consolidationFinalizer.
