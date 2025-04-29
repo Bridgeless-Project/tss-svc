@@ -124,7 +124,7 @@ func (s *Session) Build() error {
 
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
-		s.self.Share.ECDSAPub.ToECDSAPubKey(),
+		bitcoin.PubKeyToPkhCompressed(s.self.Share.ECDSAPub.ToECDSAPubKey(), s.client.ChainParams()),
 		bitcoin.DefaultConsolidateOutputsParams,
 	)
 

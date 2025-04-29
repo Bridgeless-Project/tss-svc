@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
@@ -21,6 +22,7 @@ var _ p2p.TssSession = &Session{}
 
 type SessionParams struct {
 	SessionParams     session.Params
+	TargetAddr        btcutil.Address
 	ConsolidateParams bitcoin.ConsolidateOutputsParams
 }
 
@@ -77,7 +79,7 @@ func NewSession(
 			},
 			parties,
 			leader,
-			NewConsensusMechanism(client, self.Share.ECDSAPub.ToECDSAPubKey(), params.ConsolidateParams),
+			NewConsensusMechanism(client, params.TargetAddr, params.ConsolidateParams),
 			logger.WithField("phase", "consensus"),
 		),
 		finalizer: NewFinalizer(

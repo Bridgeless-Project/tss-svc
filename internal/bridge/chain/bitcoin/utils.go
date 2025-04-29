@@ -54,16 +54,13 @@ func EncodeSignature(sig *common.SignatureData) []byte {
 	return append(btcSig.Serialize(), byte(SigHashType))
 }
 
-func PubKeyToPkhCompressed(pub *ecdsa.PublicKey, chainParams *chaincfg.Params) (*btcutil.AddressPubKeyHash, error) {
+func PubKeyToPkhCompressed(pub *ecdsa.PublicKey, chainParams *chaincfg.Params) *btcutil.AddressPubKeyHash {
 	compressed := crypto.CompressPubkey(pub)
 	pubKeyHash := btcutil.Hash160(compressed)
 
-	addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create address")
-	}
+	addr, _ := btcutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
 
-	return addr, nil
+	return addr
 }
 
 func ToAmount(val float64, decimals int64) *big.Int {

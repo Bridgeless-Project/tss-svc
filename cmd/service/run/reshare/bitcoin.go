@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
@@ -30,9 +31,9 @@ func registerReshareBtcOptions(cmd *cobra.Command) {
 }
 
 var reshareBtcCmd = &cobra.Command{
-	Use:   "bitcoin [target-addr]",
+	Use:   "bitcoin [chain-id] [target-addr]",
 	Short: "Command for service migration during key resharing for Bitcoin",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := utils.ConfigFromFlags(cmd)
 		if err != nil {
@@ -56,13 +57,17 @@ var reshareBtcCmd = &cobra.Command{
 
 		var client *bitcoin.Client
 		for _, ch := range cfg.Chains() {
-			if ch.Type == chain.TypeBitcoin {
+			if ch.Id == args[0] && ch.Type == chain.TypeBitcoin {
 				client = bitcoin.NewBridgeClient(bitcoin.FromChain(ch))
 				break
 			}
 		}
 		if client == nil {
 			return errors.New("bitcoin client configuration not found")
+		}
+		targetAddr, err := btcutil.DecodeAddress(args[1], client.ChainParams())
+		if err != nil {
+			return errors.Wrap(err, "failed to decode target address")
 		}
 
 		connectionManager := p2p.NewConnectionManager(
@@ -80,6 +85,7 @@ var reshareBtcCmd = &cobra.Command{
 			client,
 			bitcoinResharing.SessionParams{
 				ConsolidateParams: consolidateParams,
+				TargetAddr:        targetAddr,
 				SessionParams:     cfg.TssSessionParams(),
 			},
 			parties,
