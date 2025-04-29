@@ -40,7 +40,6 @@ func NewSignaturesDistributor(
 	parties []p2p.Party,
 	self tss.LocalSignParty,
 	distributor core.Address,
-	sigPubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
 ) *SignaturesDistributor {
 	return &SignaturesDistributor{
@@ -48,7 +47,7 @@ func NewSignaturesDistributor(
 		sessionId:   sessionId,
 		distributor: distributor,
 		self:        self.Account.CosmosAddress(),
-		sigPubKey:   sigPubKey,
+		sigPubKey:   self.Share.ECDSAPub.ToECDSAPubKey(),
 
 		broadcaster: broadcast.NewReliable[tss.Signatures](
 			sessionId,

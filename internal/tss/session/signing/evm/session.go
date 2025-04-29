@@ -141,7 +141,6 @@ func (s *Session) Run(ctx context.Context) error {
 			s.parties,
 			s.self,
 			s.sessionLeader,
-			s.self.Share.ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "signatures_distributing"),
 		)
 		s.finalizer = NewFinalizer(
@@ -193,7 +192,7 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 	defer func() {
 		// compensating status update in case of error
 		if err != nil {
-			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
+			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING)
 		}
 	}()
 

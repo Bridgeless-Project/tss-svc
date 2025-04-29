@@ -54,6 +54,8 @@ type Session struct {
 	signConsParty          *consensus.Consensus[withdrawal.BitcoinWithdrawalData]
 	consolidationConsParty *consensus.Consensus[resharingConsensus.SigningData]
 
+	signaturesDistributor *signing.SignaturesDistributor
+
 	signFinalizer          *Finalizer
 	consolidationFinalizer *resharingConsensus.Finalizer
 
@@ -175,6 +177,13 @@ func (s *Session) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "finalizing"),
 			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
+		s.signaturesDistributor = signing.NewSignaturesDistributor(
+			s.Id(),
+			s.parties,
+			s.self,
+			s.sessionLeader,
+			s.logger.WithField("phase", "signatures_distributing"),
+		)
 
 		s.mu.Unlock()
 
@@ -220,7 +229,7 @@ func (s *Session) Run(ctx context.Context) error {
 	}
 }
 
-func (s *Session) runSigningSession(ctx context.Context) error {
+func (s *Session) runSigningSession(ctx context.Context) (err error) {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
@@ -228,69 +237,87 @@ func (s *Session) runSigningSession(ctx context.Context) error {
 	s.signConsParty.Run(consensusCtx)
 	result, err := s.signConsParty.WaitFor()
 	if err != nil {
-		if !errors.Is(err, context.DeadlineExceeded) {
-			return errors.Wrap(err, "consensus phase error occurred")
-		}
-		if err = ctx.Err(); err != nil {
-			s.logger.Info("session cancelled")
-			return nil
-		}
-		if err = consensusCtx.Err(); err != nil {
-			if result.SigData != nil {
-				s.updateNextSessionStartTime(len(result.SigData.ProposalData.SigData))
-				s.logger.Info("local party is not the signer in the current session")
-			} else {
-				s.logger.Info("consensus phase timeout")
-			}
-			return nil
-		}
+		return errors.Wrap(err, "consensus phase error occurred")
 	}
 	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")
 		return nil
 	}
+
 	signRounds := len(result.SigData.ProposalData.SigData)
 	s.updateNextSessionStartTime(signRounds)
+
 	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
-	if result.Signers == nil {
-		s.logger.Info("local party is not the signer in the current session")
-		return nil
+	defer func() {
+		// compensating status update in case of error
+		if err != nil {
+			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING)
+		}
+	}()
+
+	var (
+		distributionCtx    context.Context
+		distributionCancel context.CancelFunc
+		signatures         *tss.Signatures
+	)
+	if result.Signers != nil {
+		s.logger.Infof("got %d inputs to sign", signRounds)
+		// signing phase
+		sigs := make([]*common.SignatureData, 0, signRounds)
+		for idx := range signRounds {
+			currentSigData := result.SigData.ProposalData.SigData[idx]
+
+			s.logger.Info(fmt.Sprintf("signing round %d started", idx+1))
+			signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
+
+			s.signingParty.WithParties(result.Signers).WithSigningData(currentSigData).Run(signingCtx)
+			signature := s.signingParty.WaitFor()
+			sigCtxCancel()
+			if signature == nil {
+				return errors.New(fmt.Sprintf("signing phase error occurred for round %d", idx+1))
+			}
+
+			s.logger.Info(fmt.Sprintf("signing round %d finished", idx+1))
+			sigs = append(sigs, signature)
+			if idx+1 == signRounds {
+				break
+			}
+
+			s.mu.Lock()
+			s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.mu.Unlock()
+
+			select {
+			case <-ctx.Done():
+				s.logger.Info("signing session cancelled")
+				return nil
+			case <-time.After(session.BoundaryBitcoinSignRoundDelay):
+			}
+		}
+
+		signatures = &tss.Signatures{Data: sigs}
+		// signature distribution phase should be started not later than
+		// a second after the signing phase
+		distributionCtx, distributionCancel = context.WithTimeout(ctx, time.Second)
+	} else {
+		// party is not a signer
+		// signature distribution phase should be started not later than
+		// the signing phase deadline plus some extra time
+		distributionCtx, distributionCancel = context.WithTimeout(ctx, getSigningPhaseDelay(signRounds)+time.Second)
 	}
 
-	s.logger.Infof("got %d inputs to sign", signRounds)
-	// signing phase
-	signatures := make([]*common.SignatureData, 0, signRounds)
-	for idx := range signRounds {
-		currentSigData := result.SigData.ProposalData.SigData[idx]
+	// signature distribution phase
+	defer distributionCancel()
 
-		s.logger.Info(fmt.Sprintf("signing round %d started", idx+1))
-		signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
-
-		s.signingParty.WithParties(result.Signers).WithSigningData(currentSigData).Run(signingCtx)
-		signature := s.signingParty.WaitFor()
-		sigCtxCancel()
-		if signature == nil {
-			return errors.New(fmt.Sprintf("signing phase error occurred for round %d", idx+1))
-		}
-
-		s.logger.Info(fmt.Sprintf("signing round %d finished", idx+1))
-		signatures = append(signatures, signature)
-		if idx+1 == signRounds {
-			break
-		}
-
-		s.mu.Lock()
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.mu.Unlock()
-
-		select {
-		case <-ctx.Done():
-			s.logger.Info("signing session cancelled")
-			return nil
-		case <-time.After(session.BoundaryBitcoinSingRoundDelay):
-		}
+	s.signaturesDistributor.
+		WithSignatures(signatures).
+		WithSigData(result.SigData.ProposalData.SigData).
+		Run(distributionCtx)
+	signatures, err = s.signaturesDistributor.WaitFor()
+	if err != nil {
+		return errors.Wrap(err, "signature distribution phase error occurred")
 	}
 
 	// finalization phase
@@ -299,7 +326,7 @@ func (s *Session) runSigningSession(ctx context.Context) error {
 
 	err = s.signFinalizer.
 		WithData(result.SigData).
-		WithSignatures(signatures).
+		WithSignatures(signatures.Data).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")
@@ -316,66 +343,78 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 	s.consolidationConsParty.Run(consensusCtx)
 	result, err := s.consolidationConsParty.WaitFor()
 	if err != nil {
-		if !errors.Is(err, context.DeadlineExceeded) {
-			return errors.Wrap(err, "consensus phase error occurred")
-		}
-		if err = ctx.Err(); err != nil {
-			s.logger.Info("session cancelled")
-			return nil
-		}
-		if err = consensusCtx.Err(); err != nil {
-			if result.SigData != nil {
-				s.updateNextSessionStartTime(len(result.SigData.ProposalData.SigData))
-				s.logger.Info("local party is not the signer in the current session")
-			} else {
-				s.logger.Info("consensus phase timeout")
-			}
-			return nil
-		}
+		return errors.Wrap(err, "consensus phase error occurred")
 	}
 	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")
 		return nil
 	}
+
 	signRounds := len(result.SigData.ProposalData.SigData)
 	s.updateNextSessionStartTime(signRounds)
-	if result.Signers == nil {
-		s.logger.Info("local party is not the signer in the current session")
-		return nil
+
+	var (
+		distributionCtx    context.Context
+		distributionCancel context.CancelFunc
+		signatures         *tss.Signatures
+	)
+
+	if result.Signers != nil {
+		s.logger.Infof("got %d inputs to sign", signRounds)
+		// signing phase
+		sigs := make([]*common.SignatureData, 0, signRounds)
+		for idx := range signRounds {
+			currentSigData := result.SigData.ProposalData.SigData[idx]
+
+			s.logger.Info(fmt.Sprintf("signing round %d started", idx+1))
+			signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
+
+			s.signingParty.WithParties(result.Signers).WithSigningData(currentSigData).Run(signingCtx)
+			signature := s.signingParty.WaitFor()
+			sigCtxCancel()
+			if signature == nil {
+				return errors.New(fmt.Sprintf("signing phase error occurred for round %d", idx+1))
+			}
+
+			s.logger.Info(fmt.Sprintf("signing round %d finished", idx+1))
+			sigs = append(sigs, signature)
+			if idx+1 == signRounds {
+				break
+			}
+
+			s.mu.Lock()
+			s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.mu.Unlock()
+
+			select {
+			case <-ctx.Done():
+				s.logger.Info("signing session cancelled")
+				return nil
+			case <-time.After(session.BoundaryBitcoinSignRoundDelay):
+			}
+		}
+
+		signatures = &tss.Signatures{Data: sigs}
+		// signature distribution phase should be started not later than
+		// a second after the signing phase
+		distributionCtx, distributionCancel = context.WithTimeout(ctx, time.Second)
+	} else {
+		// party is not a signer
+		// signature distribution phase should be started not later than
+		// the signing phase deadline plus some extra time
+		distributionCtx, distributionCancel = context.WithTimeout(ctx, getSigningPhaseDelay(signRounds)+time.Second)
 	}
 
-	s.logger.Infof("got %d inputs to sign", signRounds)
-	// signing phase
-	signatures := make([]*common.SignatureData, 0, signRounds)
-	for idx := range signRounds {
-		currentSigData := result.SigData.ProposalData.SigData[idx]
+	// signature distribution phase
+	defer distributionCancel()
 
-		s.logger.Info(fmt.Sprintf("signing round %d started", idx+1))
-		signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
-
-		s.signingParty.WithParties(result.Signers).WithSigningData(currentSigData).Run(signingCtx)
-		signature := s.signingParty.WaitFor()
-		sigCtxCancel()
-		if signature == nil {
-			return errors.New(fmt.Sprintf("signing phase error occurred for round %d", idx+1))
-		}
-
-		s.logger.Info(fmt.Sprintf("signing round %d finished", idx+1))
-		signatures = append(signatures, signature)
-		if idx+1 == signRounds {
-			break
-		}
-
-		s.mu.Lock()
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.mu.Unlock()
-
-		select {
-		case <-ctx.Done():
-			s.logger.Info("signing session cancelled")
-			return nil
-		case <-time.After(session.BoundaryBitcoinSingRoundDelay):
-		}
+	s.signaturesDistributor.
+		WithSignatures(signatures).
+		WithSigData(result.SigData.ProposalData.SigData).
+		Run(distributionCtx)
+	signatures, err = s.signaturesDistributor.WaitFor()
+	if err != nil {
+		return errors.Wrap(err, "signature distribution phase error occurred")
 	}
 
 	// finalization phase
@@ -384,7 +423,7 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 
 	txHash, err := s.consolidationFinalizer.
 		WithData(result.SigData).
-		WithSignatures(signatures).
+		WithSignatures(signatures.Data).
 		Finalize(finalizerCtx)
 	if err != nil {
 		return errors.Wrap(err, "finalizer phase error occurred")
@@ -453,7 +492,7 @@ func (s *Session) RegisterIdChangeListener(f func(oldId string, newId string)) {
 // based on the number of inputs required to be signed in the current session.
 // By default, the next session start time at the moment of function call
 // is expected at 'prevTime + tss.BoundarySigningSession'; which includes
-// standard session flow: consensus -> signing (1) -> finalizing
+// standard session flow: consensus -> signing (1) -> signature distribution -> finalizing
 // if the number of inputs to sign is greater than 1, the next session start time
 // should be recalculated to include additional signing phases and
 // delays to re-setup the signing party to ensure the correct request handling
@@ -468,7 +507,7 @@ func (s *Session) updateNextSessionStartTime(inputsToSign int) {
 	}
 
 	// excluding included consensus, finalizing, and one signing phase
-	additionalDelay := time.Duration(inputsToSign-1) * (session.BoundarySign + session.BoundaryBitcoinSingRoundDelay)
+	additionalDelay := time.Duration(inputsToSign-1) * (session.BoundarySign + session.BoundaryBitcoinSignRoundDelay)
 	s.nextSessionStartTime = s.nextSessionStartTime.Add(additionalDelay)
 }
 
@@ -487,4 +526,12 @@ func (s *Session) SigningSessionInfo() *p2p.SigningSessionInfo {
 		s.self.Threshold,
 		s.params.ChainId,
 	)
+}
+
+func getSigningPhaseDelay(inputsToSign int) time.Duration {
+	if inputsToSign <= 1 {
+		return session.BoundarySign
+	}
+
+	return time.Duration(inputsToSign)*session.BoundarySign + time.Duration(inputsToSign-1)*session.BoundaryBitcoinSignRoundDelay
 }

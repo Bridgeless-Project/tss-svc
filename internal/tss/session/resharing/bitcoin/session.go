@@ -169,7 +169,7 @@ func (s *Session) run(ctx context.Context) {
 		case <-ctx.Done():
 			s.err = errors.New("signing session cancelled")
 			return
-		case <-time.After(session.BoundaryBitcoinSingRoundDelay):
+		case <-time.After(session.BoundaryBitcoinSignRoundDelay):
 		}
 	}
 

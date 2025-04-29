@@ -13,5 +13,5 @@ const (
 	BoundarySignatureDistribution = 5 * time.Second
 	BoundaryFinalize              = 15 * time.Second
 
-	BoundaryBitcoinSingRoundDelay = 500 * time.Millisecond
+	BoundaryBitcoinSignRoundDelay = 500 * time.Millisecond
 )
