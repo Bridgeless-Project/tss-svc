@@ -16,7 +16,12 @@ type Account struct {
 }
 
 func NewAccount(prv string, hrp ...string) (*Account, error) {
-	key := &secp256k1.PrivKey{Key: hexutil.MustDecode(prv)}
+	raw, err := hexutil.Decode(prv)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode private key")
+	}
+
+	key := &secp256k1.PrivKey{Key: raw}
 
 	prefix := defaultHrp
 	if len(hrp) > 0 {

@@ -3,6 +3,7 @@ package helpers
 import (
 	"github.com/hyle-team/tss-svc/cmd/helpers/generate"
 	"github.com/hyle-team/tss-svc/cmd/helpers/parse"
+	"github.com/hyle-team/tss-svc/cmd/helpers/vault"
 	"github.com/spf13/cobra"
 )
 
@@ -16,6 +17,5 @@ var Cmd = &cobra.Command{
 }
 
 func registerHelpersCommands(cmd *cobra.Command) {
-	cmd.AddCommand(generate.Cmd)
-	cmd.AddCommand(parse.Cmd)
+	cmd.AddCommand(generate.Cmd, parse.Cmd, vault.Cmd)
 }

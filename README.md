@@ -11,8 +11,7 @@ Fore more information check the [`TSS Overview`](./docs/01_overview.md).
 ## Becoming a part of TSS network
 Currently, to become a TSS network party, you should follow the next steps:
 - be a validator of the Cosmos [Bridge Network](https://github.com/hyle-team/bridgeless-core);
-- run the full nodes of the supported networks (e.g. Ethereum, Bitcoin, Zano etc.);
-- todo:add
+- be able to run the full nodes and wallets (if exist) of the supported networks (e.g. Ethereum, Bitcoin, Zano etc.) for transaction validation and withdrawal sending.
 
 ## Examples
 For configuration, running and usage examples, see the [`Examples`](./examples) folder.

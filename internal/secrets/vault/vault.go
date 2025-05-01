@@ -14,12 +14,13 @@ import (
 )
 
 const (
+	valueKey     = "value"
 	keyPreParams = "keygen_preparams"
 	keyAccount   = "core_account"
 	keyTssShare  = "tss_share"
-	KeyTlsCert   = "tls_cert"
-	TlsCertData  = "cert_data"
-	TlsKeyData   = "key_data"
+	keyTlsCert   = "tls_cert"
+	tlsCertData  = "cert_data"
+	tlsKeyData   = "key_data"
 )
 
 type Storage struct {
@@ -58,7 +59,7 @@ func (s *Storage) GetKeygenPreParams() (*keygen.LocalPreParams, error) {
 		return nil, errors.Wrap(err, "failed to load preparams")
 	}
 
-	val, ok := data["value"].(string)
+	val, ok := data[valueKey].(string)
 	if !ok {
 		return nil, errors.New("preparams value not found")
 	}
@@ -78,7 +79,7 @@ func (s *Storage) SaveKeygenPreParams(params *keygen.LocalPreParams) error {
 	}
 
 	return s.store(keyPreParams, map[string]interface{}{
-		"value": string(raw),
+		valueKey: string(raw),
 	})
 }
 
@@ -89,7 +90,7 @@ func (s *Storage) SaveTssShare(data *keygen.LocalPartySaveData) error {
 	}
 
 	return s.store(keyTssShare, map[string]interface{}{
-		"value": string(raw),
+		valueKey: string(raw),
 	})
 }
 
@@ -99,7 +100,7 @@ func (s *Storage) GetCoreAccount() (*core.Account, error) {
 		return nil, errors.Wrap(err, "failed to load account")
 	}
 
-	val, ok := kvData["value"].(string)
+	val, ok := kvData[valueKey].(string)
 	if !ok {
 		return nil, errors.New("account value not found")
 	}
@@ -114,7 +115,7 @@ func (s *Storage) GetCoreAccount() (*core.Account, error) {
 
 func (s *Storage) SaveCoreAccount(account *core.Account) error {
 	return s.store(keyAccount, map[string]interface{}{
-		"value": hexutil.Encode(account.PrivateKey().Bytes()),
+		valueKey: hexutil.Encode(account.PrivateKey().Bytes()),
 	})
 }
 
@@ -123,7 +124,7 @@ func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load share data")
 	}
-	val, ok := kvData["value"].(string)
+	val, ok := kvData[valueKey].(string)
 	if !ok {
 		return nil, errors.New("share data not found")
 	}
@@ -136,15 +137,15 @@ func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
 }
 
 func (s *Storage) GetLocalPartyTlsCertificate() (*tls.Certificate, error) {
-	kvData, err := s.load(KeyTlsCert)
+	kvData, err := s.load(keyTlsCert)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tls certificate data")
 	}
-	rawCert, ok := kvData[TlsCertData].(string)
+	rawCert, ok := kvData[tlsCertData].(string)
 	if !ok {
 		return nil, errors.New("tls certificate data not found")
 	}
-	rawKey, ok := kvData[TlsKeyData].(string)
+	rawKey, ok := kvData[tlsKeyData].(string)
 	if !ok {
 		return nil, errors.New("tls key data not found")
 	}
@@ -155,4 +156,12 @@ func (s *Storage) GetLocalPartyTlsCertificate() (*tls.Certificate, error) {
 	}
 
 	return &cert, nil
+}
+
+func (s *Storage) SaveLocalPartyTlsCertificate(rawCert, rawKey []byte) error {
+	return s.store(keyTlsCert, map[string]interface{}{
+		tlsCertData: string(rawCert),
+		tlsKeyData:  string(rawKey),
+	})
+
 }

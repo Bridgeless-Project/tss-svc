@@ -12,7 +12,8 @@ To start with, the new general system public key and private shares must be gene
 (excluding the old and including the new ones). All parties should agree on the keygen session identifier and start time.
 Additionally, the signing threshold should be set to the new value.
 
-**NOTE!** The keygen service mode should be configured to save the generated key share to the file system (through the command flag).
+**NOTE!**\
+The keygen service mode should be configured to save the generated key share to the file system (through the command flag).
 It is necessary to save the previous key share as it will be used further in the resharing process. 
 If the new share rewrote the old one, the Hashicorp Vault stores the previous version of the secret, so it can be restored.
 But the service configured to use the latest version of the secret, so you should manually save the newly generated secret
@@ -36,7 +37,7 @@ No additional contract upgrades or redeploys are required.
 
 #### 3.1. Obtaining TSS Bitcoin address
 The new general system public key should be used to derive the Bitcoin address for the TSS service.
-Address can be obtained by executing the helper cli command to parse the Bitcoin address from the provided EC point (pubkey).
+Address can be obtained by executing the helper CLI command to parse the Bitcoin address from the provided EC point (pubkey).
 It can be found in the newly generated private share data.
 
 As the result, the new PKH address will be generated (based on the **compressed** public key)
@@ -63,20 +64,22 @@ Compressed public key can be obtained by executing the helper cli command to par
 It can be found in the newly generated private share data.
 
 #### 4.2. Updating assets' ownership
-TODO: describe the process of updating the ownership of the assets in the Zano network when resharing will be completed
+For each asset used in the TSS network, the `owner_eth_pub_key` field should be updated with the new public key.
+Each TSS party should be configured with the asset id and the new owner public key,and be ready to start the service in Zano resharing mode.
+The process of asset ownership update should be repeated for each asset used in the TSS network.
 
 ### 5. Bridge module settings reconfiguration [Bridge module admin only]
 After the chains reconfiguration, the bridge module should be reconfigured with the new parameters.
 
 #### 5.1. Parties list update
 The list of active signing parties should be updated with the new set of parties.
-Also, the newbies or goodbye lists should be cleared.
 
 #### 5.2. TSS Threshold update
 The signing threshold should be updated with the new value, if it was changed during the resharing process.
 
 ### 6. TSS Vault secrets reconfiguration 
 After the key resharing process was completed, the TSS Vault share secret should be updated with the newly generated key share.
+The service helper CLI command can be used to update the secret with the new key share by providing the share file.
 
 ### 7. Local TSS reconfiguration
 

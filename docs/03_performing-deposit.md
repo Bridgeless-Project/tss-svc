@@ -29,14 +29,14 @@ function depositNative(
 After the transaction execution, the according event will be emitted, either `DepositedERC20` or `DepositedNative`.
 
 To initiate the transfer processing, the user should provide any of the available parties with the deposit operation data:
-- transaction hash - the hash of the transaction that contains the deposit operation;
-- transaction nonce - the emitted event index, containing the information about the deposit operation and transfer memo;
-- source chain id - the identifier of the source chain where the deposit operation was executed.
+- transaction hash—the hash of the transaction that contains the deposit operation;
+- transaction nonce—the emitted event index, containing the information about the deposit operation and transfer memo;
+- source chain id—the identifier of the source chain where the deposit operation was executed.
 
 ## Bitcoin
 
 To initiate a transfer from the Bitcoin network, the user should construct a transaction aligning with the next requirements:
-- deposit transaction should contain the VOUT-X (x is the index of the output) pointed to the TSS network account address.
+- deposit transaction should contain the VOUT-X (x is the index of the output) pointed to the TSS network account address (P2PKH).
 The amount of the output will be tracked as the deposit amount and should not be below the dust threshold (1000 sats);
 - the transaction should contain the memo with the required information about transfer parameters (destination address, chain id etc.) to be processed by the TSS network.
 It should be included as VOUT-(X+1) output using the OP_RETURN script.
@@ -45,9 +45,9 @@ As the OP_RETURN script is limited to 80 bytes, the memo should be abbreviated a
   - For Zano network, the memo should contain the Base58-decoded destination address (as in the default format it exceeds the 80 bytes of memo) and the destination network identifier. Example: `addr..-35443`, where `addr..` is the Base58-decoded destination address and `35443` is the destination network identifier.
 
 After the transaction is broadcast, the user should provide the TSS network with the deposit operation data:
-- transaction hash - the hash of the transaction that contains the deposit operation, prepended with the `0x` prefix (if not present);
-- transaction nonce - the number of the output X that contains the deposit amount. The transaction memo can then be found by checking the next (VOUT-(X+1)) output;
-- source chain id - the identifier of the source chain where the deposit operation was executed.
+- transaction hash—the hash of the transaction that contains the deposit operation, prepended with the `0x` prefix (if not present);
+- transaction nonce—the number of the output X that contains the deposit amount. The transaction memo can then be found by checking the next (VOUT-(X+1)) output;
+- source chain id—the identifier of the source chain where the deposit operation was executed.
 
 ## Zano
 
@@ -66,10 +66,10 @@ type DestinationData struct {
 - transaction should be pointed to TSS network account address using the `point_tx_to_address` transaction field.
 In this case, the burning transaction will be visible and processable in the TSS network.
 
-After the transaction is broadcasted, the user should provide the TSS network with the deposit operation data:
-- transaction hash - the hash of the transaction that contains the deposit operation, prepended with the `0x` prefix (if not present);
-- transaction nonce - the index of `service_entries` array item with transfer destination information;
-- source chain id - the identifier of the source chain where the deposit operation was executed.
+After the transaction is broadcast, the user should provide the TSS network with the deposit operation data:
+- transaction hash—the hash of the transaction that contains the deposit operation, prepended with the `0x` prefix (if not present);
+- transaction nonce—the index of `service_entries` array item with transfer destination information;
+- source chain id—the identifier of the source chain where the deposit operation was executed.
 
 # Bridging Parameters
 To find the required information about the supported tokens and chains, the user should query the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core) [`bridge`](https://github.com/hyle-team/bridgeless-core/tree/main/x/bridge) module, which contains the information about the available tokens, their addresses, chain identifiers and more.

@@ -8,7 +8,7 @@ log:
 # Database configuration
 db:
   # Database URL connection string
-  url:
+  url: postgres://tss:tss@tss-1-db:5432/tss?sslmode=disable
 
 # Listeners configuration
 listeners:
