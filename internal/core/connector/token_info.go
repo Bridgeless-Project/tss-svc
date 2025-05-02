@@ -17,7 +17,7 @@ func (c *Connector) GetTokenInfo(chainId string, addr string) (bridgetypes.Token
 	resp, err := c.querier.GetTokenInfo(context.Background(), &req)
 	if err != nil {
 		if errors.Is(err, bridgetypes.ErrTokenInfoNotFound.GRPCStatus().Err()) {
-			return bridgetypes.TokenInfo{}, core.ErrTokenInfoNotFound
+			return bridgetypes.TokenInfo{}, core.ErrSourceTokenInfoNotFound
 		}
 
 		return bridgetypes.TokenInfo{}, errors.Wrap(err, "failed to get token info")

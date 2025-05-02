@@ -13,7 +13,7 @@ const OriginTxIdPattern = "%s-%d-%s"
 
 var ErrAlreadySubmitted = errors.New("transaction already submitted")
 var FinalWithdrawalStatuses = []types.WithdrawalStatus{
-	//transaction is signed
+	// transaction is signed
 	types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
 	// data invalid or something goes wrong
 	types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
@@ -70,12 +70,13 @@ type Deposit struct {
 	Id int64 `structs:"-" db:"id"`
 	DepositIdentifier
 
-	Depositor       *string `structs:"depositor" db:"depositor"`
-	DepositAmount   string  `structs:"deposit_amount" db:"deposit_amount"`
-	DepositToken    string  `structs:"deposit_token" db:"deposit_token"`
-	Receiver        string  `structs:"receiver" db:"receiver"`
-	WithdrawalToken string  `structs:"withdrawal_token" db:"withdrawal_token"`
-	DepositBlock    int64   `structs:"deposit_block" db:"deposit_block"`
+	Depositor        *string `structs:"depositor" db:"depositor"`
+	DepositAmount    string  `structs:"deposit_amount" db:"deposit_amount"`
+	DepositToken     string  `structs:"deposit_token" db:"deposit_token"`
+	Receiver         string  `structs:"receiver" db:"receiver"`
+	WithdrawalToken  string  `structs:"withdrawal_token" db:"withdrawal_token"`
+	DepositBlock     int64   `structs:"deposit_block" db:"deposit_block"`
+	CommissionAmount string  `structs:"commission_amount" db:"commission_amount"`
 
 	WithdrawalStatus types.WithdrawalStatus `structs:"withdrawal_status" db:"withdrawal_status"`
 
@@ -97,6 +98,7 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		Depositor:         stringOrEmpty(d.Depositor),
 		DepositAmount:     d.DepositAmount,
 		WithdrawalAmount:  d.WithdrawalAmount,
+		CommissionAmount:  d.CommissionAmount,
 		DepositToken:      d.DepositToken,
 		Receiver:          d.Receiver,
 		WithdrawalToken:   d.WithdrawalToken,
@@ -120,24 +122,24 @@ type DepositData struct {
 }
 
 func (d DepositData) ToNewDeposit(
-	withdrawalAmount *big.Int,
+	withdrawalAmount,
+	commissionAmount *big.Int,
 	dstTokenAddress string,
 	isWrappedToken bool,
 ) Deposit {
-	depositAmountStr := d.DepositAmount.String()
-	withdrawalAmountStr := withdrawalAmount.String()
 	return Deposit{
 		DepositIdentifier: d.DepositIdentifier,
 		Depositor:         &d.SourceAddress,
-		DepositAmount:     depositAmountStr,
+		DepositAmount:     d.DepositAmount.String(),
 		DepositToken:      d.TokenAddress,
 		Receiver:          d.DestinationAddress,
 		WithdrawalToken:   dstTokenAddress,
 		DepositBlock:      d.Block,
 		WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
 		WithdrawalChainId: d.DestinationChainId,
-		WithdrawalAmount:  withdrawalAmountStr,
+		WithdrawalAmount:  withdrawalAmount.String(),
 		IsWrappedToken:    isWrappedToken,
+		CommissionAmount:  commissionAmount.String(),
 	}
 }
 

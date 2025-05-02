@@ -1862,8 +1862,8 @@ github.com/huin/goupnp v1.0.3/go.mod h1:ZxNlw5WqJj6wSsRK5+YfflQGXYfccj5VgQsMNixH
 github.com/huin/goupnp v1.3.0 h1:UvLUlWDNpoUdYzb2TCn+MuTWtcjXKSza2n6CBdQ0xXc=
 github.com/huin/goupnp v1.3.0/go.mod h1:gnGPsThkYa7bFi/KWmEysQRf48l2dvR5bxr2OFckNX8=
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
-github.com/hyle-team/bridgeless-core/v12 v12.1.16-rc1 h1:iRT2n7SkNWyHP3Y4ZMrooi88uEg2BNEaL3l2ltbuPxc=
-github.com/hyle-team/bridgeless-core/v12 v12.1.16-rc1/go.mod h1:l1XnKoWRqpW0e1DuaRes7rGQK971RxkYPgbRWDSxDyU=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250424161220-d19dbe44a70b h1:I11yjQktRHhtuFPSw65rVJ1B9obqa/lQT2Ms7DBqGlo=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250424161220-d19dbe44a70b/go.mod h1:l1XnKoWRqpW0e1DuaRes7rGQK971RxkYPgbRWDSxDyU=
 github.com/hyle-team/cosmos-sdk v0.46.30 h1:uyMHkM4SvNKfbQ6nKoUfTmX3uv1CGEF2Yzc7wBu27KU=
 github.com/hyle-team/cosmos-sdk v0.46.30/go.mod h1:JkEh06V4aORJl8/nrLelLCzc5xKPoDuIYgaF8M6AwFw=
 github.com/iancoleman/strcase v0.2.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=

@@ -31,7 +31,8 @@ const (
 
 	depositsWithdrawalStatus = "withdrawal_status"
 
-	depositsIsWrappedToken = "is_wrapped_token"
+	depositsIsWrappedToken   = "is_wrapped_token"
+	depositsCommissionAmount = "commission_amount"
 
 	depositsSignature = "signature"
 )
@@ -64,6 +65,7 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			// can be 0x00... in case of native ones
 			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
+			depositsCommissionAmount:  deposit.CommissionAmount,
 		}).
 		Suffix("RETURNING id")
 
@@ -197,6 +199,7 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsChainId:          deposit.ChainId,
 			depositsDepositAmount:    deposit.DepositAmount,
 			depositsWithdrawalAmount: deposit.WithdrawalAmount,
+			depositsCommissionAmount: deposit.CommissionAmount,
 			depositsReceiver:         strings.ToLower(deposit.Receiver),
 			depositsDepositBlock:     deposit.DepositBlock,
 			depositsIsWrappedToken:   deposit.IsWrappedToken,
