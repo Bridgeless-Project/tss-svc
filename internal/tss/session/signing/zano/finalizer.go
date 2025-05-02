@@ -85,7 +85,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	_, err := f.client.EmitAssetSigned(zano.SignedTransaction{
+	_, err := f.client.SendSignedTransaction(zano.SignedTransaction{
 		Signature: zano.EncodeSignature(f.signature),
 		UnsignedTransaction: zano.UnsignedTransaction{
 			ExpectedTxHash: f.withdrawalData.ProposalData.TxId,

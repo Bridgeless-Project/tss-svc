@@ -1,4 +1,4 @@
-package bitcoin
+package zano
 
 import (
 	"context"
@@ -6,8 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
@@ -20,21 +19,21 @@ import (
 var _ p2p.TssSession = &Session{}
 
 type SessionParams struct {
-	SessionParams     session.Params
-	ConsolidateParams bitcoin.ConsolidateOutputsParams
+	SessionParams  session.Params
+	AssetId        string
+	OwnerEthPubKey string
 }
 
 type Session struct {
 	sessionId string
 	self      tss.LocalSignParty
 	params    SessionParams
-	mu        *sync.RWMutex
 	wg        *sync.WaitGroup
 
 	connectedPartiesCount func() int
 	parties               []p2p.Party
 
-	client         *bitcoin.Client
+	client         *zano.Client
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[SigningData]
 	finalizer      *Finalizer
@@ -47,37 +46,40 @@ type Session struct {
 
 func NewSession(
 	self tss.LocalSignParty,
-	client *bitcoin.Client,
+	client *zano.Client,
 	params SessionParams,
 	parties []p2p.Party,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *Session {
+	sessId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
 	return &Session{
-		sessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
+		sessionId: sessId,
 		self:      self,
 		params:    params,
-		mu:        &sync.RWMutex{},
 		wg:        &sync.WaitGroup{},
 
 		connectedPartiesCount: connectedPartiesCountFunc,
 		parties:               parties,
 
 		client:       client,
-		signingParty: tss.NewSignParty(self, session.GetReshareSessionIdentifier(params.SessionParams.Id), logger.WithField("phase", "signing")),
+		signingParty: tss.NewSignParty(self, sessId, logger.WithField("phase", "signing")),
 		consensusParty: consensus.New[SigningData](
 			consensus.LocalConsensusParty{
-				SessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
+				SessionId: sessId,
 				Threshold: self.Threshold,
 				Self:      self.Account,
 			},
 			parties,
-			NewConsensusMechanism(client, self.Share.ECDSAPub.ToECDSAPubKey(), params.ConsolidateParams),
+			NewConsensusMechanism(
+				params.AssetId,
+				params.OwnerEthPubKey,
+				client,
+			),
 			logger.WithField("phase", "consensus"),
 		),
-		finalizer: NewFinalizer(client, self.Share.ECDSAPub.ToECDSAPubKey(), logger.WithField("phase", "finalization")),
-
-		logger: logger,
+		finalizer: NewFinalizer(client, logger.WithField("phase", "finalizer")),
+		logger:    logger,
 	}
 }
 
@@ -121,47 +123,24 @@ func (s *Session) run(ctx context.Context) {
 		s.err = errors.Wrap(err, "consensus phase error occurred")
 		return
 	}
+	if result.SigData == nil {
+		s.err = errors.New("no data to sign in the resharing session")
+		return
+	}
 	if result.Signers == nil {
 		s.logger.Info("local party is not the signer in the current session")
 		return
 	}
 
-	signRounds := len(result.SigData.ProposalData.SigData)
-	s.logger.Infof("got %d inputs to sign", signRounds)
-
 	// signing phase
-	signatures := make([]*common.SignatureData, 0, signRounds)
-	for idx := range signRounds {
-		currentSigData := result.SigData.ProposalData.SigData[idx]
+	signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
+	defer sigCtxCancel()
 
-		s.logger.Info(fmt.Sprintf("signing round %d started", idx+1))
-		signingCtx, sigCtxCancel := context.WithTimeout(ctx, session.BoundarySign)
-
-		s.signingParty.WithParties(result.Signers).WithSigningData(currentSigData).Run(signingCtx)
-		signature := s.signingParty.WaitFor()
-		sigCtxCancel()
-		if signature == nil {
-			s.err = errors.New(fmt.Sprintf("signing phase error occurred for round %d", idx+1))
-			return
-		}
-
-		s.logger.Info(fmt.Sprintf("signing round %d finished", idx+1))
-		signatures = append(signatures, signature)
-
-		if idx+1 == signRounds {
-			break
-		}
-
-		s.mu.Lock()
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
-		s.mu.Unlock()
-
-		select {
-		case <-ctx.Done():
-			s.err = errors.New("signing session cancelled")
-			return
-		case <-time.After(session.BoundaryBitcoinSingRoundDelay):
-		}
+	s.signingParty.WithParties(result.Signers).WithSigningData(result.SigData.ProposalData.SigData).Run(signingCtx)
+	signature := s.signingParty.WaitFor()
+	if signature == nil {
+		s.err = errors.New("signing phase error occurred ")
+		return
 	}
 
 	// finalization phase
@@ -170,7 +149,7 @@ func (s *Session) run(ctx context.Context) {
 
 	s.resultTx, s.err = s.finalizer.
 		WithData(result.SigData).
-		WithSignatures(signatures).
+		WithSignature(signature).
 		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 
@@ -196,9 +175,7 @@ func (s *Session) Receive(request *p2p.SubmitRequest) error {
 			return errors.Wrap(err, "failed to parse sender address")
 		}
 
-		s.mu.RLock()
 		s.signingParty.Receive(sender, data)
-		s.mu.RUnlock()
 
 		return nil
 	default:

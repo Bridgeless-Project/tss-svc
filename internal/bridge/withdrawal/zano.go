@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
+	zanoSdk "github.com/hyle-team/tss-svc/pkg/zano"
 	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -81,7 +80,7 @@ func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*ZanoWi
 			FinalizedTx:      tx.DataForExternalSigning.FinalizedTx,
 			TxSecretKey:      tx.DataForExternalSigning.TxSecretKey,
 			TxId:             tx.TxID,
-			SigData:          c.formSigData(tx.TxID),
+			SigData:          zanoSdk.FormSigningData(tx.TxID),
 		},
 	}, nil
 }
@@ -124,13 +123,9 @@ func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.
 		return false, errors.New("minted amount does not match the expected one")
 	}
 
-	if !bytes.Equal(data.ProposalData.SigData, c.formSigData(details.VerifiedTxID)) {
+	if !bytes.Equal(data.ProposalData.SigData, zanoSdk.FormSigningData(details.VerifiedTxID)) {
 		return false, errors.New("sig data does not match the expected one")
 	}
 
 	return true, nil
-}
-
-func (c *ZanoWithdrawalConstructor) formSigData(txId string) []byte {
-	return hexutil.MustDecode(bridge.HexPrefix + txId)
 }

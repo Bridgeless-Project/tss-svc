@@ -97,8 +97,8 @@ type ReliableBroadcastMsg[T Hashable] struct {
 
 // ReliableBroadcaster is a reliable broadcast protocol implementation based on the Dolev-Strong protocol.
 // It ensures that a same message is delivered to all parties in the group.
-// It is designed to work in a synchronous network with n > t,
-// where n is the number of parties and t is the maximum number of malicious parties.
+// It is designed to work in a synchronous network with n > f,
+// where n is the number of parties, and f is the maximum number of malicious parties.
 //
 // Instead of running the relay rounds one by one, it runs one big round and processes all incoming messages,
 // ensuring each early or late but valid message is processed.
@@ -126,14 +126,13 @@ func NewReliable[T Hashable](
 	sessionId string,
 	parties []p2p.Party,
 	self core.Account,
-	threshold int,
+	maxMaliciousParties int,
 	requestType p2p.RequestType,
 	logger *logan.Entry,
 ) *ReliableBroadcaster[T] {
-	// relay rounds are calculated as the t + 1,
-	// where t is the maximum number of possible malicious parties,
-	// which is equal to the total number of parties minus the threshold
-	relayRounds := (len(parties) + 1) - threshold + 1
+	// relay rounds are calculated as the f + 1,
+	// where f is the maximum number of possible malicious parties,
+	relayRounds := maxMaliciousParties + 1
 
 	receivedMsgsMap := make(map[core.Address]map[int]bool, len(parties))
 	partiesMap := make(map[core.Address]bool, len(parties)+1)
@@ -172,7 +171,7 @@ func (b *ReliableBroadcaster[T]) Broadcast(msg *T) bool {
 	signHash := roundMsg.SignHash()
 	sig, err := b.self.PrivateKey().Sign(signHash)
 	if err != nil {
-		b.logger.Warn(fmt.Sprintf("failed to sign initial broadcasting message: %s", err))
+		b.logger.Error(fmt.Sprintf("failed to sign initial broadcasting message: %s", err))
 		return false
 	}
 	roundMsg.Signatures = []Signature{{Signer: b.self.CosmosAddress(), Value: sig}}
@@ -217,15 +216,15 @@ func (b *ReliableBroadcaster[T]) startRounds() {
 			return
 		case msg := <-b.msgs:
 			if msg.Msg.SessionId != b.sessionId {
-				b.logger.Warn(fmt.Sprintf("malicious party %q sending message with different session id", msg.Sender))
+				b.logger.Info(fmt.Sprintf("malicious party %q sending message with different session id", msg.Sender))
 				continue
 			}
 			if msg.Msg.Round > b.relayRounds {
-				b.logger.Warn(fmt.Sprintf("malicious party %q sending message with round greater than relay rounds count", msg.Sender))
+				b.logger.Info(fmt.Sprintf("malicious party %q sending message with round greater than relay rounds count", msg.Sender))
 				continue
 			}
 			if b.receivedMsgs[msg.Sender][msg.Msg.Round] {
-				b.logger.Warn(fmt.Sprintf("malicious party %q sending duplicate round message", msg.Sender))
+				b.logger.Info(fmt.Sprintf("malicious party %q sending duplicate round message", msg.Sender))
 				continue
 			}
 			b.receivedMsgs[msg.Sender][msg.Msg.Round] = true
@@ -271,12 +270,12 @@ func (b *ReliableBroadcaster[T]) processMsg(msg ReliableBroadcastMsg[T]) {
 func (b *ReliableBroadcaster[T]) decideValid() bool {
 	distinctValuesCount := len(b.values)
 	if distinctValuesCount == 0 || distinctValuesCount > 1 {
-		b.logger.Warn("no valid values found or too many distinct values")
+		b.logger.Info("no valid values found or too many distinct values")
 		return false
 	}
 
 	if !b.finalSigChainReached {
-		b.logger.Warn("longest signature chain not reached, too much malicious parties")
+		b.logger.Info("longest signature chain not reached, too much malicious parties")
 		return false
 	}
 
@@ -311,26 +310,27 @@ func (b *ReliableBroadcaster[T]) broadcastMsg(msg RoundMessage[T]) {
 func (b *ReliableBroadcaster[T]) validateSignatures(msg ReliableBroadcastMsg[T]) (valid, selfSigned bool) {
 	roundMsg := msg.Msg
 	if len(roundMsg.Signatures) != roundMsg.Round+1 {
-		b.logger.Warn(fmt.Sprintf("malicious party %q sending incomplete signature chain", msg.Sender))
+		b.logger.Info(fmt.Sprintf("malicious party %q sending incomplete signature chain", msg.Sender))
 		return
 	}
 
-	// the first signature in the chain must be from the msg broadcaster
-	// the last signature in the chain must be from the original sender
+	// the last signature in the chain must be from the msg broadcaster
+	// the first signature in the chain must be from the original sender
+	if roundMsg.Signatures[0].Signer != b.originMsgSender {
+		b.logger.Info(fmt.Sprintf("malicious party %q sending message with invalid first signer", msg.Sender))
+		return false, selfSigned
+	}
+	if roundMsg.Signatures[len(roundMsg.Signatures)-1].Signer != msg.Sender {
+		b.logger.Info(fmt.Sprintf("malicious party %q sending message with invalid last signer", msg.Sender))
+		return false, selfSigned
+	}
+
 	// the rest must be from the distinct parties in the group
 	tempMsg := roundMsg
 	senderChecked := make(map[core.Address]bool, len(roundMsg.Signatures))
-	for idx, signature := range slices.Backward(roundMsg.Signatures) {
+	for _, signature := range slices.Backward(roundMsg.Signatures) {
 		if !b.partiesMap[signature.Signer] {
-			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid signer", msg.Sender))
-			return false, selfSigned
-		}
-		if idx == 0 && signature.Signer != b.originMsgSender {
-			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid first signer", msg.Sender))
-			return false, selfSigned
-		}
-		if idx == len(roundMsg.Signatures)-1 && signature.Signer != msg.Sender {
-			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid last signer", msg.Sender))
+			b.logger.Info(fmt.Sprintf("malicious party %q sending message with invalid signer", msg.Sender))
 			return false, selfSigned
 		}
 		if senderChecked[signature.Signer] {
@@ -341,7 +341,7 @@ func (b *ReliableBroadcaster[T]) validateSignatures(msg ReliableBroadcastMsg[T])
 		// popping the last signature
 		tempMsg.Signatures = tempMsg.Signatures[:len(tempMsg.Signatures)-1]
 		if !tempMsg.SignatureValid(signature) {
-			b.logger.Warn(fmt.Sprintf("malicious party %q sending message with invalid signature", msg.Sender))
+			b.logger.Info(fmt.Sprintf("malicious party %q sending message with invalid signature", msg.Sender))
 			return false, selfSigned
 		}
 
