@@ -1,6 +1,7 @@
 package bitcoin
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -209,4 +210,13 @@ func (c *Client) LockOutputs(tx wire.MsgTx) error {
 	}
 
 	return c.chain.Rpc.Wallet.LockUnspent(false, outs)
+}
+
+func EncodeTransaction(tx *wire.MsgTx) string {
+	buf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
+	if err := tx.Serialize(buf); err != nil {
+		return ""
+	}
+
+	return hex.EncodeToString(buf.Bytes())
 }

@@ -210,7 +210,7 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 			depositsWithdrawalTxHash:  deposit.WithdrawalTxHash,
-			depositsSignature:         *deposit.Signature,
+			depositsSignature:         deposit.Signature,
 			depositsWithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
 		}).
 		Suffix("RETURNING id")

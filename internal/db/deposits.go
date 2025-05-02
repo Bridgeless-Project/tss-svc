@@ -89,7 +89,7 @@ type Deposit struct {
 	Signature *string `structs:"signature" db:"signature"`
 }
 
-func (d Deposit) ToTransaction() bridgetypes.Transaction {
+func (d Deposit) ToTransaction(rawTxData *string) bridgetypes.Transaction {
 	return bridgetypes.Transaction{
 		DepositTxHash:     d.TxHash,
 		DepositTxIndex:    uint64(d.TxNonce),
@@ -106,6 +106,7 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		DepositBlock:      uint64(d.DepositBlock),
 		Signature:         stringOrEmpty(d.Signature),
 		IsWrapped:         d.IsWrappedToken,
+		TxData:            stringOrEmpty(rawTxData),
 	}
 }
 

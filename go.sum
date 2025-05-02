@@ -1348,8 +1348,8 @@ github.com/cockroachdb/redact v1.1.5/go.mod h1:BVNblN9mBWFyMyqK1k3AAiSxhvhfK2oOZ
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 h1:zuQyyAKVxetITBuuhv3BI9cMrmStnpT18zmgmTxunpo=
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06/go.mod h1:7nc4anLGjupUW/PeY5qiNYsdNXj7zopG+eqsS7To5IQ=
 github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0/go.mod h1:4Zcjuz89kmFXt9morQgcfYZAYZ5n8WHjt81YYWIwtTM=
-github.com/coinbase/rosetta-sdk-go v0.7.9 h1:lqllBjMnazTjIqYrOGv8h8jxjg9+hJazIGZr9ZvoCcA=
-github.com/coinbase/rosetta-sdk-go v0.7.9/go.mod h1:0/knutI7XGVqXmmH4OQD8OckFrbQ8yMsUZTG7FXCR2M=
+github.com/coinbase/mesh-sdk-go v0.7.9 h1:BYBGp6CJQnFMjJucyisEiG0rdm0JUFBaS+U1UR3F4G4=
+github.com/coinbase/mesh-sdk-go v0.7.9/go.mod h1:0/knutI7XGVqXmmH4OQD8OckFrbQ8yMsUZTG7FXCR2M=
 github.com/cometbft/cometbft v0.34.29 h1:Q4FqMevP9du2pOgryZJHpDV2eA6jg/kMYxBj9ZTY6VQ=
 github.com/cometbft/cometbft v0.34.29/go.mod h1:L9shMfbkZ8B+7JlwANEr+NZbBcn+hBpwdbeYvA5rLCw=
 github.com/cometbft/cometbft-db v0.7.0 h1:uBjbrBx4QzU0zOEnU8KxoDl18dMNgDh+zZRUE0ucsbo=
@@ -1862,8 +1862,8 @@ github.com/huin/goupnp v1.0.3/go.mod h1:ZxNlw5WqJj6wSsRK5+YfflQGXYfccj5VgQsMNixH
 github.com/huin/goupnp v1.3.0 h1:UvLUlWDNpoUdYzb2TCn+MuTWtcjXKSza2n6CBdQ0xXc=
 github.com/huin/goupnp v1.3.0/go.mod h1:gnGPsThkYa7bFi/KWmEysQRf48l2dvR5bxr2OFckNX8=
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
-github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250424161220-d19dbe44a70b h1:I11yjQktRHhtuFPSw65rVJ1B9obqa/lQT2Ms7DBqGlo=
-github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250424161220-d19dbe44a70b/go.mod h1:l1XnKoWRqpW0e1DuaRes7rGQK971RxkYPgbRWDSxDyU=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250501150252-e7038dd3965c h1:7MOTPqFOm5nKPVmDhuQNCglFg0vNaMx2faxCly7Ldeo=
+github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250501150252-e7038dd3965c/go.mod h1:kuKelsU1I7l5KRzRi26vC/Vb/Ds1r6zEp9JtZAsO8Ec=
 github.com/hyle-team/cosmos-sdk v0.46.30 h1:uyMHkM4SvNKfbQ6nKoUfTmX3uv1CGEF2Yzc7wBu27KU=
 github.com/hyle-team/cosmos-sdk v0.46.30/go.mod h1:JkEh06V4aORJl8/nrLelLCzc5xKPoDuIYgaF8M6AwFw=
 github.com/iancoleman/strcase v0.2.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=
