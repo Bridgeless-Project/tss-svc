@@ -141,6 +141,9 @@
         "withdrawalAmount": {
           "type": "string"
         },
+        "commissionAmount": {
+          "type": "string"
+        },
         "depositAsset": {
           "type": "string"
         },
