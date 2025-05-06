@@ -296,6 +296,12 @@ func (s *Session) Receive(request *p2p.SubmitRequest) error {
 		s.mu.RUnlock()
 
 		return nil
+	case p2p.RequestType_RT_SIGNATURE_DISTRIBUTION:
+		s.mu.RLock()
+		err := s.signaturesDistributor.Receive(request)
+		s.mu.RUnlock()
+
+		return err
 	default:
 		return errors.New(fmt.Sprintf("unsupported request type %s from '%s'", request.Type, request.Sender))
 	}

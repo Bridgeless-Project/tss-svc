@@ -479,6 +479,12 @@ func (s *Session) Receive(request *p2p.SubmitRequest) error {
 		s.mu.RUnlock()
 
 		return nil
+	case p2p.RequestType_RT_SIGNATURE_DISTRIBUTION:
+		s.mu.RLock()
+		err := s.signaturesDistributor.Receive(request)
+		s.mu.RUnlock()
+
+		return err
 	default:
 		return errors.New(fmt.Sprintf("unsupported request type %s from '%s'", request.Type, request.Sender))
 	}
@@ -497,8 +503,8 @@ func (s *Session) RegisterIdChangeListener(f func(oldId string, newId string)) {
 // should be recalculated to include additional signing phases and
 // delays to re-setup the signing party to ensure the correct request handling
 func (s *Session) updateNextSessionStartTime(inputsToSign int) {
-	s.mu.Unlock()
-	defer s.mu.Lock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.nextSessionStartTimeConstant.Store(true)
 
