@@ -20,7 +20,7 @@ type ConnectorConfigurer interface {
 }
 
 type ConnectorConfig struct {
-	Settings   connector.ConnectorSettings
+	Settings   connector.Settings
 	Connection *grpc.ClientConn
 }
 
@@ -44,8 +44,8 @@ func (c *configurer) CoreConnectorConfig() ConnectorConfig {
 	return c.once.Do(func() interface{} {
 		const yamlKey = "core_connector"
 		var cfg struct {
-			Settings   connector.ConnectorSettings `fig:"settings,required"`
-			Connection Connection                  `fig:"connection,required"`
+			Settings   connector.Settings `fig:"settings,required"`
+			Connection Connection         `fig:"connection,required"`
 		}
 
 		if err := figure.
