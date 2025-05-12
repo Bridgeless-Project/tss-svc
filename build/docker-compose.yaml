@@ -1,0 +1,136 @@
+services:
+  vault:
+    image: hashicorp/vault:1.18
+    hostname: vault
+    container_name: vault
+    restart: always
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+
+  vault_init:
+    container_name: vault_init
+    image: curlimages/curl
+    volumes:
+      - ./scripts/vault-init.sh:/vault-init.sh:ro
+    entrypoint: /vault-init.sh
+    environment:
+      VAULT_TOKEN: root
+      VAULT_ADDR: http://vault:8200
+    depends_on:
+      vault:
+        condition: service_started
+
+  ## Databases
+
+  tss-1-db:
+    container_name: tss-1-db
+    image: postgres:13.3
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tss
+      - POSTGRES_PASSWORD=tss
+      - POSTGRES_DB=tss
+      - PGDATA=/pgdata
+    volumes:
+      - tss-1-data:/pgdata
+
+  tss-2-db:
+    container_name: tss-2-db
+    image: postgres:13.3
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tss
+      - POSTGRES_PASSWORD=tss
+      - POSTGRES_DB=tss
+      - PGDATA=/pgdata
+    volumes:
+      - tss-2-data:/pgdata
+
+  tss-3-db:
+    container_name: tss-3-db
+    image: postgres:13.3
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tss
+      - POSTGRES_PASSWORD=tss
+      - POSTGRES_DB=tss
+      - PGDATA=/pgdata
+    volumes:
+      - tss-3-data:/pgdata
+
+  tss-1:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    hostname: tss-1
+    ports:
+      - "8080:8080"
+    container_name: tss-1
+    environment:
+      VAULT_PATH: http://vault:8200
+      VAULT_TOKEN: root
+      MOUNT_PATH: tss1
+    volumes:
+      - ./configs/certs/party2.crt:/party2.crt
+      - ./configs/certs/party3.crt:/party3.crt
+      - ./configs/tss1.local.yaml:/config.yaml
+      - ./configs/shares/preparams1.json:/preparams.json
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
+    depends_on:
+      vault_init:
+        condition: service_completed_successfully
+      tss-1-db:
+        condition: service_started
+
+  tss-2:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    hostname: tss-2
+    container_name: tss-2
+    environment:
+      VAULT_PATH: http://vault:8200
+      VAULT_TOKEN: root
+      MOUNT_PATH: tss2
+    volumes:
+      - ./configs/certs/party1.crt:/party1.crt
+      - ./configs/certs/party3.crt:/party3.crt
+      - ./configs/tss2.local.yaml:/config.yaml
+      - ./configs/shares/preparams2.json:/preparams.json
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
+    depends_on:
+      vault_init:
+        condition: service_completed_successfully
+      tss-2-db:
+        condition: service_started
+
+  tss-3:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    hostname: tss-3
+    container_name: tss-3
+    environment:
+      VAULT_PATH: http://vault:8200
+      VAULT_TOKEN: root
+      MOUNT_PATH: tss3
+    volumes:
+      - ./configs/certs/party1.crt:/party1.crt
+      - ./configs/certs/party2.crt:/party2.crt
+      - ./configs/tss3.local.yaml:/config.yaml
+      - ./configs/shares/preparams3.json:/preparams.json
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
+    depends_on:
+      vault_init:
+        condition: service_completed_successfully
+      tss-3-db:
+        condition: service_started
+
+volumes:
+  tss-1-data:
+  tss-2-data:
+  tss-3-data:

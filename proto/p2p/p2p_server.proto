@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package p2p;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
+import "gogoproto/gogo.proto";
+import "deposit.proto";
+
+option go_package = "github.com/hyle-team/tss-svc/internal/p2p";
+
+enum PartyStatus {
+  PS_UNKNOWN = 0;
+  PS_KEYGEN = 1;
+  PS_SIGN = 2;
+  PS_RESHARE = 3;
+  PS_SYNC = 4;
+}
+
+enum RequestType {
+  RT_KEYGEN = 0;
+  RT_SIGN = 1;
+  RT_PROPOSAL = 2;
+  RT_ACCEPTANCE = 3;
+  RT_SIGN_START = 4;
+  RT_DEPOSIT_DISTRIBUTION = 5;
+  RT_SIGNATURE_DISTRIBUTION = 6;
+}
+
+service P2P {
+  rpc Status (google.protobuf.Empty) returns (StatusResponse) {}
+  rpc Submit (SubmitRequest) returns (google.protobuf.Empty) {}
+  rpc GetSigningSessionInfo(SigningSessionInfoRequest) returns (SigningSessionInfo) {}
+}
+
+message SigningSessionInfoRequest{
+  string chain_id = 1;
+}
+
+message SigningSessionInfo{
+  int64 id = 1;
+  int64 nextSessionStartTime = 2;
+  int64 threshold = 3;
+  string chainId = 4;
+}
+
+message StatusResponse {
+  PartyStatus status = 1;
+}
+
+message SubmitRequest {
+  string sender = 1;
+  string sessionId = 2;
+  RequestType type = 3;
+  google.protobuf.Any data = 4;
+}
+
+message TssData {
+  bytes data = 1;
+  bool isBroadcast = 2;
+}
+
+message SignStartData {
+  repeated string parties = 1;
+}
+
+message AcceptanceData {
+  bool accepted = 1;
+}
+
+message EvmProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+  bytes sigData = 2;
+}
+
+message ZanoProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+
+  // data to decrypt tx info
+  repeated string outputsAddresses = 2;
+  string unsignedTx = 3;
+  string finalizedTx = 4;
+  string txSecretKey = 5;
+
+  string txId = 6;
+
+  bytes sigData = 7;
+}
+
+message BitcoinProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+
+  bytes serializedTx = 2;
+
+  repeated bytes sigData = 3;
+}
+
+message BitcoinResharingProposalData {
+  bytes serializedTx = 1;
+  repeated bytes sigData = 2;
+}
+
+message ZanoResharingProposalData {
+  string assetId = 1;
+  string ownerEthPubKey = 2;
+
+  // data to decrypt tx info
+  repeated string outputsAddresses = 3;
+  string unsignedTx = 4;
+  string finalizedTx = 5;
+  string txSecretKey = 6;
+  string txId = 7;
+
+  bytes sigData = 8;
+
+}
+
+message DepositDistributionData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+}
+
+message ReliableBroadcastData {
+  bytes roundMsg = 1;
+}
