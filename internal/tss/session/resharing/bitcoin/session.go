@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/p2p"
@@ -21,6 +22,7 @@ var _ p2p.TssSession = &Session{}
 
 type SessionParams struct {
 	SessionParams     session.Params
+	TargetAddr        btcutil.Address
 	ConsolidateParams bitcoin.ConsolidateOutputsParams
 }
 
@@ -53,8 +55,12 @@ func NewSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *Session {
+	sessionId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
+	sortedPartyIds := session.SortAllParties(parties, self.Account.CosmosAddress())
+	leader := session.DetermineLeader(sessionId, sortedPartyIds)
+
 	return &Session{
-		sessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
+		sessionId: sessionId,
 		self:      self,
 		params:    params,
 		mu:        &sync.RWMutex{},
@@ -72,10 +78,15 @@ func NewSession(
 				Self:      self.Account,
 			},
 			parties,
-			NewConsensusMechanism(client, self.Share.ECDSAPub.ToECDSAPubKey(), params.ConsolidateParams),
+			leader,
+			NewConsensusMechanism(client, params.TargetAddr, params.ConsolidateParams),
 			logger.WithField("phase", "consensus"),
 		),
-		finalizer: NewFinalizer(client, self.Share.ECDSAPub.ToECDSAPubKey(), logger.WithField("phase", "finalization")),
+		finalizer: NewFinalizer(
+			client, self.Share.ECDSAPub.ToECDSAPubKey(),
+			logger.WithField("phase", "finalization"),
+			self.Account.CosmosAddress() == leader,
+		),
 
 		logger: logger,
 	}
@@ -160,18 +171,17 @@ func (s *Session) run(ctx context.Context) {
 		case <-ctx.Done():
 			s.err = errors.New("signing session cancelled")
 			return
-		case <-time.After(session.BoundaryBitcoinSingRoundDelay):
+		case <-time.After(session.BoundaryBitcoinSignRoundDelay):
 		}
 	}
 
 	// finalization phase
-	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, session.BoundaryFinalize)
+	finalizerCtx, finalizerCancel := context.WithTimeout(context.Background(), session.BoundaryFinalize)
 	defer finalizerCancel()
 
 	s.resultTx, s.err = s.finalizer.
 		WithData(result.SigData).
 		WithSignatures(signatures).
-		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 
 	return

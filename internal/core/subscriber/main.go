@@ -18,8 +18,6 @@ import (
 const (
 	OpServiceName = "op-subscriber"
 	OpPoolSize    = 50
-
-	OpQuerySubmit = "tm.event='Tx' AND message.action='/core.bridge.MsgSubmitTransactions'"
 )
 
 type SubmitEventSubscriber struct {
@@ -33,8 +31,11 @@ func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *
 	return &SubmitEventSubscriber{
 		db:     db,
 		client: client,
-		query:  OpQuerySubmit,
 		log:    logger,
+		query: fmt.Sprintf("tm.event='Tx' AND %s.%s EXISTS",
+			bridgeTypes.EventType_DEPOSIT_SUBMITTED.String(),
+			bridgeTypes.AttributeKeyDepositTxHash,
+		),
 	}
 }
 
@@ -109,10 +110,11 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 
 func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, error) {
 	deposit := &database.Deposit{}
-	for keys, attribute := range attributes {
 
+	for keys, attribute := range attributes {
 		parts := strings.SplitN(keys, ".", 2)
 		if parts[0] != bridgeTypes.EventType_DEPOSIT_SUBMITTED.String() {
+			// skip if not deposit submitted event
 			continue
 		}
 
@@ -122,7 +124,7 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 		case bridgeTypes.AttributeKeyDepositNonce:
 			n, err := strconv.Atoi(attribute[0])
 			if err != nil {
-				return nil, errors.Wrap(errors.New(fmt.Sprintf("got invalid nonce, got %s", attribute)), "invalid nonce")
+				return nil, errors.Wrap(err, "failed to parse deposit nonce")
 			}
 			deposit.TxNonce = n
 		case bridgeTypes.AttributeKeyDepositChainId:
@@ -164,7 +166,6 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 		case bridgeTypes.AttributeKeyCommissionAmount:
 			deposit.CommissionAmount = attribute[0]
 		default:
-
 			return nil, errors.Wrap(errors.New(fmt.Sprintf("unknown attribute key: %s", parts[1])), "failed to parse attribute")
 		}
 	}

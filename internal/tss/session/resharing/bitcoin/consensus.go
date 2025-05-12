@@ -2,7 +2,6 @@ package bitcoin
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -42,23 +41,18 @@ func (s SigningData) HashString() string {
 }
 
 type ConsensusMechanism struct {
-	client *bitcoin.Client
-	dstPkh *btcutil.AddressPubKeyHash
-	params bitcoin.ConsolidateOutputsParams
+	client  *bitcoin.Client
+	dstAddr btcutil.Address
+	params  bitcoin.ConsolidateOutputsParams
 }
 
-func NewConsensusMechanism(client *bitcoin.Client, dst *ecdsa.PublicKey, params bitcoin.ConsolidateOutputsParams) *ConsensusMechanism {
-	dstPkh, err := bitcoin.PubKeyToPkhCompressed(dst, client.ChainParams())
-	if err != nil {
-		panic(errors.Wrap(err, "failed to convert public key to public key hash"))
-	}
-
-	return &ConsensusMechanism{client, dstPkh, params}
+func NewConsensusMechanism(client *bitcoin.Client, dst btcutil.Address, params bitcoin.ConsolidateOutputsParams) *ConsensusMechanism {
+	return &ConsensusMechanism{client, dst, params}
 }
 
 func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	tx, sigHashes, err := m.client.ConsolidateOutputs(
-		m.dstPkh,
+		m.dstAddr,
 		bitcoin.WithFeeRate(m.params.FeeRate),
 		bitcoin.WithOutputsCount(m.params.OutputsCount),
 		bitcoin.WithMaxInputsCount(m.params.MaxInputsCount),
@@ -111,7 +105,7 @@ func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {
 func (m *ConsensusMechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 	var outputsSum int64
 
-	targetScript, err := txscript.PayToAddrScript(m.dstPkh)
+	targetScript, err := txscript.PayToAddrScript(m.dstAddr)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to create target script")
 	}

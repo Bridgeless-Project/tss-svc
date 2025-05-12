@@ -3,7 +3,6 @@ package config
 import (
 	"crypto/tls"
 	"reflect"
-	"time"
 
 	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/hyle-team/tss-svc/internal/core/connector"
@@ -14,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
 )
 
 type ConnectorConfigurer interface {
@@ -22,7 +20,7 @@ type ConnectorConfigurer interface {
 }
 
 type ConnectorConfig struct {
-	Settings   connector.ConnectorSettings
+	Settings   connector.Settings
 	Connection *grpc.ClientConn
 }
 
@@ -46,8 +44,8 @@ func (c *configurer) CoreConnectorConfig() ConnectorConfig {
 	return c.once.Do(func() interface{} {
 		const yamlKey = "core_connector"
 		var cfg struct {
-			Settings   connector.ConnectorSettings `fig:"settings,required"`
-			Connection Connection                  `fig:"connection,required"`
+			Settings   connector.Settings `fig:"settings,required"`
+			Connection Connection         `fig:"connection,required"`
 		}
 
 		if err := figure.
@@ -65,13 +63,8 @@ func (c *configurer) CoreConnectorConfig() ConnectorConfig {
 			}
 			connectSecurityOptions = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 		}
-		keepaliveOptions := grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:                20 * time.Second, // wait time before ping if no activity
-			Timeout:             5 * time.Second,  // ping timeout
-			PermitWithoutStream: true,
-		})
 
-		client, err := grpc.NewClient(cfg.Connection.Addr, connectSecurityOptions, keepaliveOptions)
+		client, err := grpc.NewClient(cfg.Connection.Addr, connectSecurityOptions)
 		if err != nil {
 			panic(errors.Wrap(err, "failed to connect to core via gRPC"))
 		}

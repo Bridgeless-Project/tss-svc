@@ -119,7 +119,7 @@ var signCmd = &cobra.Command{
 			}
 
 			if verify {
-				if valid := tss.Verify(localSaveData, []byte(dataToSign), result); !valid {
+				if valid := tss.Verify(localSaveData.ECDSAPub.ToECDSAPubKey(), []byte(dataToSign), result); !valid {
 					return errors.New("signature verification failed")
 				} else {
 					cfg.Log().Info("Signature verification passed")

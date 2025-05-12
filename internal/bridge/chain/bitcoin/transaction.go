@@ -1,6 +1,7 @@
 package bitcoin
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -200,4 +201,22 @@ func (c *Client) ConsolidateOutputs(to btcutil.Address, opts ...ConsolidateOutpu
 	}
 
 	return tx, sigHashes, nil
+}
+
+func (c *Client) LockOutputs(tx wire.MsgTx) error {
+	outs := make([]*wire.OutPoint, len(tx.TxIn))
+	for i, inp := range tx.TxIn {
+		outs[i] = &inp.PreviousOutPoint
+	}
+
+	return c.chain.Rpc.Wallet.LockUnspent(false, outs)
+}
+
+func EncodeTransaction(tx *wire.MsgTx) string {
+	buf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
+	if err := tx.Serialize(buf); err != nil {
+		return ""
+	}
+
+	return hex.EncodeToString(buf.Bytes())
 }

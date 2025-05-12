@@ -15,18 +15,19 @@ type Finalizer struct {
 
 	client *zano.Client
 
-	localPartyProposer bool
-	errChan            chan error
-	result             string
+	sessionLeader bool
+	errChan       chan error
+	result        string
 
 	logger *logan.Entry
 }
 
-func NewFinalizer(client *zano.Client, logger *logan.Entry) *Finalizer {
+func NewFinalizer(client *zano.Client, logger *logan.Entry, sessionLeader bool) *Finalizer {
 	return &Finalizer{
-		client:  client,
-		errChan: make(chan error),
-		logger:  logger,
+		client:        client,
+		errChan:       make(chan error),
+		logger:        logger,
+		sessionLeader: sessionLeader,
 	}
 }
 
@@ -37,11 +38,6 @@ func (f *Finalizer) WithData(data *SigningData) *Finalizer {
 
 func (f *Finalizer) WithSignature(signature *common.SignatureData) *Finalizer {
 	f.signature = signature
-	return f
-}
-
-func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
-	f.localPartyProposer = proposer
 	return f
 }
 
@@ -64,7 +60,7 @@ func (f *Finalizer) finalize() {
 
 	f.result = bridge.HexPrefix + f.data.ProposalData.TxId
 
-	if !f.localPartyProposer {
+	if !f.sessionLeader {
 		return
 	}
 

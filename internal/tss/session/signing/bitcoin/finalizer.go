@@ -13,7 +13,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	database "github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -29,7 +28,7 @@ type Finalizer struct {
 
 	client *bitcoin.Client
 
-	localPartyProposer bool
+	sessionLeader bool
 
 	errChan chan error
 	logger  *logan.Entry
@@ -41,14 +40,16 @@ func NewFinalizer(
 	client *bitcoin.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
+	sessionLeader bool,
 ) *Finalizer {
 	return &Finalizer{
-		db:      db,
-		core:    core,
-		errChan: make(chan error),
-		logger:  logger,
-		client:  client,
-		tssPub:  ethcrypto.CompressPubkey(pubKey),
+		db:            db,
+		core:          core,
+		errChan:       make(chan error),
+		logger:        logger,
+		client:        client,
+		tssPub:        ethcrypto.CompressPubkey(pubKey),
+		sessionLeader: sessionLeader,
 	}
 }
 
@@ -62,11 +63,6 @@ func (f *Finalizer) WithSignatures(signatures []*common.SignatureData) *Finalize
 	return f
 }
 
-func (f *Finalizer) WithLocalPartyProposer(proposer bool) *Finalizer {
-	f.localPartyProposer = proposer
-	return f
-}
-
 func (f *Finalizer) Finalize(ctx context.Context) error {
 	f.logger.Info("finalization started")
 	go f.finalize(ctx)
@@ -75,14 +71,7 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "finalization timed out")
 	case err := <-f.errChan:
-		if err == nil {
-			f.logger.Info("finalization finished")
-			return nil
-		}
-
-		if updErr := f.db.UpdateStatus(f.withdrawalData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED); updErr != nil {
-			return errors.Wrap(err, "failed to finalize withdrawal and update its status")
-		}
+		f.logger.Info("finalization finished")
 
 		return errors.Wrap(err, "failed to finalize withdrawal")
 	}
@@ -105,24 +94,29 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	if !f.localPartyProposer {
-		f.errChan <- nil
-		return
-	}
-
-	_, err := f.client.SendSignedTransaction(&tx)
-	if err != nil {
-		f.errChan <- errors.Wrap(err, "failed to send signed transaction")
-		return
-	}
+	// ignoring error here, as the mempool tx can be already observed by the wallet
+	_ = f.client.LockOutputs(tx)
 
 	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
 	if err != nil {
 		f.errChan <- errors.Wrap(err, "failed to get deposit")
 		return
 	}
-	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction()); err != nil {
+
+	encodedTx := bitcoin.EncodeTransaction(&tx)
+	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to submit deposit")
+		return
+	}
+
+	if !f.sessionLeader {
+		f.errChan <- nil
+		return
+	}
+
+	_, err = f.client.SendSignedTransaction(&tx)
+	if err != nil {
+		f.errChan <- errors.Wrap(err, "failed to send signed transaction")
 		return
 	}
 

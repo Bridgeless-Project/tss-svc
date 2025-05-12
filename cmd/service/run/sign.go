@@ -79,6 +79,10 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get local party tls certificate")
 	}
+	connector, err := coreConnector.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
+	if err != nil {
+		return errors.Wrap(err, "failed to create core connector")
+	}
 
 	wg := new(sync.WaitGroup)
 	eg, ctx := errgroup.WithContext(ctx)
@@ -88,7 +92,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	clientsRepo := repository.NewClientsRepository(clients)
 	sessionManager := p2p.NewSessionManager()
 	dtb := pg.NewDepositsQ(cfg.DB())
-	connector := coreConnector.NewConnector(*account, cfg.CoreConnectorConfig().Connection, cfg.CoreConnectorConfig().Settings)
 	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"))
 	fetcher := deposit.NewFetcher(clientsRepo, connector)
 

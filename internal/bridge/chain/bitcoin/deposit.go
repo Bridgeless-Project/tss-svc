@@ -169,8 +169,6 @@ func decodeDestinationData(data string) (addr, chainId string, err error) {
 // TODO: REVIEW SUPPORTED SCRIPTS
 var supportedScriptTypes = []txscript.ScriptClass{
 	txscript.PubKeyHashTy,
-	txscript.WitnessV0PubKeyHashTy,
-	txscript.WitnessV1TaprootTy,
 }
 
 func (c *Client) parseDepositOutput(out btcjson.Vout) (*big.Int, error) {

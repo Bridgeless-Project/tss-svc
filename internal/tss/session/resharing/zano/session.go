@@ -53,6 +53,9 @@ func NewSession(
 	logger *logan.Entry,
 ) *Session {
 	sessId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
+	sortedPartyIds := session.SortAllParties(parties, self.Account.CosmosAddress())
+	leader := session.DetermineLeader(sessId, sortedPartyIds)
+
 	return &Session{
 		sessionId: sessId,
 		self:      self,
@@ -71,6 +74,7 @@ func NewSession(
 				Self:      self.Account,
 			},
 			parties,
+			leader,
 			NewConsensusMechanism(
 				params.AssetId,
 				params.OwnerEthPubKey,
@@ -78,8 +82,12 @@ func NewSession(
 			),
 			logger.WithField("phase", "consensus"),
 		),
-		finalizer: NewFinalizer(client, logger.WithField("phase", "finalizer")),
-		logger:    logger,
+		finalizer: NewFinalizer(
+			client,
+			logger.WithField("phase", "finalizer"),
+			self.Account.CosmosAddress() == leader,
+		),
+		logger: logger,
 	}
 }
 
@@ -123,10 +131,6 @@ func (s *Session) run(ctx context.Context) {
 		s.err = errors.Wrap(err, "consensus phase error occurred")
 		return
 	}
-	if result.SigData == nil {
-		s.err = errors.New("no data to sign in the resharing session")
-		return
-	}
 	if result.Signers == nil {
 		s.logger.Info("local party is not the signer in the current session")
 		return
@@ -144,13 +148,12 @@ func (s *Session) run(ctx context.Context) {
 	}
 
 	// finalization phase
-	finalizerCtx, finalizerCancel := context.WithTimeout(ctx, session.BoundaryFinalize)
+	finalizerCtx, finalizerCancel := context.WithTimeout(context.Background(), session.BoundaryFinalize)
 	defer finalizerCancel()
 
 	s.resultTx, s.err = s.finalizer.
 		WithData(result.SigData).
 		WithSignature(signature).
-		WithLocalPartyProposer(s.self.Account.CosmosAddress() == result.Proposer).
 		Finalize(finalizerCtx)
 
 	return

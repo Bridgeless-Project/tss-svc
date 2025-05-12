@@ -13,7 +13,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	bitcoin2 "github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -59,15 +59,12 @@ func (e BitcoinWithdrawalData) HashString() string {
 }
 
 type BitcoinWithdrawalConstructor struct {
-	client *bitcoin2.Client
+	client *bitcoin.Client
 	tssPkh *btcutil.AddressPubKeyHash
 }
 
-func NewBitcoinConstructor(client *bitcoin2.Client, tssPub *ecdsa.PublicKey) *BitcoinWithdrawalConstructor {
-	tssPkh, err := bitcoin2.PubKeyToPkhCompressed(tssPub, client.ChainParams())
-	if err != nil {
-		panic(fmt.Sprintf("failed to create TSS public key hash: %v", err))
-	}
+func NewBitcoinConstructor(client *bitcoin.Client, tssPub *ecdsa.PublicKey) *BitcoinWithdrawalConstructor {
+	tssPkh := bitcoin.PubKeyToPkhCompressed(tssPub, client.ChainParams())
 
 	return &BitcoinWithdrawalConstructor{client: client, tssPkh: tssPkh}
 }
@@ -170,7 +167,7 @@ func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit d
 
 func (c *BitcoinWithdrawalConstructor) validateInputs(
 	tx *wire.MsgTx,
-	inputs map[bitcoin2.OutPoint]btcjson.ListUnspentResult,
+	inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult,
 	sigHashes [][]byte,
 ) (int64, error) {
 	if sigHashes == nil || len(sigHashes) != len(tx.TxIn) {
@@ -183,13 +180,13 @@ func (c *BitcoinWithdrawalConstructor) validateInputs(
 			return 0, errors.New(fmt.Sprintf("nil input at index %d", idx))
 		}
 
-		unspent := inputs[bitcoin2.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		unspent := inputs[bitcoin.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
 		}
-		sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin2.SigHashType, tx, idx)
+		sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin.SigHashType, tx, idx)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
 		}
@@ -197,13 +194,13 @@ func (c *BitcoinWithdrawalConstructor) validateInputs(
 			return 0, errors.New(fmt.Sprintf("invalid signature hash for input %d", idx))
 		}
 
-		inputsSum += bitcoin2.ToAmount(unspent.Amount, bitcoin2.Decimals).Int64()
+		inputsSum += bitcoin.ToAmount(unspent.Amount, bitcoin.Decimals).Int64()
 	}
 
 	return inputsSum, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) validateChange(tx *wire.MsgTx, inputs map[bitcoin2.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
+func (c *BitcoinWithdrawalConstructor) validateChange(tx *wire.MsgTx, inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
 	actualFee := inputsSum - outputsSum
 	if actualFee <= 0 {
 		return errors.New("invalid change amount")
@@ -215,8 +212,8 @@ func (c *BitcoinWithdrawalConstructor) validateChange(tx *wire.MsgTx, inputs map
 	}
 
 	var (
-		targetFeeRate = bitcoin2.DefaultFeeRateBtcPerKvb * 1e5 // btc/kB -> sat/byte
-		feeTolerance  = 0.1 * targetFeeRate                    // 10%
+		targetFeeRate = bitcoin.DefaultFeeRateBtcPerKvb * 1e5 // btc/kB -> sat/byte
+		feeTolerance  = 0.1 * targetFeeRate                   // 10%
 		estimatedSize = mockedTx.SerializeSize()
 		actualFeeRate = float64(actualFee) / float64(estimatedSize)
 	)

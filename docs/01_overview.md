@@ -6,7 +6,9 @@
 - [Protocol](#protocol)
 - [Transfer Initiation](#transfer-initiation)
 - [Service Configuration](#service-configuration)
+- [Key Generation](#key-generation)
 - [Running The Service](#running-the-service)
+- [Key Resharing](#key-resharing)
 
 ---
 
@@ -62,14 +64,15 @@ See the [Configuration](./04_configuration.md) docs for more details on how to c
 
 ---
 
+## Key Generation
+The TSS key generation process is a first and crucial step in the TSS (Threshold Signature Scheme) protocol,
+when the TSS key shares are generated and distributed among the TSS participants.
+See the [Key Generation](./05_key-generation.md) documentation for more details on how to perform the key generation process.
+
+---
+
 ## Running The Service
-
-Service can be run in two main modes: keygen and signing.
-Also, the service can execute additional commands like database migrations, message signing, etc.
-
-Check the available commands and flags in the [CLI documentation](../cmd/README.md).
-
-Check the [Running service documentation](./05_running-service.md) for more details on how to run the service in different modes.
+Check the [Running service documentation](./06_running-service) for more details on how to run the service in withdrawal processing mode
 
 ---
 
@@ -79,5 +82,5 @@ To add or remove the parties from the TSS network, the key resharing process sho
 It means that the secret shares of the new general system private key should be redistributed among the old/new parties.
 Also, the entire ecosystem should be reconfigured and the funds should be migrated to the new system.
 
-Check the [Key Resharing](./06_key-resharing.md) documentation for more details on how to perform the key resharing process.
+Check the [Key Resharing](./07_key-resharing) documentation for more details on how to perform the key resharing process.
 

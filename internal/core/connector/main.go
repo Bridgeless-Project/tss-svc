@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"sync"
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	clienttx "github.com/cosmos/cosmos-sdk/client/tx"
@@ -20,7 +21,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-type ConnectorSettings struct {
+const gasLimit = 3_000_000
+
+type Settings struct {
 	ChainId     string `fig:"chain_id,required"`
 	Denom       string `fig:"denom,required"`
 	MinGasPrice uint64 `fig:"min_gas_price"`
@@ -32,11 +35,20 @@ type Connector struct {
 	auther     authtypes.QueryClient
 	querier    bridgetypes.QueryClient
 
-	settings ConnectorSettings
+	settings Settings
 	account  core.Account
+
+	accountNumber   uint64
+	accountSequence uint64
+	mu              *sync.Mutex
 }
 
-func NewConnector(account core.Account, conn *grpc.ClientConn, settings ConnectorSettings) *Connector {
+func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings) (*Connector, error) {
+	accountData, err := getAccountData(context.Background(), authtypes.NewQueryClient(conn), account.CosmosAddress())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get account data")
+	}
+
 	return &Connector{
 		transactor: txclient.NewServiceClient(conn),
 		txConfiger: authtx.NewTxConfig(codec.NewProtoCodec(codectypes.NewInterfaceRegistry()), []signing.SignMode{signing.SignMode_SIGN_MODE_DIRECT}),
@@ -44,7 +56,23 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Connecto
 		querier:    bridgetypes.NewQueryClient(conn),
 		settings:   settings,
 		account:    account,
-	}
+
+		accountNumber:   accountData.AccountNumber,
+		accountSequence: accountData.Sequence,
+
+		mu: &sync.Mutex{},
+	}, nil
+
+}
+
+func (c *Connector) getAccountSequence() uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	seq := c.accountSequence
+	c.accountSequence++
+
+	return seq
 }
 
 func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
@@ -52,62 +80,49 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 		return nil
 	}
 
-	tx, err := c.buildTx(ctx, 0, 0, msgs...)
-	if err != nil {
-		return errors.Wrap(err, "failed to build simulation transaction")
-	}
-
-	simResp, err := c.transactor.Simulate(ctx, &txclient.SimulateRequest{TxBytes: tx})
-	if err != nil {
-		return errors.Wrap(err, "failed to simulate transaction")
-	}
-
-	gasLimit := ApproximateGasLimit(simResp.GasInfo.GasUsed)
 	feeAmount := gasLimit * c.settings.MinGasPrice
 
-	tx, err = c.buildTx(ctx, gasLimit, feeAmount, msgs...)
+	tx, err := c.buildTx(gasLimit, feeAmount, msgs...)
 	if err != nil {
 		return errors.Wrap(err, "failed to build transaction")
 	}
+
 	res, err := c.transactor.BroadcastTx(ctx, &txclient.BroadcastTxRequest{
 		Mode:    txclient.BroadcastMode_BROADCAST_MODE_BLOCK,
 		TxBytes: tx,
 	})
+
 	if err != nil {
 		return errors.Wrap(err, "failed to broadcast transaction")
 	}
 	if res.TxResponse.Code != txCodeSuccess {
-		return errors.Errorf("transaction failed with code %d, info %s", res.TxResponse.Code, res.TxResponse.Info)
+		return errors.Errorf("transaction failed with code %d", res.TxResponse.Code)
 	}
 
 	return nil
 }
 
 // buildTx builds a transaction from the given messages.
-func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
+func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
 	txBuilder := c.txConfiger.NewTxBuilder()
 
 	if err := txBuilder.SetMsgs(msgs...); err != nil {
 		return nil, errors.Wrap(err, "failed to set messages")
 	}
 
-	// Get account to set sequence number
-	acc, err := c.getAccountData(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get account")
-	}
+	sequence := c.getAccountSequence()
 
 	txBuilder.SetGasLimit(gasLimit)
 	txBuilder.SetFeeAmount(sdk.Coins{sdk.NewInt64Coin(c.settings.Denom, int64(feeAmount))})
 
 	signMode := c.txConfiger.SignModeHandler().DefaultMode()
-	err = txBuilder.SetSignatures(signing.SignatureV2{
+	err := txBuilder.SetSignatures(signing.SignatureV2{
 		PubKey: c.account.PublicKey(),
 		Data: &signing.SingleSignatureData{
 			SignMode:  signMode,
 			Signature: nil,
 		},
-		Sequence: acc.Sequence,
+		Sequence: sequence,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set signature")
@@ -115,11 +130,11 @@ func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msg
 
 	signerData := authsigning.SignerData{
 		ChainID:       c.settings.ChainId,
-		AccountNumber: acc.AccountNumber,
-		Sequence:      acc.Sequence,
+		AccountNumber: c.accountNumber,
+		Sequence:      sequence,
 	}
 
-	sig, err := clienttx.SignWithPrivKey(signMode, signerData, txBuilder, c.account.PrivateKey(), c.txConfiger, acc.Sequence)
+	sig, err := clienttx.SignWithPrivKey(signMode, signerData, txBuilder, c.account.PrivateKey(), c.txConfiger, sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign with private key")
 	}
@@ -131,8 +146,8 @@ func (c *Connector) buildTx(ctx context.Context, gasLimit, feeAmount uint64, msg
 	return c.txConfiger.TxEncoder()(txBuilder.GetTx())
 }
 
-func (c *Connector) getAccountData(ctx context.Context) (*coretypes.EthAccount, error) {
-	resp, err := c.auther.Account(ctx, &authtypes.QueryAccountRequest{Address: c.account.CosmosAddress().String()})
+func getAccountData(ctx context.Context, auther authtypes.QueryClient, address core.Address) (*coretypes.EthAccount, error) {
+	resp, err := auther.Account(ctx, &authtypes.QueryAccountRequest{Address: address.String()})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account")
 	}

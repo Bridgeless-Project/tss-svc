@@ -17,5 +17,6 @@ type Storage interface {
 	SaveTssShare(data *keygen.LocalPartySaveData) error
 	GetTssShare() (*keygen.LocalPartySaveData, error)
 
+	SaveLocalPartyTlsCertificate(rawCert, rawKey []byte) error
 	GetLocalPartyTlsCertificate() (*tls.Certificate, error)
 }

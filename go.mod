@@ -5,12 +5,14 @@ go 1.23.1
 replace (
 	// tss-lib fix ed25519
 	github.com/agl/ed25519 => github.com/bnb-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
+	// rosetta rebranding
+	github.com/coinbase/rosetta-sdk-go => github.com/coinbase/mesh-sdk-go v0.7.9
 	// bridge core sdk
 	github.com/cosmos/cosmos-sdk => github.com/hyle-team/cosmos-sdk v0.46.30
 	github.com/cosmos/iavl => github.com/cosmos/iavl v0.19.6
 	// bridge cosmos sdk protobuf fix
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/hyle-team/bridgeless-core/v12 => github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250424161220-d19dbe44a70b
+	github.com/hyle-team/bridgeless-core/v12 => github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250501150252-e7038dd3965c
 	// bridge cosmos sdk comebft change
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0

@@ -31,6 +31,11 @@ This is done to:
 Each session has its own lifecycle and identifier that changes with each new session.
 New session in this context is an old finished session with new (incremented) session identifier that is ready to process new withdrawal requests (for the same chain as previous session) and waits for its start.
 
+Each session has a leader party that is responsible for selecting the data to be signed,
+the signers set, and the finalization process.
+The leader party for the specific session is selected deterministically,
+meaning each party knows who will be the leader for the next session.
+
 Signing session process can be divided into three main stages:
 1. `Acceptance` - reaching an agreement between the parties in the TSS network on the data to be signed next;
 2. `Signing` - signing the provided data by communicating with other parties in the TSS network;
@@ -39,38 +44,32 @@ Signing session process can be divided into three main stages:
 
 #### Acceptance
 To start signing operations, parties should reach a consensus on arbitrary data that should be signed, f.e. withdrawals, resharing transactions, etc.
-
-Consensus mechanism is based on the proposer selection and the data sharing between the parties in the network.
 There are two possible roles for the single TSS party in the consensus process:
 - `proposer` - the party that selects the data to be signed and shares it with all parties in the network;
 - `acceptor` - the party that validates and accepts the data shared by the proposer;
 
-Only one proposer is selected for the current session, while all other parties are acceptors.
+Only one proposer is selected for the current session (session leader), while all other parties are acceptors.
 At the end of the consensus process, the proposer selects the signers set that will sign the data.
 Proposer deterministically selects the signers set from acceptors set that ACKed the signing request.
 Proposer is included in the signers set as well.
-Signers count is always equal to the signing threshold value.
+Signers count is always equal to the signing threshold value (plus one).
 
 The following steps perform the consensus process:
-1. All parties in the network should deterministically choose the proposer for the current signing session.
-   Proposer is selected using the deterministic function `f(session_id)` using the [ChaCha8](https://pkg.go.dev/math/rand/v2) pseudo-random number generator.
-2. Proposer forms the signing proposal (f.e. withdrawal on the specific chain) based on the provided mechanism.
+1. Proposer forms the signing proposal (f.e. withdrawal on the specific chain) based on the provided mechanism.
    It shares the constructed data and metadata with all parties in the network.
    If there is no data to be signed, proposer broadcasts the message with empty data and the consensus process is finished.
-3. Parties that received proposer request (acceptors) should validate the proposal request and reply with acknowledgement status:
+2. Parties that received proposer request (acceptors) should validate the proposal request and reply with acknowledgement status:
     - ACK if everything is fine;
     - NACK if something isn't valid (already signed proposal, non-existent deposit, etc.).
-4. While acceptors ACKing or NACKing proposer request, the proposer collects all ACKed responses.
+3. While acceptors ACKing or NACKing proposer request, proposer collects all ACKed responses.
    It should check that the number of ACKs N is equal or bigger than the provided threshold value T:
-    - if true, proposer deterministically selects the T signers from the N acceptors that ACKed the signing request (including proposer itself).
-      They are notified about being included in the signer set.
-    - if false, the process finishes.
-5. Notified acceptors receive the current signing set and can additionally validate that all parties forming the signers set are valid and active.
-   Acceptors that are not included in the current signers set can wait till the consensus deadline and understand that they are not the part of the current signers set.
-   Optionally, they can be notified by proposer that they won't take part in the current signing process.
+    - if true, proposer deterministically selects the T signers from the N acceptors that ACKed the signing request (including itself).
+    - if false, the consensus process finishes.
+4. Proposer notifies all parties in the network about the selected signers set and the data to be signed.
+   Each party can additionally validate the selected signers set.
 
 After the consensus process is completed, the output is the data to be signed and the list of parties that will sign the data.
-If the party is not included in the signers list, the signing data will be empty, and it should wait till the next session will be started.
+If the party is not included in the signers list, the list will be empty, and it should wait till the next session will be started.
 
 #### Signing
 After the data is accepted, the signing process, based on [tss-lib](https://github.com/bnb-chain/tss-lib) ECDSA signing rounds, is started.
@@ -82,6 +81,8 @@ After the data is accepted, the signing process, based on [tss-lib](https://gith
 - There are enough parties to reach the threshold.
 
 After the signing process is completed, the output is the signature of the data and the error if any (timeout, not enough parties, signing error, etc.).
+Then, the session leader distributes the obtained signature to all parties in the network.
+Each party can ensure the signature is valid and matches the previously obtained data to be signed.
 
 #### Finalization
 After the data is signed by the required number of parties, the final signature is produced and sent to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core).
@@ -136,20 +137,20 @@ To control the session duration, the session should be bounded by the time limit
 
 Here is the list of the signing session time bounds:
 - EVM session:
-    - acceptance: 10 seconds;
-    - signing: 10 seconds;
-    - finalization step: 10 seconds;
-    - new session period: 30 seconds.
+    - acceptance: 20 seconds;
+    - signing: 20 seconds;
+    - finalization step: 15 seconds;
+    - new session period: 60 seconds.
 - Zano session:
-    - acceptance: 10 seconds;
-    - signing: 10 seconds;
-    - finalization step: 10 seconds;
-    - new session period: 30 seconds.
+    - acceptance: 20 seconds;
+    - signing: 20 seconds;
+    - finalization step: 15 seconds;
+    - new session period: 60 seconds.
 - Bitcoin session:
-    - acceptance: 10 seconds;
-    - signing: 10 seconds * number N of UTXOs to be signed in the transaction;
+    - acceptance: 20 seconds;
+    - signing: 20 seconds * number N of UTXOs to be signed in the transaction;
     - signing rounds delay (if more than 1 singing round needed): 500 ms;
-    - finalization step: 10 seconds;
+    - finalization step: 15 seconds;
     - new session period: calculated based on the number of UTXOs to be signed in the transaction.
 
 In case of the session step timeout, the session should be finished,

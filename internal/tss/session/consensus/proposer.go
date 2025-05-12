@@ -36,7 +36,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 	c.result.sigData = signingData
 	c.logger.Info("data proposed, waiting for acceptances...")
 
-	boundedCtx, cancel := context.WithTimeout(context.Background(), session.BoundaryAcceptance)
+	boundedCtx, cancel := context.WithTimeout(context.Background(), session.BoundaryProposalAcceptance)
 	defer cancel()
 
 	acceptances := Acceptances{}
@@ -59,7 +59,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			}
 
 			// Selecting T signers (excluding proposer)
-			signers := getSignersSet(possibleSigners, c.threshold, deterministicRandSource(c.sessionId))
+			signers := getSignersSet(possibleSigners, c.threshold, session.DeterministicRandSource(c.sessionId))
 			c.result.signers = make([]p2p.Party, len(signers))
 			for idx, party := range signers {
 				c.result.signers[idx] = c.parties[party]
@@ -104,7 +104,7 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 }
 
 func getSignersSet(signers []core.Address, threshold int, rand rand.Source) []core.Address {
-	signersToRemove := threshold - len(signers)
+	signersToRemove := len(signers) - threshold
 	if signersToRemove <= 0 {
 		return signers
 	}
