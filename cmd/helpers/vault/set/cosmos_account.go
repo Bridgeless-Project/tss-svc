@@ -38,6 +38,8 @@ var cosmosAccountCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to save account to vault")
 		}
 
+		config.Log().Info("Cosmos account was successfully saved")
+
 		return nil
 	},
 }

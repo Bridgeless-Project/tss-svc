@@ -40,6 +40,8 @@ var tlsCertCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to save TLS certificate to vault")
 		}
 
+		config.Log().Info("TLS certificate was successfully saved")
+
 		return nil
 	},
 }

@@ -36,6 +36,8 @@ var tssShareCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to save TSS share to vault")
 		}
 
+		config.Log().Info("TSS share was successfully saved")
+
 		return nil
 	},
 }
