@@ -254,7 +254,8 @@ func (b *ReliableBroadcaster[T]) processMsg(msg ReliableBroadcastMsg[T]) {
 		// including our acknowledgment
 		signaturesCount += 1
 	}
-	if signaturesCount == b.relayRounds {
+	// using '>=' validation to cover the 1 relay round case
+	if signaturesCount >= b.relayRounds {
 		b.finalSigChainReached = true
 	}
 
