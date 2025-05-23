@@ -16,6 +16,8 @@ replace (
 	// bridge cosmos sdk comebft change
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0
+	// deleted library fix that is used in other libraries
+	github.com/tyler-smith/go-bip39 => github.com/EduardMikhrin/go-bip39 v0.0.0-20250520110429-260285377285
 )
 
 require (
