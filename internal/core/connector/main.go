@@ -26,7 +26,7 @@ const gasLimit = 3_000_000
 type Settings struct {
 	ChainId     string `fig:"chain_id,required"`
 	Denom       string `fig:"denom,required"`
-	MinGasPrice uint64 `fig:"min_gas_price"`
+	MinGasPrice uint64 `fig:"min_gas_price,required"`
 }
 
 type Connector struct {

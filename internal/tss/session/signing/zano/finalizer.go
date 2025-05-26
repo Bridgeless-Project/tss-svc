@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
@@ -68,7 +69,8 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (f *Finalizer) finalize(ctx context.Context) {
-	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), f.withdrawalData.ProposalData.TxId); err != nil {
+	withdrawalTxHash := bridge.HexPrefix + f.withdrawalData.ProposalData.TxId
+	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
 		return
 	}
