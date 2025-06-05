@@ -11,7 +11,6 @@ import (
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm/contracts"
 	"github.com/pkg/errors"
-	"gitlab.com/distributed_lab/logan/v3"
 )
 
 const (
@@ -28,7 +27,6 @@ type Client struct {
 	chain         Chain
 	contractABI   abi.ABI
 	depositEvents []abi.Event
-	logger        *logan.Entry
 }
 
 // NewBridgeClient creates a new bridge Client for the given chain.
