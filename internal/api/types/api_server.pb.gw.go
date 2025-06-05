@@ -87,7 +87,7 @@ func request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marsha
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "tx_nonce")
 	}
-	protoReq.TxNonce, err = runtime.Uint32(val)
+	protoReq.TxNonce, err = runtime.Uint64(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "tx_nonce", err)
 	}
@@ -121,7 +121,7 @@ func local_request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "tx_nonce")
 	}
-	protoReq.TxNonce, err = runtime.Uint32(val)
+	protoReq.TxNonce, err = runtime.Uint64(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "tx_nonce", err)
 	}
