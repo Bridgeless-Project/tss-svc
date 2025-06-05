@@ -151,6 +151,12 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 
 	sessionsWg := new(sync.WaitGroup)
 	for _, client := range clients {
+
+		// TODO: Delete when TON session will be added
+		if client.Type() == chain.TypeTON {
+			continue
+		}
+
 		sessionsWg.Add(1)
 		eg.Go(func() error {
 			defer sessionsWg.Done()

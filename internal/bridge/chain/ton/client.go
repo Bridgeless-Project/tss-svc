@@ -2,13 +2,13 @@ package ton
 
 import (
 	"context"
+	"encoding/hex"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
 	"log"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -34,7 +34,7 @@ func NewBridgeClient(chain Chain) *Client {
 	api.SetTrustedBlockFromConfig(globalConfig)
 	api.WithTimeout(time.Duration(chain.RPC.Timeout) * time.Second)
 
-	chain.APIClientWrapped = api
+	chain.Client = api
 
 	return &Client{
 		chain, nil,
@@ -55,5 +55,6 @@ func (c *Client) AddressValid(addr string) bool {
 }
 
 func (c *Client) TransactionHashValid(hash string) bool {
-	return bridge.DefaultTransactionHashPattern.MatchString(hash)
+	_, err := hex.DecodeString(hash)
+	return err == nil
 }

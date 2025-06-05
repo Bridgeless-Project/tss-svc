@@ -84,7 +84,7 @@ func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*Bit
 		ProposalData: &p2p.BitcoinProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
-				TxNonce: uint32(deposit.TxNonce),
+				TxNonce: uint64(deposit.TxNonce),
 				TxHash:  deposit.TxHash,
 			},
 			SerializedTx: buf.Bytes(),

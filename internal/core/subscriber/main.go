@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	database "github.com/hyle-team/tss-svc/internal/db"
@@ -55,7 +56,9 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 		select {
 		case <-ctx.Done():
 			s.log.Info("context cancelled, stopping receiving events")
-			if err := s.client.Unsubscribe(ctx, OpServiceName, s.query); err != nil {
+			shutdownDeadline, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			if err := s.client.Unsubscribe(shutdownDeadline, OpServiceName, s.query); err != nil {
 				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 

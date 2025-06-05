@@ -48,7 +48,6 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	case EventDepositedNative:
 		eventBody := new(contracts.BridgeDepositedNative)
 		if err = p.contractABI.UnpackIntoInterface(eventBody, depositType, log.Data); err != nil {
-			p.logger.Debug(errors.Wrap(err, "failed to unpack event"))
 			return nil, bridgeTypes.ErrDepositNotFound
 		}
 
@@ -67,7 +66,6 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	case EventDepositedERC20:
 		eventBody := new(contracts.BridgeDepositedERC20)
 		if err = p.contractABI.UnpackIntoInterface(eventBody, depositType, log.Data); err != nil {
-			p.logger.Debug(errors.Wrap(err, "failed to unpack event"))
 			return nil, bridgeTypes.ErrDepositNotFound
 		}
 
