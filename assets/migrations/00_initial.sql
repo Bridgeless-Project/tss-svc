@@ -5,7 +5,7 @@ CREATE TABLE deposits
     id                  BIGSERIAL PRIMARY KEY,
 
     tx_hash             VARCHAR(100) NOT NULL,
-    tx_nonce        INT          NOT NULL,
+    tx_nonce        BIGINT          NOT NULL,
     chain_id            VARCHAR(50)  NOT NULL,
 
     depositor           VARCHAR(100),
