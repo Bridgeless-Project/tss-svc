@@ -28,7 +28,6 @@ var (
 
 type BitcoinWithdrawalData struct {
 	ProposalData *p2p.BitcoinProposalData
-	SignedInputs [][]byte
 }
 
 func (e BitcoinWithdrawalData) DepositIdentifier() db.DepositIdentifier {
