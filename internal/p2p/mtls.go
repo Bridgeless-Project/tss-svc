@@ -5,7 +5,7 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/pkg/errors"
 )
 

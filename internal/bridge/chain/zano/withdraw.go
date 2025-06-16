@@ -3,9 +3,9 @@ package zano
 import (
 	"math/big"
 
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/db"
-	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	zanoTypes "github.com/Bridgeless-Project/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 )
 

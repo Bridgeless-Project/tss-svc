@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 )
 
 type clientsRepository struct {

@@ -3,12 +3,12 @@ package zano
 import (
 	"context"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
+	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
+	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
-	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
-	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
-	database "github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

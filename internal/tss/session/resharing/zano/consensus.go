@@ -5,11 +5,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
-	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
-	zanoSdk "github.com/hyle-team/tss-svc/pkg/zano"
-	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
+	zanoSdk "github.com/Bridgeless-Project/tss-svc/pkg/zano"
+	zanoTypes "github.com/Bridgeless-Project/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )

@@ -1,12 +1,12 @@
 package config
 
 import (
-	config2 "github.com/hyle-team/tss-svc/internal/bridge/chain/config"
-	connector "github.com/hyle-team/tss-svc/internal/core/connector/config"
-	subscriber "github.com/hyle-team/tss-svc/internal/core/subscriber/config"
-	p2p "github.com/hyle-team/tss-svc/internal/p2p/config"
-	vault "github.com/hyle-team/tss-svc/internal/secrets/vault/config"
-	tss "github.com/hyle-team/tss-svc/internal/tss/config"
+	config2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/config"
+	connector "github.com/Bridgeless-Project/tss-svc/internal/core/connector/config"
+	subscriber "github.com/Bridgeless-Project/tss-svc/internal/core/subscriber/config"
+	p2p "github.com/Bridgeless-Project/tss-svc/internal/p2p/config"
+	vault "github.com/Bridgeless-Project/tss-svc/internal/secrets/vault/config"
+	tss "github.com/Bridgeless-Project/tss-svc/internal/tss/config"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/kit/pgdb"

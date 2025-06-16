@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"

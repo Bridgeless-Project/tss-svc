@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 )
 
 const (

@@ -1,7 +1,7 @@
 package grpc
 
 import (
-	"github.com/hyle-team/tss-svc/internal/api/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/api/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

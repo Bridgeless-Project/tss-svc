@@ -5,8 +5,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/hyle-team/tss-svc/internal/core"
 	"google.golang.org/protobuf/proto"
 )
 

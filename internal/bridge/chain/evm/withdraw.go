@@ -3,9 +3,9 @@ package evm
 import (
 	"math/big"
 
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	operations2 "github.com/hyle-team/tss-svc/internal/bridge/chain/evm/operations"
-	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	operations2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/operations"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 
