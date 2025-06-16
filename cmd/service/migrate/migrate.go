@@ -1,8 +1,8 @@
 package migrate
 
 import (
-	"github.com/hyle-team/tss-svc/assets"
-	"github.com/hyle-team/tss-svc/internal/config"
+	"github.com/Bridgeless-Project/tss-svc/assets"
+	"github.com/Bridgeless-Project/tss-svc/internal/config"
 	"github.com/pkg/errors"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/spf13/cobra"

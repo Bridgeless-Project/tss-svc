@@ -1,7 +1,7 @@
 package run
 
 import (
-	"github.com/hyle-team/tss-svc/cmd/service/run/reshare"
+	"github.com/Bridgeless-Project/tss-svc/cmd/service/run/reshare"
 	"github.com/spf13/cobra"
 )
 

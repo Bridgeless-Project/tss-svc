@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
-	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
-	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

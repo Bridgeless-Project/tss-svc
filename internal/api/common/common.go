@@ -2,10 +2,10 @@ package common
 
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	database "github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/types"
+	apiTypes "github.com/Bridgeless-Project/tss-svc/internal/api/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	database "github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"

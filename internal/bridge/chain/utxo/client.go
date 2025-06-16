@@ -3,13 +3,13 @@ package utxo
 import (
 	"math/big"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	utxochain "github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/helper"
-	"github.com/hyle-team/tss-svc/internal/db"
 )
 
 type Client interface {

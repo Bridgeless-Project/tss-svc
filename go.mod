@@ -1,4 +1,4 @@
-module github.com/hyle-team/tss-svc
+module github.com/Bridgeless-Project/tss-svc
 
 go 1.23.4
 
@@ -10,16 +10,16 @@ replace (
 	// rosetta rebranding
 	github.com/coinbase/rosetta-sdk-go => github.com/coinbase/mesh-sdk-go v0.7.9
 	// bridge core sdk
-	github.com/cosmos/cosmos-sdk => github.com/hyle-team/cosmos-sdk v0.46.30
+	github.com/cosmos/cosmos-sdk => github.com/Bridgeless-Project/cosmos-sdk v0.46.33
 	github.com/cosmos/iavl => github.com/cosmos/iavl v0.19.6
 	// bridge cosmos sdk protobuf fix
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/hyle-team/bridgeless-core/v12 => github.com/hyle-team/bridgeless-core/v12 v12.1.8-0.20250501150252-e7038dd3965c
+	github.com/hyle-team/bridgeless-core/v12 => github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.19
 	// bridge cosmos sdk comebft change
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0
 	// deleted library fix that is used in other libraries
-	github.com/tyler-smith/go-bip39 => github.com/EduardMikhrin/go-bip39 v0.0.0-20250520110429-260285377285
+	github.com/tyler-smith/go-bip39 => github.com/distributed-lab/go-bip39 v1.1.0
 )
 
 require (

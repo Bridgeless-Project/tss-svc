@@ -7,8 +7,8 @@ import (
 
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

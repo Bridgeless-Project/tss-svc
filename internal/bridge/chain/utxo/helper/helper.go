@@ -3,13 +3,13 @@ package helper
 import (
 	"crypto/ecdsa"
 
+	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/btcec/v2"
 	ecdsabtc "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	btccfg "github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	bchcfg "github.com/gcash/bchd/chaincfg"
-	utxotypes "github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/types"
 )
 
 type UtxoHelper interface {

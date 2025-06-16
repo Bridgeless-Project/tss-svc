@@ -1,9 +1,9 @@
 package vault
 
 import (
-	"github.com/hyle-team/tss-svc/cmd/helpers/vault/get"
-	"github.com/hyle-team/tss-svc/cmd/helpers/vault/set"
-	"github.com/hyle-team/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/cmd/helpers/vault/get"
+	"github.com/Bridgeless-Project/tss-svc/cmd/helpers/vault/set"
+	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/spf13/cobra"
 )
 

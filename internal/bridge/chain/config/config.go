@@ -3,11 +3,11 @@ package config
 import (
 	"reflect"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo"
-	utxochain "github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
+	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"

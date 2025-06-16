@@ -1,9 +1,9 @@
 package helpers
 
 import (
-	"github.com/hyle-team/tss-svc/cmd/helpers/generate"
-	"github.com/hyle-team/tss-svc/cmd/helpers/parse"
-	"github.com/hyle-team/tss-svc/cmd/helpers/vault"
+	"github.com/Bridgeless-Project/tss-svc/cmd/helpers/generate"
+	"github.com/Bridgeless-Project/tss-svc/cmd/helpers/parse"
+	"github.com/Bridgeless-Project/tss-svc/cmd/helpers/vault"
 	"github.com/spf13/cobra"
 )
 

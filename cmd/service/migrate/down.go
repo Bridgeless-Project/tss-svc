@@ -1,7 +1,7 @@
 package migrate
 
 import (
-	"github.com/hyle-team/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/pkg/errors"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/spf13/cobra"

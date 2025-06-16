@@ -5,8 +5,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 )
 
 // TODO: add more randomness to the seed

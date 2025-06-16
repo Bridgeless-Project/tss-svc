@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/helper"
-	utxotypes "github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

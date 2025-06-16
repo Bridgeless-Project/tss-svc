@@ -3,8 +3,8 @@ package cmd
 import (
 	"os"
 
-	"github.com/hyle-team/tss-svc/cmd/helpers"
-	"github.com/hyle-team/tss-svc/cmd/service"
+	"github.com/Bridgeless-Project/tss-svc/cmd/helpers"
+	"github.com/Bridgeless-Project/tss-svc/cmd/service"
 
 	"github.com/spf13/cobra"
 )

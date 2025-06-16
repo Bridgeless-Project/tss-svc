@@ -3,10 +3,10 @@ package chain
 import (
 	"reflect"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/helper"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/rpc"
-	utxotypes "github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/rpc"
+	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )

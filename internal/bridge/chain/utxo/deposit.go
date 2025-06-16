@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil/base58"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/helper"
-	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 

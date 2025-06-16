@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
-	database "github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/types"
+	database "github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"

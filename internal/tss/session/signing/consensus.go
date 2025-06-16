@@ -1,11 +1,11 @@
 package signing
 
 import (
-	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
-	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
-	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
-	"github.com/hyle-team/tss-svc/internal/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
+	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/pkg/errors"
 )
 
