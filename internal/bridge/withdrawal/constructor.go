@@ -1,8 +1,8 @@
 package withdrawal
 
 import (
-	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 )
 
 type DepositSigningData interface {

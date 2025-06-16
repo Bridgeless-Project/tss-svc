@@ -7,7 +7,7 @@
 package types
 
 import (
-	types "github.com/hyle-team/tss-svc/internal/types"
+	types "github.com/Bridgeless-Project/tss-svc/internal/types"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

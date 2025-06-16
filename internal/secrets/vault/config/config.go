@@ -5,8 +5,8 @@ import (
 	"os"
 
 	vaultApi "github.com/hashicorp/vault/api"
-	"github.com/hyle-team/tss-svc/internal/secrets"
-	"github.com/hyle-team/tss-svc/internal/secrets/vault"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets/vault"
 	"gitlab.com/distributed_lab/kit/comfig"
 )
 

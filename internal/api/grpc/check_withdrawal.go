@@ -3,10 +3,10 @@ package grpc
 import (
 	"context"
 
-	"github.com/hyle-team/tss-svc/internal/api/common"
-	"github.com/hyle-team/tss-svc/internal/api/ctx"
-	apiTypes "github.com/hyle-team/tss-svc/internal/api/types"
-	"github.com/hyle-team/tss-svc/internal/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/api/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
+	apiTypes "github.com/Bridgeless-Project/tss-svc/internal/api/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

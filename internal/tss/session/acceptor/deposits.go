@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
-	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 
-	"github.com/hyle-team/tss-svc/internal/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

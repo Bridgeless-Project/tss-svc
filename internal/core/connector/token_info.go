@@ -4,7 +4,7 @@ import (
 	"context"
 
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
-	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/pkg/errors"
 )
 

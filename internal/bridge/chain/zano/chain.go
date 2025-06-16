@@ -3,8 +3,8 @@ package zano
 import (
 	"reflect"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/pkg/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/pkg/zano"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )

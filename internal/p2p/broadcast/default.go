@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"gitlab.com/distributed_lab/logan/v3"
 
-	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )

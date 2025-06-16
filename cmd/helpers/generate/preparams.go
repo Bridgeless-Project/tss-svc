@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	tss "github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

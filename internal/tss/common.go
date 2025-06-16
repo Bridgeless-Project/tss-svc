@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/hyle-team/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 )
 
 const (

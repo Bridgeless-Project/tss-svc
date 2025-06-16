@@ -3,8 +3,8 @@ package zano
 import (
 	"strings"
 
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	zanoTypes "github.com/hyle-team/tss-svc/pkg/zano/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	zanoTypes "github.com/Bridgeless-Project/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 )
 
