@@ -50,9 +50,9 @@ func FromChain(c chain.Chain) Chain {
 		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
 	}
 
-	helper := helper.NewUtxoHelper(ch.Meta.Type, ch.Meta.Network)
+	hlp := helper.NewUtxoHelper(ch.Meta.Type, ch.Meta.Network)
 	for _, addr := range ch.Receivers {
-		if !helper.AddressValid(addr) {
+		if !hlp.AddressValid(addr) {
 			panic(errors.Errorf("invalid receiver address: %s", addr))
 		}
 	}

@@ -105,7 +105,7 @@ func (b *btcHelper) CalculateSignatureHash(scriptRaw []byte, tx *wire.MsgTx, idx
 	return sigHash, nil
 }
 
-func (b *btcHelper) MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx int, amt int64) ([]byte, error) {
+func (b *btcHelper) MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx int, _ int64) ([]byte, error) {
 	if len(scriptRaw) == 0 {
 		return nil, errors.New("script cannot be empty")
 	}
