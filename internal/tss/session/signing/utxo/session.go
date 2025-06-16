@@ -1,4 +1,4 @@
-package bitcoin
+package utxo
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"github.com/hyle-team/tss-svc/internal/tss"
 	"github.com/hyle-team/tss-svc/internal/tss/session"
 	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
-	resharingConsensus "github.com/hyle-team/tss-svc/internal/tss/session/resharing/bitcoin"
+	resharingConsensus "github.com/hyle-team/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/hyle-team/tss-svc/internal/tss/session/signing"
 	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"

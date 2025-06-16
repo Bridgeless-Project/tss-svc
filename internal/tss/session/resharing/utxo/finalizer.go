@@ -1,4 +1,4 @@
-package bitcoin
+package utxo
 
 import (
 	"bytes"

@@ -17,8 +17,8 @@ import (
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
 	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
-	btcSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
 	evmSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
+	utxoSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/utxo"
 	zanoSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/zano"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
@@ -273,7 +273,7 @@ func configureSigningSession(
 		}
 		sess = zanoSession
 	case chain.TypeBitcoin:
-		btcSession := btcSigning.NewSession(
+		btcSession := utxoSigning.NewSession(
 			tss.LocalSignParty{
 				Account:   account,
 				Share:     share,

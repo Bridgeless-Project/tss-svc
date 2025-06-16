@@ -12,7 +12,7 @@ import (
 	utxochain "github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/chain"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
-	bitcoinResharing "github.com/hyle-team/tss-svc/internal/tss/session/resharing/bitcoin"
+	utxoResharing "github.com/hyle-team/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -79,14 +79,14 @@ var reshareUtxoCmd = &cobra.Command{
 			cfg.Log().WithField("component", "connection_manager"),
 		)
 
-		session := bitcoinResharing.NewSession(
+		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
 				Share:     share,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			client,
-			bitcoinResharing.SessionParams{
+			utxoResharing.SessionParams{
 				ConsolidateParams: consolidateParams,
 				TargetAddr:        targetAddr,
 				SessionParams:     cfg.TssSessionParams(),
