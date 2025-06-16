@@ -1,11 +1,17 @@
 package helper
 
 import (
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"fmt"
 
+	"github.com/bnb-chain/tss-lib/v2/common"
+
+	btcscript "github.com/btcsuite/btcd/txscript"
 	btcwire "github.com/btcsuite/btcd/wire"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gcash/bchd/bchec"
+
 	bchcfg "github.com/gcash/bchd/chaincfg"
 	"github.com/gcash/bchd/chaincfg/chainhash"
 	bchscript "github.com/gcash/bchd/txscript"
@@ -127,6 +133,46 @@ func (b *bchHelper) MockSignatureScript(scriptRaw []byte, tx *btcwire.MsgTx, idx
 	}
 
 	return sigScript, nil
+}
+
+func (b *bchHelper) P2pkhAddress(pk *ecdsa.PublicKey) string {
+	compressed := crypto.CompressPubkey(pk)
+	pubKeyHash := bchutil.Hash160(compressed)
+
+	addr, _ := bchutil.NewAddressPubKeyHash(pubKeyHash, b.chainParams)
+
+	return addr.String()
+}
+
+func (b *bchHelper) InjectSignatures(tx *btcwire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error {
+	if len(signatures) != len(tx.TxIn) {
+		return errors.New("signatures count does not match inputs count")
+	}
+
+	for i, sig := range signatures {
+		encodedSig := encodeSignature(sig, byte(bchscript.SigHashAll))
+		sigScript, err := btcscript.
+			NewScriptBuilder().
+			AddData(encodedSig).
+			AddData(crypto.CompressPubkey(pk)).
+			Script()
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("failed to create script for input %d", i))
+		}
+
+		tx.TxIn[i].SignatureScript = sigScript
+	}
+
+	return nil
+}
+
+func (b *bchHelper) TxHash(tx *btcwire.MsgTx) string {
+	if tx == nil {
+		return ""
+	}
+
+	bchWire := wireToBch(tx)
+	return bchWire.TxHash().String()
 }
 
 func wireToBch(tx *btcwire.MsgTx) *bchwire.MsgTx {

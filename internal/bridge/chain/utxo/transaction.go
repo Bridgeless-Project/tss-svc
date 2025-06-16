@@ -118,7 +118,7 @@ func (c *client) MockTransaction(tx *wire.MsgTx, inputs map[OutPoint]btcjson.Lis
 	return mockedTx, nil
 }
 
-func (c *client) LockOutputs(tx wire.MsgTx) error {
+func (c *client) LockOutputs(tx *wire.MsgTx) error {
 	outs := make([]*wire.OutPoint, len(tx.TxIn))
 	for i, inp := range tx.TxIn {
 		outs[i] = &inp.PreviousOutPoint

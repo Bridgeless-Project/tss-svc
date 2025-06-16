@@ -10,10 +10,9 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/types"
@@ -22,15 +21,15 @@ import (
 )
 
 var (
-	_ DepositSigningData                 = BitcoinWithdrawalData{}
-	_ Constructor[BitcoinWithdrawalData] = &BitcoinWithdrawalConstructor{}
+	_ DepositSigningData              = UtxoWithdrawalData{}
+	_ Constructor[UtxoWithdrawalData] = &UtxoWithdrawalConstructor{}
 )
 
-type BitcoinWithdrawalData struct {
+type UtxoWithdrawalData struct {
 	ProposalData *p2p.BitcoinProposalData
 }
 
-func (e BitcoinWithdrawalData) DepositIdentifier() db.DepositIdentifier {
+func (e UtxoWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	identifier := db.DepositIdentifier{}
 
 	if e.ProposalData == nil || e.ProposalData.DepositId == nil {
@@ -44,7 +43,7 @@ func (e BitcoinWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	return identifier
 }
 
-func (e BitcoinWithdrawalData) HashString() string {
+func (e UtxoWithdrawalData) HashString() string {
 	if e.ProposalData == nil {
 		return ""
 	}
@@ -57,19 +56,23 @@ func (e BitcoinWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
-type BitcoinWithdrawalConstructor struct {
-	client *bitcoin.Client
-	tssPkh *btcutil.AddressPubKeyHash
+type UtxoWithdrawalConstructor struct {
+	client  utxo.Client
+	helper  helper.UtxoHelper
+	tssAddr string
 }
 
-func NewBitcoinConstructor(client *bitcoin.Client, tssPub *ecdsa.PublicKey) *BitcoinWithdrawalConstructor {
-	tssPkh := bitcoin.PubKeyToPkhCompressed(tssPub, client.ChainParams())
-
-	return &BitcoinWithdrawalConstructor{client: client, tssPkh: tssPkh}
+func NewBitcoinConstructor(client utxo.Client, tssPub *ecdsa.PublicKey) *UtxoWithdrawalConstructor {
+	hlp := client.UtxoHelper()
+	return &UtxoWithdrawalConstructor{
+		client:  client,
+		helper:  hlp,
+		tssAddr: hlp.P2pkhAddress(tssPub),
+	}
 }
 
-func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*BitcoinWithdrawalData, error) {
-	tx, sigHashes, err := c.client.CreateUnsignedWithdrawalTx(deposit, c.tssPkh.EncodeAddress())
+func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWithdrawalData, error) {
+	tx, sigHashes, err := c.client.CreateUnsignedWithdrawalTx(deposit, c.tssAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create unsigned transaction")
 	}
@@ -79,7 +82,7 @@ func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*Bit
 		return nil, errors.Wrap(err, "failed to serialize transaction")
 	}
 
-	return &BitcoinWithdrawalData{
+	return &UtxoWithdrawalData{
 		ProposalData: &p2p.BitcoinProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
@@ -92,7 +95,7 @@ func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*Bit
 	}, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) IsValid(data BitcoinWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposit db.Deposit) (bool, error) {
 	tx := wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(data.ProposalData.SerializedTx)); err != nil {
 		return false, errors.Wrap(err, "failed to deserialize transaction")
@@ -120,7 +123,7 @@ func (c *BitcoinWithdrawalConstructor) IsValid(data BitcoinWithdrawalData, depos
 	return true, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit db.Deposit) (int64, error) {
+func (c *UtxoWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit db.Deposit) (int64, error) {
 	outputsSum, receiverIdx := int64(0), 0
 	switch len(tx.TxOut) {
 	case 2:
@@ -129,7 +132,7 @@ func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit d
 		changeOutput := tx.TxOut[0]
 		outputsSum += changeOutput.Value
 
-		outScript, err := txscript.PayToAddrScript(c.tssPkh)
+		outScript, err := c.helper.PayToAddrScript(c.tssAddr)
 		if err != nil {
 			return 0, errors.Wrap(err, "failed to create change output script")
 		}
@@ -146,11 +149,7 @@ func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit d
 		}
 		outputsSum += receiverOutput.Value
 
-		outAddr, err := btcutil.DecodeAddress(deposit.Receiver, c.client.ChainParams())
-		if err != nil {
-			return 0, errors.Wrap(err, "failed to decode receiver address")
-		}
-		outScript, err := txscript.PayToAddrScript(outAddr)
+		outScript, err := c.helper.PayToAddrScript(deposit.Receiver)
 		if err != nil {
 			return 0, errors.Wrap(err, "failed to create change output script")
 		}
@@ -164,9 +163,9 @@ func (c *BitcoinWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit d
 	return outputsSum, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) validateInputs(
+func (c *UtxoWithdrawalConstructor) validateInputs(
 	tx *wire.MsgTx,
-	inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult,
+	inputs map[utxo.OutPoint]btcjson.ListUnspentResult,
 	sigHashes [][]byte,
 ) (int64, error) {
 	if sigHashes == nil || len(sigHashes) != len(tx.TxIn) {
@@ -179,13 +178,14 @@ func (c *BitcoinWithdrawalConstructor) validateInputs(
 			return 0, errors.New(fmt.Sprintf("nil input at index %d", idx))
 		}
 
-		unspent := inputs[bitcoin.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		unspent := inputs[utxo.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		unspentAmount := utxo.ToAmount(unspent.Amount).Int64()
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
 		}
-		sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin.SigHashType, tx, idx)
+		sigHash, err := c.helper.CalculateSignatureHash(scriptDecoded, tx, idx, unspentAmount)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
 		}
@@ -193,13 +193,18 @@ func (c *BitcoinWithdrawalConstructor) validateInputs(
 			return 0, errors.New(fmt.Sprintf("invalid signature hash for input %d", idx))
 		}
 
-		inputsSum += bitcoin.ToAmount(unspent.Amount, bitcoin.Decimals).Int64()
+		inputsSum += unspentAmount
 	}
 
 	return inputsSum, nil
 }
 
-func (c *BitcoinWithdrawalConstructor) validateChange(tx *wire.MsgTx, inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
+func (c *UtxoWithdrawalConstructor) validateChange(
+	tx *wire.MsgTx,
+	inputs map[utxo.OutPoint]btcjson.ListUnspentResult,
+	inputsSum,
+	outputsSum int64,
+) error {
 	actualFee := inputsSum - outputsSum
 	if actualFee <= 0 {
 		return errors.New("invalid change amount")
@@ -211,8 +216,8 @@ func (c *BitcoinWithdrawalConstructor) validateChange(tx *wire.MsgTx, inputs map
 	}
 
 	var (
-		targetFeeRate = bitcoin.DefaultFeeRateBtcPerKvb * 1e5 // btc/kB -> sat/byte
-		feeTolerance  = 0.1 * targetFeeRate                   // 10%
+		targetFeeRate = utxo.DefaultFeeRateBtcPerKvb * 1e5 // btc/kB -> sat/byte
+		feeTolerance  = 0.1 * targetFeeRate                // 10%
 		estimatedSize = mockedTx.SerializeSize()
 		actualFeeRate = float64(actualFee) / float64(estimatedSize)
 	)

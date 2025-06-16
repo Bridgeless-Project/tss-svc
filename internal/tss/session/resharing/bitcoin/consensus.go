@@ -6,12 +6,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"math/big"
 
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
@@ -41,21 +41,27 @@ func (s SigningData) HashString() string {
 }
 
 type ConsensusMechanism struct {
-	client  *bitcoin.Client
-	dstAddr btcutil.Address
-	params  bitcoin.ConsolidateOutputsParams
+	client  utxo.Client
+	helper  helper.UtxoHelper
+	dstAddr string
+	params  utxo.ConsolidateOutputsParams
 }
 
-func NewConsensusMechanism(client *bitcoin.Client, dst btcutil.Address, params bitcoin.ConsolidateOutputsParams) *ConsensusMechanism {
-	return &ConsensusMechanism{client, dst, params}
+func NewConsensusMechanism(client utxo.Client, dst string, params utxo.ConsolidateOutputsParams) *ConsensusMechanism {
+	return &ConsensusMechanism{
+		client,
+		client.UtxoHelper(),
+		dst,
+		params,
+	}
 }
 
 func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	tx, sigHashes, err := m.client.ConsolidateOutputs(
 		m.dstAddr,
-		bitcoin.WithFeeRate(m.params.FeeRate),
-		bitcoin.WithOutputsCount(m.params.OutputsCount),
-		bitcoin.WithMaxInputsCount(m.params.MaxInputsCount),
+		utxo.WithFeeRate(m.params.FeeRate),
+		utxo.WithOutputsCount(m.params.OutputsCount),
+		utxo.WithMaxInputsCount(m.params.MaxInputsCount),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to consolidate outputs")
@@ -105,7 +111,7 @@ func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {
 func (m *ConsensusMechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 	var outputsSum int64
 
-	targetScript, err := txscript.PayToAddrScript(m.dstAddr)
+	targetScript, err := m.helper.PayToAddrScript(m.dstAddr)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to create target script")
 	}
@@ -117,6 +123,9 @@ func (m *ConsensusMechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 		if !bytes.Equal(output.PkScript, targetScript) {
 			return 0, errors.New(fmt.Sprintf("unexpected output script at index %d", i))
 		}
+		if !m.client.WithdrawalAmountValid(big.NewInt(output.Value)) {
+			return 0, errors.New("amount per output is too small")
+		}
 
 		outputsSum += output.Value
 	}
@@ -126,7 +135,7 @@ func (m *ConsensusMechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 
 func (m *ConsensusMechanism) validateInputs(
 	tx *wire.MsgTx,
-	inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult,
+	inputs map[utxo.OutPoint]btcjson.ListUnspentResult,
 	sigHashes [][]byte,
 ) (int64, error) {
 	var inputsSum int64
@@ -136,13 +145,14 @@ func (m *ConsensusMechanism) validateInputs(
 			return 0, errors.New(fmt.Sprintf("nil input at index %d", idx))
 		}
 
-		unspent := inputs[bitcoin.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		unspent := inputs[utxo.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		unspentAmount := utxo.ToAmount(unspent.Amount).Int64()
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
 		}
-		sigHash, err := txscript.CalcSignatureHash(scriptDecoded, bitcoin.SigHashType, tx, idx)
+		sigHash, err := m.helper.CalculateSignatureHash(scriptDecoded, tx, idx, unspentAmount)
 		if err != nil {
 			return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
 		}
@@ -150,13 +160,13 @@ func (m *ConsensusMechanism) validateInputs(
 			return 0, errors.New(fmt.Sprintf("invalid signature hash for input %d", idx))
 		}
 
-		inputsSum += bitcoin.ToAmount(unspent.Amount, bitcoin.Decimals).Int64()
+		inputsSum += unspentAmount
 	}
 
 	return inputsSum, nil
 }
 
-func (m *ConsensusMechanism) validateChange(tx *wire.MsgTx, inputs map[bitcoin.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
+func (m *ConsensusMechanism) validateChange(tx *wire.MsgTx, inputs map[utxo.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
 	actualFee := inputsSum - outputsSum
 	if actualFee <= 0 {
 		return errors.New("invalid change amount")

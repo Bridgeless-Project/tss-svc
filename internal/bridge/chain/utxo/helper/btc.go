@@ -1,13 +1,16 @@
 package helper
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 
+	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	btccfg "github.com/btcsuite/btcd/chaincfg"
 	btcscript "github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 )
 
@@ -113,4 +116,43 @@ func (b *btcHelper) MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx in
 	}
 
 	return sigScript, nil
+}
+
+func (b *btcHelper) InjectSignatures(tx *wire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error {
+	if len(signatures) != len(tx.TxIn) {
+		return errors.New("signatures count does not match inputs count")
+	}
+
+	for i, sig := range signatures {
+		encodedSig := encodeSignature(sig, byte(btcscript.SigHashAll))
+		sigScript, err := btcscript.
+			NewScriptBuilder().
+			AddData(encodedSig).
+			AddData(crypto.CompressPubkey(pk)).
+			Script()
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("failed to create script for input %d", i))
+		}
+
+		tx.TxIn[i].SignatureScript = sigScript
+	}
+
+	return nil
+}
+
+func (b *btcHelper) P2pkhAddress(pub *ecdsa.PublicKey) string {
+	compressed := crypto.CompressPubkey(pub)
+	pubKeyHash := btcutil.Hash160(compressed)
+
+	addr, _ := btcutil.NewAddressPubKeyHash(pubKeyHash, b.chainParams)
+
+	return addr.String()
+}
+
+func (b *btcHelper) TxHash(tx *wire.MsgTx) string {
+	if tx == nil {
+		return ""
+	}
+
+	return tx.TxHash().String()
 }

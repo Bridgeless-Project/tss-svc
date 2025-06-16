@@ -7,16 +7,15 @@ import (
 
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/wire"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Finalizer struct {
-	tssPub []byte
-	client *bitcoin.Client
+	tssPub *ecdsa.PublicKey
+	client utxo.Client
 
 	data          *SigningData
 	signatures    []*common.SignatureData
@@ -29,7 +28,7 @@ type Finalizer struct {
 }
 
 func NewFinalizer(
-	client *bitcoin.Client,
+	client utxo.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
 	sessionLeader bool,
@@ -38,7 +37,7 @@ func NewFinalizer(
 		client:        client,
 		errChan:       make(chan error),
 		logger:        logger,
-		tssPub:        ethcrypto.CompressPubkey(pubKey),
+		tssPub:        pubKey,
 		sessionLeader: sessionLeader,
 	}
 }
@@ -75,16 +74,16 @@ func (f *Finalizer) finalize() {
 		f.errChan <- errors.Wrap(err, "failed to deserialize transaction")
 		return
 	}
-	if err := bitcoin.InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
+	if err := f.client.UtxoHelper().InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to inject signatures")
 		return
 	}
 
-	withdrawalTxHash := bridge.HexPrefix + tx.TxHash().String()
+	withdrawalTxHash := bridge.HexPrefix + f.client.UtxoHelper().TxHash(&tx)
 	f.result = withdrawalTxHash
 
 	// ignoring error here, as the mempool tx can be already observed by the wallet
-	_ = f.client.LockOutputs(tx)
+	_ = f.client.LockOutputs(&tx)
 
 	if !f.sessionLeader {
 		return

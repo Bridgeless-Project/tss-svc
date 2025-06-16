@@ -79,7 +79,7 @@ var clientHook = figure.Hooks{
 				return reflect.Value{}, errors.Wrap(err, "failed to figure out bitcoin rpc client config")
 			}
 
-			client, err := rpc.NewRpcClient(
+			client, err := rpc.NewClient(
 				clientConfig.Host,
 				clientConfig.User,
 				clientConfig.Pass,

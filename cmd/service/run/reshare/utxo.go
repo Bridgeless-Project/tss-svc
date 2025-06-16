@@ -6,10 +6,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/hyle-team/tss-svc/cmd/utils"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo"
+	utxochain "github.com/hyle-team/tss-svc/internal/bridge/chain/utxo/chain"
 	"github.com/hyle-team/tss-svc/internal/p2p"
 	"github.com/hyle-team/tss-svc/internal/tss"
 	bitcoinResharing "github.com/hyle-team/tss-svc/internal/tss/session/resharing/bitcoin"
@@ -18,21 +18,21 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var consolidateParams = bitcoin.DefaultConsolidateOutputsParams
+var consolidateParams = utxo.DefaultConsolidateOutputsParams
 
 func init() {
-	registerReshareBtcOptions(reshareBtcCmd)
+	registerReshareUtxoOptions(reshareUtxoCmd)
 }
 
-func registerReshareBtcOptions(cmd *cobra.Command) {
+func registerReshareUtxoOptions(cmd *cobra.Command) {
 	cmd.Flags().Uint64Var(&consolidateParams.FeeRate, "fee-rate", consolidateParams.FeeRate, "Fee rate for the transaction (sats/vbyte)")
 	cmd.Flags().IntVar(&consolidateParams.OutputsCount, "outputs-count", consolidateParams.OutputsCount, "Number of outputs to split the funds into")
 	cmd.Flags().IntVar(&consolidateParams.MaxInputsCount, "max-inputs-count", consolidateParams.MaxInputsCount, "Maximum number of inputs to use in the transaction")
 }
 
-var reshareBtcCmd = &cobra.Command{
-	Use:   "bitcoin [chain-id] [target-addr]",
-	Short: "Command for service migration during key resharing for Bitcoin",
+var reshareUtxoCmd = &cobra.Command{
+	Use:   "utxo [chain-id] [target-addr]",
+	Short: "Command for service migration during key resharing for utxo chains",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := utils.ConfigFromFlags(cmd)
@@ -55,17 +55,20 @@ var reshareBtcCmd = &cobra.Command{
 		}
 		parties := cfg.Parties()
 
-		var client *bitcoin.Client
+		var client utxo.Client
 		for _, ch := range cfg.Chains() {
 			if ch.Id == args[0] && ch.Type == chain.TypeBitcoin {
-				client = bitcoin.NewBridgeClient(bitcoin.FromChain(ch))
+				client = utxo.NewBridgeClient(utxochain.FromChain(ch))
 				break
 			}
 		}
 		if client == nil {
-			return errors.New("bitcoin client configuration not found")
+			return errors.New("utxo client configuration not found")
 		}
-		targetAddr, err := btcutil.DecodeAddress(args[1], client.ChainParams())
+		targetAddr := args[1]
+		if !client.UtxoHelper().AddressValid(targetAddr) {
+			return errors.New(fmt.Sprintf("invalid target address: %s", targetAddr))
+		}
 		if err != nil {
 			return errors.Wrap(err, "failed to decode target address")
 		}
@@ -115,7 +118,7 @@ var reshareBtcCmd = &cobra.Command{
 			defer cancel()
 
 			if err := session.Run(ctx); err != nil {
-				return errors.Wrap(err, "failed to run bitcoin resharing session")
+				return errors.Wrap(err, "failed to run utxo resharing session")
 			}
 			txHash, err := session.WaitFor()
 			if err != nil {
@@ -126,7 +129,7 @@ var reshareBtcCmd = &cobra.Command{
 				return nil
 			}
 
-			cfg.Log().Info("bitcoin resharing session successfully completed")
+			cfg.Log().Info("utxo resharing session successfully completed")
 			cfg.Log().Info(fmt.Sprintf("Migration transaction hash: %s", txHash))
 
 			return nil

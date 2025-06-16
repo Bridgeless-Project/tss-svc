@@ -3,6 +3,7 @@ package utxo
 import (
 	"math/big"
 
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
@@ -16,6 +17,12 @@ type Client interface {
 
 	ConsolidationThreshold() int
 	CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error)
+	FindUsedInputs(tx *wire.MsgTx) (map[OutPoint]btcjson.ListUnspentResult, error)
+	MockTransaction(tx *wire.MsgTx, inputs map[OutPoint]btcjson.ListUnspentResult) (*wire.MsgTx, error)
+	ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions) (*wire.MsgTx, [][]byte, error)
+	UnspentCount() (int, error)
+	LockOutputs(tx *wire.MsgTx) error
+	SendSignedTransaction(tx *wire.MsgTx) (string, error)
 
 	UtxoHelper() helper.UtxoHelper
 }

@@ -8,9 +8,9 @@ import (
 	"syscall"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/repository"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/utxo"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
 	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -283,7 +283,7 @@ func configureSigningSession(
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
-		).WithDepositFetcher(fetcher).WithClient(client.(*bitcoin.Client)).WithCoreConnector(connector)
+		).WithDepositFetcher(fetcher).WithClient(client.(utxo.Client)).WithCoreConnector(connector)
 		if err := btcSession.Build(); err != nil {
 			panic(errors.Wrap(err, "failed to build bitcoin session"))
 		}

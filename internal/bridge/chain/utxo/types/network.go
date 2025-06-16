@@ -5,6 +5,11 @@ import (
 	"gitlab.com/distributed_lab/figure/v3"
 )
 
+const (
+	DefaultNetwork = NetworkMainnet
+	DefaultType    = TypeBtc
+)
+
 var _, _ figure.Validatable = Network(""), Type("")
 
 type Network string

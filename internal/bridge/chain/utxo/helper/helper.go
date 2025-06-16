@@ -1,6 +1,11 @@
 package helper
 
 import (
+	"crypto/ecdsa"
+
+	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/btcsuite/btcd/btcec/v2"
+	ecdsabtc "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	btccfg "github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	bchcfg "github.com/gcash/bchd/chaincfg"
@@ -11,12 +16,16 @@ type UtxoHelper interface {
 	ScriptSupported(script []byte) bool
 	IsOpReturnScript(scriptRaw []byte) bool
 
+	P2pkhAddress(pk *ecdsa.PublicKey) string
 	AddressValid(string) bool
 	ExtractScriptAddresses(scriptRaw []byte) ([]string, error)
 	PayToAddrScript(addr string) ([]byte, error)
 
 	CalculateSignatureHash(scriptRaw []byte, tx *wire.MsgTx, idx int, amt int64) ([]byte, error)
 	MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx int, amt int64) ([]byte, error)
+
+	InjectSignatures(tx *wire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error
+	TxHash(tx *wire.MsgTx) string
 }
 
 func NewUtxoHelper(
@@ -50,4 +59,18 @@ func NewUtxoHelper(
 	}
 
 	panic("unsupported chain subtype")
+}
+
+func encodeSignature(sig *common.SignatureData, sigHashType byte) []byte {
+	if sig == nil {
+		return nil
+	}
+
+	r, s := new(btcec.ModNScalar), new(btcec.ModNScalar)
+	r.SetByteSlice(sig.R)
+	s.SetByteSlice(sig.S)
+
+	btcSig := ecdsabtc.NewSignature(r, s)
+
+	return append(btcSig.Serialize(), sigHashType)
 }
