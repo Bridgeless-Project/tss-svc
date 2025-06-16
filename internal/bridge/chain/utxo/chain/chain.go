@@ -26,8 +26,8 @@ type Rpc struct {
 }
 
 type Meta struct {
-	Network utxotypes.Network
-	Type    utxotypes.Type
+	Network utxotypes.Network `fig:"network,required"`
+	Type    utxotypes.Type    `fig:"type,required"`
 }
 
 func FromChain(c chain.Chain) Chain {
