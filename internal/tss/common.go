@@ -3,11 +3,11 @@ package tss
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/gob"
 	"fmt"
 
-	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/bnb-chain/tss-lib/v2/common"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -32,10 +32,20 @@ type Signatures struct {
 }
 
 func (s Signatures) HashString() string {
+	if len(s.Data) == 0 {
+		return ""
+	}
+
 	var buff bytes.Buffer
 
-	encoder := gob.NewEncoder(&buff)
-	_ = encoder.Encode(s)
+	for _, sig := range s.Data {
+		if sig == nil {
+			continue
+		}
+
+		data, _ := proto.MarshalOptions{Deterministic: true}.Marshal(sig)
+		buff.Write(data)
+	}
 
 	return fmt.Sprintf("%x", sha256.Sum256(buff.Bytes()))
 }
