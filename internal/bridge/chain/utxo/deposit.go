@@ -85,9 +85,6 @@ func (c *client) parseSenderAddress(in btcjson.Vin) (addr string, err error) {
 	if err != nil {
 		return "", errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
-	if len(addrs) == 0 {
-		return "", errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "no addresses found in sender output script")
-	}
 
 	return addrs[0], nil
 }
@@ -169,30 +166,34 @@ func (d *DepositDecoder) decodeDestinationOutput(out btcjson.Vout) (addr, chainI
 	if err != nil {
 		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
-	if !d.helper.IsOpReturnScript(scriptRaw) {
-		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "destination output script is not an OP_RETURN script")
-	}
-	if len(scriptRaw) < minOpReturnCodeLen {
-		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "destination data missing in OP_RETURN script")
+
+	raw, err := d.helper.RetrieveOpReturnData(scriptRaw)
+	if err != nil {
+		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
 
-	// Stripping: OP_RETURN OP_PUSH [return data length] (first three bytes)
-	data := string(scriptRaw[minOpReturnCodeLen:])
-	parts := strings.Split(data, dstSeparator)
+	addr, chainId, err = decodeDestinationData(raw)
+	if err != nil {
+		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
+	}
+
+	return
+}
+
+func decodeDestinationData(raw string) (addr, chainId string, err error) {
+	parts := strings.Split(raw, dstSeparator)
 	if len(parts) != dstParamsCount {
-		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid destination params count")
+		return addr, chainId, errors.New("invalid destination parameters")
 	}
 
 	addr, chainId = parts[dstAddrIdx], parts[dstChainIdIdx]
 
 	switch len(addr) {
 	case dstEthAddrLen:
-		// TODO: validate Ethereum address format
 	case dstZanoAddrLen:
 		addr = base58.Encode([]byte(addr))
-		// TODO: validate Zano address format
 	default:
-		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid destination address parameter")
+		return addr, chainId, errors.New("invalid destination address parameter")
 	}
 
 	return

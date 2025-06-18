@@ -77,13 +77,6 @@ func (b *bchHelper) AddressValid(addr string) bool {
 	return err == nil
 }
 
-func (b *bchHelper) IsOpReturnScript(script []byte) bool {
-	if len(script) == 0 {
-		return false
-	}
-	return bchscript.GetScriptClass(script) == bchscript.NullDataTy
-}
-
 func (b *bchHelper) PayToAddrScript(addr string) ([]byte, error) {
 	address, err := bchutil.DecodeAddress(addr, b.chainParams)
 	if err != nil {
@@ -173,6 +166,23 @@ func (b *bchHelper) TxHash(tx *btcwire.MsgTx) string {
 
 	bchWire := wireToBch(tx)
 	return bchWire.TxHash().String()
+}
+
+func (b *bchHelper) RetrieveOpReturnData(script []byte) (string, error) {
+	if bchscript.GetScriptClass(script) != bchscript.NullDataTy {
+		return "", errors.New("invalid script type, expected valid OP_RETURN")
+	}
+
+	data, err := bchscript.PushedData(script)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to retrieve pushed data from script")
+	}
+
+	if len(data) != 1 {
+		return "", errors.New("expected exactly one pushed data item in OP_RETURN script")
+	}
+
+	return string(data[0]), nil
 }
 
 func wireToBch(tx *btcwire.MsgTx) *bchwire.MsgTx {

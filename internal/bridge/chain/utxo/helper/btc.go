@@ -71,13 +71,6 @@ func (b *btcHelper) ExtractScriptAddresses(script []byte) ([]string, error) {
 	return addrs, nil
 }
 
-func (b *btcHelper) IsOpReturnScript(script []byte) bool {
-	if len(script) == 0 {
-		return false
-	}
-	return btcscript.GetScriptClass(script) == btcscript.NullDataTy
-}
-
 func (b *btcHelper) PayToAddrScript(addr string) ([]byte, error) {
 	address, err := btcutil.DecodeAddress(addr, b.chainParams)
 	if err != nil {
@@ -155,4 +148,20 @@ func (b *btcHelper) TxHash(tx *wire.MsgTx) string {
 	}
 
 	return tx.TxHash().String()
+}
+
+func (b *btcHelper) RetrieveOpReturnData(script []byte) (string, error) {
+	if !btcscript.IsNullData(script) {
+		return "", errors.New("invalid script type, expected valid OP_RETURN")
+	}
+
+	data, err := btcscript.PushedData(script)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to retrieve pushed data from script")
+	}
+	if len(data) != 1 {
+		return "", errors.New("expected exactly one pushed data item in OP_RETURN script")
+	}
+
+	return string(data[0]), nil
 }

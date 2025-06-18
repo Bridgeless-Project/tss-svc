@@ -14,7 +14,7 @@ import (
 
 type UtxoHelper interface {
 	ScriptSupported(script []byte) bool
-	IsOpReturnScript(scriptRaw []byte) bool
+	RetrieveOpReturnData(script []byte) (string, error)
 
 	P2pkhAddress(pk *ecdsa.PublicKey) string
 	AddressValid(string) bool
@@ -40,7 +40,9 @@ func NewUtxoHelper(
 			params = &btccfg.MainNetParams
 		case utxotypes.NetworkTestnet3:
 			params = &btccfg.TestNet3Params
+		case utxotypes.NetworkTestnet4:
 			// TODO: add support for testnet4
+			panic("testnet4 is not yet supported for BTC")
 		}
 
 		return NewBtcHelper(params)
