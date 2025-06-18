@@ -7,20 +7,18 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 
 const (
 	defaultDepositorAddressOutputIdx = 0
-
-	minOpReturnCodeLen = 3
 
 	dstSeparator   = "-"
 	dstParamsCount = 2
@@ -133,15 +131,19 @@ func parseDestinationOutput(out btcjson.Vout) (addr, chainId string, err error) 
 }
 
 func retrieveEncodedDestinationData(raw []byte) (string, error) {
-	if raw[0] != txscript.OP_RETURN {
-		return "", errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid script type")
-	}
-	if len(raw) <= minOpReturnCodeLen {
-		return "", errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "destination data missing")
+	if !txscript.IsNullData(raw) {
+		return "", errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid script type, expected valid OP_RETURN")
 	}
 
-	// Stripping: OP_RETURN OP_PUSH [return data length] (first three bytes)
-	return string(raw[minOpReturnCodeLen:]), nil
+	data, err := txscript.PushedData(raw)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to retrieve pushed data from script")
+	}
+	if len(data) != 1 {
+		return "", errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "expected exactly one pushed data item in OP_RETURN script")
+	}
+
+	return string(data[0]), nil
 }
 
 func decodeDestinationData(data string) (addr, chainId string, err error) {
