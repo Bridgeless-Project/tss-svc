@@ -10,34 +10,43 @@ import (
 	"net/http"
 	"strings"
 
+	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 )
 
-type Client struct {
-	c *rpc.Client
+type Settings struct {
+	Host     string
+	User     string
+	Password string
+	Chain    utxotypes.Chain
 }
 
-func NewClient(host, user, password string) (*Client, error) {
+type Client struct {
+	c     *rpc.Client
+	chain utxotypes.Chain
+}
+
+func NewClient(settings Settings) (*Client, error) {
 	authFn := func(h http.Header) error {
-		auth := base64.StdEncoding.EncodeToString([]byte(user + ":" + password))
+		auth := base64.StdEncoding.EncodeToString([]byte(settings.User + ":" + settings.Password))
 		h.Set("Authorization", fmt.Sprintf("Basic %s", auth))
 		return nil
 	}
 
 	// default to http if no scheme is specified
-	if !strings.Contains(host, "://") {
-		host = "http://" + host
+	if !strings.Contains(settings.Host, "://") {
+		settings.Host = "http://" + settings.Host
 	}
 
-	c, err := rpc.DialOptions(context.Background(), host, rpc.WithHTTPAuth(authFn))
+	c, err := rpc.DialOptions(context.Background(), settings.Host, rpc.WithHTTPAuth(authFn))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to RPC server")
 	}
 
-	return &Client{c}, nil
+	return &Client{c, settings.Chain}, nil
 }
 
 //
@@ -80,10 +89,16 @@ func (c *Client) FundRawTransaction(
 	if err := tx.Serialize(&buf); err != nil {
 		return nil, errors.Wrap(err, "failed to serialize transaction")
 	}
+
 	txHex := hex.EncodeToString(buf.Bytes())
+	args := []interface{}{txHex, opts}
+	if c.chain == utxotypes.ChainBtc {
+		// optional btc arg for Bitcoin Core
+		args = append(args, nil)
+	}
 
 	var funded btcjson.FundRawTransactionResult
-	err := c.Call(&funded, "fundrawtransaction", txHex, opts, nil)
+	err := c.Call(&funded, "fundrawtransaction", args...)
 	return &funded, extractRpcError(err)
 }
 

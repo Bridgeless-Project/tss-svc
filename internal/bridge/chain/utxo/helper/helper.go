@@ -29,11 +29,11 @@ type UtxoHelper interface {
 }
 
 func NewUtxoHelper(
-	chainType utxotypes.Type,
+	chainType utxotypes.Chain,
 	network utxotypes.Network,
 ) UtxoHelper {
 	switch chainType {
-	case utxotypes.TypeBtc:
+	case utxotypes.ChainBtc:
 		var params *btccfg.Params
 		switch network {
 		case utxotypes.NetworkMainnet:
@@ -46,7 +46,7 @@ func NewUtxoHelper(
 		}
 
 		return NewBtcHelper(params)
-	case utxotypes.TypeBch:
+	case utxotypes.ChainBch:
 		var params *bchcfg.Params
 		switch network {
 		case utxotypes.NetworkMainnet:

@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	network   = string(utxotypes.DefaultNetwork)
-	chainType = string(utxotypes.DefaultType)
+	network = string(utxotypes.DefaultNetwork)
+	chain   = string(utxotypes.DefaultType)
 )
 
 func init() {
@@ -23,7 +23,7 @@ func init() {
 
 func registerParseAddressUtxoFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&network, "network", "mainnet", "Network type (mainnet/testnet3/testnet4)")
-	cmd.Flags().StringVar(&chainType, "chain-type", "btc", "Chain type (btc/bch)")
+	cmd.Flags().StringVar(&chain, "chain", "btc", "Chain type (btc/bch)")
 }
 
 var parseAddressUtxoCmd = &cobra.Command{
@@ -40,15 +40,15 @@ var parseAddressUtxoCmd = &cobra.Command{
 			return errors.New("failed to parse y-cord")
 		}
 
-		var net, chain = utxotypes.Network(network), utxotypes.Type(chainType)
+		var net, ch = utxotypes.Network(network), utxotypes.Chain(chain)
 		if err := net.Validate(); err != nil {
 			return errors.Wrap(err, "invalid network type")
 		}
-		if err := chain.Validate(); err != nil {
+		if err := ch.Validate(); err != nil {
 			return errors.Wrap(err, "invalid chain type")
 		}
 
-		hlp := helper.NewUtxoHelper(chain, net)
+		hlp := helper.NewUtxoHelper(ch, net)
 		pubkey := &ecdsa.PublicKey{Curve: crypto.S256(), X: xCord, Y: yCord}
 
 		fmt.Println("Utxo address:", hlp.P2pkhAddress(pubkey))

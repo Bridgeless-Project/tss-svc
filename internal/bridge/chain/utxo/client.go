@@ -38,7 +38,7 @@ type client struct {
 }
 
 func NewBridgeClient(chain utxochain.Chain) Client {
-	chainHelper := helper.NewUtxoHelper(chain.Meta.Type, chain.Meta.Network)
+	chainHelper := helper.NewUtxoHelper(chain.Meta.Chain, chain.Meta.Network)
 	return &client{
 		chain:          chain,
 		helper:         chainHelper,

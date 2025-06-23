@@ -7,10 +7,10 @@ import (
 
 const (
 	DefaultNetwork = NetworkMainnet
-	DefaultType    = TypeBtc
+	DefaultType    = ChainBtc
 )
 
-var _, _ figure.Validatable = Network(""), Type("")
+var _, _ figure.Validatable = Network(""), Chain("")
 
 type Network string
 
@@ -29,16 +29,16 @@ func (n Network) Validate() error {
 	}
 }
 
-type Type string
+type Chain string
 
 const (
-	TypeBtc Type = "btc"
-	TypeBch Type = "bch"
+	ChainBtc Chain = "btc"
+	ChainBch Chain = "bch"
 )
 
-func (s Type) Validate() error {
+func (s Chain) Validate() error {
 	switch s {
-	case TypeBtc, TypeBch:
+	case ChainBtc, ChainBch:
 		return nil
 	default:
 		return errors.Errorf("invalid type: %s", s)

@@ -27,7 +27,7 @@ type Rpc struct {
 
 type Meta struct {
 	Network utxotypes.Network `fig:"network,required"`
-	Type    utxotypes.Type    `fig:"type,required"`
+	Chain   utxotypes.Chain   `fig:"chain,required"`
 }
 
 func FromChain(c chain.Chain) Chain {
@@ -43,14 +43,14 @@ func FromChain(c chain.Chain) Chain {
 	if err := figure.Out(&ch.Meta).FromInterface(c.Meta).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode chain meta"))
 	}
-	if err := figure.Out(&ch.Rpc).FromInterface(c.Rpc).With(clientHook).Please(); err != nil {
+	if err := figure.Out(&ch.Rpc).FromInterface(c.Rpc).With(clientHook(ch.Meta.Chain)).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to init bitcoin chain rpc"))
 	}
 	if err := figure.Out(&ch.Receivers).FromInterface(c.BridgeAddresses).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
 	}
 
-	hlp := helper.NewUtxoHelper(ch.Meta.Type, ch.Meta.Network)
+	hlp := helper.NewUtxoHelper(ch.Meta.Chain, ch.Meta.Network)
 	for _, addr := range ch.Receivers {
 		if !hlp.AddressValid(addr) {
 			panic(errors.Errorf("invalid receiver address: %s", addr))
@@ -65,32 +65,35 @@ func FromChain(c chain.Chain) Chain {
 	return ch
 }
 
-var clientHook = figure.Hooks{
-	"*rpc.Client": func(value interface{}) (reflect.Value, error) {
-		switch v := value.(type) {
-		case map[string]interface{}:
-			var clientConfig struct {
-				Host string `fig:"host,required"`
-				User string `fig:"user,required"`
-				Pass string `fig:"pass,required"`
-			}
+func clientHook(chain utxotypes.Chain) figure.Hooks {
+	return figure.Hooks{
+		"*rpc.Client": func(value interface{}) (reflect.Value, error) {
+			switch v := value.(type) {
+			case map[string]interface{}:
+				var clientConfig struct {
+					Host string `fig:"host,required"`
+					User string `fig:"user,required"`
+					Pass string `fig:"pass,required"`
+				}
 
-			if err := figure.Out(&clientConfig).With(figure.BaseHooks).From(v).Please(); err != nil {
-				return reflect.Value{}, errors.Wrap(err, "failed to figure out bitcoin rpc client config")
-			}
+				if err := figure.Out(&clientConfig).With(figure.BaseHooks).From(v).Please(); err != nil {
+					return reflect.Value{}, errors.Wrap(err, "failed to figure out bitcoin rpc client config")
+				}
 
-			client, err := rpc.NewClient(
-				clientConfig.Host,
-				clientConfig.User,
-				clientConfig.Pass,
-			)
-			if err != nil {
-				return reflect.Value{}, errors.Wrap(err, "failed to create bitcoin rpc client")
-			}
+				client, err := rpc.NewClient(rpc.Settings{
+					Host:     clientConfig.Host,
+					User:     clientConfig.User,
+					Password: clientConfig.Pass,
+					Chain:    chain,
+				})
+				if err != nil {
+					return reflect.Value{}, errors.Wrap(err, "failed to create bitcoin rpc client")
+				}
 
-			return reflect.ValueOf(client), nil
-		default:
-			return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
-		}
-	},
+				return reflect.ValueOf(client), nil
+			default:
+				return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
+			}
+		},
+	}
 }
