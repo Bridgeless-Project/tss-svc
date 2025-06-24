@@ -70,10 +70,19 @@ func (c *Client) SendRawTransaction(tx *wire.MsgTx) (string, error) {
 	if err := tx.Serialize(&buf); err != nil {
 		return "", errors.Wrap(err, "failed to serialize transaction")
 	}
+
 	txHex := hex.EncodeToString(buf.Bytes())
+	var maxFee interface{}
+	switch c.chain {
+	case utxotypes.ChainBtc:
+		// BTC per kVb; default max fee rate
+		maxFee = 0.1
+	case utxotypes.ChainBch:
+		maxFee = false
+	}
 
 	var txHash string
-	err := c.Call(&txHash, "sendrawtransaction", txHex, false)
+	err := c.Call(&txHash, "sendrawtransaction", txHex, maxFee)
 	return txHash, extractRpcError(err)
 }
 
