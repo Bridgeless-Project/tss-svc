@@ -14,7 +14,7 @@ import (
 
 var (
 	network = string(utxotypes.DefaultNetwork)
-	chain   = string(utxotypes.DefaultType)
+	chain   = string(utxotypes.DefaultChain)
 )
 
 func init() {

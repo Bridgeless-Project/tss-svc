@@ -149,7 +149,7 @@ func (d *DepositDecoder) decodeDepositOutput(out btcjson.Vout) (amount *big.Int,
 		return nil, bridgeTypes.ErrInvalidDepositedAmount
 	}
 
-	return ToAmount(out.Value), nil
+	return big.NewInt(ToUnits(out.Value)), nil
 }
 
 func (d *DepositDecoder) isBridgeAddress(addr string) bool {

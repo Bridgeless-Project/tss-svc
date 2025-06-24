@@ -6,13 +6,15 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 )
+
+const errTxNotFound = "No such mempool or blockchain transaction"
 
 type ConsolidateOutputsOptions func(*ConsolidateOutputsParams)
 
@@ -52,7 +54,7 @@ func (c *client) GetTransaction(txHash string) (*btcjson.TxRawResult, error) {
 
 	tx, err := c.chain.Rpc.Node.GetRawTransactionVerbose(txHash)
 	if err != nil {
-		if strings.Contains(err.Error(), "No such mempool or blockchain transaction") {
+		if strings.Contains(err.Error(), errTxNotFound) {
 			return nil, bridgeTypes.ErrTxNotFound
 		}
 
@@ -107,7 +109,7 @@ func (c *client) MockTransaction(tx *wire.MsgTx, inputs map[OutPoint]btcjson.Lis
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", i))
 		}
 
-		sig, err := c.helper.MockSignatureScript(scriptDecoded, tx, i, ToAmount(unspent.Amount).Int64())
+		sig, err := c.helper.MockSignatureScript(scriptDecoded, tx, i, ToUnits(unspent.Amount))
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to mock input %d", i))
 		}
@@ -168,7 +170,7 @@ func (c *client) ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions
 
 		tx.AddTxIn(wire.NewTxIn(wire.NewOutPoint(hash, unspent[i].Vout), nil, nil))
 		usedInputs[OutPoint{TxID: unspent[i].TxID, Index: unspent[i].Vout}] = unspent[i]
-		totalAmount += ToAmount(unspent[i].Amount).Int64()
+		totalAmount += ToUnits(unspent[i].Amount)
 	}
 
 	mockedTx, err := c.MockTransaction(tx, usedInputs)
@@ -200,7 +202,7 @@ func (c *client) ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions
 		if err != nil {
 			return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", i))
 		}
-		sigHash, err := c.helper.CalculateSignatureHash(scriptDecoded, tx, i, ToAmount(utxo.Amount).Int64())
+		sigHash, err := c.helper.CalculateSignatureHash(scriptDecoded, tx, i, ToUnits(utxo.Amount))
 		if err != nil {
 			return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", i))
 		}

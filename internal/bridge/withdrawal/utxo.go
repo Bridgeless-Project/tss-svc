@@ -179,7 +179,7 @@ func (c *UtxoWithdrawalConstructor) validateInputs(
 		}
 
 		unspent := inputs[utxo.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
-		unspentAmount := utxo.ToAmount(unspent.Amount).Int64()
+		unspentAmount := utxo.ToUnits(unspent.Amount)
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
 		if err != nil {

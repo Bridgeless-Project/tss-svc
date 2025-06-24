@@ -8,12 +8,12 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -146,7 +146,7 @@ func (m *ConsensusMechanism) validateInputs(
 		}
 
 		unspent := inputs[utxo.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
-		unspentAmount := utxo.ToAmount(unspent.Amount).Int64()
+		unspentAmount := utxo.ToUnits(unspent.Amount)
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
 		if err != nil {

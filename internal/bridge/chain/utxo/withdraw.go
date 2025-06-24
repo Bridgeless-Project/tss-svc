@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 
@@ -60,7 +60,7 @@ func (c *client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr strin
 				if err != nil {
 					return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
 				}
-				sigHash, err := c.helper.CalculateSignatureHash(scriptDecoded, result.Transaction, idx, ToAmount(u.Amount).Int64())
+				sigHash, err := c.helper.CalculateSignatureHash(scriptDecoded, result.Transaction, idx, ToUnits(u.Amount))
 				if err != nil {
 					return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
 				}

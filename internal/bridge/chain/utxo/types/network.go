@@ -5,12 +5,9 @@ import (
 	"gitlab.com/distributed_lab/figure/v3"
 )
 
-const (
-	DefaultNetwork = NetworkMainnet
-	DefaultType    = ChainBtc
-)
+const DefaultNetwork = NetworkMainnet
 
-var _, _ figure.Validatable = Network(""), Chain("")
+var _ figure.Validatable = Network("")
 
 type Network string
 
@@ -26,21 +23,5 @@ func (n Network) Validate() error {
 		return nil
 	default:
 		return errors.Errorf("invalid network: %s", n)
-	}
-}
-
-type Chain string
-
-const (
-	ChainBtc Chain = "btc"
-	ChainBch Chain = "bch"
-)
-
-func (s Chain) Validate() error {
-	switch s {
-	case ChainBtc, ChainBch:
-		return nil
-	default:
-		return errors.Errorf("invalid type: %s", s)
 	}
 }
