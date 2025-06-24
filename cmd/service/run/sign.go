@@ -68,6 +68,7 @@ var signCmd = &cobra.Command{
 func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	storage := cfg.SecretsStorage()
 	account, err := storage.GetCoreAccount()
+	fmt.Println("account pb:", account.PublicKey().String())
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}

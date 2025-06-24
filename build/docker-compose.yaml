@@ -123,7 +123,7 @@ services:
       - ./configs/certs/party2.crt:/party2.crt
       - ./configs/tss3.local.yaml:/config.yaml
       - ./configs/shares/preparams3.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
+    entrypoint: sh -c "tss-svc helpers parse pubkey 54395761864595184025289438248194755919131038527475290364574472112973735884319 19002356526498140446852353712213625197381438986713448406980976582657340900049"
     depends_on:
       vault_init:
         condition: service_completed_successfully

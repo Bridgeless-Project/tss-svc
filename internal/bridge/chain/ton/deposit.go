@@ -2,8 +2,6 @@ package ton
 
 import (
 	"context"
-	"encoding/hex"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -12,7 +10,7 @@ import (
 )
 
 func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
-	tx, err := c.getTxByLtHash(uint64(id.TxNonce), id.TxHash)
+	_, err := c.getTxByLtHash(uint64(id.TxNonce), id.TxHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get tx")
 	}
@@ -35,11 +33,6 @@ func (c *Client) getTxByLtHash(lt uint64, txHash string) (*tlb.Transaction, erro
 }
 
 func (c *Client) parseDepositData(tx *tlb.Transaction) (*db.DepositData, error) {
-	var (
-		internalData *db.DepositData
-		externalData *db.DepositData
-	)
-
 	if tx.OutMsgCount == 0 {
 		return nil, chain.ErrDepositNotFound
 	}
@@ -49,32 +42,53 @@ func (c *Client) parseDepositData(tx *tlb.Transaction) (*db.DepositData, error) 
 		return nil, errors.Wrap(err, "error getting IO out msgs")
 	}
 
+	var depositData *db.DepositData
 	for _, msg := range msgs {
 		if msg.MsgType != tlb.MsgTypeExternalOut {
-			// if out msg is not ExternalOut log - skip it
 			continue
+		}
+
+		opCode, err := parseMsgOpCode(msg.AsExternalOut().Body.BeginParse())
+		if err != nil {
+			return nil, errors.Wrap(err, "error parsing external out msg")
+		}
+
+		switch opCode {
+		case depositNativeOpCode:
+			content, err := c.parseDepositNativeBody(msg.AsExternalOut().Body)
+			if err != nil {
+				return nil, errors.Wrap(err, "error parsing deposit native content from msg")
+			}
+
+			depositData = formNativeDepositData(content, tx)
+			break
+
+		case depositJettonOpCode:
+
+		default:
+			return nil, errors.New("provided event is not supported deposit event")
 		}
 
 	}
 
-	return &data, nil
+	return depositData, nil
 }
 
-func parseExternalOutData(msg *tlb.ExternalMessageOut) (*db.DepositData, error) {
-	opBig, err := msg.Payload().BeginParse().PreloadBigUInt(32)
-	if err != nil {
-		return nil, errors.Wrap(err, "error parsing op code")
-	}
+// func parseExternalOutData(msg *tlb.ExternalMessageOut) (*db.DepositData, error) {
+// 	opBig, err := msg.Payload().BeginParse().PreloadBigUInt(32)
+// 	if err != nil {
+// 		return nil, errors.Wrap(err, "error parsing op code")
+// 	}
+//
+// 	if hexutil.Encode(opBig.Bytes()) == DepositedCode {
+// 		return &db.DepositData{}, nil
+// 	}
+//
+// 	var content
+//
+// 	return nil, chain.ErrDepositNotFound
+// }
 
-	if hexutil.Encode(opBig.Bytes()) == DepositedCode {
-		return &db.DepositData{}, nil
-	}
-
-	var content
-
-	return nil, chain.ErrDepositNotFound
-}
-
-func parseInternalData(msg *tlb.InternalMessage) (*db.DepositData, error) {
-
-}
+// func parseInternalData(msg *tlb.InternalMessage) (*db.DepositData, error) {
+//
+// }

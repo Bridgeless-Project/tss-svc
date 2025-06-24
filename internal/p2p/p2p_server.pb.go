@@ -557,6 +557,58 @@ func (x *EvmProposalData) GetSigData() []byte {
 	return nil
 }
 
+type TonProposalData struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	DepositId     *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
+	SigData       []byte                   `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TonProposalData) Reset() {
+	*x = TonProposalData{}
+	mi := &file_p2p_server_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TonProposalData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TonProposalData) ProtoMessage() {}
+
+func (x *TonProposalData) ProtoReflect() protoreflect.Message {
+	mi := &file_p2p_server_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TonProposalData.ProtoReflect.Descriptor instead.
+func (*TonProposalData) Descriptor() ([]byte, []int) {
+	return file_p2p_server_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *TonProposalData) GetDepositId() *types.DepositIdentifier {
+	if x != nil {
+		return x.DepositId
+	}
+	return nil
+}
+
+func (x *TonProposalData) GetSigData() []byte {
+	if x != nil {
+		return x.SigData
+	}
+	return nil
+}
+
 type ZanoProposalData struct {
 	state     protoimpl.MessageState   `protogen:"open.v1"`
 	DepositId *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
@@ -573,7 +625,7 @@ type ZanoProposalData struct {
 
 func (x *ZanoProposalData) Reset() {
 	*x = ZanoProposalData{}
-	mi := &file_p2p_server_proto_msgTypes[8]
+	mi := &file_p2p_server_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -585,7 +637,7 @@ func (x *ZanoProposalData) String() string {
 func (*ZanoProposalData) ProtoMessage() {}
 
 func (x *ZanoProposalData) ProtoReflect() protoreflect.Message {
-	mi := &file_p2p_server_proto_msgTypes[8]
+	mi := &file_p2p_server_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +650,7 @@ func (x *ZanoProposalData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ZanoProposalData.ProtoReflect.Descriptor instead.
 func (*ZanoProposalData) Descriptor() ([]byte, []int) {
-	return file_p2p_server_proto_rawDescGZIP(), []int{8}
+	return file_p2p_server_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ZanoProposalData) GetDepositId() *types.DepositIdentifier {
@@ -661,7 +713,7 @@ type BitcoinProposalData struct {
 
 func (x *BitcoinProposalData) Reset() {
 	*x = BitcoinProposalData{}
-	mi := &file_p2p_server_proto_msgTypes[9]
+	mi := &file_p2p_server_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -673,7 +725,7 @@ func (x *BitcoinProposalData) String() string {
 func (*BitcoinProposalData) ProtoMessage() {}
 
 func (x *BitcoinProposalData) ProtoReflect() protoreflect.Message {
-	mi := &file_p2p_server_proto_msgTypes[9]
+	mi := &file_p2p_server_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -686,7 +738,7 @@ func (x *BitcoinProposalData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BitcoinProposalData.ProtoReflect.Descriptor instead.
 func (*BitcoinProposalData) Descriptor() ([]byte, []int) {
-	return file_p2p_server_proto_rawDescGZIP(), []int{9}
+	return file_p2p_server_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *BitcoinProposalData) GetDepositId() *types.DepositIdentifier {
@@ -720,7 +772,7 @@ type BitcoinResharingProposalData struct {
 
 func (x *BitcoinResharingProposalData) Reset() {
 	*x = BitcoinResharingProposalData{}
-	mi := &file_p2p_server_proto_msgTypes[10]
+	mi := &file_p2p_server_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -732,7 +784,7 @@ func (x *BitcoinResharingProposalData) String() string {
 func (*BitcoinResharingProposalData) ProtoMessage() {}
 
 func (x *BitcoinResharingProposalData) ProtoReflect() protoreflect.Message {
-	mi := &file_p2p_server_proto_msgTypes[10]
+	mi := &file_p2p_server_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -745,7 +797,7 @@ func (x *BitcoinResharingProposalData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BitcoinResharingProposalData.ProtoReflect.Descriptor instead.
 func (*BitcoinResharingProposalData) Descriptor() ([]byte, []int) {
-	return file_p2p_server_proto_rawDescGZIP(), []int{10}
+	return file_p2p_server_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *BitcoinResharingProposalData) GetSerializedTx() []byte {
@@ -779,7 +831,7 @@ type ZanoResharingProposalData struct {
 
 func (x *ZanoResharingProposalData) Reset() {
 	*x = ZanoResharingProposalData{}
-	mi := &file_p2p_server_proto_msgTypes[11]
+	mi := &file_p2p_server_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -791,7 +843,7 @@ func (x *ZanoResharingProposalData) String() string {
 func (*ZanoResharingProposalData) ProtoMessage() {}
 
 func (x *ZanoResharingProposalData) ProtoReflect() protoreflect.Message {
-	mi := &file_p2p_server_proto_msgTypes[11]
+	mi := &file_p2p_server_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -804,7 +856,7 @@ func (x *ZanoResharingProposalData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ZanoResharingProposalData.ProtoReflect.Descriptor instead.
 func (*ZanoResharingProposalData) Descriptor() ([]byte, []int) {
-	return file_p2p_server_proto_rawDescGZIP(), []int{11}
+	return file_p2p_server_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ZanoResharingProposalData) GetAssetId() string {
@@ -872,7 +924,7 @@ type DepositDistributionData struct {
 
 func (x *DepositDistributionData) Reset() {
 	*x = DepositDistributionData{}
-	mi := &file_p2p_server_proto_msgTypes[12]
+	mi := &file_p2p_server_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -884,7 +936,7 @@ func (x *DepositDistributionData) String() string {
 func (*DepositDistributionData) ProtoMessage() {}
 
 func (x *DepositDistributionData) ProtoReflect() protoreflect.Message {
-	mi := &file_p2p_server_proto_msgTypes[12]
+	mi := &file_p2p_server_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -897,7 +949,7 @@ func (x *DepositDistributionData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DepositDistributionData.ProtoReflect.Descriptor instead.
 func (*DepositDistributionData) Descriptor() ([]byte, []int) {
-	return file_p2p_server_proto_rawDescGZIP(), []int{12}
+	return file_p2p_server_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DepositDistributionData) GetDepositId() *types.DepositIdentifier {
@@ -916,7 +968,7 @@ type ReliableBroadcastData struct {
 
 func (x *ReliableBroadcastData) Reset() {
 	*x = ReliableBroadcastData{}
-	mi := &file_p2p_server_proto_msgTypes[13]
+	mi := &file_p2p_server_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -928,7 +980,7 @@ func (x *ReliableBroadcastData) String() string {
 func (*ReliableBroadcastData) ProtoMessage() {}
 
 func (x *ReliableBroadcastData) ProtoReflect() protoreflect.Message {
-	mi := &file_p2p_server_proto_msgTypes[13]
+	mi := &file_p2p_server_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -941,7 +993,7 @@ func (x *ReliableBroadcastData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReliableBroadcastData.ProtoReflect.Descriptor instead.
 func (*ReliableBroadcastData) Descriptor() ([]byte, []int) {
-	return file_p2p_server_proto_rawDescGZIP(), []int{13}
+	return file_p2p_server_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ReliableBroadcastData) GetRoundMsg() []byte {
@@ -978,6 +1030,9 @@ const file_p2p_server_proto_rawDesc = "" +
 	"\x0eAcceptanceData\x12\x1a\n" +
 	"\baccepted\x18\x01 \x01(\bR\baccepted\"k\n" +
 	"\x0fEvmProposalData\x12>\n" +
+	"\tdepositId\x18\x01 \x01(\v2\x1a.deposit.DepositIdentifierB\x04\xc8\xde\x1f\x00R\tdepositId\x12\x18\n" +
+	"\asigData\x18\x02 \x01(\fR\asigData\"k\n" +
+	"\x0fTonProposalData\x12>\n" +
 	"\tdepositId\x18\x01 \x01(\v2\x1a.deposit.DepositIdentifierB\x04\xc8\xde\x1f\x00R\tdepositId\x12\x18\n" +
 	"\asigData\x18\x02 \x01(\fR\asigData\"\x90\x02\n" +
 	"\x10ZanoProposalData\x12>\n" +
@@ -1046,7 +1101,7 @@ func file_p2p_server_proto_rawDescGZIP() []byte {
 }
 
 var file_p2p_server_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_p2p_server_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_p2p_server_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_p2p_server_proto_goTypes = []any{
 	(PartyStatus)(0),                     // 0: p2p.PartyStatus
 	(RequestType)(0),                     // 1: p2p.RequestType
@@ -1058,35 +1113,37 @@ var file_p2p_server_proto_goTypes = []any{
 	(*SignStartData)(nil),                // 7: p2p.SignStartData
 	(*AcceptanceData)(nil),               // 8: p2p.AcceptanceData
 	(*EvmProposalData)(nil),              // 9: p2p.EvmProposalData
-	(*ZanoProposalData)(nil),             // 10: p2p.ZanoProposalData
-	(*BitcoinProposalData)(nil),          // 11: p2p.BitcoinProposalData
-	(*BitcoinResharingProposalData)(nil), // 12: p2p.BitcoinResharingProposalData
-	(*ZanoResharingProposalData)(nil),    // 13: p2p.ZanoResharingProposalData
-	(*DepositDistributionData)(nil),      // 14: p2p.DepositDistributionData
-	(*ReliableBroadcastData)(nil),        // 15: p2p.ReliableBroadcastData
-	(*anypb.Any)(nil),                    // 16: google.protobuf.Any
-	(*types.DepositIdentifier)(nil),      // 17: deposit.DepositIdentifier
-	(*emptypb.Empty)(nil),                // 18: google.protobuf.Empty
+	(*TonProposalData)(nil),              // 10: p2p.TonProposalData
+	(*ZanoProposalData)(nil),             // 11: p2p.ZanoProposalData
+	(*BitcoinProposalData)(nil),          // 12: p2p.BitcoinProposalData
+	(*BitcoinResharingProposalData)(nil), // 13: p2p.BitcoinResharingProposalData
+	(*ZanoResharingProposalData)(nil),    // 14: p2p.ZanoResharingProposalData
+	(*DepositDistributionData)(nil),      // 15: p2p.DepositDistributionData
+	(*ReliableBroadcastData)(nil),        // 16: p2p.ReliableBroadcastData
+	(*anypb.Any)(nil),                    // 17: google.protobuf.Any
+	(*types.DepositIdentifier)(nil),      // 18: deposit.DepositIdentifier
+	(*emptypb.Empty)(nil),                // 19: google.protobuf.Empty
 }
 var file_p2p_server_proto_depIdxs = []int32{
 	0,  // 0: p2p.StatusResponse.status:type_name -> p2p.PartyStatus
 	1,  // 1: p2p.SubmitRequest.type:type_name -> p2p.RequestType
-	16, // 2: p2p.SubmitRequest.data:type_name -> google.protobuf.Any
-	17, // 3: p2p.EvmProposalData.depositId:type_name -> deposit.DepositIdentifier
-	17, // 4: p2p.ZanoProposalData.depositId:type_name -> deposit.DepositIdentifier
-	17, // 5: p2p.BitcoinProposalData.depositId:type_name -> deposit.DepositIdentifier
-	17, // 6: p2p.DepositDistributionData.depositId:type_name -> deposit.DepositIdentifier
-	18, // 7: p2p.P2P.Status:input_type -> google.protobuf.Empty
-	5,  // 8: p2p.P2P.Submit:input_type -> p2p.SubmitRequest
-	2,  // 9: p2p.P2P.GetSigningSessionInfo:input_type -> p2p.SigningSessionInfoRequest
-	4,  // 10: p2p.P2P.Status:output_type -> p2p.StatusResponse
-	18, // 11: p2p.P2P.Submit:output_type -> google.protobuf.Empty
-	3,  // 12: p2p.P2P.GetSigningSessionInfo:output_type -> p2p.SigningSessionInfo
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	17, // 2: p2p.SubmitRequest.data:type_name -> google.protobuf.Any
+	18, // 3: p2p.EvmProposalData.depositId:type_name -> deposit.DepositIdentifier
+	18, // 4: p2p.TonProposalData.depositId:type_name -> deposit.DepositIdentifier
+	18, // 5: p2p.ZanoProposalData.depositId:type_name -> deposit.DepositIdentifier
+	18, // 6: p2p.BitcoinProposalData.depositId:type_name -> deposit.DepositIdentifier
+	18, // 7: p2p.DepositDistributionData.depositId:type_name -> deposit.DepositIdentifier
+	19, // 8: p2p.P2P.Status:input_type -> google.protobuf.Empty
+	5,  // 9: p2p.P2P.Submit:input_type -> p2p.SubmitRequest
+	2,  // 10: p2p.P2P.GetSigningSessionInfo:input_type -> p2p.SigningSessionInfoRequest
+	4,  // 11: p2p.P2P.Status:output_type -> p2p.StatusResponse
+	19, // 12: p2p.P2P.Submit:output_type -> google.protobuf.Empty
+	3,  // 13: p2p.P2P.GetSigningSessionInfo:output_type -> p2p.SigningSessionInfo
+	11, // [11:14] is the sub-list for method output_type
+	8,  // [8:11] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_p2p_server_proto_init() }
@@ -1100,7 +1157,7 @@ func file_p2p_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_p2p_server_proto_rawDesc), len(file_p2p_server_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
