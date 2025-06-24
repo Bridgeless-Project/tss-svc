@@ -1,29 +1,34 @@
 package ton
 
 import (
+	"github.com/xssnick/tonutils-go/address"
 	"math/big"
 )
 
 const (
-	depositNativeOpCode = "0xe858a993"
-	depositJettonOpCode = "0x02ddcbe3"
-	decimals            = 9
-	opCodeBitSize       = 32
-	intBitSize          = 257
+	depositNativeOpCode        = "0xe858a993"
+	depositJettonOpCode        = "0x02ddcbe3"
+	decimals                   = 9
+	opCodeBitSize              = 32
+	intBitSize                 = 257
+	receiverBitSize            = 256
+	withdrawalNativeHashMethod = "nativeHash"
+	withdrawalJettonHashMethod = "jettonHash"
+	trueBit                    = -1
 )
 
 type depositJettonContent struct {
-	Sender       string
+	Sender       *address.Address
 	Amount       *big.Int
 	Receiver     string
-	Network      string
+	ChainId      string
 	IsWrapped    bool
-	TokenAddress string
+	TokenAddress *address.Address
 }
 
 type depositNativeContent struct {
-	Sender   string
+	Sender   *address.Address
 	Amount   *big.Int
-	Receiver string
-	Network  string
+	Receiver *address.Address
+	ChainId  string
 }

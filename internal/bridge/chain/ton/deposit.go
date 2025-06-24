@@ -10,13 +10,17 @@ import (
 )
 
 func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
-	_, err := c.getTxByLtHash(uint64(id.TxNonce), id.TxHash)
+	tx, err := c.getTxByLtHash(uint64(id.TxNonce), id.TxHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get tx")
 	}
 
-	return &db.DepositData{}, nil
+	data, err := c.parseDepositData(tx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse deposit data")
+	}
 
+	return data, nil
 }
 
 func (c *Client) getTxByLtHash(lt uint64, txHash string) (*tlb.Transaction, error) {
@@ -64,7 +68,12 @@ func (c *Client) parseDepositData(tx *tlb.Transaction) (*db.DepositData, error) 
 			break
 
 		case depositJettonOpCode:
+			content, err := c.parseDepositJettonBody(msg.AsExternalOut().Body)
+			if err != nil {
+				return nil, errors.Wrap(err, "error parsing deposit jetton content from msg")
+			}
 
+			depositData = formJettonDepositData(content, tx)
 		default:
 			return nil, errors.New("provided event is not supported deposit event")
 		}
@@ -73,22 +82,3 @@ func (c *Client) parseDepositData(tx *tlb.Transaction) (*db.DepositData, error) 
 
 	return depositData, nil
 }
-
-// func parseExternalOutData(msg *tlb.ExternalMessageOut) (*db.DepositData, error) {
-// 	opBig, err := msg.Payload().BeginParse().PreloadBigUInt(32)
-// 	if err != nil {
-// 		return nil, errors.Wrap(err, "error parsing op code")
-// 	}
-//
-// 	if hexutil.Encode(opBig.Bytes()) == DepositedCode {
-// 		return &db.DepositData{}, nil
-// 	}
-//
-// 	var content
-//
-// 	return nil, chain.ErrDepositNotFound
-// }
-
-// func parseInternalData(msg *tlb.InternalMessage) (*db.DepositData, error) {
-//
-// }
