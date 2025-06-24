@@ -13,11 +13,12 @@ const (
 )
 
 type depositJettonContent struct {
-	Sender    string
-	Amount    *big.Int
-	Receiver  string
-	Network   string
-	IsWrapped bool
+	Sender       string
+	Amount       *big.Int
+	Receiver     string
+	Network      string
+	IsWrapped    bool
+	TokenAddress string
 }
 
 type depositNativeContent struct {
