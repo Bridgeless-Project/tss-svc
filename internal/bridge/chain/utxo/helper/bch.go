@@ -7,7 +7,6 @@ import (
 
 	"github.com/bnb-chain/tss-lib/v2/common"
 
-	btcscript "github.com/btcsuite/btcd/txscript"
 	btcwire "github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gcash/bchd/bchec"
@@ -19,6 +18,8 @@ import (
 	"github.com/gcash/bchutil"
 	"github.com/pkg/errors"
 )
+
+const sigHashType = bchscript.SigHashAll | bchscript.SigHashForkID
 
 type bchHelper struct {
 	chainParams      *bchcfg.Params
@@ -99,10 +100,7 @@ func (b *bchHelper) CalculateSignatureHash(scriptRaw []byte, tx *btcwire.MsgTx, 
 	bchWire := wireToBch(tx)
 	sigHashes := bchscript.NewTxSigHashes(bchWire)
 
-	sigHash, _, err := bchscript.CalcSignatureHash(
-		scriptRaw, sigHashes, bchscript.SigHashAll,
-		bchWire, idx, amt, true,
-	)
+	sigHash, _, err := bchscript.CalcSignatureHash(scriptRaw, sigHashes, sigHashType, bchWire, idx, amt, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to calculate signature hash")
 	}
@@ -117,10 +115,7 @@ func (b *bchHelper) MockSignatureScript(scriptRaw []byte, tx *btcwire.MsgTx, idx
 
 	bchWire := wireToBch(tx)
 
-	sigScript, err := bchscript.SignatureScript(
-		bchWire, idx, amt, scriptRaw,
-		bchscript.SigHashAll, b.mockKey, true,
-	)
+	sigScript, err := bchscript.SignatureScript(bchWire, idx, amt, scriptRaw, sigHashType, b.mockKey, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create signature script")
 	}
@@ -143,8 +138,8 @@ func (b *bchHelper) InjectSignatures(tx *btcwire.MsgTx, signatures []*common.Sig
 	}
 
 	for i, sig := range signatures {
-		encodedSig := encodeSignature(sig, byte(bchscript.SigHashAll))
-		sigScript, err := btcscript.
+		encodedSig := EncodeSignature(sig, byte(sigHashType))
+		sigScript, err := bchscript.
 			NewScriptBuilder().
 			AddData(encodedSig).
 			AddData(crypto.CompressPubkey(pk)).

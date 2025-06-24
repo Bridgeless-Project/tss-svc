@@ -63,7 +63,7 @@ func NewUtxoHelper(
 	panic("unsupported chain subtype")
 }
 
-func encodeSignature(sig *common.SignatureData, sigHashType byte) []byte {
+func EncodeSignature(sig *common.SignatureData, sigHashType byte) []byte {
 	if sig == nil {
 		return nil
 	}

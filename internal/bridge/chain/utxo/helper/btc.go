@@ -117,7 +117,7 @@ func (b *btcHelper) InjectSignatures(tx *wire.MsgTx, signatures []*common.Signat
 	}
 
 	for i, sig := range signatures {
-		encodedSig := encodeSignature(sig, byte(btcscript.SigHashAll))
+		encodedSig := EncodeSignature(sig, byte(btcscript.SigHashAll))
 		sigScript, err := btcscript.
 			NewScriptBuilder().
 			AddData(encodedSig).
