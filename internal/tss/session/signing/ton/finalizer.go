@@ -2,9 +2,9 @@ package ton
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
 	database "github.com/hyle-team/tss-svc/internal/db"
@@ -66,7 +66,7 @@ func (tf *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (tf *Finalizer) finalize(ctx context.Context) {
-	signature := convertToEthSignature(tf.signature)
+	signature := convertToTonSignature(tf.signature)
 	if err := tf.db.UpdateSignature(tf.withdrawalData.DepositIdentifier(), signature); err != nil {
 		tf.errChan <- errors.Wrap(err, "failed to update signature")
 		return
@@ -86,9 +86,8 @@ func (tf *Finalizer) finalize(ctx context.Context) {
 	tf.errChan <- nil
 }
 
-func convertToEthSignature(sig *common.SignatureData) string {
+func convertToTonSignature(sig *common.SignatureData) string {
 	rawSig := append(sig.Signature, sig.SignatureRecovery...)
-	rawSig[64] += 27
 
 	return hexutil.Encode(rawSig)
 }

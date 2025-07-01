@@ -8,7 +8,6 @@ import (
 const (
 	depositNativeOpCode        = "0xe858a993"
 	depositJettonOpCode        = "0x02ddcbe3"
-	decimals                   = 9
 	opCodeBitSize              = 32
 	intBitSize                 = 257
 	receiverBitSize            = 256
@@ -29,6 +28,6 @@ type depositJettonContent struct {
 type depositNativeContent struct {
 	Sender   *address.Address
 	Amount   *big.Int
-	Receiver *address.Address
+	Receiver string
 	ChainId  string
 }

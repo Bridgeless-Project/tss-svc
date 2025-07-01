@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"fmt"
+	"github.com/hyle-team/tss-svc/internal/bridge/chain/ton"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -19,7 +20,9 @@ import (
 	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
 	btcSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
 	evmSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
+	tonSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/ton"
 	zanoSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/zano"
+
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 
@@ -68,7 +71,6 @@ var signCmd = &cobra.Command{
 func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	storage := cfg.SecretsStorage()
 	account, err := storage.GetCoreAccount()
-	fmt.Println("account pb:", account.PublicKey().String())
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
@@ -86,7 +88,8 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	}
 
 	wg := new(sync.WaitGroup)
-	eg, ctx := errgroup.WithContext(ctx)
+	eg := new(errgroup.Group)
+	eg, ctx = errgroup.WithContext(ctx)
 	logger := cfg.Log()
 	clients := cfg.Clients()
 	parties := cfg.Parties()
@@ -152,11 +155,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 
 	sessionsWg := new(sync.WaitGroup)
 	for _, client := range clients {
-
-		// TODO: Delete when TON session will be added
-		if client.Type() == chain.TypeTON {
-			continue
-		}
 
 		sessionsWg.Add(1)
 		eg.Go(func() error {
@@ -295,6 +293,22 @@ func configureSigningSession(
 			panic(errors.Wrap(err, "failed to build bitcoin session"))
 		}
 		sess = btcSession
+
+	case chain.TypeTON:
+		tonSession := tonSigning.NewSession(tss.LocalSignParty{
+			Account:   account,
+			Share:     share,
+			Threshold: params.Threshold,
+		},
+			parties,
+			params,
+			db,
+			logger.WithField("component", "signing_session"),
+		).WithDepositFetcher(fetcher).WithClient(client.(*ton.Client)).WithCoreConnector(connector)
+		if err := tonSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build TON session"))
+		}
+		sess = tonSession
 	}
 
 	return sess

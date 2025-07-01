@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"fmt"
 
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -22,6 +23,8 @@ func (c *Connector) GetTokenInfo(chainId string, addr string) (bridgetypes.Token
 
 		return bridgetypes.TokenInfo{}, errors.Wrap(err, "failed to get token info")
 	}
+
+	fmt.Println("Info: ", resp.Info)
 
 	return resp.Info, nil
 }

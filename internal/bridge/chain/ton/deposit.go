@@ -20,6 +20,9 @@ func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, errors.Wrap(err, "failed to parse deposit data")
 	}
 
+	data.TxHash = id.TxHash
+	data.DepositIdentifier = id
+
 	return data, nil
 }
 
@@ -75,7 +78,7 @@ func (c *Client) parseDepositData(tx *tlb.Transaction) (*db.DepositData, error) 
 
 			depositData = formJettonDepositData(content, tx)
 		default:
-			return nil, errors.New("provided event is not supported deposit event")
+			return nil, errors.Wrap(chain.ErrUnsupportedEvent, "provided event is not supported deposit event")
 		}
 
 	}

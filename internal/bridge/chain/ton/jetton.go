@@ -41,12 +41,10 @@ func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent,
 		return nil, errors.Wrap(err, "error getting address")
 	}
 
-	receiver, err := receiverCell.BeginParse().LoadBigUInt(receiverBitSize)
+	receiver, err := receiverCell.BeginParse().LoadSlice(receiverBitSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing receiver")
 	}
-
-	// TODO: Add addresses definition fro different chains
 
 	networkCell, err := body.PeekRef(1)
 	if err != nil {
@@ -61,7 +59,7 @@ func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent,
 	return &depositJettonContent{
 		Sender:       sender.Testnet(c.RPC.IsTestnet),
 		Amount:       big.NewInt(amount),
-		Receiver:     hexutil.Encode(receiver.Bytes()),
+		Receiver:     cleanPrintable(string(receiver)),
 		ChainId:      cleanPrintable(network),
 		IsWrapped:    isWrapped,
 		TokenAddress: tokenAddr.Testnet(c.RPC.IsTestnet),
@@ -129,5 +127,6 @@ func formJettonDepositData(content *depositJettonContent, tx *tlb.Transaction) *
 		DepositAmount:      content.Amount,
 		TokenAddress:       content.TokenAddress.String(),
 		DestinationChainId: content.ChainId,
+		DestinationAddress: content.Receiver,
 	}
 }

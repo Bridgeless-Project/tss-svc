@@ -2,6 +2,7 @@ package ton
 
 import (
 	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -31,7 +32,7 @@ func (c *Client) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent,
 		return nil, errors.Wrap(err, "error getting receiver ref")
 	}
 
-	receiver, err := receiverCell.BeginParse().LoadAddr()
+	receiver, err := receiverCell.BeginParse().LoadSlice(receiverBitSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing receiver address")
 	}
@@ -49,7 +50,7 @@ func (c *Client) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent,
 	return &depositNativeContent{
 		Sender:   sender.Testnet(c.RPC.IsTestnet),
 		Amount:   big.NewInt(amount),
-		Receiver: receiver.Testnet(c.RPC.IsTestnet),
+		Receiver: cleanPrintable(string(receiver)),
 		ChainId:  cleanPrintable(network),
 	}, nil
 
@@ -71,7 +72,7 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse receiver address")
 	}
-	if err = addrSlice.StoreAddr(receiverAddr); err != nil {
+	if err = addrSlice.StoreAddr(receiverAddr.Testnet(true)); err != nil {
 		return nil, errors.Wrap(err, "failed to store receiver")
 	}
 
@@ -80,9 +81,22 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.New("failed to parse withdrawal amount")
 	}
 
+	hashBytes, err := hexutil.Decode(deposit.TxHash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode hash")
+	}
+
+	// TODO: REMOVE
+	fmt.Println("\n\n Amount: ", withdrawalAmount.String())
+	fmt.Println("TxHash: ", deposit.TxHash)
+	fmt.Println("TxNonce: ", deposit.TxNonce)
+	fmt.Println("Withdrawal token addr: ", deposit.WithdrawalToken)
+	fmt.Println("Receiver: ", receiverAddr)
+	fmt.Println("Network: ", deposit.WithdrawalChainId)
+
 	res, err := c.Client.RunGetMethod(context.Background(), master,
-		c.BridgeContractAddress, withdrawalNativeHashMethod, withdrawalAmount,
-		addrSlice.ToSlice(), big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash)), big.NewInt(deposit.DepositBlock), networkSlc.ToSlice())
+		c.BridgeContractAddress, withdrawalNativeHashMethod, withdrawalAmount.Uint64(),
+		addrSlice.ToSlice(), big.NewInt(0).SetBytes(hashBytes).Uint64(), big.NewInt(int64(deposit.TxNonce)).Uint64(), networkSlc.ToSlice())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the native hash")
 	}
@@ -101,7 +115,7 @@ func formNativeDepositData(content *depositNativeContent, tx *tlb.Transaction) *
 		SourceAddress:      content.Sender.String(),
 		DepositAmount:      content.Amount,
 		TokenAddress:       bridge.DefaultNativeTokenAddress,
-		DestinationAddress: content.Receiver.String(),
+		DestinationAddress: content.Receiver,
 		DestinationChainId: content.ChainId,
 	}
 }

@@ -14,7 +14,7 @@ func parseMsgOpCode(msg *cell.Slice) (string, error) {
 		return "", errors.Wrap(err, "failed to load message opcode")
 	}
 
-	return hexutil.EncodeBig(op), nil
+	return hexutil.Encode(op.Bytes()), nil
 }
 
 func cleanPrintable(s string) string {

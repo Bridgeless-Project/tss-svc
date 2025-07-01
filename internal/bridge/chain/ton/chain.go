@@ -38,7 +38,7 @@ func FromChain(c chain.Chain) Chain {
 	}
 
 	if err := figure.Out(&chain.RPC).FromInterface(c.Rpc).With(rpcHook()).Please(); err != nil {
-		panic(errors.Wrap(err, "failed to obtain TON rc"))
+		panic(errors.Wrap(err, "failed to obtain TON rpc"))
 	}
 
 	return chain
