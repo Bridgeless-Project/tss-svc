@@ -2,7 +2,6 @@ package ton
 
 import (
 	"context"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -85,14 +84,6 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode hash")
 	}
-
-	// TODO: REMOVE
-	fmt.Println("\n\n Amount: ", withdrawalAmount.String())
-	fmt.Println("TxHash: ", deposit.TxHash)
-	fmt.Println("TxNonce: ", deposit.TxNonce)
-	fmt.Println("Withdrawal token addr: ", deposit.WithdrawalToken)
-	fmt.Println("Receiver: ", receiverAddr)
-	fmt.Println("Network: ", deposit.WithdrawalChainId)
 
 	res, err := c.Client.RunGetMethod(context.Background(), master,
 		c.BridgeContractAddress, withdrawalNativeHashMethod, withdrawalAmount.Uint64(),
