@@ -72,6 +72,9 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 	}
 
 	networkCell, err := getNetworkCell(deposit.WithdrawalChainId)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get the network cell")
+	}
 
 	receiverCell, err := getAddressCell(deposit.Receiver)
 	if err != nil {
