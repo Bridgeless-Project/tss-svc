@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/hyle-team/tss-svc/cmd/service/migrate"
-	"github.com/hyle-team/tss-svc/cmd/service/run"
-	"github.com/hyle-team/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/cmd/service/migrate"
+	"github.com/Bridgeless-Project/tss-svc/cmd/service/run"
+	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/spf13/cobra"
 )
 

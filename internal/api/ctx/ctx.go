@@ -3,12 +3,12 @@ package ctx
 import (
 	"context"
 
-	bridgeTypes "github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
-	"github.com/hyle-team/tss-svc/internal/core"
-	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
-	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
+	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 

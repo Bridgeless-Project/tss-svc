@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"os"
 
-	"github.com/hyle-team/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

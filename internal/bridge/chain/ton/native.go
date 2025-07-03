@@ -2,9 +2,9 @@ package ton
 
 import (
 	"context"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"

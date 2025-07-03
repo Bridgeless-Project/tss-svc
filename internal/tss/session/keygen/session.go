@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

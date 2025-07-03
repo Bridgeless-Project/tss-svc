@@ -2,13 +2,13 @@ package ton
 
 import (
 	"context"
-	"github.com/hyle-team/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
 	"time"
 
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

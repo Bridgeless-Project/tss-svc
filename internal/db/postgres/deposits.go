@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/Masterminds/squirrel"
-	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/kit/pgdb"
 )

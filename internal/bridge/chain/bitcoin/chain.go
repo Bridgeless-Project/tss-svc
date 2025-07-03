@@ -6,7 +6,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )

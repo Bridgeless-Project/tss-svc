@@ -8,7 +8,7 @@ package types
 
 import (
 	context "context"
-	types "github.com/hyle-team/tss-svc/internal/types"
+	types "github.com/Bridgeless-Project/tss-svc/internal/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

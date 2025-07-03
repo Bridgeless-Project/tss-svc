@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	secp256k1 "github.com/hyle-team/bridgeless-core/v12/crypto/ethsecp256k1"
-	"github.com/hyle-team/tss-svc/cmd/utils"
-	"github.com/hyle-team/tss-svc/internal/core"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

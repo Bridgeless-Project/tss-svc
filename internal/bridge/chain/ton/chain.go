@@ -1,7 +1,7 @@
 package ton
 
 import (
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/ton"

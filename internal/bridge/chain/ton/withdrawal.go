@@ -1,8 +1,8 @@
 package ton
 
 import (
-	"github.com/hyle-team/tss-svc/internal/bridge"
-	"github.com/hyle-team/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
 	"math/big"
 )

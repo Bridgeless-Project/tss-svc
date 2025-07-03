@@ -1,7 +1,7 @@
 package zano
 
 import (
-	"github.com/hyle-team/tss-svc/pkg/zano/types"
+	"github.com/Bridgeless-Project/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 )
 

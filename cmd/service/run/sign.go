@@ -3,39 +3,39 @@ package run
 import (
 	"context"
 	"fmt"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/ton"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	"os/signal"
 	"sync"
 	"syscall"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/bitcoin"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/evm"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/repository"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain/zano"
-	"github.com/hyle-team/tss-svc/internal/bridge/deposit"
-	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/db"
-	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
-	"github.com/hyle-team/tss-svc/internal/tss/session/acceptor"
-	btcSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/bitcoin"
-	evmSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/evm"
-	tonSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/ton"
-	zanoSigning "github.com/hyle-team/tss-svc/internal/tss/session/signing/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
+	btcSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/bitcoin"
+	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
+	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
+	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/hyle-team/tss-svc/cmd/utils"
-	"github.com/hyle-team/tss-svc/internal/api"
-	"github.com/hyle-team/tss-svc/internal/bridge/chain"
-	"github.com/hyle-team/tss-svc/internal/config"
-	coreConnector "github.com/hyle-team/tss-svc/internal/core/connector"
-	"github.com/hyle-team/tss-svc/internal/core/subscriber"
-	pg "github.com/hyle-team/tss-svc/internal/db/postgres"
-	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/tss"
-	"github.com/hyle-team/tss-svc/internal/tss/session"
+	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/internal/api"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/config"
+	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
+	"github.com/Bridgeless-Project/tss-svc/internal/core/subscriber"
+	pg "github.com/Bridgeless-Project/tss-svc/internal/db/postgres"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -88,8 +88,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	}
 
 	wg := new(sync.WaitGroup)
-	eg := new(errgroup.Group)
-	eg, ctx = errgroup.WithContext(ctx)
+	eg, ctx := errgroup.WithContext(ctx)
 	logger := cfg.Log()
 	clients := cfg.Clients()
 	parties := cfg.Parties()
@@ -155,7 +154,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 
 	sessionsWg := new(sync.WaitGroup)
 	for _, client := range clients {
-
 		sessionsWg.Add(1)
 		eg.Go(func() error {
 			defer sessionsWg.Done()

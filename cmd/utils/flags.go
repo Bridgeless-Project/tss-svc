@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/hyle-team/tss-svc/internal/config"
+	"github.com/Bridgeless-Project/tss-svc/internal/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gitlab.com/distributed_lab/kit/kv"

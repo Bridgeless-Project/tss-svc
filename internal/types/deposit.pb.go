@@ -343,7 +343,7 @@ const file_deposit_proto_rawDesc = "" +
 	"\x1cWITHDRAWAL_STATUS_PROCESSING\x10\x02\x12\x1f\n" +
 	"\x1bWITHDRAWAL_STATUS_PROCESSED\x10\x03\x12\x1c\n" +
 	"\x18WITHDRAWAL_STATUS_FAILED\x10\x04\x12\x1d\n" +
-	"\x19WITHDRAWAL_STATUS_INVALID\x10\x05B-Z+github.com/hyle-team/tss-svc/internal/typesb\x06proto3"
+	"\x19WITHDRAWAL_STATUS_INVALID\x10\x05B-Z+github.com/Bridgeless-Project/tss-svc/internal/typesb\x06proto3"
 
 var (
 	file_deposit_proto_rawDescOnce sync.Once

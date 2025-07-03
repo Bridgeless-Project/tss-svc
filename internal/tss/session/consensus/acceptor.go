@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hyle-team/tss-svc/internal/core"
-	"github.com/hyle-team/tss-svc/internal/p2p"
-	"github.com/hyle-team/tss-svc/internal/p2p/broadcast"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/anypb"
 )
