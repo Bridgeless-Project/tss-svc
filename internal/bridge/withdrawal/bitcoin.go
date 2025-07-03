@@ -79,10 +79,7 @@ func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*Bit
 	if err = tx.Serialize(&buf); err != nil {
 		return nil, errors.Wrap(err, "failed to serialize transaction")
 	}
-
-	for _, sigHash := range sigHashes {
-		fmt.Println("hash to sign: ", hex.EncodeToString(sigHash))
-	}
+	
 	return &BitcoinWithdrawalData{
 		ProposalData: &p2p.BitcoinProposalData{
 			DepositId: &types.DepositIdentifier{

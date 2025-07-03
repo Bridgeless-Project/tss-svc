@@ -23,7 +23,5 @@ func (c *Connector) GetTokenInfo(chainId string, addr string) (bridgetypes.Token
 		return bridgetypes.TokenInfo{}, errors.Wrap(err, "failed to get token info")
 	}
 
-	fmt.Println("Got info: ", resp.Info)
-
 	return resp.Info, nil
 }

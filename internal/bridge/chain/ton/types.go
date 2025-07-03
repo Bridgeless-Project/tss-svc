@@ -9,6 +9,8 @@ const (
 	depositNativeOpCode        = "0xe858a993"
 	depositJettonOpCode        = "0x02ddcbe3"
 	opCodeBitSize              = 32
+	networkCellSizeBytes       = 32
+	networkCellSizeBit         = 256
 	intBitSize                 = 257
 	receiverBitSize            = 1016
 	withdrawalNativeHashMethod = "nativeHash"

@@ -2,11 +2,9 @@ package ton
 
 import (
 	"context"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
-	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
 	"math/big"
@@ -32,7 +30,6 @@ func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent,
 		return nil, errors.Wrap(err, "error loading wrapped")
 	}
 
-	fmt.Println("isWrapped", isWrapped)
 	tokenAddr, err := slice.LoadAddr()
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading amount")
@@ -74,24 +71,11 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to get the master chain info")
 	}
 
-	networkSlc := cell.BeginCell()
-	networkBytes, err := fillBytesToSize(deposit.WithdrawalChainId, 32, 0x00)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fill bytes to size")
-	}
-	if err = networkSlc.StoreSlice(networkBytes, 256); err != nil {
-		return nil, errors.Wrap(err, "failed to store network")
-	}
+	networkCell, err := getNetworkCell(deposit.WithdrawalChainId)
 
-	fmt.Println("network slice: ", networkSlc)
-
-	addrCell := cell.BeginCell()
-	receiverAddr, err := address.ParseAddr(deposit.Receiver)
+	receiverCell, err := getAddressCell(deposit.Receiver)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse receiver address")
-	}
-	if err = addrCell.StoreAddr(receiverAddr); err != nil {
-		return nil, errors.Wrap(err, "failed to store receiver")
+		return nil, errors.Wrap(err, "failed to get receiver cell")
 	}
 
 	var wrappedBit int64
@@ -99,13 +83,9 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 		wrappedBit = trueBit
 	}
 
-	tokenAddrCell := cell.BeginCell()
-	withdrawalTokenAddr, err := address.ParseAddr(deposit.WithdrawalToken)
+	withdrawalTokenCell, err := getAddressCell(deposit.WithdrawalToken)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse withdrawal token address")
-	}
-	if err = tokenAddrCell.StoreAddr(withdrawalTokenAddr); err != nil {
-		return nil, errors.Wrap(err, "failed to store receiver")
+		return nil, errors.Wrap(err, "failed to get withdrawal token address cell")
 	}
 
 	withdrawalAmount, ok := big.NewInt(0).SetString(deposit.WithdrawalAmount, 10)
@@ -113,17 +93,9 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.New("failed to parse withdrawal amount")
 	}
 
-	fmt.Println("TxHash: ", deposit.TxHash)
-	fmt.Println("WithdrawalAmount: ", withdrawalAmount.String())
-	fmt.Println("Receiver: ", receiverAddr.String())
-	fmt.Println("IsWrapped: ", deposit.IsWrappedToken)
-	fmt.Println("Network: ", deposit.WithdrawalChainId)
-	fmt.Println("WithdrawalToken: ", withdrawalTokenAddr.String())
-	fmt.Println("TxNonce: ", deposit.TxNonce)
-
 	res, err := c.Client.RunGetMethod(context.Background(), master, c.BridgeContractAddress, withdrawalJettonHashMethod, withdrawalAmount,
-		addrCell.EndCell().BeginParse(), big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash)), big.NewInt(int64(deposit.TxNonce)),
-		networkSlc.EndCell().BeginParse(), wrappedBit, tokenAddrCell.ToSlice())
+		receiverCell.BeginParse(), big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash)), big.NewInt(int64(deposit.TxNonce)),
+		networkCell.BeginParse(), wrappedBit, withdrawalTokenCell.BeginParse())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the native hash")
 	}

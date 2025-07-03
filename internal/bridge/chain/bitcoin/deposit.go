@@ -162,10 +162,9 @@ func decodeDestinationData(data string) (addr, chainId string, err error) {
 		// decoding from base58 to get proper user addr representation
 		addr = base58.Encode([]byte(params[0]))
 	case dstTonAddrLen:
-		fmt.Println("Address: ", params[0])
 		tonAddr, err := address.ParseAddr(addr)
 		if err != nil {
-			return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "aboba")
+			return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidReceiverAddress, err.Error())
 		}
 
 		addr = tonAddr.String()

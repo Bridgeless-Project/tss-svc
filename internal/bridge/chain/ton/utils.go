@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
+	address2 "github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tvm/cell"
 	"strings"
 	"unicode"
@@ -29,6 +30,34 @@ func cleanPrintable(s string) string {
 	return sb.String()
 }
 
+func getAddressCell(addr string) (*cell.Cell, error) {
+	address, err := address2.ParseAddr(addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse address")
+	}
+
+	addressCell := cell.BeginCell()
+	if err = addressCell.StoreAddr(address); err != nil {
+		return nil, errors.Wrap(err, "failed to store address")
+	}
+
+	return addressCell.EndCell(), nil
+}
+
+func getNetworkCell(network string) (*cell.Cell, error) {
+	networkCell := cell.BeginCell()
+	networkBytes, err := fillBytesToSize(network, networkCellSizeBytes, 0x00)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fill bytes")
+	}
+
+	if err = networkCell.StoreSlice(networkBytes, networkCellSizeBit); err != nil {
+		return nil, errors.Wrap(err, "failed to store bytes")
+	}
+
+	return networkCell.EndCell(), nil
+}
+
 func fillBytesToSize(str string, size int, fill byte) ([]byte, error) {
 	if size == 0 {
 		size = 32
@@ -44,7 +73,5 @@ func fillBytesToSize(str string, size int, fill byte) ([]byte, error) {
 	buf := bytes.Repeat([]byte{fill}, size)
 	copy(buf, raw)
 
-	fmt.Println("buffer: ", buf)
-	fmt.Println("len buf: ", len(buf))
 	return buf, nil
 }
