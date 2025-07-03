@@ -2,6 +2,7 @@ package deposit
 
 import (
 	sdkmath "cosmossdk.io/math"
+	"fmt"
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/core"
@@ -61,7 +62,10 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(err, "failed to get dst token info")
 	}
 
+	fmt.Println("Deposit amount:", depositData.DepositAmount.String())
+
 	withdrawalAmount := transformAmount(depositData.DepositAmount, srcTokenInfo.Decimals, dstTokenInfo.Decimals)
+	fmt.Println("Withdrawal amount:", withdrawalAmount.String())
 	if !dstClient.WithdrawalAmountValid(withdrawalAmount) {
 		return nil, chain.ErrInvalidDepositedAmount
 	}

@@ -10,7 +10,7 @@ const (
 	depositJettonOpCode        = "0x02ddcbe3"
 	opCodeBitSize              = 32
 	intBitSize                 = 257
-	receiverBitSize            = 256
+	receiverBitSize            = 1016
 	withdrawalNativeHashMethod = "nativeHash"
 	withdrawalJettonHashMethod = "jettonHash"
 	trueBit                    = -1

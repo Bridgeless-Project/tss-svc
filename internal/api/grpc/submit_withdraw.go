@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/hyle-team/tss-svc/internal/api/common"
 	"github.com/hyle-team/tss-svc/internal/api/ctx"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
@@ -64,6 +64,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 
 	deposit, err = processor.FetchDeposit(id)
 	if err != nil {
+		fmt.Println("Error: ", err.Error())
 		if chain.IsPendingDepositError(err) {
 			return nil, ErrDepositPending
 		}

@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/xssnick/tonutils-go/address"
 	"math/big"
 	"slices"
 	"strings"
@@ -22,13 +23,14 @@ const (
 
 	minOpReturnCodeLen = 3
 
-	dstSeparator   = "-"
+	dstSeparator   = ":"
 	dstParamsCount = 2
 	dstAddrIdx     = 0
 	dstChainIdIdx  = 1
 
 	dstEthAddrLen  = 42
 	dstZanoAddrLen = 71
+	dstTonAddrLen  = 48
 )
 
 func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
@@ -159,6 +161,14 @@ func decodeDestinationData(data string) (addr, chainId string, err error) {
 	case dstZanoAddrLen:
 		// decoding from base58 to get proper user addr representation
 		addr = base58.Encode([]byte(params[0]))
+	case dstTonAddrLen:
+		fmt.Println("Address: ", params[0])
+		tonAddr, err := address.ParseAddr(addr)
+		if err != nil {
+			return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "aboba")
+		}
+
+		addr = tonAddr.String()
 	default:
 		err = errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid destination address parameter")
 	}

@@ -2,6 +2,7 @@ package ton
 
 import (
 	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/db"
 	"github.com/pkg/errors"
@@ -31,6 +32,7 @@ func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent,
 		return nil, errors.Wrap(err, "error loading wrapped")
 	}
 
+	fmt.Println("isWrapped", isWrapped)
 	tokenAddr, err := slice.LoadAddr()
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading amount")
@@ -73,6 +75,7 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 	}
 
 	networkCell := cell.BeginCell()
+	// TODO:
 	if err = networkCell.StoreStringSnake(deposit.WithdrawalChainId); err != nil {
 		return nil, errors.Wrap(err, "failed to store network")
 	}
@@ -91,7 +94,6 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 		wrappedBit = trueBit
 	}
 
-	tokenAddrCell := cell.BeginCell()
 	withdrawalTokenAddr, err := address.ParseAddr(deposit.WithdrawalToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse withdrawal token address")
@@ -105,8 +107,16 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.New("failed to parse withdrawal amount")
 	}
 
+	fmt.Println("TxHash: ", deposit.TxHash)
+	fmt.Println("WithdrawalAmount: ", withdrawalAmount.String())
+	fmt.Println("Receiver: ", receiverAddr.String())
+	fmt.Println("IsWrapped: ", deposit.IsWrappedToken)
+	fmt.Println("Network: ", deposit.WithdrawalChainId)
+	fmt.Println("WithdrawalToken: ", withdrawalTokenAddr.String())
+	fmt.Println("TxNonce: ", deposit.TxNonce)
+
 	res, err := c.Client.RunGetMethod(context.Background(), master, c.BridgeContractAddress, withdrawalJettonHashMethod, withdrawalAmount,
-		addrCell.ToSlice(), big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash)), big.NewInt(deposit.DepositBlock),
+		addrCell.ToSlice(), big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash)), big.NewInt(int64(deposit.TxNonce)),
 		networkCell.ToSlice(), wrappedBit, tokenAddrCell.ToSlice())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the native hash")

@@ -2,6 +2,7 @@ package ton
 
 import (
 	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -61,11 +62,6 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to get the master chain info")
 	}
 
-	networkSlc := cell.BeginCell()
-	if err = networkSlc.StoreStringSnake(deposit.WithdrawalChainId); err != nil {
-		return nil, errors.Wrap(err, "failed to store network")
-	}
-
 	addrSlice := cell.BeginCell()
 	receiverAddr, err := address.ParseAddr(deposit.Receiver)
 	if err != nil {
@@ -85,9 +81,30 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to decode hash")
 	}
 
+	networkSlc := cell.BeginCell()
+	fmt.Println("TxHash: ", deposit.TxHash)
+	fmt.Println("WithdrawalAmount: ", withdrawalAmount.String())
+	fmt.Println("Receiver: ", receiverAddr.String())
+	fmt.Println("Network: ", deposit.WithdrawalChainId)
+	fmt.Println("TxNonce: ", deposit.TxNonce)
+	fmt.Println("Network: ", deposit.WithdrawalChainId)
+	fmt.Println("network bytes: ", []byte(deposit.WithdrawalChainId))
+	fmt.Println("len network: ", len([]byte(deposit.WithdrawalChainId)))
+
+	networkBytes, err := fillBytesToSize(deposit.WithdrawalChainId, 32, 0x00)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fill bytes to size")
+	}
+	if err = networkSlc.StoreSlice(networkBytes, 256); err != nil {
+		return nil, errors.Wrap(err, "failed to store network")
+	}
+
+	fmt.Println("network slice: ", networkSlc)
+
 	res, err := c.Client.RunGetMethod(context.Background(), master,
-		c.BridgeContractAddress, withdrawalNativeHashMethod, withdrawalAmount.Uint64(),
-		addrSlice.ToSlice(), big.NewInt(0).SetBytes(hashBytes).Uint64(), big.NewInt(int64(deposit.TxNonce)).Uint64(), networkSlc.ToSlice())
+		c.BridgeContractAddress, withdrawalNativeHashMethod, withdrawalAmount,
+		addrSlice.EndCell().BeginParse(), big.NewInt(0).SetBytes(hashBytes),
+		big.NewInt(int64(deposit.TxNonce)), networkSlc.EndCell().BeginParse())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the native hash")
 	}

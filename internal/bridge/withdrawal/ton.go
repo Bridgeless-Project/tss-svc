@@ -3,6 +3,7 @@ package withdrawal
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain/ton"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -85,6 +86,7 @@ func (c *TonWithdrawalConstructor) IsValid(data TonWithdrawalData, deposit db.De
 		return false, errors.Wrap(err, "failed to get signing hash")
 	}
 
+	fmt.Println("hash to sign:", hex.EncodeToString(sigHash))
 	if !bytes.Equal(data.ProposalData.SigData, sigHash) {
 		return false, errors.New("sig data does not match the expected one")
 	}

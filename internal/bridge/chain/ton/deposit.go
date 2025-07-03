@@ -2,6 +2,7 @@ package ton
 
 import (
 	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/hyle-team/tss-svc/internal/bridge/chain"
 	"github.com/hyle-team/tss-svc/internal/db"
@@ -27,6 +28,7 @@ func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 }
 
 func (c *Client) getTxByLtHash(lt uint64, txHash string) (*tlb.Transaction, error) {
+	fmt.Println("LT: ", lt)
 	txs, err := c.Client.ListTransactions(context.Background(), c.BridgeContractAddress, 1, lt, hexutil.MustDecode(txHash))
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting deposit transaction")

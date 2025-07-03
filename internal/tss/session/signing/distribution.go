@@ -3,7 +3,11 @@ package signing
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"fmt"
+	tss2 "github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"sync"
 	"sync/atomic"
 
@@ -138,6 +142,13 @@ func (s *SignaturesDistributor) validateSignatures() error {
 	}
 
 	for i, signature := range s.signatures.Data {
+		pub := elliptic.Marshal(tss2.S256(), s.sigPubKey.X, s.sigPubKey.Y)
+		fmt.Println("PubKey: ", hexutil.Encode(pub))
+
+		compressedPub := crypto.CompressPubkey(s.sigPubKey)
+		fmt.Println("Compressed: ", hexutil.Encode(compressedPub))
+
+		fmt.Println("ver hash: ", hexutil.Encode(s.sigData[i]))
 		if !tss.Verify(s.sigPubKey, s.sigData[i], signature) {
 			return errors.New("got invalid signature")
 		}
