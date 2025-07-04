@@ -13,14 +13,19 @@ import (
 
 func (c *Client) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent, error) {
 	slice := body.BeginParse()
-	slice.MustLoadInt(opCodeBitSize)
+
+	// Skip opCode bytes
+	_, err := slice.LoadInt(opCodeBitSize)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to skip opCode bytes")
+	}
 
 	sender, err := slice.LoadAddr()
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing sender address")
 	}
 
-	amount, err := slice.LoadInt(intBitSize)
+	amount, err := slice.LoadInt(amountBitSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing amount")
 	}

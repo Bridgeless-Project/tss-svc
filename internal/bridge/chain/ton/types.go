@@ -11,7 +11,7 @@ const (
 	opCodeBitSize              = 32
 	networkCellSizeBytes       = 32
 	networkCellSizeBit         = 256
-	intBitSize                 = 257
+	amountBitSize              = 257
 	receiverBitSize            = 1016
 	withdrawalNativeHashMethod = "nativeHash"
 	withdrawalJettonHashMethod = "jettonHash"

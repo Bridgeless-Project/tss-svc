@@ -13,14 +13,18 @@ import (
 func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent, error) {
 	slice := body.BeginParse()
 
-	slice.MustLoadInt(32)
+	// Skip opCode bytes
+	_, err := slice.LoadInt(opCodeBitSize)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to skip opCode bytes")
+	}
 
 	sender, err := slice.LoadAddr()
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading sender")
 	}
 
-	amount, err := slice.LoadInt(intBitSize)
+	amount, err := slice.LoadInt(amountBitSize)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading amount")
 	}
@@ -100,12 +104,12 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 		receiverCell.BeginParse(), big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash)), big.NewInt(int64(deposit.TxNonce)),
 		networkCell.BeginParse(), wrappedBit, withdrawalTokenCell.BeginParse())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get the native hash")
+		return nil, errors.Wrap(err, "failed to get the jetton hash")
 	}
 
 	resBig, err := res.Int(0)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get the native hash")
+		return nil, errors.Wrap(err, "failed to get the jetton hash")
 	}
 
 	return resBig.Bytes(), nil

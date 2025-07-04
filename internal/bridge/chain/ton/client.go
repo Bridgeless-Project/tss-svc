@@ -10,12 +10,10 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
-	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Client struct {
 	Chain
-	logger *logan.Entry
 }
 
 // NewBridgeClient creates a new bridge Client for the given chain.
@@ -34,7 +32,7 @@ func NewBridgeClient(chain Chain) *Client {
 	chain.Client = api
 
 	return &Client{
-		chain, nil,
+		chain,
 	}
 }
 

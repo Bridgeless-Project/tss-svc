@@ -2440,8 +2440,8 @@ gitlab.com/distributed_lab/figure v2.1.2+incompatible h1:xO1KCYPK9KFx6OUBOaJ62d8
 gitlab.com/distributed_lab/figure v2.1.2+incompatible/go.mod h1:tk+aPBohT49MGPLy5+eVbE1HpD/CaC5drBHfVpRI8eE=
 gitlab.com/distributed_lab/figure/v3 v3.1.4 h1:Wa9FtWkDcgzL53JmiZl3j17L2ugJ4o1u/5C2wiXCJgw=
 gitlab.com/distributed_lab/figure/v3 v3.1.4/go.mod h1:gYbCEdQBQCVEg+ap0zrpjY56BU95k9H8ELebL1ChONo=
-gitlab.com/distributed_lab/kit v1.11.4 h1:ouHF5S3P3+PJSTlz5cf56tMlUMOAU3O461MSiF/Cl04=
-gitlab.com/distributed_lab/kit v1.11.4/go.mod h1:PEbGoeTgSlIxmYFFD2dXlythl+gVYO7BXxvTBqVyLlM=
+gitlab.com/distributed_lab/kit v1.11.3 h1:ADy0NtksgXPYz56hlEG9L9eImzjAbyh34fm8fbm+DbM=
+gitlab.com/distributed_lab/kit v1.11.3/go.mod h1:PEbGoeTgSlIxmYFFD2dXlythl+gVYO7BXxvTBqVyLlM=
 gitlab.com/distributed_lab/logan v3.4.1+incompatible/go.mod h1:25oL/FPFXmyYzWeA6vahMvnFJV8P7mOx0jZhRP7nhlc=
 gitlab.com/distributed_lab/logan v3.7.2+incompatible/go.mod h1:25oL/FPFXmyYzWeA6vahMvnFJV8P7mOx0jZhRP7nhlc=
 gitlab.com/distributed_lab/logan v3.8.1+incompatible h1:bYiP3P0AA0cpAL/fyOYWGq1aiKw16vZFoJz+nwbqdvU=

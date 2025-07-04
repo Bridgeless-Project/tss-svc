@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
-	address2 "github.com/xssnick/tonutils-go/address"
+	tonAddress "github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tvm/cell"
 	"strings"
 	"unicode"
 )
 
 func parseMsgOpCode(msg *cell.Slice) (string, error) {
-	op, err := msg.LoadBigUInt(32)
+	op, err := msg.LoadBigUInt(opCodeBitSize)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to load message opcode")
 	}
@@ -31,7 +31,7 @@ func cleanPrintable(s string) string {
 }
 
 func getAddressCell(addr string) (*cell.Cell, error) {
-	address, err := address2.ParseAddr(addr)
+	address, err := tonAddress.ParseAddr(addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse address")
 	}
