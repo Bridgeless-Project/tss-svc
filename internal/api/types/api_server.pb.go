@@ -106,7 +106,7 @@ const file_api_server_proto_rawDesc = "" +
 	"\x16_withdrawal_identifier2\xde\x01\n" +
 	"\x03API\x12Z\n" +
 	"\x10SubmitWithdrawal\x12\x1a.deposit.DepositIdentifier\x1a\x16.google.protobuf.Empty\"\x12\x82\xd3\xe4\x93\x02\f:\x01*\"\a/submit\x12{\n" +
-	"\x0fCheckWithdrawal\x12\x1a.deposit.DepositIdentifier\x1a\x1c.api.CheckWithdrawalResponse\".\x82\xd3\xe4\x93\x02(\x12&/check/{chain_id}/{tx_hash}/{tx_nonce}B1Z/github.com/Bridgeless-Project/tss-svc/internal/api/typesb\x06proto3"
+	"\x0fCheckWithdrawal\x12\x1a.deposit.DepositIdentifier\x1a\x1c.api.CheckWithdrawalResponse\".\x82\xd3\xe4\x93\x02(\x12&/check/{chain_id}/{tx_hash}/{tx_nonce}B:Z8github.com/Bridgeless-Project/tss-svc/internal/api/typesb\x06proto3"
 
 var (
 	file_api_server_proto_rawDescOnce sync.Once

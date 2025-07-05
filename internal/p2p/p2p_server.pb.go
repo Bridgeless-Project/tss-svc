@@ -7,8 +7,8 @@
 package p2p
 
 import (
-	_ "github.com/gogo/protobuf/gogoproto"
 	types "github.com/Bridgeless-Project/tss-svc/internal/types"
+	_ "github.com/gogo/protobuf/gogoproto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	anypb "google.golang.org/protobuf/types/known/anypb"
@@ -1086,7 +1086,7 @@ const file_p2p_server_proto_rawDesc = "" +
 	"\x03P2P\x127\n" +
 	"\x06Status\x12\x16.google.protobuf.Empty\x1a\x13.p2p.StatusResponse\"\x00\x126\n" +
 	"\x06Submit\x12\x12.p2p.SubmitRequest\x1a\x16.google.protobuf.Empty\"\x00\x12R\n" +
-	"\x15GetSigningSessionInfo\x12\x1e.p2p.SigningSessionInfoRequest\x1a\x17.p2p.SigningSessionInfo\"\x00B+Z)github.com/Bridgeless-Project/tss-svc/internal/p2pb\x06proto3"
+	"\x15GetSigningSessionInfo\x12\x1e.p2p.SigningSessionInfoRequest\x1a\x17.p2p.SigningSessionInfo\"\x00B4Z2github.com/Bridgeless-Project/tss-svc/internal/p2pb\x06proto3"
 
 var (
 	file_p2p_server_proto_rawDescOnce sync.Once

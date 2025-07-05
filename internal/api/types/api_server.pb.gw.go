@@ -14,9 +14,9 @@ import (
 	"io"
 	"net/http"
 
+	types_0 "github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
-	types_0 "github.com/Bridgeless-Project/tss-svc/internal/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
