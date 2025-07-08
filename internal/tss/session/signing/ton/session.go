@@ -3,9 +3,10 @@ package ton
 import (
 	"context"
 	"fmt"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	"sync"
 	"time"
+
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"

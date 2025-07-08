@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/common"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"

@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
-	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
-	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )

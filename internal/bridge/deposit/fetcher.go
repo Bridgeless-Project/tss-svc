@@ -1,6 +1,8 @@
 package deposit
 
 import (
+	"math/big"
+
 	sdkmath "cosmossdk.io/math"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -8,7 +10,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 type Fetcher struct {

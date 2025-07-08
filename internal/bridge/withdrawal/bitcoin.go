@@ -9,14 +9,14 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -79,12 +79,12 @@ func (c *BitcoinWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*Bit
 	if err = tx.Serialize(&buf); err != nil {
 		return nil, errors.Wrap(err, "failed to serialize transaction")
 	}
-	
+
 	return &BitcoinWithdrawalData{
 		ProposalData: &p2p.BitcoinProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
-				TxNonce: uint64(deposit.TxNonce),
+				TxNonce: uint32(deposit.TxNonce),
 				TxHash:  deposit.TxHash,
 			},
 			SerializedTx: buf.Bytes(),

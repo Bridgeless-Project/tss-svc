@@ -2,8 +2,9 @@ package connector
 
 import (
 	"context"
-	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
 )
 

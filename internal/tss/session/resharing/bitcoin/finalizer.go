@@ -5,11 +5,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/wire"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

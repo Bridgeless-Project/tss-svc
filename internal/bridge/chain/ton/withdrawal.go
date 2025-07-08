@@ -1,10 +1,11 @@
 package ton
 
 import (
+	"math/big"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 func (c *Client) WithdrawalAmountValid(amount *big.Int) bool {

@@ -4,9 +4,9 @@ import (
 	"cmp"
 	"os"
 
-	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets/vault"
+	vaultApi "github.com/hashicorp/vault/api"
 	"gitlab.com/distributed_lab/kit/comfig"
 )
 

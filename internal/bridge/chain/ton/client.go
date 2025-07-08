@@ -2,11 +2,12 @@ package ton
 
 import (
 	"context"
+	"time"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
-	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
@@ -27,7 +28,7 @@ func NewBridgeClient(chain Chain) *Client {
 
 	api := ton.NewAPIClient(liteClt, ton.ProofCheckPolicyFast).WithRetry()
 	api.SetTrustedBlockFromConfig(globalConfig)
-	api.WithTimeout(time.Duration(chain.RPC.Timeout) * time.Second)
+	api.WithTimeout(chain.RPC.Timeout * time.Second)
 
 	chain.Client = api
 
@@ -49,6 +50,6 @@ func (c *Client) AddressValid(addr string) bool {
 	return err == nil
 }
 
-func (p *Client) TransactionHashValid(hash string) bool {
+func (c *Client) TransactionHashValid(hash string) bool {
 	return bridge.DefaultTransactionHashPattern.MatchString(hash)
 }

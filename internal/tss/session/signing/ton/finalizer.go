@@ -2,8 +2,8 @@ package ton
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 
+	tonchain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -66,7 +66,7 @@ func (tf *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (tf *Finalizer) finalize(ctx context.Context) {
-	signature := convertToTonSignature(tf.signature)
+	signature := tonchain.СonvertToTonSignature(tf.signature)
 	if err := tf.db.UpdateSignature(tf.withdrawalData.DepositIdentifier(), signature); err != nil {
 		tf.errChan <- errors.Wrap(err, "failed to update signature")
 		return
@@ -84,10 +84,4 @@ func (tf *Finalizer) finalize(ctx context.Context) {
 	}
 
 	tf.errChan <- nil
-}
-
-func convertToTonSignature(sig *common.SignatureData) string {
-	rawSig := append(sig.Signature, sig.SignatureRecovery...)
-
-	return hexutil.Encode(rawSig)
 }

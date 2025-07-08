@@ -50,8 +50,8 @@
             "name": "txNonce",
             "in": "path",
             "required": true,
-            "type": "string",
-            "format": "uint64"
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -118,8 +118,8 @@
           "type": "string"
         },
         "txNonce": {
-          "type": "string",
-          "format": "uint64"
+          "type": "integer",
+          "format": "int64"
         },
         "chainId": {
           "type": "string"

@@ -2,13 +2,14 @@ package ton
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
-	"math/big"
 )
 
 func (c *Client) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent, error) {
@@ -30,7 +31,7 @@ func (c *Client) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent,
 		return nil, errors.Wrap(err, "error parsing amount")
 	}
 
-	receiverCell, err := body.PeekRef(0)
+	receiverCell, err := body.PeekRef(receiverCellId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting receiver ref")
 	}
@@ -40,7 +41,7 @@ func (c *Client) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent,
 		return nil, errors.Wrap(err, "error parsing receiver address")
 	}
 
-	networkCell, err := body.PeekRef(1)
+	networkCell, err := body.PeekRef(networkCellId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting network ref")
 	}
@@ -85,10 +86,19 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to decode hash")
 	}
 
-	res, err := c.Client.RunGetMethod(context.Background(), master,
-		c.BridgeContractAddress, withdrawalNativeHashMethod, withdrawalAmount,
-		receiverCell.BeginParse(), big.NewInt(0).SetBytes(hashBytes),
-		big.NewInt(int64(deposit.TxNonce)), networkCell.BeginParse())
+	txHash := big.NewInt(0).SetBytes(hashBytes)
+	txNonce := big.NewInt(0).SetUint64(uint64(deposit.TxNonce))
+	res, err := c.Client.RunGetMethod(
+		context.Background(),
+		master,
+		c.BridgeContractAddress,
+		withdrawalNativeHashMethod,
+		withdrawalAmount,
+		receiverCell.BeginParse(),
+		txHash,
+		txNonce,
+		networkCell.BeginParse(),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the native hash")
 	}

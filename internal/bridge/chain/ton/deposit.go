@@ -2,6 +2,7 @@ package ton
 
 import (
 	"context"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -31,7 +32,6 @@ func (c *Client) getTxByLtHash(lt uint64, txHash string) (*tlb.Transaction, erro
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting deposit transaction")
 	}
-
 	if len(txs) == 0 {
 		return nil, chain.ErrDepositNotFound
 	}

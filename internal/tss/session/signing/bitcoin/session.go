@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bnb-chain/tss-lib/v2/common"
-	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
@@ -21,6 +19,8 @@ import (
 	resharingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	"github.com/bnb-chain/tss-lib/v2/common"
+	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"go.uber.org/atomic"

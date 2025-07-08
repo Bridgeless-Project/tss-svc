@@ -1,8 +1,9 @@
 package ton
 
 import (
-	"github.com/xssnick/tonutils-go/address"
 	"math/big"
+
+	"github.com/xssnick/tonutils-go/address"
 )
 
 const (
@@ -16,6 +17,9 @@ const (
 	withdrawalNativeHashMethod = "nativeHash"
 	withdrawalJettonHashMethod = "jettonHash"
 	trueBit                    = -1
+
+	receiverCellId = 0
+	networkCellId  = 1
 )
 
 type depositJettonContent struct {

@@ -2,12 +2,13 @@ package ton
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
-	"math/big"
 )
 
 func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent, error) {
@@ -39,7 +40,7 @@ func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent,
 		return nil, errors.Wrap(err, "error loading amount")
 	}
 
-	receiverCell, err := body.PeekRef(0)
+	receiverCell, err := body.PeekRef(receiverCellId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting address")
 	}
@@ -49,7 +50,7 @@ func (c *Client) parseDepositJettonBody(body *cell.Cell) (*depositJettonContent,
 		return nil, errors.Wrap(err, "error parsing receiver")
 	}
 
-	networkCell, err := body.PeekRef(1)
+	networkCell, err := body.PeekRef(networkCellId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting network")
 	}
@@ -100,9 +101,20 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.New("failed to parse withdrawal amount")
 	}
 
-	res, err := c.Client.RunGetMethod(context.Background(), master, c.BridgeContractAddress, withdrawalJettonHashMethod, withdrawalAmount,
-		receiverCell.BeginParse(), big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash)), big.NewInt(int64(deposit.TxNonce)),
-		networkCell.BeginParse(), wrappedBit, withdrawalTokenCell.BeginParse())
+	txNonce := big.NewInt(0).SetUint64(uint64(deposit.TxNonce))
+	txHash := big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash))
+	res, err := c.Client.RunGetMethod(context.Background(),
+		master,
+		c.BridgeContractAddress,
+		withdrawalJettonHashMethod,
+		withdrawalAmount,
+		receiverCell.BeginParse(),
+		txHash,
+		txNonce,
+		networkCell.BeginParse(),
+		wrappedBit,
+		withdrawalTokenCell.BeginParse(),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the jetton hash")
 	}

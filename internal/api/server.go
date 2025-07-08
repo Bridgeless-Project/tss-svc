@@ -11,8 +11,6 @@ import (
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/Bridgeless-Project/tss-svc/api"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
 	srvgrpc "github.com/Bridgeless-Project/tss-svc/internal/api/grpc"
@@ -20,6 +18,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/api/middlewares"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/go-chi/chi/v5"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"gitlab.com/distributed_lab/logan/v3"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
@@ -68,7 +69,7 @@ func (c *TonWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*TonWith
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
 				TxHash:  deposit.TxHash,
-				TxNonce: uint64(deposit.TxNonce),
+				TxNonce: uint32(deposit.TxNonce),
 			},
 			SigData: sigHash,
 		},

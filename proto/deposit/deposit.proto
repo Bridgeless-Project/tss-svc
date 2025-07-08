@@ -15,7 +15,7 @@ enum WithdrawalStatus {
 
 message DepositIdentifier {
   string tx_hash = 1;
-  uint64 tx_nonce = 2;
+  uint32 tx_nonce = 2;
   string chain_id = 3;
 }
 

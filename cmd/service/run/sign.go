@@ -3,12 +3,12 @@ package run
 import (
 	"context"
 	"fmt"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
@@ -20,8 +20,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
 	btcSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/bitcoin"
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
-	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
+	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"

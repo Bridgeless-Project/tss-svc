@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	"reflect"
+
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"

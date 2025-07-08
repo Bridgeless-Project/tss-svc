@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
+	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

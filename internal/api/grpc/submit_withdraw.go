@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/api/common"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"

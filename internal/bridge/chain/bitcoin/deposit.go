@@ -3,10 +3,11 @@ package bitcoin
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/xssnick/tonutils-go/address"
 	"math/big"
 	"slices"
 	"strings"
+
+	"github.com/xssnick/tonutils-go/address"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"

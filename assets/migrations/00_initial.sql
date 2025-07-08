@@ -5,14 +5,14 @@ CREATE TABLE deposits
     id                  BIGSERIAL PRIMARY KEY,
 
     tx_hash             VARCHAR(100) NOT NULL,
-    tx_nonce        BIGINT          NOT NULL,
+    tx_nonce            INT          NOT NULL,
     chain_id            VARCHAR(50)  NOT NULL,
 
     depositor           VARCHAR(100),
     receiver            VARCHAR(100) NOT NULL,
     deposit_amount      TEXT        NOT NULL,
     withdrawal_amount   TEXT       NOT NULL,
-    commission_amount TEXT NOT NULL,
+    commission_amount   TEXT NOT NULL,
     deposit_token       VARCHAR(100) NOT NULL,
     withdrawal_token    VARCHAR(100) NOT NULL,
     is_wrapped_token    BOOLEAN DEFAULT false,

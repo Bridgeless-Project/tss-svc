@@ -3,13 +3,21 @@ package ton
 import (
 	"bytes"
 	"fmt"
+	"strings"
+	"unicode"
+
+	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	tonAddress "github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tvm/cell"
-	"strings"
-	"unicode"
 )
+
+func СonvertToTonSignature(sig *common.SignatureData) string {
+	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+
+	return hexutil.Encode(rawSig)
+}
 
 func parseMsgOpCode(msg *cell.Slice) (string, error) {
 	op, err := msg.LoadBigUInt(opCodeBitSize)

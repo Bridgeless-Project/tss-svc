@@ -73,7 +73,7 @@ func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*ZanoWi
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
 				TxHash:  deposit.TxHash,
-				TxNonce: uint64(deposit.TxNonce),
+				TxNonce: uint32(deposit.TxNonce),
 			},
 			OutputsAddresses: tx.DataForExternalSigning.OutputsAddresses,
 			UnsignedTx:       tx.DataForExternalSigning.UnsignedTx,
