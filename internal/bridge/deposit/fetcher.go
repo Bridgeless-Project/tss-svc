@@ -36,7 +36,7 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 
 	depositData, err := sourceClient.GetDepositData(identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get withdrawal data")
+		return nil, errors.Wrap(err, "failed to get deposit data")
 	}
 
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)

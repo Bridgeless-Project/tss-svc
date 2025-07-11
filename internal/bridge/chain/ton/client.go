@@ -15,6 +15,7 @@ import (
 
 type Client struct {
 	Chain
+	*DepositDecoder
 }
 
 // NewBridgeClient creates a new bridge Client for the given chain.
@@ -32,8 +33,11 @@ func NewBridgeClient(chain Chain) *Client {
 
 	chain.Client = api
 
+	depositDecorator := NewDepositDecoder(*chain.BridgeContractAddress, chain.RPC.IsTestnet)
+
 	return &Client{
 		chain,
+		depositDecorator,
 	}
 }
 

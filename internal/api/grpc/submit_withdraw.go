@@ -51,7 +51,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	id := db.DepositIdentifier{
 		ChainId: identifier.ChainId,
 		TxHash:  identifier.TxHash,
-		TxNonce: int(identifier.TxNonce),
+		TxNonce: identifier.TxNonce,
 	}
 	deposit, err := data.Get(id)
 	if err != nil {
@@ -64,6 +64,8 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 
 	deposit, err = processor.FetchDeposit(id)
 	if err != nil {
+		logger.Debug("invalid deposit: ", err)
+
 		if chain.IsPendingDepositError(err) {
 			return nil, ErrDepositPending
 		}

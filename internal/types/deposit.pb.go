@@ -82,7 +82,7 @@ func (WithdrawalStatus) EnumDescriptor() ([]byte, []int) {
 type DepositIdentifier struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TxHash        string                 `protobuf:"bytes,1,opt,name=tx_hash,json=txHash,proto3" json:"tx_hash,omitempty"`
-	TxNonce       uint32                 `protobuf:"varint,2,opt,name=tx_nonce,json=txNonce,proto3" json:"tx_nonce,omitempty"`
+	TxNonce       int64                  `protobuf:"varint,2,opt,name=tx_nonce,json=txNonce,proto3" json:"tx_nonce,omitempty"`
 	ChainId       string                 `protobuf:"bytes,3,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -125,7 +125,7 @@ func (x *DepositIdentifier) GetTxHash() string {
 	return ""
 }
 
-func (x *DepositIdentifier) GetTxNonce() uint32 {
+func (x *DepositIdentifier) GetTxNonce() int64 {
 	if x != nil {
 		return x.TxNonce
 	}
@@ -315,7 +315,7 @@ const file_deposit_proto_rawDesc = "" +
 	"\rdeposit.proto\x12\adeposit\"b\n" +
 	"\x11DepositIdentifier\x12\x17\n" +
 	"\atx_hash\x18\x01 \x01(\tR\x06txHash\x12\x19\n" +
-	"\btx_nonce\x18\x02 \x01(\rR\atxNonce\x12\x19\n" +
+	"\btx_nonce\x18\x02 \x01(\x03R\atxNonce\x12\x19\n" +
 	"\bchain_id\x18\x03 \x01(\tR\achainId\"[\n" +
 	"\x14WithdrawalIdentifier\x12\x1c\n" +
 	"\atx_hash\x18\x01 \x01(\tH\x00R\x06txHash\x88\x01\x01\x12\x19\n" +

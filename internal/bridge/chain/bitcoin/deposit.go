@@ -22,7 +22,7 @@ import (
 const (
 	defaultDepositorAddressOutputIdx = 0
 
-	dstSeparator   = "-"
+	dstSeparator   = "#"
 	dstParamsCount = 2
 	dstAddrIdx     = 0
 	dstChainIdIdx  = 1
@@ -58,7 +58,7 @@ func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, bridgeTypes.ErrTxNotConfirmed
 	}
 
-	if len(tx.Vout) < dstDataIdx+1 || len(tx.Vin) == 0 {
+	if int64(len(tx.Vout)) < dstDataIdx+1 || len(tx.Vin) == 0 {
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
 

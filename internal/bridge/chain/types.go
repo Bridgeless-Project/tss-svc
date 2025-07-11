@@ -12,7 +12,7 @@ var (
 	ErrTxPending              = errors.New("transaction is pending")
 	ErrTxFailed               = errors.New("transaction failed")
 	ErrTxNotFound             = errors.New("transaction not found")
-	ErrDepositNotFound        = errors.New("withdrawal not found")
+	ErrDepositNotFound        = errors.New("deposit not found")
 	ErrTxNotConfirmed         = errors.New("transaction not confirmed")
 	ErrInvalidReceiverAddress = errors.New("invalid receiver address")
 	ErrInvalidDepositedAmount = errors.New("invalid deposited amount")

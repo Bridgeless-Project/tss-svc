@@ -91,6 +91,8 @@ services:
       context: ../
       dockerfile: build/Dockerfile
     hostname: tss-2
+    ports:
+      - "8082:8080"
     container_name: tss-2
     environment:
       VAULT_PATH: http://vault:8200
@@ -113,6 +115,8 @@ services:
       context: ../
       dockerfile: build/Dockerfile
     hostname: tss-3
+    ports:
+      - "8083:8080"
     container_name: tss-3
     environment:
       VAULT_PATH: http://vault:8200

@@ -44,13 +44,13 @@ type WithdrawalTx struct {
 
 type DepositIdentifier struct {
 	TxHash  string `structs:"tx_hash" db:"tx_hash"`
-	TxNonce int    `structs:"tx_nonce" db:"tx_nonce"`
+	TxNonce int64  `structs:"tx_nonce" db:"tx_nonce"`
 	ChainId string `structs:"chain_id" db:"chain_id"`
 }
 
 type DepositExistenceCheck struct {
 	ByTxHash  *string
-	ByTxNonce *int
+	ByTxNonce *int64
 	ByChainId *string
 }
 

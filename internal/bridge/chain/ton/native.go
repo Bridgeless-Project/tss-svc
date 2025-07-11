@@ -4,61 +4,10 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
-	"github.com/xssnick/tonutils-go/tlb"
-	"github.com/xssnick/tonutils-go/tvm/cell"
 )
-
-func (c *Client) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent, error) {
-	slice := body.BeginParse()
-
-	// Skip opCode bytes
-	_, err := slice.LoadInt(opCodeBitSize)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to skip opCode bytes")
-	}
-
-	sender, err := slice.LoadAddr()
-	if err != nil {
-		return nil, errors.Wrap(err, "error parsing sender address")
-	}
-
-	amount, err := slice.LoadInt(amountBitSize)
-	if err != nil {
-		return nil, errors.Wrap(err, "error parsing amount")
-	}
-
-	receiverCell, err := body.PeekRef(receiverCellId)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting receiver ref")
-	}
-
-	receiver, err := receiverCell.BeginParse().LoadSlice(receiverBitSize)
-	if err != nil {
-		return nil, errors.Wrap(err, "error parsing receiver address")
-	}
-
-	networkCell, err := body.PeekRef(networkCellId)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting network ref")
-	}
-
-	network, err := networkCell.BeginParse().LoadStringSnake()
-	if err != nil {
-		return nil, errors.Wrap(err, "error parsing network")
-	}
-
-	return &depositNativeContent{
-		Sender:   sender.Testnet(c.RPC.IsTestnet),
-		Amount:   big.NewInt(amount),
-		Receiver: cleanPrintable(string(receiver)),
-		ChainId:  cleanPrintable(network),
-	}, nil
-
-}
 
 func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 	master, err := c.Client.GetMasterchainInfo(context.Background())
@@ -109,15 +58,4 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 	}
 
 	return resBig.Bytes(), nil
-}
-
-func formNativeDepositData(content *depositNativeContent, tx *tlb.Transaction) *db.DepositData {
-	return &db.DepositData{
-		Block:              int64(tx.LT),
-		SourceAddress:      content.Sender.String(),
-		DepositAmount:      content.Amount,
-		TokenAddress:       bridge.DefaultNativeTokenAddress,
-		DestinationAddress: content.Receiver,
-		DestinationChainId: content.ChainId,
-	}
 }

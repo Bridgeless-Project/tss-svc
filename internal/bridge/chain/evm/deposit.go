@@ -24,7 +24,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, bridgeTypes.ErrTxFailed
 	}
 
-	if len(txReceipt.Logs) < id.TxNonce+1 {
+	if int64(len(txReceipt.Logs)) < id.TxNonce+1 {
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
 

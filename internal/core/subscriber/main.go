@@ -125,7 +125,7 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 		case bridgeTypes.AttributeKeyDepositTxHash:
 			deposit.TxHash = attribute[0]
 		case bridgeTypes.AttributeKeyDepositNonce:
-			n, err := strconv.Atoi(attribute[0])
+			n, err := strconv.ParseInt(attribute[0], 10, 64)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse deposit nonce")
 			}

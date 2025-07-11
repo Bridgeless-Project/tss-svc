@@ -30,7 +30,7 @@ func (e TonWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 
 	identifier.ChainId = e.ProposalData.DepositId.ChainId
 	identifier.TxHash = e.ProposalData.DepositId.TxHash
-	identifier.TxNonce = int(e.ProposalData.DepositId.TxNonce)
+	identifier.TxNonce = e.ProposalData.DepositId.TxNonce
 
 	return identifier
 }
@@ -69,7 +69,7 @@ func (c *TonWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*TonWith
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
 				TxHash:  deposit.TxHash,
-				TxNonce: uint32(deposit.TxNonce),
+				TxNonce: deposit.TxNonce,
 			},
 			SigData: sigHash,
 		},

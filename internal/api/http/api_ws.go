@@ -158,7 +158,7 @@ func identifierFromParams(r *http.Request) (*database.DepositIdentifier, error) 
 		TxHash:  chi.URLParam(r, paramTxHash),
 	}
 
-	nonce, err := strconv.Atoi(chi.URLParam(r, paramTxNonce))
+	nonce, err := strconv.ParseInt(chi.URLParam(r, paramTxNonce), 10, 64)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse tx nonce")
 	}
