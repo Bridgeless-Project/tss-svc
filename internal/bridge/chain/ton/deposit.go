@@ -54,7 +54,6 @@ func (dd DepositDecoder) parseDepositData(tx *tlb.Transaction) (*db.DepositData,
 		return nil, errors.Wrap(err, "error getting IO out msgs")
 	}
 
-	var depositData *db.DepositData
 	for _, msg := range msgs {
 		if msg.MsgType != tlb.MsgTypeExternalOut {
 			continue
@@ -72,8 +71,7 @@ func (dd DepositDecoder) parseDepositData(tx *tlb.Transaction) (*db.DepositData,
 				return nil, errors.Wrap(err, bridgeTypes.ErrDepositNotFound.Error())
 			}
 
-			depositData = dd.formNativeDepositData(content, tx)
-			break
+			return dd.formNativeDepositData(content, tx), nil
 
 		case depositJettonOpCode:
 			content, err := dd.parseDepositJettonBody(msg.AsExternalOut().Body)
@@ -81,14 +79,13 @@ func (dd DepositDecoder) parseDepositData(tx *tlb.Transaction) (*db.DepositData,
 				return nil, errors.Wrap(err, bridgeTypes.ErrDepositNotFound.Error())
 			}
 
-			depositData = dd.formJettonDepositData(content, tx)
+			return dd.formJettonDepositData(content, tx), nil
 		default:
-			return nil, bridgeTypes.ErrUnsupportedEvent
+			break
 		}
-
 	}
 
-	return depositData, nil
+	return nil, bridgeTypes.ErrDepositNotFound
 }
 
 // parseDepositJettonBody parses the body of a native deposit message and returns the content and error

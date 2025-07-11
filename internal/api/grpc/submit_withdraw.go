@@ -64,7 +64,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 
 	deposit, err = processor.FetchDeposit(id)
 	if err != nil {
-		logger.Debug("invalid deposit: ", err)
+		logger.Debug("failed to fetch deposit data: ", err)
 
 		if chain.IsPendingDepositError(err) {
 			return nil, ErrDepositPending

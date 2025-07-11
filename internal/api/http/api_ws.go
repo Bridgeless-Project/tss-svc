@@ -162,6 +162,10 @@ func identifierFromParams(r *http.Request) (*database.DepositIdentifier, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse tx nonce")
 	}
+	if nonce < 0 {
+		return nil, errors.New("tx nonce cannot be negative")
+	}
+
 	identifier.TxNonce = nonce
 
 	return identifier, nil

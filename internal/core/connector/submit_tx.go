@@ -2,7 +2,6 @@ package connector
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -14,8 +13,6 @@ func (c *Connector) SubmitDeposits(ctx context.Context, depositTxs ...bridgetype
 	if len(depositTxs) == 0 {
 		return nil
 	}
-
-	fmt.Println("c.account.CosmosAddress().String(): ", c.account.CosmosAddress().String())
 
 	msg := bridgetypes.NewMsgSubmitTransactions(c.account.CosmosAddress().String(), depositTxs...)
 	err := c.submitMsgs(ctx, msg)

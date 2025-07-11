@@ -33,11 +33,11 @@ func NewBridgeClient(chain Chain) *Client {
 
 	chain.Client = api
 
-	depositDecorator := NewDepositDecoder(*chain.BridgeContractAddress, chain.RPC.IsTestnet)
+	depositDecoder := NewDepositDecoder(*chain.BridgeContractAddress, chain.RPC.IsTestnet)
 
 	return &Client{
 		chain,
-		depositDecorator,
+		depositDecoder,
 	}
 }
 
