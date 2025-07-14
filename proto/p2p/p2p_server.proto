@@ -73,6 +73,11 @@ message EvmProposalData {
   bytes sigData = 2;
 }
 
+message SolanaProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+  bytes sigData = 2;
+}
+
 message ZanoProposalData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 

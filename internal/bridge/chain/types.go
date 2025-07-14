@@ -72,6 +72,7 @@ const (
 	TypeEVM     Type = "evm"
 	TypeZano    Type = "zano"
 	TypeBitcoin Type = "bitcoin"
+	TypeSolana  Type = "solana"
 	TypeOther   Type = "other"
 )
 
@@ -80,6 +81,7 @@ var typesMap = map[Type]struct{}{
 	TypeZano:    {},
 	TypeOther:   {},
 	TypeBitcoin: {},
+	TypeSolana:  {},
 }
 
 func (c Type) Validate() error {
