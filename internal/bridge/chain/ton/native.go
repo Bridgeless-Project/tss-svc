@@ -20,7 +20,7 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to get the network cell")
 	}
 
-	receiverCell, err := getAddressCell(deposit.WithdrawalChainId)
+	receiverCell, err := getAddressCell(deposit.Receiver)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get receiver address cell")
 	}
