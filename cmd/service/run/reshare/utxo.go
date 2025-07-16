@@ -8,8 +8,8 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
 	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	utxoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
@@ -18,7 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var consolidateParams = utxo.DefaultConsolidateOutputsParams
+var consolidateParams = client.DefaultConsolidateOutputsParams
 
 func init() {
 	registerReshareUtxoOptions(reshareUtxoCmd)
@@ -55,18 +55,18 @@ var reshareUtxoCmd = &cobra.Command{
 		}
 		parties := cfg.Parties()
 
-		var client utxo.Client
+		var cli client.Client
 		for _, ch := range cfg.Chains() {
 			if ch.Id == args[0] && ch.Type == chain.TypeBitcoin {
-				client = utxo.NewBridgeClient(utxochain.FromChain(ch))
+				cli = client.NewBridgeClient(utxochain.FromChain(ch))
 				break
 			}
 		}
-		if client == nil {
+		if cli == nil {
 			return errors.New("utxo client configuration not found")
 		}
 		targetAddr := args[1]
-		if !client.UtxoHelper().AddressValid(targetAddr) {
+		if !cli.UtxoHelper().AddressValid(targetAddr) {
 			return errors.New(fmt.Sprintf("invalid target address: %s", targetAddr))
 		}
 		if err != nil {
@@ -85,7 +85,7 @@ var reshareUtxoCmd = &cobra.Command{
 				Share:     share,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
-			client,
+			cli,
 			utxoResharing.SessionParams{
 				ConsolidateParams: consolidateParams,
 				TargetAddr:        targetAddr,

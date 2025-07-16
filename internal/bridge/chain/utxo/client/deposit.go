@@ -1,4 +1,4 @@
-package utxo
+package client
 
 import (
 	"encoding/hex"
@@ -8,6 +8,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil/base58"
@@ -15,8 +16,6 @@ import (
 )
 
 const (
-	minOpReturnCodeLen = 3
-
 	dstSeparator   = "-"
 	dstParamsCount = 2
 	dstAddrIdx     = 0
@@ -149,7 +148,7 @@ func (d *DepositDecoder) decodeDepositOutput(out btcjson.Vout) (amount *big.Int,
 		return nil, bridgeTypes.ErrInvalidDepositedAmount
 	}
 
-	return big.NewInt(ToUnits(out.Value)), nil
+	return big.NewInt(utils.ToUnits(out.Value)), nil
 }
 
 func (d *DepositDecoder) isBridgeAddress(addr string) bool {

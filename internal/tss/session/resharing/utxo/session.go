@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
@@ -22,7 +22,7 @@ var _ p2p.TssSession = &Session{}
 type SessionParams struct {
 	SessionParams     session.Params
 	TargetAddr        string
-	ConsolidateParams utxo.ConsolidateOutputsParams
+	ConsolidateParams client.ConsolidateOutputsParams
 }
 
 type Session struct {
@@ -35,7 +35,7 @@ type Session struct {
 	connectedPartiesCount func() int
 	parties               []p2p.Party
 
-	client         utxo.Client
+	client         client.Client
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[SigningData]
 	finalizer      *Finalizer
@@ -48,7 +48,7 @@ type Session struct {
 
 func NewSession(
 	self tss.LocalSignParty,
-	client utxo.Client,
+	client client.Client,
 	params SessionParams,
 	parties []p2p.Party,
 	connectedPartiesCountFunc func() int,

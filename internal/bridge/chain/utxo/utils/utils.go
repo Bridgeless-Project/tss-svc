@@ -1,9 +1,10 @@
-package utxo
+package utils
 
 import (
 	"bytes"
 	"encoding/hex"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
@@ -27,10 +28,10 @@ func EncodeTransaction(tx *wire.MsgTx) string {
 	return hex.EncodeToString(buf.Bytes())
 }
 
-func MapUnspent(unspent []btcjson.ListUnspentResult) map[OutPoint]btcjson.ListUnspentResult {
-	unspentMap := make(map[OutPoint]btcjson.ListUnspentResult, len(unspent))
+func MapUnspent(unspent []btcjson.ListUnspentResult) map[types.OutPoint]btcjson.ListUnspentResult {
+	unspentMap := make(map[types.OutPoint]btcjson.ListUnspentResult, len(unspent))
 	for _, u := range unspent {
-		unspentMap[OutPoint{TxID: u.TxID, Index: u.Vout}] = u
+		unspentMap[types.OutPoint{TxID: u.TxID, Index: u.Vout}] = u
 	}
 
 	return unspentMap
@@ -45,7 +46,7 @@ func FindUsedInputs(tx wire.MsgTx, unspent []btcjson.ListUnspentResult) ([]btcjs
 			return nil, errors.Errorf("nil input at index %d", i)
 		}
 
-		outPoint := OutPoint{
+		outPoint := types.OutPoint{
 			TxID:  txIn.PreviousOutPoint.Hash.String(),
 			Index: txIn.PreviousOutPoint.Index,
 		}

@@ -5,17 +5,17 @@ import (
 	"context"
 	"crypto/ecdsa"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Finalizer struct {
 	tssPub *ecdsa.PublicKey
-	client utxo.Client
+	client client.Client
 
 	data          *SigningData
 	signatures    []*common.SignatureData
@@ -28,7 +28,7 @@ type Finalizer struct {
 }
 
 func NewFinalizer(
-	client utxo.Client,
+	client client.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
 	sessionLeader bool,

@@ -1,4 +1,4 @@
-package helper
+package bch
 
 import (
 	"crypto/ecdsa"
@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	utxohelper "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
@@ -27,32 +29,32 @@ import (
 
 const sigHashType = bchscript.SigHashAll | bchscript.SigHashForkID
 
-type bchHelper struct {
+type helper struct {
 	chainParams      *bchcfg.Params
 	supportedScripts map[bchscript.ScriptClass]bool
 	mockKey          *bchec.PrivateKey
 
-	outputArranger OutputArranger
+	outputArranger utils.OutputArranger
 }
 
-func NewBchHelper(chainParams *bchcfg.Params) UtxoHelper {
+func NewHelper(chainParams *bchcfg.Params) utxohelper.UtxoHelper {
 	mockedKey, err := bchec.NewPrivateKey(elliptic.P256())
 	if err != nil {
 		panic(fmt.Sprintf("failed to create mocked private key: %v", err))
 	}
 
-	return &bchHelper{
+	return &helper{
 		chainParams: chainParams,
 		mockKey:     mockedKey,
 		supportedScripts: map[bchscript.ScriptClass]bool{
 			// TODO: review supported scripts
 			bchscript.PubKeyHashTy: true,
 		},
-		outputArranger: LargestFirstOutputArranger{},
+		outputArranger: utils.LargestFirstOutputArranger{},
 	}
 }
 
-func (b *bchHelper) ScriptSupported(script []byte) bool {
+func (b *helper) ScriptSupported(script []byte) bool {
 	if len(script) == 0 {
 		return false
 	}
@@ -61,7 +63,7 @@ func (b *bchHelper) ScriptSupported(script []byte) bool {
 	return b.supportedScripts[class]
 }
 
-func (b *bchHelper) ExtractScriptAddresses(script []byte) ([]string, error) {
+func (b *helper) ExtractScriptAddresses(script []byte) ([]string, error) {
 	if len(script) == 0 {
 		return nil, nil
 	}
@@ -82,12 +84,12 @@ func (b *bchHelper) ExtractScriptAddresses(script []byte) ([]string, error) {
 	return addrs, nil
 }
 
-func (b *bchHelper) AddressValid(addr string) bool {
+func (b *helper) AddressValid(addr string) bool {
 	_, err := bchutil.DecodeAddress(addr, b.chainParams)
 	return err == nil
 }
 
-func (b *bchHelper) PayToAddrScript(addr string) ([]byte, error) {
+func (b *helper) PayToAddrScript(addr string) ([]byte, error) {
 	address, err := bchutil.DecodeAddress(addr, b.chainParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode address")
@@ -101,7 +103,7 @@ func (b *bchHelper) PayToAddrScript(addr string) ([]byte, error) {
 	return script, nil
 }
 
-func (b *bchHelper) CalculateSignatureHash(scriptRaw []byte, tx *btcwire.MsgTx, idx int, amt int64) ([]byte, error) {
+func (b *helper) CalculateSignatureHash(scriptRaw []byte, tx *btcwire.MsgTx, idx int, amt int64) ([]byte, error) {
 	if len(scriptRaw) == 0 {
 		return nil, errors.New("script cannot be empty")
 	}
@@ -117,7 +119,7 @@ func (b *bchHelper) CalculateSignatureHash(scriptRaw []byte, tx *btcwire.MsgTx, 
 	return sigHash, nil
 }
 
-func (b *bchHelper) MockSignatureScript(scriptRaw []byte, tx *btcwire.MsgTx, idx int, amt int64) ([]byte, error) {
+func (b *helper) MockSignatureScript(scriptRaw []byte, tx *btcwire.MsgTx, idx int, amt int64) ([]byte, error) {
 	if len(scriptRaw) == 0 {
 		return nil, errors.New("script cannot be empty")
 	}
@@ -132,7 +134,7 @@ func (b *bchHelper) MockSignatureScript(scriptRaw []byte, tx *btcwire.MsgTx, idx
 	return sigScript, nil
 }
 
-func (b *bchHelper) P2pkhAddress(pk *ecdsa.PublicKey) string {
+func (b *helper) P2pkhAddress(pk *ecdsa.PublicKey) string {
 	compressed := crypto.CompressPubkey(pk)
 	pubKeyHash := bchutil.Hash160(compressed)
 
@@ -141,13 +143,13 @@ func (b *bchHelper) P2pkhAddress(pk *ecdsa.PublicKey) string {
 	return addr.String()
 }
 
-func (b *bchHelper) InjectSignatures(tx *btcwire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error {
+func (b *helper) InjectSignatures(tx *btcwire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error {
 	if len(signatures) != len(tx.TxIn) {
 		return errors.New("signatures count does not match inputs count")
 	}
 
 	for i, sig := range signatures {
-		encodedSig := EncodeSignature(sig, byte(sigHashType))
+		encodedSig := utils.EncodeSignature(sig, byte(sigHashType))
 		sigScript, err := bchscript.
 			NewScriptBuilder().
 			AddData(encodedSig).
@@ -163,7 +165,7 @@ func (b *bchHelper) InjectSignatures(tx *btcwire.MsgTx, signatures []*common.Sig
 	return nil
 }
 
-func (b *bchHelper) TxHash(tx *btcwire.MsgTx) string {
+func (b *helper) TxHash(tx *btcwire.MsgTx) string {
 	if tx == nil {
 		return ""
 	}
@@ -172,7 +174,7 @@ func (b *bchHelper) TxHash(tx *btcwire.MsgTx) string {
 	return bchWire.TxHash().String()
 }
 
-func (b *bchHelper) RetrieveOpReturnData(script []byte) (string, error) {
+func (b *helper) RetrieveOpReturnData(script []byte) (string, error) {
 	if bchscript.GetScriptClass(script) != bchscript.NullDataTy {
 		return "", errors.New("invalid script type, expected valid OP_RETURN")
 	}
@@ -189,7 +191,7 @@ func (b *bchHelper) RetrieveOpReturnData(script []byte) (string, error) {
 	return string(data[0]), nil
 }
 
-func (b *bchHelper) NewUnsignedTransaction(
+func (b *helper) NewUnsignedTransaction(
 	unspent []btcjson.ListUnspentResult,
 	feeRate btcutil.Amount,
 	outputs []*btcwire.TxOut,
@@ -201,7 +203,7 @@ func (b *bchHelper) NewUnsignedTransaction(
 	}
 
 	arranged := b.outputArranger.ArrangeOutputs(unspent)
-	inputSource := inputSourceBch(arranged)
+	inputSource := inputSource(arranged)
 
 	tx, err := bchtxauthor.NewUnsignedTransaction(
 		outputsToBch(outputs),
@@ -301,7 +303,7 @@ func wireToBch(tx *btcwire.MsgTx) *bchwire.MsgTx {
 	return txc
 }
 
-func (b *bchHelper) changeSource(addr string) (bchtxauthor.ChangeSource, error) {
+func (b *helper) changeSource(addr string) (bchtxauthor.ChangeSource, error) {
 	changeScript, err := b.PayToAddrScript(addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create change address script")
@@ -310,7 +312,7 @@ func (b *bchHelper) changeSource(addr string) (bchtxauthor.ChangeSource, error) 
 	return func() ([]byte, error) { return changeScript, nil }, nil
 }
 
-func inputSourceBch(outputs []btcjson.ListUnspentResult) bchtxauthor.InputSource {
+func inputSource(outputs []btcjson.ListUnspentResult) bchtxauthor.InputSource {
 	// Current inputs and their total value.
 	// These are closed over by the returned input source and reused across multiple calls.
 	currentTotal := bchutil.Amount(0)

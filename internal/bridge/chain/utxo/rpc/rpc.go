@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -21,12 +21,12 @@ type Settings struct {
 	Host     string
 	User     string
 	Password string
-	Chain    utxotypes.Chain
+	Chain    types.Chain
 }
 
 type Client struct {
 	c     *rpc.Client
-	chain utxotypes.Chain
+	chain types.Chain
 }
 
 func NewClient(settings Settings) (*Client, error) {
@@ -74,10 +74,10 @@ func (c *Client) SendRawTransaction(tx *wire.MsgTx) (string, error) {
 	txHex := hex.EncodeToString(buf.Bytes())
 	var maxFee interface{}
 	switch c.chain {
-	case utxotypes.ChainBtc:
+	case types.ChainBtc:
 		// BTC per kVb; default max fee rate
 		maxFee = 0.1
-	case utxotypes.ChainBch:
+	case types.ChainBch:
 		maxFee = false
 	}
 
@@ -101,7 +101,7 @@ func (c *Client) FundRawTransaction(
 
 	txHex := hex.EncodeToString(buf.Bytes())
 	args := []interface{}{txHex, opts}
-	if c.chain == utxotypes.ChainBtc {
+	if c.chain == types.ChainBtc {
 		// optional btc arg for Bitcoin Core
 		args = append(args, nil)
 	}

@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
@@ -56,12 +57,12 @@ func (e UtxoWithdrawalData) HashString() string {
 }
 
 type UtxoWithdrawalConstructor struct {
-	client  utxo.Client
+	client  client.Client
 	helper  helper.UtxoHelper
 	tssAddr string
 }
 
-func NewBitcoinConstructor(client utxo.Client, tssPub *ecdsa.PublicKey) *UtxoWithdrawalConstructor {
+func NewBitcoinConstructor(client client.Client, tssPub *ecdsa.PublicKey) *UtxoWithdrawalConstructor {
 	hlp := client.UtxoHelper()
 	return &UtxoWithdrawalConstructor{
 		client:  client,
@@ -88,7 +89,7 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 
 	unsignedTxData, err := c.helper.NewUnsignedTransaction(
 		unspent,
-		utxo.DefaultFeeRateBtcPerKvb,
+		utils.DefaultFeeRateBtcPerKvb,
 		[]*wire.TxOut{receiverOutput},
 		c.tssAddr,
 	)
@@ -116,7 +117,7 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 				TxHash:  deposit.TxHash,
 			},
 			SerializedTx: txSerialized,
-			FeeRate:      int64(utxo.DefaultFeeRateBtcPerKvb),
+			FeeRate:      int64(utils.DefaultFeeRateBtcPerKvb),
 			SigData:      sigHashes,
 		},
 	}, nil
@@ -129,7 +130,7 @@ func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposit db.
 	}
 
 	feeRate := btcutil.Amount(data.ProposalData.FeeRate)
-	if !utxo.FeeRateValid(feeRate) {
+	if !utils.FeeRateValid(feeRate) {
 		return false, errors.Errorf("invalid fee rate: %d", data.ProposalData.FeeRate)
 	}
 
@@ -138,7 +139,7 @@ func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposit db.
 		// TODO: RPC err
 		return false, errors.Wrap(err, "failed to get available UTXOs")
 	}
-	usedInputs, err := utxo.FindUsedInputs(tx, unspent)
+	usedInputs, err := utils.FindUsedInputs(tx, unspent)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to find tx used inputs")
 	}

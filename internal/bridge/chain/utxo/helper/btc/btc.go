@@ -1,10 +1,12 @@
-package helper
+package btc
 
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
 
+	utxohelper "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcjson"
@@ -18,36 +20,36 @@ import (
 	"github.com/pkg/errors"
 )
 
-type btcHelper struct {
+type helper struct {
 	chainParams      *btccfg.Params
 	supportedScripts map[btcscript.ScriptClass]bool
 	mockKey          *btcec.PrivateKey
 
-	outputArranger OutputArranger
+	outputArranger utils.OutputArranger
 }
 
-func NewBtcHelper(chainParams *btccfg.Params) UtxoHelper {
+func NewHelper(chainParams *btccfg.Params) utxohelper.UtxoHelper {
 	mockedKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		panic(fmt.Sprintf("failed to create mocked private key: %v", err))
 	}
 
-	return &btcHelper{
+	return &helper{
 		chainParams: chainParams,
 		mockKey:     mockedKey,
 		supportedScripts: map[btcscript.ScriptClass]bool{
 			btcscript.PubKeyHashTy: true,
 		},
-		outputArranger: LargestFirstOutputArranger{},
+		outputArranger: utils.LargestFirstOutputArranger{},
 	}
 }
 
-func (b *btcHelper) AddressValid(addr string) bool {
+func (b *helper) AddressValid(addr string) bool {
 	_, err := btcutil.DecodeAddress(addr, b.chainParams)
 	return err == nil
 }
 
-func (b *btcHelper) ScriptSupported(script []byte) bool {
+func (b *helper) ScriptSupported(script []byte) bool {
 	if len(script) == 0 {
 		return false
 	}
@@ -56,7 +58,7 @@ func (b *btcHelper) ScriptSupported(script []byte) bool {
 	return b.supportedScripts[class]
 }
 
-func (b *btcHelper) ExtractScriptAddresses(script []byte) ([]string, error) {
+func (b *helper) ExtractScriptAddresses(script []byte) ([]string, error) {
 	if len(script) == 0 {
 		return nil, nil
 	}
@@ -77,7 +79,7 @@ func (b *btcHelper) ExtractScriptAddresses(script []byte) ([]string, error) {
 	return addrs, nil
 }
 
-func (b *btcHelper) PayToAddrScript(addr string) ([]byte, error) {
+func (b *helper) PayToAddrScript(addr string) ([]byte, error) {
 	address, err := btcutil.DecodeAddress(addr, b.chainParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode address")
@@ -91,7 +93,7 @@ func (b *btcHelper) PayToAddrScript(addr string) ([]byte, error) {
 	return script, nil
 }
 
-func (b *btcHelper) CalculateSignatureHash(scriptRaw []byte, tx *wire.MsgTx, idx int, _ int64) ([]byte, error) {
+func (b *helper) CalculateSignatureHash(scriptRaw []byte, tx *wire.MsgTx, idx int, _ int64) ([]byte, error) {
 	if len(scriptRaw) == 0 {
 		return nil, errors.New("script cannot be empty")
 	}
@@ -104,7 +106,7 @@ func (b *btcHelper) CalculateSignatureHash(scriptRaw []byte, tx *wire.MsgTx, idx
 	return sigHash, nil
 }
 
-func (b *btcHelper) MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx int, _ int64) ([]byte, error) {
+func (b *helper) MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx int, _ int64) ([]byte, error) {
 	if len(scriptRaw) == 0 {
 		return nil, errors.New("script cannot be empty")
 	}
@@ -117,13 +119,13 @@ func (b *btcHelper) MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx in
 	return sigScript, nil
 }
 
-func (b *btcHelper) InjectSignatures(tx *wire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error {
+func (b *helper) InjectSignatures(tx *wire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error {
 	if len(signatures) != len(tx.TxIn) {
 		return errors.New("signatures count does not match inputs count")
 	}
 
 	for i, sig := range signatures {
-		encodedSig := EncodeSignature(sig, byte(btcscript.SigHashAll))
+		encodedSig := utils.EncodeSignature(sig, byte(btcscript.SigHashAll))
 		sigScript, err := btcscript.
 			NewScriptBuilder().
 			AddData(encodedSig).
@@ -139,7 +141,7 @@ func (b *btcHelper) InjectSignatures(tx *wire.MsgTx, signatures []*common.Signat
 	return nil
 }
 
-func (b *btcHelper) P2pkhAddress(pub *ecdsa.PublicKey) string {
+func (b *helper) P2pkhAddress(pub *ecdsa.PublicKey) string {
 	compressed := crypto.CompressPubkey(pub)
 	pubKeyHash := btcutil.Hash160(compressed)
 
@@ -148,7 +150,7 @@ func (b *btcHelper) P2pkhAddress(pub *ecdsa.PublicKey) string {
 	return addr.String()
 }
 
-func (b *btcHelper) TxHash(tx *wire.MsgTx) string {
+func (b *helper) TxHash(tx *wire.MsgTx) string {
 	if tx == nil {
 		return ""
 	}
@@ -156,7 +158,7 @@ func (b *btcHelper) TxHash(tx *wire.MsgTx) string {
 	return tx.TxHash().String()
 }
 
-func (b *btcHelper) RetrieveOpReturnData(script []byte) (string, error) {
+func (b *helper) RetrieveOpReturnData(script []byte) (string, error) {
 	if !btcscript.IsNullData(script) {
 		return "", errors.New("invalid script type, expected valid OP_RETURN")
 	}
@@ -172,7 +174,7 @@ func (b *btcHelper) RetrieveOpReturnData(script []byte) (string, error) {
 	return string(data[0]), nil
 }
 
-func (b *btcHelper) NewUnsignedTransaction(
+func (b *helper) NewUnsignedTransaction(
 	unspent []btcjson.ListUnspentResult,
 	feeRate btcutil.Amount,
 	outputs []*wire.TxOut,
@@ -184,7 +186,7 @@ func (b *btcHelper) NewUnsignedTransaction(
 	}
 
 	arranged := b.outputArranger.ArrangeOutputs(unspent)
-	inputSource := inputSourceBtc(arranged)
+	inputSource := inputSource(arranged)
 
 	tx, err := txauthor.NewUnsignedTransaction(
 		outputs,
@@ -200,7 +202,7 @@ func (b *btcHelper) NewUnsignedTransaction(
 	return tx, nil
 }
 
-func (b *btcHelper) changeSource(addr string) (*txauthor.ChangeSource, error) {
+func (b *helper) changeSource(addr string) (*txauthor.ChangeSource, error) {
 	changeScript, err := b.PayToAddrScript(addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create change address script")
@@ -212,7 +214,7 @@ func (b *btcHelper) changeSource(addr string) (*txauthor.ChangeSource, error) {
 	}, nil
 }
 
-func inputSourceBtc(outputs []btcjson.ListUnspentResult) txauthor.InputSource {
+func inputSource(outputs []btcjson.ListUnspentResult) txauthor.InputSource {
 	// Current inputs and their total value.
 	// These are closed over by the returned input source and reused across multiple calls.
 	currentTotal := btcutil.Amount(0)

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
+	utxoclient "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -283,7 +283,7 @@ func configureSigningSession(
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
-		).WithDepositFetcher(fetcher).WithClient(client.(utxo.Client)).WithCoreConnector(connector)
+		).WithDepositFetcher(fetcher).WithClient(client.(utxoclient.Client)).WithCoreConnector(connector)
 		if err := btcSession.Build(); err != nil {
 			panic(errors.Wrap(err, "failed to build bitcoin session"))
 		}

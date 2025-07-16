@@ -8,8 +8,10 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/btcsuite/btcd/btcjson"
@@ -41,13 +43,13 @@ func (s SigningData) HashString() string {
 }
 
 type ConsensusMechanism struct {
-	client  utxo.Client
+	client  client.Client
 	helper  helper.UtxoHelper
 	dstAddr string
-	params  utxo.ConsolidateOutputsParams
+	params  client.ConsolidateOutputsParams
 }
 
-func NewConsensusMechanism(client utxo.Client, dst string, params utxo.ConsolidateOutputsParams) *ConsensusMechanism {
+func NewConsensusMechanism(client client.Client, dst string, params client.ConsolidateOutputsParams) *ConsensusMechanism {
 	return &ConsensusMechanism{
 		client,
 		client.UtxoHelper(),
@@ -59,9 +61,9 @@ func NewConsensusMechanism(client utxo.Client, dst string, params utxo.Consolida
 func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	tx, sigHashes, err := m.client.ConsolidateOutputs(
 		m.dstAddr,
-		utxo.WithFeeRate(m.params.FeeRate),
-		utxo.WithOutputsCount(m.params.OutputsCount),
-		utxo.WithMaxInputsCount(m.params.MaxInputsCount),
+		client.WithFeeRate(m.params.FeeRate),
+		client.WithOutputsCount(m.params.OutputsCount),
+		client.WithMaxInputsCount(m.params.MaxInputsCount),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to consolidate outputs")
@@ -135,7 +137,7 @@ func (m *ConsensusMechanism) validateOutputs(tx *wire.MsgTx) (int64, error) {
 
 func (m *ConsensusMechanism) validateInputs(
 	tx *wire.MsgTx,
-	inputs map[utxo.OutPoint]btcjson.ListUnspentResult,
+	inputs map[types.OutPoint]btcjson.ListUnspentResult,
 	sigHashes [][]byte,
 ) (int64, error) {
 	var inputsSum int64
@@ -145,8 +147,8 @@ func (m *ConsensusMechanism) validateInputs(
 			return 0, errors.New(fmt.Sprintf("nil input at index %d", idx))
 		}
 
-		unspent := inputs[utxo.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
-		unspentAmount := utxo.ToUnits(unspent.Amount)
+		unspent := inputs[types.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
+		unspentAmount := utils.ToUnits(unspent.Amount)
 
 		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
 		if err != nil {
@@ -166,7 +168,7 @@ func (m *ConsensusMechanism) validateInputs(
 	return inputsSum, nil
 }
 
-func (m *ConsensusMechanism) validateChange(tx *wire.MsgTx, inputs map[utxo.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
+func (m *ConsensusMechanism) validateChange(tx *wire.MsgTx, inputs map[types.OutPoint]btcjson.ListUnspentResult, inputsSum, outputsSum int64) error {
 	actualFee := inputsSum - outputsSum
 	if actualFee <= 0 {
 		return errors.New("invalid change amount")

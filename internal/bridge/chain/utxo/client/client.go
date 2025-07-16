@@ -1,4 +1,4 @@
-package utxo
+package client
 
 import (
 	"math/big"
@@ -7,6 +7,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/factory"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/wire"
@@ -17,8 +19,8 @@ type Client interface {
 
 	ConsolidationThreshold() int
 	CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error)
-	FindUsedInputs(tx *wire.MsgTx) (map[OutPoint]btcjson.ListUnspentResult, error)
-	MockTransaction(tx *wire.MsgTx, inputs map[OutPoint]btcjson.ListUnspentResult) (*wire.MsgTx, error)
+	FindUsedInputs(tx *wire.MsgTx) (map[types.OutPoint]btcjson.ListUnspentResult, error)
+	MockTransaction(tx *wire.MsgTx, inputs map[types.OutPoint]btcjson.ListUnspentResult) (*wire.MsgTx, error)
 	ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions) (*wire.MsgTx, [][]byte, error)
 	UnspentCount() (int, error)
 	LockOutputs(tx *wire.MsgTx) error
@@ -39,7 +41,7 @@ type client struct {
 }
 
 func NewBridgeClient(chain utxochain.Chain) Client {
-	chainHelper := helper.NewUtxoHelper(chain.Meta.Chain, chain.Meta.Network)
+	chainHelper := factory.NewUtxoHelper(chain.Meta.Chain, chain.Meta.Network)
 	return &client{
 		chain:          chain,
 		helper:         chainHelper,

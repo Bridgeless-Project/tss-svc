@@ -1,4 +1,4 @@
-package helper
+package utils
 
 import (
 	"github.com/bnb-chain/tss-lib/v2/common"

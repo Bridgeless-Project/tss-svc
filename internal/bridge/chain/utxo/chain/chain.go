@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/factory"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/rpc"
 	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/pkg/errors"
@@ -50,7 +50,7 @@ func FromChain(c chain.Chain) Chain {
 		panic(errors.Wrap(err, "failed to decode bitcoin receivers"))
 	}
 
-	hlp := helper.NewUtxoHelper(ch.Meta.Chain, ch.Meta.Network)
+	hlp := factory.NewUtxoHelper(ch.Meta.Chain, ch.Meta.Network)
 	for _, addr := range ch.Receivers {
 		if !hlp.AddressValid(addr) {
 			panic(errors.Errorf("invalid receiver address: %s", addr))

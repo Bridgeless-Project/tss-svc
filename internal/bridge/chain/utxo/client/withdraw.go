@@ -1,25 +1,14 @@
-package utxo
+package client
 
 import (
 	"math/big"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
 )
-
-var (
-	// minimum fee rate is 0.00001 BTC per kilobyte
-	MaxFeeRateBtcPerKvb, _     = btcutil.NewAmount(0.0001)
-	DefaultFeeRateBtcPerKvb, _ = btcutil.NewAmount(0.00002)
-)
-
-type OutPoint struct {
-	TxID  string
-	Index uint32
-}
 
 func (c *client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error) {
 	amount, set := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
@@ -39,7 +28,7 @@ func (c *client) CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr strin
 
 	unsignedTxData, err := c.helper.NewUnsignedTransaction(
 		unspent,
-		DefaultFeeRateBtcPerKvb,
+		utils.DefaultFeeRateBtcPerKvb,
 		[]*wire.TxOut{receiverOutput},
 		changeAddr,
 	)

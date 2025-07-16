@@ -6,7 +6,8 @@ import (
 	"crypto/ecdsa"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -25,7 +26,7 @@ type Finalizer struct {
 	db   database.DepositsQ
 	core *coreConnector.Connector
 
-	client utxo.Client
+	client client.Client
 
 	sessionLeader bool
 
@@ -36,7 +37,7 @@ type Finalizer struct {
 func NewFinalizer(
 	db database.DepositsQ,
 	core *coreConnector.Connector,
-	client utxo.Client,
+	client client.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
 	sessionLeader bool,
@@ -102,7 +103,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	encodedTx := utxo.EncodeTransaction(&tx)
+	encodedTx := utils.EncodeTransaction(&tx)
 	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to submit deposit")
 		return
