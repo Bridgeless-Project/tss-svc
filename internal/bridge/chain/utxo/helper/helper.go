@@ -5,10 +5,11 @@ import (
 
 	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/btcsuite/btcd/btcec/v2"
-	ecdsabtc "github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 	btccfg "github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcwallet/wallet/txauthor"
 	bchcfg "github.com/gcash/bchd/chaincfg"
 )
 
@@ -21,6 +22,12 @@ type UtxoHelper interface {
 	ExtractScriptAddresses(scriptRaw []byte) ([]string, error)
 	PayToAddrScript(addr string) ([]byte, error)
 
+	NewUnsignedTransaction(
+		unspent []btcjson.ListUnspentResult,
+		feeRate btcutil.Amount,
+		outputs []*wire.TxOut,
+		changeAddr string,
+	) (*txauthor.AuthoredTx, error)
 	CalculateSignatureHash(scriptRaw []byte, tx *wire.MsgTx, idx int, amt int64) ([]byte, error)
 	MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx int, amt int64) ([]byte, error)
 
@@ -61,18 +68,4 @@ func NewUtxoHelper(
 	}
 
 	panic("unsupported chain subtype")
-}
-
-func EncodeSignature(sig *common.SignatureData, sigHashType byte) []byte {
-	if sig == nil {
-		return nil
-	}
-
-	r, s := new(btcec.ModNScalar), new(btcec.ModNScalar)
-	r.SetByteSlice(sig.R)
-	s.SetByteSlice(sig.S)
-
-	btcSig := ecdsabtc.NewSignature(r, s)
-
-	return append(btcSig.Serialize(), sigHashType)
 }

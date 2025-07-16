@@ -2,14 +2,18 @@ package helper
 
 import (
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	btccfg "github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcscript "github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcwallet/wallet/txauthor"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 )
@@ -18,6 +22,8 @@ type btcHelper struct {
 	chainParams      *btccfg.Params
 	supportedScripts map[btcscript.ScriptClass]bool
 	mockKey          *btcec.PrivateKey
+
+	outputArranger OutputArranger
 }
 
 func NewBtcHelper(chainParams *btccfg.Params) UtxoHelper {
@@ -29,10 +35,10 @@ func NewBtcHelper(chainParams *btccfg.Params) UtxoHelper {
 	return &btcHelper{
 		chainParams: chainParams,
 		mockKey:     mockedKey,
-		// TODO: review supported scripts
 		supportedScripts: map[btcscript.ScriptClass]bool{
 			btcscript.PubKeyHashTy: true,
 		},
+		outputArranger: LargestFirstOutputArranger{},
 	}
 }
 
@@ -164,4 +170,80 @@ func (b *btcHelper) RetrieveOpReturnData(script []byte) (string, error) {
 	}
 
 	return string(data[0]), nil
+}
+
+func (b *btcHelper) NewUnsignedTransaction(
+	unspent []btcjson.ListUnspentResult,
+	feeRate btcutil.Amount,
+	outputs []*wire.TxOut,
+	changeAddr string,
+) (*txauthor.AuthoredTx, error) {
+	changeSource, err := b.changeSource(changeAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create change source")
+	}
+
+	arranged := b.outputArranger.ArrangeOutputs(unspent)
+	inputSource := inputSourceBtc(arranged)
+
+	tx, err := txauthor.NewUnsignedTransaction(
+		outputs,
+		feeRate,
+		inputSource,
+		changeSource,
+	)
+	if err != nil {
+		// TODO: handle not enough funds error
+		return nil, errors.Wrap(err, "failed to create unsigned transaction")
+	}
+
+	return tx, nil
+}
+
+func (b *btcHelper) changeSource(addr string) (*txauthor.ChangeSource, error) {
+	changeScript, err := b.PayToAddrScript(addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create change address script")
+	}
+
+	return &txauthor.ChangeSource{
+		NewScript:  func() ([]byte, error) { return changeScript, nil },
+		ScriptSize: len(changeScript),
+	}, nil
+}
+
+func inputSourceBtc(outputs []btcjson.ListUnspentResult) txauthor.InputSource {
+	// Current inputs and their total value.
+	// These are closed over by the returned input source and reused across multiple calls.
+	currentTotal := btcutil.Amount(0)
+	currentInputs := make([]*wire.TxIn, 0, len(outputs))
+	currentScripts := make([][]byte, 0, len(outputs))
+	currentInputValues := make([]btcutil.Amount, 0, len(outputs))
+
+	return func(target btcutil.Amount) (btcutil.Amount, []*wire.TxIn, []btcutil.Amount, [][]byte, error) {
+		for currentTotal < target && len(outputs) != 0 {
+			out := outputs[0]
+
+			txHash, err := chainhash.NewHashFromStr(out.TxID)
+			if err != nil {
+				return 0, nil, nil, nil, errors.Wrapf(err, "failed to parse tx hash %s", out.TxID)
+			}
+			pkScript, err := hex.DecodeString(out.ScriptPubKey)
+			if err != nil {
+				return 0, nil, nil, nil, errors.Wrap(err, "failed to decode script pub key")
+			}
+
+			outpoint := &wire.OutPoint{Hash: *txHash, Index: out.Vout}
+			amount := btcutil.Amount(out.Amount)
+
+			currentInputs = append(currentInputs, wire.NewTxIn(outpoint, nil, nil))
+			currentScripts = append(currentScripts, pkScript)
+			currentTotal += amount
+			currentInputValues = append(currentInputValues, amount)
+
+			outputs = outputs[1:]
+		}
+
+		return currentTotal, currentInputs, currentInputValues, currentScripts, nil
+	}
 }

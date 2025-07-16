@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package deposit;
 
-option go_package = "github.com/hyle-team/tss-svc/internal/types";
+option go_package = "github.com/Bridgeless-Project/tss-svc/internal/types";
 
 enum WithdrawalStatus {
   WITHDRAWAL_STATUS_UNSPECIFIED = 0;

@@ -111,9 +111,8 @@ func (c *Client) FundRawTransaction(
 	return &funded, extractRpcError(err)
 }
 
-func (c *Client) ListUnspent() ([]btcjson.ListUnspentResult, error) {
+func (c *Client) ListUnspent(minConfirm uint64) ([]btcjson.ListUnspentResult, error) {
 	var unspent []btcjson.ListUnspentResult
-	const minConfirm = 1
 	const maxConfirm = 9999999
 	err := c.Call(&unspent, "listunspent", minConfirm, maxConfirm, nil)
 	return unspent, extractRpcError(err)

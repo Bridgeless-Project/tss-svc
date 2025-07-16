@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"math"
 	"math/big"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
@@ -14,8 +12,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcwallet/wallet/txauthor"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -72,15 +71,42 @@ func NewBitcoinConstructor(client utxo.Client, tssPub *ecdsa.PublicKey) *UtxoWit
 }
 
 func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWithdrawalData, error) {
-	tx, sigHashes, err := c.client.CreateUnsignedWithdrawalTx(deposit, c.tssAddr)
+	amount, set := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
+	if !set {
+		return nil, errors.New("failed to parse amount")
+	}
+	receiverScript, err := c.helper.PayToAddrScript(deposit.Receiver)
 	if err != nil {
+		return nil, errors.Wrap(err, "failed to create script")
+	}
+	receiverOutput := wire.NewTxOut(amount.Int64(), receiverScript)
+
+	unspent, err := c.client.ListUnspent()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get available UTXOs")
+	}
+
+	unsignedTxData, err := c.helper.NewUnsignedTransaction(
+		unspent,
+		utxo.DefaultFeeRateBtcPerKvb,
+		[]*wire.TxOut{receiverOutput},
+		c.tssAddr,
+	)
+	if err != nil {
+		// TODO: check not enough funds err
 		return nil, errors.Wrap(err, "failed to create unsigned transaction")
 	}
 
+	sigHashes, err := c.formSignatureHashes(unsignedTxData)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to form signature hashes")
+	}
+
 	var buf bytes.Buffer
-	if err = tx.Serialize(&buf); err != nil {
+	if err = unsignedTxData.Tx.Serialize(&buf); err != nil {
 		return nil, errors.Wrap(err, "failed to serialize transaction")
 	}
+	txSerialized := buf.Bytes()
 
 	return &UtxoWithdrawalData{
 		ProposalData: &p2p.BitcoinProposalData{
@@ -89,7 +115,8 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 				TxNonce: uint32(deposit.TxNonce),
 				TxHash:  deposit.TxHash,
 			},
-			SerializedTx: buf.Bytes(),
+			SerializedTx: txSerialized,
+			FeeRate:      int64(utxo.DefaultFeeRateBtcPerKvb),
 			SigData:      sigHashes,
 		},
 	}, nil
@@ -101,130 +128,81 @@ func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposit db.
 		return false, errors.Wrap(err, "failed to deserialize transaction")
 	}
 
-	outputsSum, err := c.validateOutputs(&tx, deposit)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to validate outputs")
+	feeRate := btcutil.Amount(data.ProposalData.FeeRate)
+	if !utxo.FeeRateValid(feeRate) {
+		return false, errors.Errorf("invalid fee rate: %d", data.ProposalData.FeeRate)
 	}
 
-	usedInputs, err := c.client.FindUsedInputs(&tx)
+	unspent, err := c.client.ListUnspent()
 	if err != nil {
-		return false, errors.Wrap(err, "failed to find used inputs")
+		// TODO: RPC err
+		return false, errors.Wrap(err, "failed to get available UTXOs")
+	}
+	usedInputs, err := utxo.FindUsedInputs(tx, unspent)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to find tx used inputs")
 	}
 
-	inputsSum, err := c.validateInputs(&tx, usedInputs, data.ProposalData.SigData)
+	amount, set := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
+	if !set {
+		return false, errors.New("failed to parse amount")
+	}
+	receiverScript, err := c.helper.PayToAddrScript(deposit.Receiver)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to validate inputs")
+		return false, errors.Wrap(err, "failed to create script")
+	}
+	receiverOutput := wire.NewTxOut(amount.Int64(), receiverScript)
+
+	unsignedTxData, err := c.helper.NewUnsignedTransaction(
+		usedInputs,
+		feeRate,
+		[]*wire.TxOut{receiverOutput},
+		c.tssAddr,
+	)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to create unsigned transaction")
 	}
 
-	if err = c.validateChange(&tx, usedInputs, inputsSum, outputsSum); err != nil {
-		return false, errors.Wrap(err, "failed to validate change")
+	var buf bytes.Buffer
+	if err = unsignedTxData.Tx.Serialize(&buf); err != nil {
+		return false, errors.Wrap(err, "failed to serialize transaction")
+	}
+	txSerialized := buf.Bytes()
+	if !bytes.Equal(txSerialized, data.ProposalData.SerializedTx) {
+		return false, errors.New("provided transaction does not match the expected one")
+	}
+
+	sigHashes, err := c.formSignatureHashes(unsignedTxData)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to form signature hashes")
+	}
+	if len(sigHashes) != len(data.ProposalData.SigData) {
+		return false, errors.New("signature hashes number mismatch")
+	}
+	for i, sigHash := range data.ProposalData.SigData {
+		if !bytes.Equal(sigHash, sigHashes[i]) {
+			return false, errors.Errorf("signature hash mismatch at index %d", i)
+		}
 	}
 
 	return true, nil
 }
 
-func (c *UtxoWithdrawalConstructor) validateOutputs(tx *wire.MsgTx, deposit db.Deposit) (int64, error) {
-	outputsSum, receiverIdx := int64(0), 0
-	switch len(tx.TxOut) {
-	case 2:
-		// 1st output is for the change, 2nd is for the receiver
-		receiverIdx = 1
-		changeOutput := tx.TxOut[0]
-		outputsSum += changeOutput.Value
-
-		outScript, err := c.helper.PayToAddrScript(c.tssAddr)
+func (c *UtxoWithdrawalConstructor) formSignatureHashes(unsignedTxData *txauthor.AuthoredTx) ([][]byte, error) {
+	sigHashes := make([][]byte, len(unsignedTxData.PrevScripts))
+	for i := range unsignedTxData.PrevScripts {
+		sigHash, err := c.helper.CalculateSignatureHash(
+			unsignedTxData.PrevScripts[i],
+			unsignedTxData.Tx,
+			i,
+			int64(unsignedTxData.PrevInputValues[i]),
+		)
 		if err != nil {
-			return 0, errors.Wrap(err, "failed to create change output script")
-		}
-		if !bytes.Equal(changeOutput.PkScript, outScript) {
-			return 0, errors.New("invalid change output script")
+			return nil, errors.Wrapf(err, "failed to calculate signature hash for tx %d", i)
 		}
 
-		fallthrough
-	case 1:
-		receiverOutput := tx.TxOut[receiverIdx]
-		withdrawalAmount, ok := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
-		if !ok || receiverOutput.Value != withdrawalAmount.Int64() {
-			return 0, errors.New("invalid withdrawal amount")
-		}
-		outputsSum += receiverOutput.Value
-
-		outScript, err := c.helper.PayToAddrScript(deposit.Receiver)
-		if err != nil {
-			return 0, errors.Wrap(err, "failed to create change output script")
-		}
-		if !bytes.Equal(receiverOutput.PkScript, outScript) {
-			return 0, errors.New("invalid receiver output script")
-		}
-	default:
-		return 0, errors.New("invalid number of transaction outputs")
+		sigHashes = append(sigHashes, sigHash)
 	}
 
-	return outputsSum, nil
-}
-
-func (c *UtxoWithdrawalConstructor) validateInputs(
-	tx *wire.MsgTx,
-	inputs map[utxo.OutPoint]btcjson.ListUnspentResult,
-	sigHashes [][]byte,
-) (int64, error) {
-	if sigHashes == nil || len(sigHashes) != len(tx.TxIn) {
-		return 0, errors.New("invalid signature hashes")
-	}
-
-	inputsSum := int64(0)
-	for idx, inp := range tx.TxIn {
-		if inp == nil {
-			return 0, errors.New(fmt.Sprintf("nil input at index %d", idx))
-		}
-
-		unspent := inputs[utxo.OutPoint{TxID: inp.PreviousOutPoint.Hash.String(), Index: inp.PreviousOutPoint.Index}]
-		unspentAmount := utxo.ToUnits(unspent.Amount)
-
-		scriptDecoded, err := hex.DecodeString(unspent.ScriptPubKey)
-		if err != nil {
-			return 0, errors.Wrap(err, fmt.Sprintf("failed to decode script for input %d", idx))
-		}
-		sigHash, err := c.helper.CalculateSignatureHash(scriptDecoded, tx, idx, unspentAmount)
-		if err != nil {
-			return 0, errors.Wrap(err, fmt.Sprintf("failed to calculate signature hash for input %d", idx))
-		}
-		if !bytes.Equal(sigHashes[idx], sigHash) {
-			return 0, errors.New(fmt.Sprintf("invalid signature hash for input %d", idx))
-		}
-
-		inputsSum += unspentAmount
-	}
-
-	return inputsSum, nil
-}
-
-func (c *UtxoWithdrawalConstructor) validateChange(
-	tx *wire.MsgTx,
-	inputs map[utxo.OutPoint]btcjson.ListUnspentResult,
-	inputsSum,
-	outputsSum int64,
-) error {
-	actualFee := inputsSum - outputsSum
-	if actualFee <= 0 {
-		return errors.New("invalid change amount")
-	}
-
-	mockedTx, err := c.client.MockTransaction(tx, inputs)
-	if err != nil {
-		return errors.Wrap(err, "failed to mock transaction")
-	}
-
-	var (
-		targetFeeRate = utxo.DefaultFeeRateBtcPerKvb * 1e5 // btc/kB -> sat/byte
-		feeTolerance  = 0.1 * targetFeeRate                // 10%
-		estimatedSize = mockedTx.SerializeSize()
-		actualFeeRate = float64(actualFee) / float64(estimatedSize)
-	)
-
-	if math.Abs(actualFeeRate-targetFeeRate) > feeTolerance {
-		return errors.New(fmt.Sprintf("provided fee rate %f is not within %f of target %f", actualFeeRate, feeTolerance, targetFeeRate))
-	}
-
-	return nil
+	return sigHashes, nil
 }

@@ -44,7 +44,7 @@ type ConsolidateOutputsParams struct {
 }
 
 var DefaultConsolidateOutputsParams = ConsolidateOutputsParams{
-	FeeRate:        DefaultFeeRateBtcPerKvb * 1e5,
+	FeeRate:        uint64(DefaultFeeRateBtcPerKvb),
 	MaxInputsCount: 20,
 	OutputsCount:   2,
 }

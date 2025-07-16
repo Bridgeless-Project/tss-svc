@@ -7,7 +7,7 @@ import "google/protobuf/any.proto";
 import "gogoproto/gogo.proto";
 import "deposit.proto";
 
-option go_package = "github.com/hyle-team/tss-svc/internal/p2p";
+option go_package = "github.com/Bridgeless-Project/tss-svc/internal/p2p";
 
 enum PartyStatus {
   PS_UNKNOWN = 0;
@@ -91,8 +91,9 @@ message BitcoinProposalData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 
   bytes serializedTx = 2;
+  int64 feeRate = 3;
 
-  repeated bytes sigData = 3;
+  repeated bytes sigData = 4;
 }
 
 message BitcoinResharingProposalData {

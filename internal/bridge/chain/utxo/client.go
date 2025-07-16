@@ -22,6 +22,7 @@ type Client interface {
 	ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions) (*wire.MsgTx, [][]byte, error)
 	UnspentCount() (int, error)
 	LockOutputs(tx *wire.MsgTx) error
+	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	SendSignedTransaction(tx *wire.MsgTx) (string, error)
 
 	UtxoHelper() helper.UtxoHelper
