@@ -202,13 +202,12 @@ func (b *helper) NewUnsignedTransaction(
 		return nil, errors.Wrap(err, "failed to create change source")
 	}
 
-	arranged := b.outputArranger.ArrangeOutputs(unspent)
-	inputSource := inputSource(arranged)
+	arrangedOutputs := b.outputArranger.ArrangeOutputs(unspent)
 
 	tx, err := bchtxauthor.NewUnsignedTransaction(
 		outputsToBch(outputs),
 		bchutil.Amount(feeRate),
-		inputSource,
+		inputSource(arrangedOutputs),
 		changeSource,
 	)
 	if err != nil {
@@ -334,7 +333,7 @@ func inputSource(outputs []btcjson.ListUnspentResult) bchtxauthor.InputSource {
 			}
 
 			outpoint := &bchwire.OutPoint{Hash: *txHash, Index: out.Vout}
-			amount := bchutil.Amount(out.Amount)
+			amount, _ := bchutil.NewAmount(out.Amount)
 
 			currentInputs = append(currentInputs, bchwire.NewTxIn(outpoint, nil))
 			currentScripts = append(currentScripts, pkScript)
