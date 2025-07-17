@@ -62,8 +62,9 @@ type Chain struct {
 	Rpc             any    `fig:"rpc,required"`
 	BridgeAddresses any    `fig:"bridge_addresses,required"`
 
-	Wallet  string  `fig:"wallet"`
-	Network Network `fig:"network"`
+	Wallet   string  `fig:"wallet"`
+	Network  Network `fig:"network"`
+	BridgeId string  `fig:"bridge_id"`
 }
 
 type Type string

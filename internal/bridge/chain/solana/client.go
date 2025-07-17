@@ -4,7 +4,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/gagliardetto/solana-go"
-	"gitlab.com/distributed_lab/logan/v3"
 )
 
 const (
@@ -14,8 +13,7 @@ const (
 )
 
 type Client struct {
-	chain  Chain
-	logger *logan.Entry
+	chain Chain
 }
 
 // NewBridgeClient creates a new bridge Client for the given chain.

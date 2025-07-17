@@ -36,45 +36,33 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 
 	instructions, err := contract.DecodeInstructions(&tx.Message)
 
-	var depositType, bridgeId, chainId, address string
+	var depositType, bridgeId, chainId, address, sender string
 	var amount uint64
-	var sender solana.PublicKey
 	token := bridge.DefaultNativeTokenAddress
 
 	for _, instr := range instructions {
 		if instr.ProgramID() != contract.ProgramID {
 			continue
 		}
-		depositNative, ok := instr.Impl.(*contract.DepositNativeInstruction)
-		if ok {
+		switch deposit := instr.Impl.(type) {
+		case *contract.DepositNativeInstruction:
 			depositType = DepositedNative
-			bridgeId = *depositNative.BridgeId
-			amount = *depositNative.Amount
-			chainId = *depositNative.ChainId
-			address = *depositNative.Address
-			sender = depositNative.GetSenderAccount().PublicKey
+			bridgeId, amount, chainId, address = *deposit.BridgeId, *deposit.Amount, *deposit.ChainId, *deposit.Address
+			sender = deposit.GetSenderAccount().PublicKey.String()
 			break
-		}
-		depositSpl, ok := instr.Impl.(*contract.DepositSplInstruction)
-		if ok {
+
+		case *contract.DepositSplInstruction:
 			depositType = DepositedSPL
-			bridgeId = *depositSpl.BridgeId
-			amount = *depositSpl.Amount
-			chainId = *depositNative.ChainId
-			address = *depositNative.Address
-			sender = depositSpl.GetSenderAccount().PublicKey
-			token = depositSpl.GetMintAccount().PublicKey.String()
+			bridgeId, amount, chainId, address = *deposit.BridgeId, *deposit.Amount, *deposit.ChainId, *deposit.Address
+			sender = deposit.GetSenderAccount().PublicKey.String()
+			token = deposit.GetMintAccount().PublicKey.String()
 			break
-		}
-		depositWrapped, ok := instr.Impl.(*contract.DepositWrappedInstruction)
-		if ok {
+
+		case *contract.DepositWrappedInstruction:
 			depositType = DepositedWrapped
-			bridgeId = *depositWrapped.BridgeId
-			amount = *depositWrapped.Amount
-			chainId = *depositNative.ChainId
-			address = *depositNative.Address
-			sender = depositWrapped.GetSenderAccount().PublicKey
-			token = depositWrapped.GetMintAccount().PublicKey.String()
+			bridgeId, amount, chainId, address = *deposit.BridgeId, *deposit.Amount, *deposit.ChainId, *deposit.Address
+			sender = deposit.GetSenderAccount().PublicKey.String()
+			token = deposit.GetMintAccount().PublicKey.String()
 			break
 		}
 	}
@@ -90,7 +78,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	return &db.DepositData{
 		DepositIdentifier:  id,
 		Block:              int64(out.Slot),
-		SourceAddress:      sender.String(),
+		SourceAddress:      sender,
 		DepositAmount:      big.NewInt(int64(amount)),
 		TokenAddress:       token,
 		DestinationAddress: address,

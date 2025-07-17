@@ -7,10 +7,10 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -19,7 +19,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
 	btcSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/bitcoin"
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
+	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 
@@ -288,6 +290,22 @@ func configureSigningSession(
 			panic(errors.Wrap(err, "failed to build bitcoin session"))
 		}
 		sess = btcSession
+	case chain.TypeSolana:
+		solanaSession := solanaSigning.NewSession(
+			tss.LocalSignParty{
+				Account:   account,
+				Share:     share,
+				Threshold: params.Threshold,
+			},
+			parties,
+			params,
+			db,
+			logger.WithField("component", "signing_session"),
+		).WithDepositFetcher(fetcher).WithClient(client.(*solana.Client)).WithCoreConnector(connector)
+		if err := solanaSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build solana session"))
+		}
+		sess = solanaSession
 	}
 
 	return sess

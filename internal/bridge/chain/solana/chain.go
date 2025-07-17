@@ -27,6 +27,18 @@ var SolanaHooks = figure.Hooks{
 			return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
 		}
 	},
+	"solana.PublicKey": func(value interface{}) (reflect.Value, error) {
+		switch v := value.(type) {
+		case string:
+			pubKey, err := solana.PublicKeyFromBase58(v)
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			return reflect.ValueOf(pubKey), nil
+		default:
+			return reflect.Value{}, errors.Errorf("unsupported conversion from %T", value)
+		}
+	},
 }
 
 func FromChain(c chain.Chain) Chain {
@@ -41,7 +53,7 @@ func FromChain(c chain.Chain) Chain {
 	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(SolanaHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain Solana clients"))
 	}
-	if err := figure.Out(&chain.BridgeAddress).FromInterface(c.BridgeAddresses).Please(); err != nil {
+	if err := figure.Out(&chain.BridgeAddress).FromInterface(c.BridgeAddresses).With(SolanaHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain bridge addresses"))
 	}
 
