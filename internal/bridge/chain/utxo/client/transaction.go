@@ -11,6 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
@@ -129,6 +130,21 @@ func (c *client) LockOutputs(tx *wire.MsgTx) error {
 	}
 
 	return c.chain.Rpc.Wallet.LockUnspent(false, outs)
+}
+
+func (c *client) EstimateFeeOrDefault() btcutil.Amount {
+	fee, err := c.chain.Rpc.Node.EstimateFee()
+	switch {
+	case err != nil:
+		// TODO: warn about the error
+		return utils.DefaultFeeRateBtcPerKvb
+	case fee < utils.DefaultFeeRateBtcPerKvb:
+		return utils.DefaultFeeRateBtcPerKvb
+	case fee > utils.MaxFeeRateBtcPerKvb:
+		return utils.MaxFeeRateBtcPerKvb
+	default:
+		return fee
+	}
 }
 
 func (c *client) ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions) (*wire.MsgTx, [][]byte, error) {

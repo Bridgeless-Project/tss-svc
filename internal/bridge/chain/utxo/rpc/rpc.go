@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
@@ -53,6 +55,58 @@ func NewClient(settings Settings) (*Client, error) {
 // DAEMON METHODS
 //
 
+func (c *Client) EstimateFee() (btcutil.Amount, error) {
+	var (
+		fee float64
+		err error
+	)
+
+	switch c.chain {
+	case types.ChainBch:
+		fee, err = c.estimateFeeBch()
+	case types.ChainBtc:
+		fee, err = c.estimateFeeBtc()
+	default:
+		return 0, errors.Errorf("unsupported chain: %s", c.chain)
+	}
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to estimate fee")
+	}
+
+	amt, err := btcutil.NewAmount(fee)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to convert fee to btcutil.Amount")
+	}
+	if amt < utils.DefaultFeeRateBtcPerKvb {
+		return 0, errors.New("estimated fee is too low")
+	}
+
+	return amt, nil // Convert from BTC/BCH to satoshis
+}
+
+func (c *Client) estimateFeeBch() (float64, error) {
+	var result float64
+	err := c.Call(&result, "estimatefee")
+	return result, extractRpcError(err)
+}
+
+func (c *Client) estimateFeeBtc() (float64, error) {
+	const confirmationsTarget = 5
+	var result btcjson.EstimateSmartFeeResult
+	err := c.Call(&result, "estimatesmartfee", confirmationsTarget, nil)
+	if err != nil {
+		return 0, extractRpcError(err)
+	}
+	if result.Errors != nil {
+		return 0, errors.Errorf("%v", result.Errors)
+	}
+	if result.FeeRate == nil {
+		return 0, errors.New("fee rate is nil")
+	}
+
+	return *result.FeeRate, nil
+}
+
 func (c *Client) GetRawTransactionVerbose(txHash string) (*btcjson.TxRawResult, error) {
 	var tx btcjson.TxRawResult
 	err := c.Call(&tx, "getrawtransaction", txHash, true)
@@ -89,27 +143,6 @@ func (c *Client) SendRawTransaction(tx *wire.MsgTx) (string, error) {
 //
 // WALLET METHODS
 //
-
-func (c *Client) FundRawTransaction(
-	tx *wire.MsgTx,
-	opts btcjson.FundRawTransactionOpts,
-) (*btcjson.FundRawTransactionResult, error) {
-	var buf bytes.Buffer
-	if err := tx.Serialize(&buf); err != nil {
-		return nil, errors.Wrap(err, "failed to serialize transaction")
-	}
-
-	txHex := hex.EncodeToString(buf.Bytes())
-	args := []interface{}{txHex, opts}
-	if c.chain == types.ChainBtc {
-		// optional btc arg for Bitcoin Core
-		args = append(args, nil)
-	}
-
-	var funded btcjson.FundRawTransactionResult
-	err := c.Call(&funded, "fundrawtransaction", args...)
-	return &funded, extractRpcError(err)
-}
 
 func (c *Client) ListUnspent(minConfirm uint64) ([]btcjson.ListUnspentResult, error) {
 	var unspent []btcjson.ListUnspentResult

@@ -89,7 +89,7 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 
 	unsignedTxData, err := c.helper.NewUnsignedTransaction(
 		unspent,
-		utils.DefaultFeeRateBtcPerKvb,
+		c.client.EstimateFeeOrDefault(),
 		[]*wire.TxOut{receiverOutput},
 		c.tssAddr,
 	)

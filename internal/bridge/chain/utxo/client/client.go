@@ -9,8 +9,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/factory"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
-	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
 )
 
@@ -18,7 +18,6 @@ type Client interface {
 	chain.Client
 
 	ConsolidationThreshold() int
-	CreateUnsignedWithdrawalTx(deposit db.Deposit, changeAddr string) (*wire.MsgTx, [][]byte, error)
 	FindUsedInputs(tx *wire.MsgTx) (map[types.OutPoint]btcjson.ListUnspentResult, error)
 	MockTransaction(tx *wire.MsgTx, inputs map[types.OutPoint]btcjson.ListUnspentResult) (*wire.MsgTx, error)
 	ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions) (*wire.MsgTx, [][]byte, error)
@@ -26,6 +25,7 @@ type Client interface {
 	LockOutputs(tx *wire.MsgTx) error
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	SendSignedTransaction(tx *wire.MsgTx) (string, error)
+	EstimateFeeOrDefault() btcutil.Amount
 
 	UtxoHelper() helper.UtxoHelper
 }
