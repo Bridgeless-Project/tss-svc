@@ -17,6 +17,7 @@ var (
 	ErrInvalidReceiverAddress = errors.New("invalid receiver address")
 	ErrInvalidDepositedAmount = errors.New("invalid deposited amount")
 	ErrInvalidScriptPubKey    = errors.New("invalid script pub key")
+	ErrInvalidTxNonce         = errors.New("invalid tx nonce")
 	ErrFailedUnpackLogs       = errors.New("failed to unpack logs")
 	ErrUnsupportedEvent       = errors.New("unsupported event")
 	ErrUnsupportedContract    = errors.New("unsupported contract")
@@ -35,6 +36,7 @@ func IsInvalidDepositError(err error) bool {
 		errors.Is(err, ErrInvalidReceiverAddress) ||
 		errors.Is(err, ErrInvalidDepositedAmount) ||
 		errors.Is(err, ErrInvalidScriptPubKey) ||
+		errors.Is(err, ErrInvalidTxNonce) ||
 		errors.Is(err, ErrFailedUnpackLogs) ||
 		errors.Is(err, ErrUnsupportedEvent) ||
 		errors.Is(err, ErrUnsupportedContract)

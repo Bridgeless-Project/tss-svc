@@ -14,6 +14,9 @@ import (
 )
 
 func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
+	if id.TxNonce != 0 {
+		return nil, bridgeTypes.ErrInvalidTxNonce
+	}
 	signature, err := solana.SignatureFromBase58(id.TxHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse tx signature")
@@ -49,6 +52,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			depositType = DepositedNative
 			bridgeId, amount, chainId, address = *deposit.BridgeId, *deposit.Amount, *deposit.ChainId, *deposit.Address
 			sender = deposit.GetSenderAccount().PublicKey.String()
+			token = bridge.DefaultNativeTokenAddress
 			break
 
 		case *contract.DepositSplInstruction:

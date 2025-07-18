@@ -48,6 +48,7 @@ func FromChain(c chain.Chain) Chain {
 	chain := Chain{
 		Id:            c.Id,
 		Confirmations: c.Confirmations,
+		BridgeId:      c.BridgeId,
 	}
 
 	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(SolanaHooks).Please(); err != nil {

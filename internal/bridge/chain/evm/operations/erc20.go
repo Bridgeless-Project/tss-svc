@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"math/big"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
 
@@ -39,12 +39,20 @@ func NewWithdrawERC20Content(data db.Deposit) (*WithdrawERC20Content, error) {
 	return &WithdrawERC20Content{
 		Amount:                  ToBytes32(withdrawalAmount.Bytes()),
 		Receiver:                hexutil.MustDecode(data.Receiver),
-		TxHash:                  hexutil.MustDecode(data.TxHash),
+		TxHash:                  TxHashToBytes32(data.TxHash),
 		TxNonce:                 IntToBytes32(data.TxNonce),
 		ChainID:                 ToBytes32(destinationChainID.Bytes()),
 		DestinationTokenAddress: common.HexToAddress(data.WithdrawalToken).Bytes(),
 		IsWrapped:               BoolToBytes(data.IsWrappedToken),
 	}, nil
+}
+
+func TxHashToBytes32(txHash string) []byte {
+	hashBytes, err := hexutil.Decode(txHash)
+	if err != nil || len(hashBytes) != 32 {
+		return crypto.Keccak256(([]byte)(txHash))
+	}
+	return hashBytes
 }
 
 func (w WithdrawERC20Content) CalculateHash() []byte {
