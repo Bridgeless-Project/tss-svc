@@ -78,24 +78,24 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (f *Finalizer) finalize(ctx context.Context) {
-	tx := wire.MsgTx{}
+	tx := &wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(f.withdrawalData.ProposalData.SerializedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to deserialize transaction")
 		return
 	}
-	if err := f.client.UtxoHelper().InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
+	if err := f.client.UtxoHelper().InjectSignatures(tx, f.signatures, f.tssPub); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to inject signatures")
 		return
 	}
 
-	withdrawalTxHash := bridge.HexPrefix + f.client.UtxoHelper().TxHash(&tx)
+	withdrawalTxHash := bridge.HexPrefix + f.client.UtxoHelper().TxHash(tx)
 	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
 		return
 	}
 
 	// ignoring error here, as the mempool tx can be already observed by the wallet
-	_ = f.client.LockOutputs(&tx)
+	_ = f.client.LockOutputs(tx)
 
 	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
 	if err != nil {
@@ -103,7 +103,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	encodedTx := utils.EncodeTransaction(&tx)
+	encodedTx := utils.EncodeTransaction(tx)
 	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to submit deposit")
 		return
@@ -114,7 +114,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	_, err = f.client.SendSignedTransaction(&tx)
+	_, err = f.client.SendSignedTransaction(tx)
 	if err != nil {
 		f.errChan <- errors.Wrap(err, "failed to send signed transaction")
 		return

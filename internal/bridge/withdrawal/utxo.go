@@ -86,10 +86,11 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get available UTXOs")
 	}
+	feeRate := c.client.EstimateFeeOrDefault()
 
 	unsignedTxData, err := c.helper.NewUnsignedTransaction(
 		unspent,
-		c.client.EstimateFeeOrDefault(),
+		feeRate,
 		[]*wire.TxOut{receiverOutput},
 		c.tssAddr,
 	)
@@ -117,7 +118,7 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 				TxHash:  deposit.TxHash,
 			},
 			SerializedTx: txSerialized,
-			FeeRate:      int64(utils.DefaultFeeRateBtcPerKvb),
+			FeeRate:      int64(feeRate),
 			SigData:      sigHashes,
 		},
 	}, nil
@@ -190,7 +191,7 @@ func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposit db.
 }
 
 func (c *UtxoWithdrawalConstructor) formSignatureHashes(unsignedTxData *txauthor.AuthoredTx) ([][]byte, error) {
-	sigHashes := make([][]byte, len(unsignedTxData.PrevScripts))
+	sigHashes := make([][]byte, len(unsignedTxData.Tx.TxIn))
 	for i := range unsignedTxData.PrevScripts {
 		sigHash, err := c.helper.CalculateSignatureHash(
 			unsignedTxData.PrevScripts[i],
@@ -202,7 +203,7 @@ func (c *UtxoWithdrawalConstructor) formSignatureHashes(unsignedTxData *txauthor
 			return nil, errors.Wrapf(err, "failed to calculate signature hash for tx %d", i)
 		}
 
-		sigHashes = append(sigHashes, sigHash)
+		sigHashes[i] = sigHash
 	}
 
 	return sigHashes, nil
