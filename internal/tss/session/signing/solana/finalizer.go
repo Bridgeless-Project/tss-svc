@@ -40,55 +40,53 @@ func NewFinalizer(
 	}
 }
 
-func (ef *Finalizer) WithData(withdrawalData *withdrawal.SolanaWithdrawalData) *Finalizer {
-	ef.withdrawalData = withdrawalData
-	return ef
+func (f *Finalizer) WithData(withdrawalData *withdrawal.SolanaWithdrawalData) *Finalizer {
+	f.withdrawalData = withdrawalData
+	return f
 }
 
-func (ef *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
-	ef.signature = sig
-	return ef
+func (f *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
+	f.signature = sig
+	return f
 }
 
-func (ef *Finalizer) Finalize(ctx context.Context) error {
-	ef.logger.Info("finalization started")
-	go ef.finalize(ctx)
+func (f *Finalizer) Finalize(ctx context.Context) error {
+	f.logger.Info("finalization started")
+	go f.finalize(ctx)
 
 	// listen for ctx and errors
 	select {
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "finalization timed out")
-	case err := <-ef.errChan:
-		ef.logger.Info("finalization finished")
+	case err := <-f.errChan:
+		f.logger.Info("finalization finished")
 
 		return errors.Wrap(err, "failed to finalize withdrawal")
 	}
 }
 
-func (ef *Finalizer) finalize(ctx context.Context) {
-	signature := convertToEthSignature(ef.signature)
-	if err := ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature); err != nil {
-		ef.errChan <- errors.Wrap(err, "failed to update signature")
+func (f *Finalizer) finalize(ctx context.Context) {
+	signature := convertToSolanaSignature(f.signature)
+	if err := f.db.UpdateSignature(f.withdrawalData.DepositIdentifier(), signature); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to update signature")
 		return
 	}
 
-	dep, err := ef.db.Get(ef.withdrawalData.DepositIdentifier())
+	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
 	if err != nil {
-		ef.errChan <- errors.Wrap(err, "failed to get deposit")
+		f.errChan <- errors.Wrap(err, "failed to get deposit")
 		return
 	}
 
-	if err = ef.core.SubmitDeposits(ctx, dep.ToTransaction(nil)); err != nil {
-		ef.errChan <- errors.Wrap(err, "failed to submit deposit")
+	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(nil)); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to submit deposit")
 		return
 	}
 
-	ef.errChan <- nil
+	f.errChan <- nil
 }
 
-func convertToEthSignature(sig *common.SignatureData) string {
+func convertToSolanaSignature(sig *common.SignatureData) string {
 	rawSig := append(sig.Signature, sig.SignatureRecovery...)
-	rawSig[64] += 27
-
 	return hexutil.Encode(rawSig)
 }

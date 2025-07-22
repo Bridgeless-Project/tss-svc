@@ -17,7 +17,7 @@ var _ DepositSigningData = SolanaWithdrawalData{}
 var _ Constructor[SolanaWithdrawalData] = &SolanaWithdrawalConstructor{}
 
 type SolanaWithdrawalData struct {
-	ProposalData     *p2p.EvmProposalData
+	ProposalData     *p2p.SolanaProposalData
 	SignedWithdrawal string
 }
 
@@ -65,7 +65,7 @@ func (c *SolanaWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*Sola
 	}
 
 	return &SolanaWithdrawalData{
-		ProposalData: &p2p.EvmProposalData{
+		ProposalData: &p2p.SolanaProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
 				TxHash:  deposit.TxHash,
