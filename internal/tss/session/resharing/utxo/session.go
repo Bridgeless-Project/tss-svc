@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
@@ -22,7 +23,7 @@ var _ p2p.TssSession = &Session{}
 type SessionParams struct {
 	SessionParams     session.Params
 	TargetAddr        string
-	ConsolidateParams client.ConsolidateOutputsParams
+	ConsolidateParams utxoutils.ConsolidateOutputsParams
 }
 
 type Session struct {

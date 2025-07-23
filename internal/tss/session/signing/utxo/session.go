@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -125,7 +126,7 @@ func (s *Session) Build() error {
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
 		s.client.UtxoHelper().P2pkhAddress(s.self.Share.ECDSAPub.ToECDSAPubKey()),
-		client.DefaultConsolidateOutputsParams,
+		utxoutils.DefaultConsolidateOutputsParams,
 	)
 
 	return nil

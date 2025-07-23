@@ -27,6 +27,8 @@ type UtxoHelper interface {
 	) (*txauthor.AuthoredTx, error)
 	CalculateSignatureHash(scriptRaw []byte, tx *wire.MsgTx, idx int, amt int64) ([]byte, error)
 	MockSignatureScript(scriptRaw []byte, tx *wire.MsgTx, idx int, amt int64) ([]byte, error)
+	EstimateFee(tx *wire.MsgTx, feeRate btcutil.Amount) btcutil.Amount
+	ArrangeOutputs(unspent []btcjson.ListUnspentResult) []btcjson.ListUnspentResult
 
 	InjectSignatures(tx *wire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error
 	TxHash(tx *wire.MsgTx) string

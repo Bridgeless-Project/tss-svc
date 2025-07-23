@@ -10,6 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	utxoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
@@ -18,14 +19,15 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var consolidateParams = client.DefaultConsolidateOutputsParams
+var consolidateParams = utxoutils.DefaultConsolidateOutputsParams
 
 func init() {
 	registerReshareUtxoOptions(reshareUtxoCmd)
+	consolidateParams.InputsThreshold = 1 // allow to consolidate even if there is only one input
 }
 
 func registerReshareUtxoOptions(cmd *cobra.Command) {
-	cmd.Flags().Uint64Var(&consolidateParams.FeeRate, "fee-rate", consolidateParams.FeeRate, "Fee rate for the transaction (sats/vbyte)")
+	cmd.Flags().Uint64Var(&consolidateParams.FeeRate, "fee-rate", consolidateParams.FeeRate, "Fee rate for the transaction (sats/KvB)")
 	cmd.Flags().IntVar(&consolidateParams.OutputsCount, "outputs-count", consolidateParams.OutputsCount, "Number of outputs to split the funds into")
 	cmd.Flags().IntVar(&consolidateParams.MaxInputsCount, "max-inputs-count", consolidateParams.MaxInputsCount, "Maximum number of inputs to use in the transaction")
 }

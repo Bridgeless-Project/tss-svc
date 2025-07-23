@@ -12,7 +12,9 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	btctxauthor "github.com/btcsuite/btcwallet/wallet/txauthor"
+	"github.com/btcsuite/btcwallet/wallet/txsizes"
 	bchtxauthor "github.com/gcash/bchwallet/wallet/txauthor"
+	"github.com/gcash/bchwallet/wallet/txrules"
 
 	btcwire "github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -216,6 +218,16 @@ func (b *helper) NewUnsignedTransaction(
 	}
 
 	return txAuthorToBtc(tx), nil
+}
+
+func (b *helper) ArrangeOutputs(unspent []btcjson.ListUnspentResult) []btcjson.ListUnspentResult {
+	return b.outputArranger.ArrangeOutputs(unspent)
+}
+
+func (b *helper) EstimateFee(tx *btcwire.MsgTx, feeRate btcutil.Amount) btcutil.Amount {
+	// suppose all inputs are p2pkh
+	estimatedSize := txsizes.EstimateSerializeSize(len(tx.TxIn), tx.TxOut, false)
+	return btcutil.Amount(txrules.FeeForSerializeSize(bchutil.Amount(feeRate), estimatedSize))
 }
 
 func outputsToBch(outputs []*btcwire.TxOut) []*bchwire.TxOut {

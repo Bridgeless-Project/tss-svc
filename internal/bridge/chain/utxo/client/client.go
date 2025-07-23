@@ -8,7 +8,7 @@ import (
 	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/factory"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
@@ -18,9 +18,6 @@ type Client interface {
 	chain.Client
 
 	ConsolidationThreshold() int
-	FindUsedInputs(tx *wire.MsgTx) (map[types.OutPoint]btcjson.ListUnspentResult, error)
-	MockTransaction(tx *wire.MsgTx, inputs map[types.OutPoint]btcjson.ListUnspentResult) (*wire.MsgTx, error)
-	ConsolidateOutputs(to string, opts ...ConsolidateOutputsOptions) (*wire.MsgTx, [][]byte, error)
 	UnspentCount() (int, error)
 	LockOutputs(tx *wire.MsgTx) error
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
@@ -29,10 +26,6 @@ type Client interface {
 
 	UtxoHelper() helper.UtxoHelper
 }
-
-const ConsolidationThreshold = 20
-
-var dustAmount = big.NewInt(547)
 
 type client struct {
 	chain          utxochain.Chain
@@ -62,7 +55,7 @@ func (c *client) Type() chain.Type {
 }
 
 func (c *client) ConsolidationThreshold() int {
-	return ConsolidationThreshold
+	return utils.ConsolidationThreshold
 }
 
 func (c *client) AddressValid(addr string) bool {
@@ -74,7 +67,7 @@ func (c *client) TransactionHashValid(hash string) bool {
 }
 
 func (c *client) WithdrawalAmountValid(amount *big.Int) bool {
-	if amount.Cmp(dustAmount) == -1 {
+	if amount.Cmp(utils.DustAmount) == -1 {
 		return false
 	}
 

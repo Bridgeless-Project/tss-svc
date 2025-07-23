@@ -16,6 +16,8 @@ import (
 	btcscript "github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
+	"github.com/btcsuite/btcwallet/wallet/txrules"
+	"github.com/btcsuite/btcwallet/wallet/txsizes"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 )
@@ -77,6 +79,10 @@ func (b *helper) ExtractScriptAddresses(script []byte) ([]string, error) {
 	}
 
 	return addrs, nil
+}
+
+func (b *helper) ArrangeOutputs(unspent []btcjson.ListUnspentResult) []btcjson.ListUnspentResult {
+	return b.outputArranger.ArrangeOutputs(unspent)
 }
 
 func (b *helper) PayToAddrScript(addr string) ([]byte, error) {
@@ -198,6 +204,12 @@ func (b *helper) NewUnsignedTransaction(
 	}
 
 	return tx, nil
+}
+
+func (b *helper) EstimateFee(tx *wire.MsgTx, feeRate btcutil.Amount) btcutil.Amount {
+	// suppose all inputs are p2pkh
+	estimatedSize := txsizes.EstimateVirtualSize(len(tx.TxIn), 0, 0, 0, tx.TxOut, 0)
+	return txrules.FeeForSerializeSize(feeRate, estimatedSize)
 }
 
 func (b *helper) changeSource(addr string) (*txauthor.ChangeSource, error) {
