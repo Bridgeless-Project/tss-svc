@@ -77,10 +77,10 @@ type APIServer interface {
 type UnimplementedAPIServer struct{}
 
 func (UnimplementedAPIServer) SubmitWithdrawal(context.Context, *types.DepositIdentifier) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitWithdrawal not implemented")
+	return nil, status.Error(codes.Unimplemented, "method SubmitWithdrawal not implemented")
 }
 func (UnimplementedAPIServer) CheckWithdrawal(context.Context, *types.DepositIdentifier) (*CheckWithdrawalResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckWithdrawal not implemented")
+	return nil, status.Error(codes.Unimplemented, "method CheckWithdrawal not implemented")
 }
 func (UnimplementedAPIServer) testEmbeddedByValue() {}
 
@@ -92,7 +92,7 @@ type UnsafeAPIServer interface {
 }
 
 func RegisterAPIServer(s grpc.ServiceRegistrar, srv APIServer) {
-	// If the following call pancis, it indicates UnimplementedAPIServer was
+	// If the following call panics, it indicates UnimplementedAPIServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.

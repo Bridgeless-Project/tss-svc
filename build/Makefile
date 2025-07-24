@@ -17,3 +17,13 @@ docker-up: update-start-time
 keygen: update-keygen docker-up
 
 sign: update-sign docker-up
+
+rebuild:
+	docker-compose down
+	docker-compose build
+	make docker-up
+
+rebuild-v:
+	docker-compose down -v
+	docker-compose build
+	make docker-up

@@ -14,6 +14,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/gagliardetto/solana-go"
 	"github.com/pkg/errors"
 )
 
@@ -162,7 +163,13 @@ func decodeDestinationData(data string) (addr, chainId string, err error) {
 		// decoding from base58 to get proper user addr representation
 		addr = base58.Encode([]byte(params[0]))
 	default:
-		err = errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid destination address parameter")
+		// solana address is not fixed-length, so just try parsing it
+		_, err = solana.PublicKeyFromBase58(params[0])
+		if err != nil {
+			err = errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid destination address parameter")
+			return
+		}
+		addr = params[0]
 	}
 
 	return

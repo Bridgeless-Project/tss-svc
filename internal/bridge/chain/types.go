@@ -17,6 +17,7 @@ var (
 	ErrInvalidReceiverAddress = errors.New("invalid receiver address")
 	ErrInvalidDepositedAmount = errors.New("invalid deposited amount")
 	ErrInvalidScriptPubKey    = errors.New("invalid script pub key")
+	ErrInvalidTxNonce         = errors.New("invalid tx nonce")
 	ErrFailedUnpackLogs       = errors.New("failed to unpack logs")
 	ErrUnsupportedEvent       = errors.New("unsupported event")
 	ErrUnsupportedContract    = errors.New("unsupported contract")
@@ -35,6 +36,7 @@ func IsInvalidDepositError(err error) bool {
 		errors.Is(err, ErrInvalidReceiverAddress) ||
 		errors.Is(err, ErrInvalidDepositedAmount) ||
 		errors.Is(err, ErrInvalidScriptPubKey) ||
+		errors.Is(err, ErrInvalidTxNonce) ||
 		errors.Is(err, ErrFailedUnpackLogs) ||
 		errors.Is(err, ErrUnsupportedEvent) ||
 		errors.Is(err, ErrUnsupportedContract)
@@ -62,8 +64,9 @@ type Chain struct {
 	Rpc             any    `fig:"rpc,required"`
 	BridgeAddresses any    `fig:"bridge_addresses,required"`
 
-	Wallet  string  `fig:"wallet"`
-	Network Network `fig:"network"`
+	Wallet   string  `fig:"wallet"`
+	Network  Network `fig:"network"`
+	BridgeId string  `fig:"bridge_id"`
 }
 
 type Type string
@@ -72,6 +75,7 @@ const (
 	TypeEVM     Type = "evm"
 	TypeZano    Type = "zano"
 	TypeBitcoin Type = "bitcoin"
+	TypeSolana  Type = "solana"
 	TypeOther   Type = "other"
 )
 
@@ -80,6 +84,7 @@ var typesMap = map[Type]struct{}{
 	TypeZano:    {},
 	TypeOther:   {},
 	TypeBitcoin: {},
+	TypeSolana:  {},
 }
 
 func (c Type) Validate() error {

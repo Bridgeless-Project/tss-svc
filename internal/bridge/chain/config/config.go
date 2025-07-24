@@ -6,6 +6,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
@@ -43,6 +44,8 @@ func (c *chainer) Clients() []chain.Client {
 				clients[i] = evm.NewBridgeClient(evm.FromChain(ch))
 			case chain.TypeBitcoin:
 				clients[i] = bitcoin.NewBridgeClient(bitcoin.FromChain(ch))
+			case chain.TypeSolana:
+				clients[i] = solana.NewBridgeClient(solana.FromChain(ch))
 			default:
 				panic(errors.Errorf("unsupported chain type: %s", ch.Type))
 			}
@@ -63,6 +66,7 @@ func (c *chainer) Chains() []chain.Chain {
 			With(
 				figure.BaseHooks,
 				figure.EthereumHooks,
+				solana.SolanaHooks,
 				interfaceHook,
 			).
 			From(kv.MustGetStringMap(c.getter, "chains")).

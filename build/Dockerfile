@@ -2,7 +2,7 @@ FROM golang:1.23.1-alpine as buildbase
 
 RUN apk add git build-base
 
-WORKDIR /go/src/github.com/hyle-team/tss-svc
+WORKDIR /go/src/github.com/Bridgeless-Project/tss-svc
 
 ENV GO111MODULE="on"
 ENV CGO_ENABLED=1
@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 RUN go mod vendor
-RUN go build  -o /usr/local/bin/tss-svc /go/src/github.com/hyle-team/tss-svc
+RUN go build  -o /usr/local/bin/tss-svc /go/src/github.com/Bridgeless-Project/tss-svc
 
 
 FROM alpine:3.9
