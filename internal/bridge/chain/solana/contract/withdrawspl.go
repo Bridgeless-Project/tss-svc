@@ -15,7 +15,7 @@ type WithdrawSplInstruction struct {
 	BridgeId   *string
 	Hash       *[32]uint8
 	Amount     *uint64
-	Nonce      *uint64
+	Uid        *[32]uint8
 	Signature  *[64]uint8
 	RecoveryId *uint8
 
@@ -64,9 +64,9 @@ func (inst *WithdrawSplInstruction) SetAmount(amount uint64) *WithdrawSplInstruc
 	return inst
 }
 
-// SetNonce sets the "nonce" parameter.
-func (inst *WithdrawSplInstruction) SetNonce(nonce uint64) *WithdrawSplInstruction {
-	inst.Nonce = &nonce
+// SetUid sets the "uid" parameter.
+func (inst *WithdrawSplInstruction) SetUid(uid [32]uint8) *WithdrawSplInstruction {
+	inst.Uid = &uid
 	return inst
 }
 
@@ -351,8 +351,8 @@ func (inst *WithdrawSplInstruction) Validate() error {
 		if inst.Amount == nil {
 			return errors.New("Amount parameter is not set")
 		}
-		if inst.Nonce == nil {
-			return errors.New("Nonce parameter is not set")
+		if inst.Uid == nil {
+			return errors.New("Uid parameter is not set")
 		}
 		if inst.Signature == nil {
 			return errors.New("Signature parameter is not set")
@@ -405,7 +405,7 @@ func (inst *WithdrawSplInstruction) EncodeToTree(parent ag_treeout.Branches) {
 						paramsBranch.Child(ag_format.Param("   BridgeId", *inst.BridgeId))
 						paramsBranch.Child(ag_format.Param("       Hash", *inst.Hash))
 						paramsBranch.Child(ag_format.Param("     Amount", *inst.Amount))
-						paramsBranch.Child(ag_format.Param("      Nonce", *inst.Nonce))
+						paramsBranch.Child(ag_format.Param("        Uid", *inst.Uid))
 						paramsBranch.Child(ag_format.Param("  Signature", *inst.Signature))
 						paramsBranch.Child(ag_format.Param(" RecoveryId", *inst.RecoveryId))
 					})
@@ -441,8 +441,8 @@ func (obj WithdrawSplInstruction) MarshalWithEncoder(encoder *ag_binary.Encoder)
 	if err != nil {
 		return err
 	}
-	// Serialize `Nonce` param:
-	err = encoder.Encode(obj.Nonce)
+	// Serialize `Uid` param:
+	err = encoder.Encode(obj.Uid)
 	if err != nil {
 		return err
 	}
@@ -474,8 +474,8 @@ func (obj *WithdrawSplInstruction) UnmarshalWithDecoder(decoder *ag_binary.Decod
 	if err != nil {
 		return err
 	}
-	// Deserialize `Nonce`:
-	err = decoder.Decode(&obj.Nonce)
+	// Deserialize `Uid`:
+	err = decoder.Decode(&obj.Uid)
 	if err != nil {
 		return err
 	}
@@ -498,7 +498,7 @@ func NewWithdrawSplInstruction(
 	bridge_id string,
 	hash [32]uint8,
 	amount uint64,
-	nonce uint64,
+	uid [32]uint8,
 	signature [64]uint8,
 	recovery_id uint8,
 	// Accounts:
@@ -514,7 +514,7 @@ func NewWithdrawSplInstruction(
 		SetBridgeId(bridge_id).
 		SetHash(hash).
 		SetAmount(amount).
-		SetNonce(nonce).
+		SetUid(uid).
 		SetSignature(signature).
 		SetRecoveryId(recovery_id).
 		SetMintAccount(mint).

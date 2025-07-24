@@ -17,7 +17,7 @@ type WithdrawWrappedInstruction struct {
 	MintNonce  *uint64
 	Symbol     *string
 	Amount     *uint64
-	Nonce      *uint64
+	Uid        *[32]uint8
 	Signature  *[64]uint8
 	RecoveryId *uint8
 
@@ -76,9 +76,9 @@ func (inst *WithdrawWrappedInstruction) SetAmount(amount uint64) *WithdrawWrappe
 	return inst
 }
 
-// SetNonce sets the "nonce" parameter.
-func (inst *WithdrawWrappedInstruction) SetNonce(nonce uint64) *WithdrawWrappedInstruction {
-	inst.Nonce = &nonce
+// SetUid sets the "uid" parameter.
+func (inst *WithdrawWrappedInstruction) SetUid(uid [32]uint8) *WithdrawWrappedInstruction {
+	inst.Uid = &uid
 	return inst
 }
 
@@ -368,8 +368,8 @@ func (inst *WithdrawWrappedInstruction) Validate() error {
 		if inst.Amount == nil {
 			return errors.New("Amount parameter is not set")
 		}
-		if inst.Nonce == nil {
-			return errors.New("Nonce parameter is not set")
+		if inst.Uid == nil {
+			return errors.New("Uid parameter is not set")
 		}
 		if inst.Signature == nil {
 			return errors.New("Signature parameter is not set")
@@ -421,7 +421,7 @@ func (inst *WithdrawWrappedInstruction) EncodeToTree(parent ag_treeout.Branches)
 						paramsBranch.Child(ag_format.Param("  MintNonce", *inst.MintNonce))
 						paramsBranch.Child(ag_format.Param("     Symbol", *inst.Symbol))
 						paramsBranch.Child(ag_format.Param("     Amount", *inst.Amount))
-						paramsBranch.Child(ag_format.Param("      Nonce", *inst.Nonce))
+						paramsBranch.Child(ag_format.Param("        Uid", *inst.Uid))
 						paramsBranch.Child(ag_format.Param("  Signature", *inst.Signature))
 						paramsBranch.Child(ag_format.Param(" RecoveryId", *inst.RecoveryId))
 					})
@@ -466,8 +466,8 @@ func (obj WithdrawWrappedInstruction) MarshalWithEncoder(encoder *ag_binary.Enco
 	if err != nil {
 		return err
 	}
-	// Serialize `Nonce` param:
-	err = encoder.Encode(obj.Nonce)
+	// Serialize `Uid` param:
+	err = encoder.Encode(obj.Uid)
 	if err != nil {
 		return err
 	}
@@ -509,8 +509,8 @@ func (obj *WithdrawWrappedInstruction) UnmarshalWithDecoder(decoder *ag_binary.D
 	if err != nil {
 		return err
 	}
-	// Deserialize `Nonce`:
-	err = decoder.Decode(&obj.Nonce)
+	// Deserialize `Uid`:
+	err = decoder.Decode(&obj.Uid)
 	if err != nil {
 		return err
 	}
@@ -535,7 +535,7 @@ func NewWithdrawWrappedInstruction(
 	mint_nonce uint64,
 	symbol string,
 	amount uint64,
-	nonce uint64,
+	uid [32]uint8,
 	signature [64]uint8,
 	recovery_id uint8,
 	// Accounts:
@@ -552,7 +552,7 @@ func NewWithdrawWrappedInstruction(
 		SetMintNonce(mint_nonce).
 		SetSymbol(symbol).
 		SetAmount(amount).
-		SetNonce(nonce).
+		SetUid(uid).
 		SetSignature(signature).
 		SetRecoveryId(recovery_id).
 		SetMintAccount(mint).

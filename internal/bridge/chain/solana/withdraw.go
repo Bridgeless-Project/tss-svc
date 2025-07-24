@@ -27,9 +27,12 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	}
 	amountBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(amountBytes, amount)
-	// todo: reconsider nonce
+
 	nonceBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(nonceBytes, uint64(data.TxNonce))
+	// unique id derived from deposit info
+	uid := sha256.Sum256(append([]byte(data.TxHash), nonceBytes...))
+
 	receiver, err := solana.PublicKeyFromBase58(data.Receiver)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse receiver address")
@@ -38,7 +41,7 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	buffer := []byte("withdraw")
 	buffer = append(buffer, []byte(p.chain.BridgeId)...)
 	buffer = append(buffer, amountBytes...)
-	buffer = append(buffer, nonceBytes...)
+	buffer = append(buffer, uid[:]...)
 	buffer = append(buffer, receiver.Bytes()...)
 
 	if data.WithdrawalToken != bridge.DefaultNativeTokenAddress {

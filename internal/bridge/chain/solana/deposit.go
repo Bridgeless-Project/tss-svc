@@ -14,13 +14,11 @@ import (
 )
 
 func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
-	if id.TxNonce != 0 {
-		return nil, bridgeTypes.ErrInvalidTxNonce
-	}
 	signature, err := solana.SignatureFromBase58(id.TxHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse tx signature")
 	}
+
 	out, err := p.chain.Rpc.GetTransaction(context.Background(), signature, &rpc.GetTransactionOpts{
 		Encoding: solana.EncodingBase64,
 	})
@@ -38,54 +36,61 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	}
 
 	instructions, err := contract.DecodeInstructions(&tx.Message)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode instructions")
+	}
 
-	var depositType, bridgeId, chainId, address, sender string
-	var amount uint64
-	token := bridge.DefaultNativeTokenAddress
+	if len(instructions) <= id.TxNonce {
+		return nil, bridgeTypes.ErrInvalidTxNonce
+	}
+	instr := instructions[id.TxNonce]
+	if instr.ProgramID() != contract.ProgramID {
+		return nil, bridgeTypes.ErrUnsupportedContract
+	}
 
-	for _, instr := range instructions {
-		if instr.ProgramID() != contract.ProgramID {
-			continue
+	switch deposit := instr.Impl.(type) {
+	case *contract.DepositNativeInstruction:
+		if *deposit.BridgeId != p.chain.BridgeId {
+			return nil, bridgeTypes.ErrInvalidReceiverAddress
 		}
-		switch deposit := instr.Impl.(type) {
-		case *contract.DepositNativeInstruction:
-			depositType = DepositedNative
-			bridgeId, amount, chainId, address = *deposit.BridgeId, *deposit.Amount, *deposit.ChainId, *deposit.Address
-			sender = deposit.GetSenderAccount().PublicKey.String()
-			token = bridge.DefaultNativeTokenAddress
-			break
+		return &db.DepositData{
+			DepositIdentifier:  id,
+			Block:              int64(out.Slot),
+			SourceAddress:      deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:      big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:       bridge.DefaultNativeTokenAddress,
+			DestinationAddress: *deposit.Address,
+			DestinationChainId: *deposit.ChainId,
+		}, nil
 
-		case *contract.DepositSplInstruction:
-			depositType = DepositedSPL
-			bridgeId, amount, chainId, address = *deposit.BridgeId, *deposit.Amount, *deposit.ChainId, *deposit.Address
-			sender = deposit.GetSenderAccount().PublicKey.String()
-			token = deposit.GetMintAccount().PublicKey.String()
-			break
-
-		case *contract.DepositWrappedInstruction:
-			depositType = DepositedWrapped
-			bridgeId, amount, chainId, address = *deposit.BridgeId, *deposit.Amount, *deposit.ChainId, *deposit.Address
-			sender = deposit.GetSenderAccount().PublicKey.String()
-			token = deposit.GetMintAccount().PublicKey.String()
-			break
+	case *contract.DepositSplInstruction:
+		if *deposit.BridgeId != p.chain.BridgeId {
+			return nil, bridgeTypes.ErrInvalidReceiverAddress
 		}
+		return &db.DepositData{
+			DepositIdentifier:  id,
+			Block:              int64(out.Slot),
+			SourceAddress:      deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:      big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:       deposit.GetMintAccount().PublicKey.String(),
+			DestinationAddress: *deposit.Address,
+			DestinationChainId: *deposit.ChainId,
+		}, nil
+
+	case *contract.DepositWrappedInstruction:
+		if *deposit.BridgeId != p.chain.BridgeId {
+			return nil, bridgeTypes.ErrInvalidReceiverAddress
+		}
+		return &db.DepositData{
+			DepositIdentifier:  id,
+			Block:              int64(out.Slot),
+			SourceAddress:      deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:      big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:       deposit.GetMintAccount().PublicKey.String(),
+			DestinationAddress: *deposit.Address,
+			DestinationChainId: *deposit.ChainId,
+		}, nil
 	}
 
-	if depositType == "" {
-		return nil, bridgeTypes.ErrDepositNotFound
-	}
-
-	if bridgeId != p.chain.BridgeId {
-		return nil, bridgeTypes.ErrInvalidReceiverAddress
-	}
-
-	return &db.DepositData{
-		DepositIdentifier:  id,
-		Block:              int64(out.Slot),
-		SourceAddress:      sender,
-		DepositAmount:      big.NewInt(int64(amount)),
-		TokenAddress:       token,
-		DestinationAddress: address,
-		DestinationChainId: chainId,
-	}, nil
+	return nil, bridgeTypes.ErrDepositNotFound
 }
