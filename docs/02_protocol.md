@@ -100,6 +100,11 @@ For the Bitcoin network, the finalization process, in addition to saving the sig
 ##### Zano network
 For the Zano network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core)., also broadcasts the signed transaction to the Zano network.
 
+##### Solana network
+For the Solana network, the finalization process is performed by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core). 
+Then it can be used by anyone to construct and broadcast the withdrawal transaction.
+Note that it is not a fully assembled transaction that is being signed, but a structure with the withdrawal parameters
+(e.g. amount, receiver).
 
 **Note:** currently, the finalization process should be performed by the session proposer.
 
