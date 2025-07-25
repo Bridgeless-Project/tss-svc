@@ -17,8 +17,8 @@ func ToBytes32(arr []byte) []byte {
 	return append(res, arr...)
 }
 
-func IntToBytes32(amount int) []byte {
-	return ToBytes32(big.NewInt(int64(amount)).Bytes())
+func IntToBytes32(value int64) []byte {
+	return ToBytes32(big.NewInt(value).Bytes())
 }
 
 func BoolToBytes(b bool) []byte {

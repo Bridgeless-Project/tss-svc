@@ -3,6 +3,8 @@ package config
 import (
 	"reflect"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
@@ -43,6 +45,8 @@ func (c *chainer) Clients() []chain.Client {
 				clients[i] = evm.NewBridgeClient(evm.FromChain(ch))
 			case chain.TypeBitcoin:
 				clients[i] = bitcoin.NewBridgeClient(bitcoin.FromChain(ch))
+			case chain.TypeTON:
+				clients[i] = ton.NewBridgeClient(ton.FromChain(ch))
 			default:
 				panic(errors.Errorf("unsupported chain type: %s", ch.Type))
 			}

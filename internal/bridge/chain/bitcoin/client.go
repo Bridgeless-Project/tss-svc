@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 )
 
 const ConsolidationThreshold = 20

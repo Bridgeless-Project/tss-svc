@@ -7,7 +7,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
@@ -19,7 +20,10 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
 	btcSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/bitcoin"
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
+	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 
@@ -288,6 +292,22 @@ func configureSigningSession(
 			panic(errors.Wrap(err, "failed to build bitcoin session"))
 		}
 		sess = btcSession
+
+	case chain.TypeTON:
+		tonSession := tonSigning.NewSession(tss.LocalSignParty{
+			Account:   account,
+			Share:     share,
+			Threshold: params.Threshold,
+		},
+			parties,
+			params,
+			db,
+			logger.WithField("component", "signing_session"),
+		).WithDepositFetcher(fetcher).WithClient(client.(*ton.Client)).WithCoreConnector(connector)
+		if err := tonSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build TON session"))
+		}
+		sess = tonSession
 	}
 
 	return sess

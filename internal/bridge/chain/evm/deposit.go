@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/pkg/errors"
 )
@@ -24,7 +24,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, bridgeTypes.ErrTxFailed
 	}
 
-	if len(txReceipt.Logs) < id.TxNonce+1 {
+	if int64(len(txReceipt.Logs)) < id.TxNonce+1 {
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
 
@@ -48,7 +48,6 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	case EventDepositedNative:
 		eventBody := new(contracts.BridgeDepositedNative)
 		if err = p.contractABI.UnpackIntoInterface(eventBody, depositType, log.Data); err != nil {
-			p.logger.Debug(errors.Wrap(err, "failed to unpack event"))
 			return nil, bridgeTypes.ErrDepositNotFound
 		}
 
@@ -67,7 +66,6 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	case EventDepositedERC20:
 		eventBody := new(contracts.BridgeDepositedERC20)
 		if err = p.contractABI.UnpackIntoInterface(eventBody, depositType, log.Data); err != nil {
-			p.logger.Debug(errors.Wrap(err, "failed to unpack event"))
 			return nil, bridgeTypes.ErrDepositNotFound
 		}
 

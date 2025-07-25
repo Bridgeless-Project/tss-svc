@@ -4,9 +4,9 @@ import (
 	"crypto/sha256"
 	"math/rand/v2"
 
-	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/bnb-chain/tss-lib/v2/tss"
 )
 
 // TODO: add more randomness to the seed

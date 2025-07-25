@@ -3,8 +3,8 @@ package secrets
 import (
 	"crypto/tls"
 
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 )
 
 type Storage interface {

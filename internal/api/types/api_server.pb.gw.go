@@ -14,9 +14,9 @@ import (
 	"io"
 	"net/http"
 
+	types_0 "github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
-	types_0 "github.com/Bridgeless-Project/tss-svc/internal/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -44,6 +44,9 @@ func request_API_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marsh
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.SubmitWithdrawal(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -66,7 +69,9 @@ func request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marsha
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	io.Copy(io.Discard, req.Body)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	val, ok := pathParams["chain_id"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "chain_id")
@@ -87,7 +92,7 @@ func request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marsha
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "tx_nonce")
 	}
-	protoReq.TxNonce, err = runtime.Uint32(val)
+	protoReq.TxNonce, err = runtime.Int64(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "tx_nonce", err)
 	}
@@ -121,7 +126,7 @@ func local_request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "tx_nonce")
 	}
-	protoReq.TxNonce, err = runtime.Uint32(val)
+	protoReq.TxNonce, err = runtime.Int64(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "tx_nonce", err)
 	}
