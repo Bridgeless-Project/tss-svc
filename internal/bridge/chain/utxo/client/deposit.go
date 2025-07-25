@@ -16,13 +16,14 @@ import (
 )
 
 const (
-	dstSeparator   = "-"
+	dstSeparator   = "#"
 	dstParamsCount = 2
 	dstAddrIdx     = 0
 	dstChainIdIdx  = 1
 
 	dstEthAddrLen  = 42
 	dstZanoAddrLen = 71
+	dstTonAddrLen  = 48
 
 	defaultDepositorAddressOutputIdx = 0
 )
@@ -100,10 +101,13 @@ func NewDepositDecoder(helper helper.UtxoHelper, bridgeAddresses []string) *Depo
 	}
 }
 
-func (d *DepositDecoder) Decode(tx *btcjson.TxRawResult, depositIdx int) (addr, chainId string, amount *big.Int, err error) {
+func (d *DepositDecoder) Decode(tx *btcjson.TxRawResult, depositIdx int64) (addr, chainId string, amount *big.Int, err error) {
+	if depositIdx < 0 {
+		return "", "", nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionData, "invalid deposit index")
+	}
 	var (
-		depositOutputIdx     = depositIdx
-		destinationOutputIdx = depositIdx + 1
+		depositOutputIdx     = int(depositIdx)
+		destinationOutputIdx = depositOutputIdx + 1
 	)
 
 	if depositOutputIdx < 0 || destinationOutputIdx >= len(tx.Vout) {
@@ -188,12 +192,12 @@ func decodeDestinationData(raw string) (addr, chainId string, err error) {
 	addr, chainId = parts[dstAddrIdx], parts[dstChainIdIdx]
 
 	switch len(addr) {
-	case dstEthAddrLen:
+	case dstEthAddrLen, dstTonAddrLen:
+		return
 	case dstZanoAddrLen:
 		addr = base58.Encode([]byte(addr))
+		return
 	default:
 		return addr, chainId, errors.New("invalid destination address parameter")
 	}
-
-	return
 }

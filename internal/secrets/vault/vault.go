@@ -5,11 +5,11 @@ import (
 	"crypto/tls"
 	"encoding/json"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	client "github.com/hashicorp/vault/api"
-	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/pkg/errors"
 )
 

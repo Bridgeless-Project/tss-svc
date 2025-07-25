@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
@@ -13,15 +13,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ DepositSigningData = EvmWithdrawalData{}
-var _ Constructor[EvmWithdrawalData] = &EvmWithdrawalConstructor{}
+var _ DepositSigningData = TonWithdrawalData{}
+var _ Constructor[TonWithdrawalData] = &TonWithdrawalConstructor{}
 
-type EvmWithdrawalData struct {
-	ProposalData     *p2p.EvmProposalData
+type TonWithdrawalData struct {
+	ProposalData     *p2p.TonProposalData
 	SignedWithdrawal string
 }
 
-func (e EvmWithdrawalData) DepositIdentifier() db.DepositIdentifier {
+func (e TonWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	identifier := db.DepositIdentifier{}
 
 	if e.ProposalData == nil || e.ProposalData.DepositId == nil {
@@ -35,7 +35,7 @@ func (e EvmWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 	return identifier
 }
 
-func (e EvmWithdrawalData) HashString() string {
+func (e TonWithdrawalData) HashString() string {
 	if e.ProposalData == nil {
 		return ""
 	}
@@ -48,24 +48,24 @@ func (e EvmWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
-func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
-	return &EvmWithdrawalConstructor{
+func NewTonConstructor(client *ton.Client) *TonWithdrawalConstructor {
+	return &TonWithdrawalConstructor{
 		client: client,
 	}
 }
 
-type EvmWithdrawalConstructor struct {
-	client *evm.Client
+type TonWithdrawalConstructor struct {
+	client *ton.Client
 }
 
-func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*EvmWithdrawalData, error) {
+func (c *TonWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*TonWithdrawalData, error) {
 	sigHash, err := c.client.GetSignHash(deposit)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get signing hash")
 	}
 
-	return &EvmWithdrawalData{
-		ProposalData: &p2p.EvmProposalData{
+	return &TonWithdrawalData{
+		ProposalData: &p2p.TonProposalData{
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
 				TxHash:  deposit.TxHash,
@@ -76,7 +76,7 @@ func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*EvmWith
 	}, nil
 }
 
-func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *TonWithdrawalConstructor) IsValid(data TonWithdrawalData, deposit db.Deposit) (bool, error) {
 	if data.ProposalData == nil {
 		return false, errors.New("invalid proposal data")
 	}

@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
-	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -55,7 +56,9 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 		select {
 		case <-ctx.Done():
 			s.log.Info("context cancelled, stopping receiving events")
-			if err := s.client.Unsubscribe(ctx, OpServiceName, s.query); err != nil {
+			shutdownDeadline, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			if err := s.client.Unsubscribe(shutdownDeadline, OpServiceName, s.query); err != nil {
 				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 
@@ -122,7 +125,7 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 		case bridgeTypes.AttributeKeyDepositTxHash:
 			deposit.TxHash = attribute[0]
 		case bridgeTypes.AttributeKeyDepositNonce:
-			n, err := strconv.Atoi(attribute[0])
+			n, err := strconv.ParseInt(attribute[0], 10, 64)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse deposit nonce")
 			}

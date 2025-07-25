@@ -12,7 +12,7 @@ var (
 	ErrTxPending              = errors.New("transaction is pending")
 	ErrTxFailed               = errors.New("transaction failed")
 	ErrTxNotFound             = errors.New("transaction not found")
-	ErrDepositNotFound        = errors.New("withdrawal not found")
+	ErrDepositNotFound        = errors.New("deposit not found")
 	ErrTxNotConfirmed         = errors.New("transaction not confirmed")
 	ErrInvalidReceiverAddress = errors.New("invalid receiver address")
 	ErrInvalidDepositedAmount = errors.New("invalid deposited amount")
@@ -20,6 +20,7 @@ var (
 	ErrFailedUnpackLogs       = errors.New("failed to unpack logs")
 	ErrUnsupportedEvent       = errors.New("unsupported event")
 	ErrUnsupportedContract    = errors.New("unsupported contract")
+	ErrInvalidTransactionData = errors.New("invalid transaction data")
 )
 
 func IsPendingDepositError(err error) bool {
@@ -71,6 +72,7 @@ const (
 	TypeEVM     Type = "evm"
 	TypeZano    Type = "zano"
 	TypeBitcoin Type = "bitcoin"
+	TypeTON     Type = "ton"
 	TypeOther   Type = "other"
 )
 
@@ -79,6 +81,7 @@ var typesMap = map[Type]struct{}{
 	TypeZano:    {},
 	TypeOther:   {},
 	TypeBitcoin: {},
+	TypeTON:     {},
 }
 
 func (c Type) Validate() error {

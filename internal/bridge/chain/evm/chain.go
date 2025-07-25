@@ -1,9 +1,9 @@
 package evm
 
 import (
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )

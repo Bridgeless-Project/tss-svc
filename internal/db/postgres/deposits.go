@@ -60,10 +60,10 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsDepositBlock:     deposit.DepositBlock,
 			depositsIsWrappedToken:   deposit.IsWrappedToken,
 			// can be 0x00... in case of native ones
-			depositsDepositToken: strings.ToLower(deposit.DepositToken),
+			depositsDepositToken: deposit.DepositToken,
 			depositsDepositor:    deposit.Depositor,
 			// can be 0x00... in case of native ones
-			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
+			depositsWithdrawalToken:   deposit.WithdrawalToken,
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 			depositsCommissionAmount:  deposit.CommissionAmount,
 		}).

@@ -3,10 +3,12 @@ package config
 import (
 	"reflect"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	utxo "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
@@ -43,7 +45,9 @@ func (c *chainer) Clients() []chain.Client {
 			case chain.TypeEVM:
 				clients[i] = evm.NewBridgeClient(evm.FromChain(ch))
 			case chain.TypeBitcoin:
-				clients[i] = client.NewBridgeClient(utxochain.FromChain(ch))
+				clients[i] = utxo.NewBridgeClient(utxochain.FromChain(ch))
+			case chain.TypeTON:
+				clients[i] = ton.NewBridgeClient(ton.FromChain(ch))
 			default:
 				panic(errors.Errorf("unsupported chain type: %s", ch.Type))
 			}
@@ -61,11 +65,7 @@ func (c *chainer) Chains() []chain.Chain {
 
 		if err := figure.
 			Out(&cfg).
-			With(
-				figure.BaseHooks,
-				figure.EthereumHooks,
-				interfaceHook,
-			).
+			With(figure.BaseHooks, interfaceHook).
 			From(kv.MustGetStringMap(c.getter, "chains")).
 			Please(); err != nil {
 			panic(errors.Wrap(err, "failed to figure out chain"))

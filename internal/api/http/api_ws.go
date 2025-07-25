@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/common"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -158,10 +158,14 @@ func identifierFromParams(r *http.Request) (*database.DepositIdentifier, error) 
 		TxHash:  chi.URLParam(r, paramTxHash),
 	}
 
-	nonce, err := strconv.Atoi(chi.URLParam(r, paramTxNonce))
+	nonce, err := strconv.ParseInt(chi.URLParam(r, paramTxNonce), 10, 64)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse tx nonce")
 	}
+	if nonce < 0 {
+		return nil, errors.New("tx nonce cannot be negative")
+	}
+
 	identifier.TxNonce = nonce
 
 	return identifier, nil

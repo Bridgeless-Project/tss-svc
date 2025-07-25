@@ -1,4 +1,4 @@
-package evm
+package ton
 
 import (
 	"context"
@@ -6,7 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -44,12 +45,12 @@ type Session struct {
 
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
-	client        *evm.Client
+	client        *ton.Client
 
-	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
+	mechanism consensus.Mechanism[withdrawal.TonWithdrawalData]
 
 	signingParty          *tss.SignParty
-	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
+	consensusParty        *consensus.Consensus[withdrawal.TonWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
 }
@@ -83,7 +84,7 @@ func (s *Session) WithDepositFetcher(fetcher *deposit.Fetcher) *Session {
 	return s
 }
 
-func (s *Session) WithClient(client *evm.Client) *Session {
+func (s *Session) WithClient(client *ton.Client) *Session {
 	s.client = client
 	return s
 }
@@ -105,10 +106,10 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.mechanism = signing.NewConsensusMechanism[withdrawal.EvmWithdrawalData](
+	s.mechanism = signing.NewConsensusMechanism[withdrawal.TonWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewEvmConstructor(s.client),
+		withdrawal.NewTonConstructor(s.client),
 		s.fetcher,
 	)
 
@@ -124,7 +125,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
-		s.consensusParty = consensus.New[withdrawal.EvmWithdrawalData](
+		s.consensusParty = consensus.New[withdrawal.TonWithdrawalData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,

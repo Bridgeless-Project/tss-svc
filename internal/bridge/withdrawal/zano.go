@@ -34,7 +34,7 @@ func (z ZanoWithdrawalData) DepositIdentifier() db.DepositIdentifier {
 
 	identifier.ChainId = z.ProposalData.DepositId.ChainId
 	identifier.TxHash = z.ProposalData.DepositId.TxHash
-	identifier.TxNonce = int(z.ProposalData.DepositId.TxNonce)
+	identifier.TxNonce = z.ProposalData.DepositId.TxNonce
 
 	return identifier
 }
@@ -73,7 +73,7 @@ func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*ZanoWi
 			DepositId: &types.DepositIdentifier{
 				ChainId: deposit.ChainId,
 				TxHash:  deposit.TxHash,
-				TxNonce: uint32(deposit.TxNonce),
+				TxNonce: deposit.TxNonce,
 			},
 			OutputsAddresses: tx.DataForExternalSigning.OutputsAddresses,
 			UnsignedTx:       tx.DataForExternalSigning.UnsignedTx,

@@ -100,6 +100,10 @@ For the Bitcoin network, the finalization process, in addition to saving the sig
 ##### Zano network
 For the Zano network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core)., also broadcasts the signed transaction to the Zano network.
 
+#### TON network
+For TON, the finalization process is performed only by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core).
+Then it can be used by anyone to construct and broadcast the withdrawal transaction to the destination network.
+
 
 **Note:** currently, the finalization process should be performed by the session proposer.
 
@@ -152,7 +156,12 @@ Here is the list of the signing session time bounds:
     - signing rounds delay (if more than 1 singing round needed): 500 ms;
     - finalization step: 15 seconds;
     - new session period: calculated based on the number of UTXOs to be signed in the transaction.
-
+- TON session:
+    - acceptance: 20 seconds;
+    - signing: 20 seconds;
+    - finalization step: 15 seconds;
+    - new session period: 60 seconds.
+  
 In case of the session step timeout, the session should be finished,
 and the new session should be initialized and wait for its start.
 

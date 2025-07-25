@@ -1,11 +1,11 @@
 package common
 
 import (
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	apiTypes "github.com/Bridgeless-Project/tss-svc/internal/api/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -16,6 +16,7 @@ func ValidateIdentifier(identifier *types.DepositIdentifier, client chain.Client
 		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
 		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
 	}.Filter()
+
 	if err != nil {
 		return err
 	}
@@ -36,7 +37,7 @@ func ToStatusResponse(d *database.Deposit) *apiTypes.CheckWithdrawalResponse {
 	result := &apiTypes.CheckWithdrawalResponse{
 		DepositIdentifier: &types.DepositIdentifier{
 			TxHash:  d.TxHash,
-			TxNonce: uint32(d.TxNonce),
+			TxNonce: d.TxNonce,
 			ChainId: d.ChainId,
 		},
 		WithdrawalStatus: d.WithdrawalStatus,
@@ -69,7 +70,7 @@ func ToStatusResponse(d *database.Deposit) *apiTypes.CheckWithdrawalResponse {
 func ToDbIdentifier(identifier *types.DepositIdentifier) database.DepositIdentifier {
 	return database.DepositIdentifier{
 		TxHash:  identifier.TxHash,
-		TxNonce: int(identifier.TxNonce),
+		TxNonce: identifier.TxNonce,
 		ChainId: identifier.ChainId,
 	}
 }
