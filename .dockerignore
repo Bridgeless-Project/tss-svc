@@ -1,0 +1,8 @@
+./build
+./docs
+./examples
+./scripts
+
+
+Makefile
+README.md

@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 
+# shellcheck disable=SC2113
 function check_vault_init {
   RESPONSE=$(curl --insecure --silent --header "X-Vault-Token: $VAULT_TOKEN" http://$VAULT_ADDR/v1/tss1/data/keygen_preparams)
 

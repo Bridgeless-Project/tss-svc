@@ -50,7 +50,7 @@
             "name": "txNonce",
             "in": "path",
             "required": true,
-            "type": "integer",
+            "type": "string",
             "format": "int64"
           }
         ],
@@ -118,7 +118,7 @@
           "type": "string"
         },
         "txNonce": {
-          "type": "integer",
+          "type": "string",
           "format": "int64"
         },
         "chainId": {

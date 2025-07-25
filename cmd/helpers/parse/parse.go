@@ -12,5 +12,5 @@ var Cmd = &cobra.Command{
 }
 
 func registerParseCommands(cmd *cobra.Command) {
-	cmd.AddCommand(parseAddressEthCmd, parseAddressBtcCmd, parsePubkeyCmd)
+	cmd.AddCommand(parseAddressEthCmd, parseAddressUtxoCmd, parsePubkeyCmd)
 }

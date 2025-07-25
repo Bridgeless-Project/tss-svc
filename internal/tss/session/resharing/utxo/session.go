@@ -1,4 +1,4 @@
-package bitcoin
+package utxo
 
 import (
 	"context"
@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -22,8 +22,8 @@ var _ p2p.TssSession = &Session{}
 
 type SessionParams struct {
 	SessionParams     session.Params
-	TargetAddr        btcutil.Address
-	ConsolidateParams bitcoin.ConsolidateOutputsParams
+	TargetAddr        string
+	ConsolidateParams utxoutils.ConsolidateOutputsParams
 }
 
 type Session struct {
@@ -36,7 +36,7 @@ type Session struct {
 	connectedPartiesCount func() int
 	parties               []p2p.Party
 
-	client         *bitcoin.Client
+	client         client.Client
 	signingParty   *tss.SignParty
 	consensusParty *consensus.Consensus[SigningData]
 	finalizer      *Finalizer
@@ -49,7 +49,7 @@ type Session struct {
 
 func NewSession(
 	self tss.LocalSignParty,
-	client *bitcoin.Client,
+	client client.Client,
 	params SessionParams,
 	parties []p2p.Party,
 	connectedPartiesCountFunc func() int,
