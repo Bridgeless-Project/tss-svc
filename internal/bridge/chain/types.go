@@ -20,6 +20,7 @@ var (
 	ErrFailedUnpackLogs       = errors.New("failed to unpack logs")
 	ErrUnsupportedEvent       = errors.New("unsupported event")
 	ErrUnsupportedContract    = errors.New("unsupported contract")
+	ErrInvalidTransactionData = errors.New("invalid transaction data")
 )
 
 func IsPendingDepositError(err error) bool {
@@ -62,8 +63,7 @@ type Chain struct {
 	Rpc             any    `fig:"rpc,required"`
 	BridgeAddresses any    `fig:"bridge_addresses,required"`
 
-	Wallet  string  `fig:"wallet"`
-	Network Network `fig:"network"`
+	Meta any `fig:"meta"`
 }
 
 type Type string
@@ -87,26 +87,6 @@ var typesMap = map[Type]struct{}{
 func (c Type) Validate() error {
 	if _, ok := typesMap[c]; !ok {
 		return errors.New("invalid chain type")
-	}
-
-	return nil
-}
-
-type Network string
-
-const (
-	NetworkMainnet Network = "mainnet"
-	NetworkTestnet Network = "testnet"
-)
-
-var networksMap = map[Network]struct{}{
-	NetworkMainnet: {},
-	NetworkTestnet: {},
-}
-
-func (n Network) Validate() error {
-	if _, ok := networksMap[n]; !ok {
-		return errors.New("invalid network")
 	}
 
 	return nil

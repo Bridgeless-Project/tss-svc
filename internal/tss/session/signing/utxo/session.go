@@ -1,4 +1,4 @@
-package bitcoin
+package utxo
 
 import (
 	"context"
@@ -6,7 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -16,7 +17,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
-	resharingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/bitcoin"
+	resharingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
@@ -46,12 +47,12 @@ type Session struct {
 
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
-	client        *bitcoin.Client
+	client        client.Client
 
-	signConsMechanism          consensus.Mechanism[withdrawal.BitcoinWithdrawalData]
+	signConsMechanism          consensus.Mechanism[withdrawal.UtxoWithdrawalData]
 	consolidationConsMechanism consensus.Mechanism[resharingConsensus.SigningData]
 
-	signConsParty          *consensus.Consensus[withdrawal.BitcoinWithdrawalData]
+	signConsParty          *consensus.Consensus[withdrawal.UtxoWithdrawalData]
 	consolidationConsParty *consensus.Consensus[resharingConsensus.SigningData]
 
 	signaturesDistributor *signing.SignaturesDistributor
@@ -93,7 +94,7 @@ func (s *Session) WithDepositFetcher(fetcher *deposit.Fetcher) *Session {
 	return s
 }
 
-func (s *Session) WithClient(client *bitcoin.Client) *Session {
+func (s *Session) WithClient(client client.Client) *Session {
 	s.client = client
 	return s
 }
@@ -115,7 +116,7 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.signConsMechanism = signing.NewConsensusMechanism[withdrawal.BitcoinWithdrawalData](
+	s.signConsMechanism = signing.NewConsensusMechanism[withdrawal.UtxoWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewBitcoinConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
@@ -124,8 +125,8 @@ func (s *Session) Build() error {
 
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
-		bitcoin.PubKeyToPkhCompressed(s.self.Share.ECDSAPub.ToECDSAPubKey(), s.client.ChainParams()),
-		bitcoin.DefaultConsolidateOutputsParams,
+		s.client.UtxoHelper().P2pkhAddress(s.self.Share.ECDSAPub.ToECDSAPubKey()),
+		utxoutils.DefaultConsolidateOutputsParams,
 	)
 
 	return nil
@@ -143,7 +144,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
 		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.logger = s.logger.WithField("session_id", s.Id())
-		s.signConsParty = consensus.New[withdrawal.BitcoinWithdrawalData](
+		s.signConsParty = consensus.New[withdrawal.UtxoWithdrawalData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,

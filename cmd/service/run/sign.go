@@ -7,38 +7,35 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
-
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
-	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
-	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
-	btcSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/bitcoin"
-	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
-	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
-	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-
-	"gitlab.com/distributed_lab/logan/v3"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/api"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
+	utxoclient "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/config"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/core/subscriber"
+	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	pg "github.com/Bridgeless-Project/tss-svc/internal/db/postgres"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
+	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
+	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
+	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
+	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gitlab.com/distributed_lab/logan/v3"
+	"golang.org/x/sync/errgroup"
 )
 
 var syncEnabled bool
@@ -277,7 +274,7 @@ func configureSigningSession(
 		}
 		sess = zanoSession
 	case chain.TypeBitcoin:
-		btcSession := btcSigning.NewSession(
+		btcSession := utxoSigning.NewSession(
 			tss.LocalSignParty{
 				Account:   account,
 				Share:     share,
@@ -287,7 +284,7 @@ func configureSigningSession(
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
-		).WithDepositFetcher(fetcher).WithClient(client.(*bitcoin.Client)).WithCoreConnector(connector)
+		).WithDepositFetcher(fetcher).WithClient(client.(utxoclient.Client)).WithCoreConnector(connector)
 		if err := btcSession.Build(); err != nil {
 			panic(errors.Wrap(err, "failed to build bitcoin session"))
 		}

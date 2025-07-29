@@ -1,4 +1,4 @@
-package bitcoin
+package utxo
 
 import (
 	"bytes"
@@ -6,27 +6,27 @@ import (
 	"crypto/ecdsa"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/bitcoin"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/btcsuite/btcd/wire"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Finalizer struct {
-	withdrawalData *withdrawal.BitcoinWithdrawalData
+	withdrawalData *withdrawal.UtxoWithdrawalData
 	signatures     []*common.SignatureData
 
-	tssPub []byte
+	tssPub *ecdsa.PublicKey
 
 	db   database.DepositsQ
 	core *coreConnector.Connector
 
-	client *bitcoin.Client
+	client client.Client
 
 	sessionLeader bool
 
@@ -37,7 +37,7 @@ type Finalizer struct {
 func NewFinalizer(
 	db database.DepositsQ,
 	core *coreConnector.Connector,
-	client *bitcoin.Client,
+	client client.Client,
 	pubKey *ecdsa.PublicKey,
 	logger *logan.Entry,
 	sessionLeader bool,
@@ -48,12 +48,12 @@ func NewFinalizer(
 		errChan:       make(chan error),
 		logger:        logger,
 		client:        client,
-		tssPub:        ethcrypto.CompressPubkey(pubKey),
+		tssPub:        pubKey,
 		sessionLeader: sessionLeader,
 	}
 }
 
-func (f *Finalizer) WithData(withdrawalData *withdrawal.BitcoinWithdrawalData) *Finalizer {
+func (f *Finalizer) WithData(withdrawalData *withdrawal.UtxoWithdrawalData) *Finalizer {
 	f.withdrawalData = withdrawalData
 	return f
 }
@@ -78,17 +78,17 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (f *Finalizer) finalize(ctx context.Context) {
-	tx := wire.MsgTx{}
+	tx := &wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(f.withdrawalData.ProposalData.SerializedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to deserialize transaction")
 		return
 	}
-	if err := bitcoin.InjectSignatures(&tx, f.signatures, f.tssPub); err != nil {
+	if err := f.client.UtxoHelper().InjectSignatures(tx, f.signatures, f.tssPub); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to inject signatures")
 		return
 	}
 
-	withdrawalTxHash := bridge.HexPrefix + tx.TxHash().String()
+	withdrawalTxHash := bridge.HexPrefix + f.client.UtxoHelper().TxHash(tx)
 	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
 		return
@@ -103,7 +103,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	encodedTx := bitcoin.EncodeTransaction(&tx)
+	encodedTx := utils.EncodeTransaction(tx)
 	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to submit deposit")
 		return
@@ -114,7 +114,7 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	_, err = f.client.SendSignedTransaction(&tx)
+	_, err = f.client.SendSignedTransaction(tx)
 	if err != nil {
 		f.errChan <- errors.Wrap(err, "failed to send signed transaction")
 		return

@@ -96,8 +96,9 @@ message BitcoinProposalData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
 
   bytes serializedTx = 2;
+  int64 feeRate = 3;
 
-  repeated bytes sigData = 3;
+  repeated bytes sigData = 4;
 }
 
 message BitcoinResharingProposalData {
