@@ -40,7 +40,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, errors.Wrap(err, "failed to decode instructions")
 	}
 
-	if len(instructions) <= id.TxNonce {
+	if len(instructions) <= int(id.TxNonce) {
 		return nil, bridgeTypes.ErrInvalidTxNonce
 	}
 	instr := instructions[id.TxNonce]
@@ -50,7 +50,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 
 	switch deposit := instr.Impl.(type) {
 	case *contract.DepositNativeInstruction:
-		if *deposit.BridgeId != p.chain.BridgeId {
+		if *deposit.BridgeId != p.chain.Meta.BridgeId {
 			return nil, bridgeTypes.ErrInvalidReceiverAddress
 		}
 		return &db.DepositData{
@@ -64,7 +64,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		}, nil
 
 	case *contract.DepositSplInstruction:
-		if *deposit.BridgeId != p.chain.BridgeId {
+		if *deposit.BridgeId != p.chain.Meta.BridgeId {
 			return nil, bridgeTypes.ErrInvalidReceiverAddress
 		}
 		return &db.DepositData{
@@ -78,7 +78,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		}, nil
 
 	case *contract.DepositWrappedInstruction:
-		if *deposit.BridgeId != p.chain.BridgeId {
+		if *deposit.BridgeId != p.chain.Meta.BridgeId {
 			return nil, bridgeTypes.ErrInvalidReceiverAddress
 		}
 		return &db.DepositData{

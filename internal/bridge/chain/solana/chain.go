@@ -14,7 +14,12 @@ type Chain struct {
 	Rpc           *rpc.Client
 	BridgeAddress solana.PublicKey
 	Confirmations uint64
-	BridgeId      string
+
+	Meta Meta
+}
+
+type Meta struct {
+	BridgeId string `fig:"bridge_id,required"`
 }
 
 var SolanaHooks = figure.Hooks{
@@ -48,9 +53,11 @@ func FromChain(c chain.Chain) Chain {
 	chain := Chain{
 		Id:            c.Id,
 		Confirmations: c.Confirmations,
-		BridgeId:      c.BridgeId,
 	}
 
+	if err := figure.Out(&chain.Meta).FromInterface(c.Meta).Please(); err != nil {
+		panic(errors.Wrap(err, "failed to decode chain meta"))
+	}
 	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(SolanaHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain Solana clients"))
 	}

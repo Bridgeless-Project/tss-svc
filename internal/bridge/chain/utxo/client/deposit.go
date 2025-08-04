@@ -12,6 +12,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil/base58"
+	"github.com/gagliardetto/solana-go"
 	"github.com/pkg/errors"
 )
 
@@ -198,6 +199,12 @@ func decodeDestinationData(raw string) (addr, chainId string, err error) {
 		addr = base58.Encode([]byte(addr))
 		return
 	default:
-		return addr, chainId, errors.New("invalid destination address parameter")
+		// Solana address is not fixed-length, so just try parsing it
+		_, err = solana.PublicKeyFromBase58(addr)
+		if err != nil {
+			err = errors.New("invalid destination address parameter")
+			return
+		}
 	}
+	return
 }

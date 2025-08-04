@@ -89,13 +89,13 @@ type P2PServer interface {
 type UnimplementedP2PServer struct{}
 
 func (UnimplementedP2PServer) Status(context.Context, *emptypb.Empty) (*StatusResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method Status not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
 func (UnimplementedP2PServer) Submit(context.Context, *SubmitRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method Submit not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method Submit not implemented")
 }
 func (UnimplementedP2PServer) GetSigningSessionInfo(context.Context, *SigningSessionInfoRequest) (*SigningSessionInfo, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetSigningSessionInfo not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method GetSigningSessionInfo not implemented")
 }
 func (UnimplementedP2PServer) testEmbeddedByValue() {}
 
@@ -107,7 +107,7 @@ type UnsafeP2PServer interface {
 }
 
 func RegisterP2PServer(s grpc.ServiceRegistrar, srv P2PServer) {
-	// If the following call panics, it indicates UnimplementedP2PServer was
+	// If the following call pancis, it indicates UnimplementedP2PServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.

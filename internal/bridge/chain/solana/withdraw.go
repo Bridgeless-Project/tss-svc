@@ -39,7 +39,7 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	}
 
 	buffer := []byte("withdraw")
-	buffer = append(buffer, []byte(p.chain.BridgeId)...)
+	buffer = append(buffer, []byte(p.chain.Meta.BridgeId)...)
 	buffer = append(buffer, amountBytes...)
 	buffer = append(buffer, uid[:]...)
 	buffer = append(buffer, receiver.Bytes()...)
