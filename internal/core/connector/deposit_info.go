@@ -2,8 +2,9 @@ package connector
 
 import (
 	"context"
-	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

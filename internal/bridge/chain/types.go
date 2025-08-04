@@ -12,7 +12,7 @@ var (
 	ErrTxPending              = errors.New("transaction is pending")
 	ErrTxFailed               = errors.New("transaction failed")
 	ErrTxNotFound             = errors.New("transaction not found")
-	ErrDepositNotFound        = errors.New("withdrawal not found")
+	ErrDepositNotFound        = errors.New("deposit not found")
 	ErrTxNotConfirmed         = errors.New("transaction not confirmed")
 	ErrInvalidReceiverAddress = errors.New("invalid receiver address")
 	ErrInvalidDepositedAmount = errors.New("invalid deposited amount")
@@ -21,6 +21,7 @@ var (
 	ErrFailedUnpackLogs       = errors.New("failed to unpack logs")
 	ErrUnsupportedEvent       = errors.New("unsupported event")
 	ErrUnsupportedContract    = errors.New("unsupported contract")
+	ErrInvalidTransactionData = errors.New("invalid transaction data")
 )
 
 func IsPendingDepositError(err error) bool {
@@ -67,6 +68,7 @@ type Chain struct {
 	Wallet   string  `fig:"wallet"`
 	Network  Network `fig:"network"`
 	BridgeId string  `fig:"bridge_id"`
+	Meta any `fig:"meta"`
 }
 
 type Type string
@@ -75,6 +77,7 @@ const (
 	TypeEVM     Type = "evm"
 	TypeZano    Type = "zano"
 	TypeBitcoin Type = "bitcoin"
+	TypeTON     Type = "ton"
 	TypeSolana  Type = "solana"
 	TypeOther   Type = "other"
 )
@@ -84,32 +87,13 @@ var typesMap = map[Type]struct{}{
 	TypeZano:    {},
 	TypeOther:   {},
 	TypeBitcoin: {},
+	TypeTON:     {},
 	TypeSolana:  {},
 }
 
 func (c Type) Validate() error {
 	if _, ok := typesMap[c]; !ok {
 		return errors.New("invalid chain type")
-	}
-
-	return nil
-}
-
-type Network string
-
-const (
-	NetworkMainnet Network = "mainnet"
-	NetworkTestnet Network = "testnet"
-)
-
-var networksMap = map[Network]struct{}{
-	NetworkMainnet: {},
-	NetworkTestnet: {},
-}
-
-func (n Network) Validate() error {
-	if _, ok := networksMap[n]; !ok {
-		return errors.New("invalid network")
 	}
 
 	return nil

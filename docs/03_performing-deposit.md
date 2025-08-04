@@ -71,6 +71,59 @@ After the transaction is broadcast, the user should provide the TSS network with
 - transaction nonce—the index of `service_entries` array item with transfer destination information;
 - source chain id—the identifier of the source chain where the deposit operation was executed.
 
+## TON
+To initiate a transfer from the TON network, the user can select one of 3 available methods:
+- Native TON deposit;
+- Wrapped Jetton deposit;
+- Jetton deposit;
+
+### Native TON deposit
+The user should construct the follow message and send it directly to the bridge address.
+```protobuf
+message(0x5386a723) MsgDepositNative { 
+    receiver: Slice; // the address on the destination network (127 bits)
+    network: Slice; // the name of the destination network (256bits)
+    // the amount of tokens is stored on the context 
+    // the sender as well
+}
+```
+The contract validates that the deposit has enought value to cover fee and then emits the `NativeDeposited` event.
+
+
+### Wrapped Jetton deposit
+The user should construct the `MsgJettonBurn` message and send it to its own JettonWallet smart contract. All deposit data are stored on the `forwardPayload`
+```protobuf
+message(0x595f07bc) MsgJettonBurn {
+    queryId: Int as uint64;
+    amount: Int as coins; // the amount of jettons to burn
+    responseDestination: Address?; // user address to receive the execut message
+
+    forwardAddress: Address?; // the Bridge address 
+    forwardTonAmount: Int as coins; // the amount of TON to be sent to the Bridge address(to cover fee)
+    forwardPayload: Slice as remaining; // the payload to be sent to the Bridge address
+}
+```
+
+### Jetton deposit
+The user should construct the `MsgJettonTransfer` message and send it to the JettonWallet smart contract.  
+```protobuf
+message(0xf8a7ea5) MsgJettonTransfer {
+    queryId: Int as uint64;
+    amount: Int as coins;
+    destination: Address;
+    responseDestination: Address?;
+    customPayload: Cell? = null;
+    forwardTonAmount: Int as coins;
+    forwardPayload: Slice as remaining;
+}
+```
+
+To initiate the transfer processing, the user should provide any of the available parties with the deposit operation data:
+- transaction hash—the hash of the transaction that contains the deposit operation;ß
+- instead of tx_nonce user have to send message logical time that initiating the message's position in the event sequence. Learn more about [logical time](https://docs.ton.org/v3/documentation/smart-contracts/message-management/messages-and-transactions/#what-is-a-logical-time);
+- source chain id—the identifier of the source chain where the deposit operation was executed.
+
+
 ## Solana
 
 To initiate a transfer from Solana network, the user should invoke one of the following instructions on the bridge program:

@@ -70,12 +70,12 @@ func (d *DepositAcceptorSession) Run(ctx context.Context) {
 			id := db.DepositIdentifier{
 				ChainId: msg.Identifier.ChainId,
 				TxHash:  msg.Identifier.TxHash,
-				TxNonce: int(msg.Identifier.TxNonce),
+				TxNonce: msg.Identifier.TxNonce,
 			}
 
 			deposit, err := d.data.Get(db.DepositIdentifier{
 				TxHash:  msg.Identifier.TxHash,
-				TxNonce: int(msg.Identifier.TxNonce),
+				TxNonce: msg.Identifier.TxNonce,
 				ChainId: msg.Identifier.ChainId,
 			})
 			if err != nil {

@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/bnb-chain/tss-lib/v2/tss"
 	"google.golang.org/grpc"
 )
 
