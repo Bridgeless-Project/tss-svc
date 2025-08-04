@@ -6,12 +6,6 @@ import (
 	"github.com/gagliardetto/solana-go"
 )
 
-const (
-	DepositedNative  = "DepositedNative"
-	DepositedSPL     = "DepositedSPL"
-	DepositedWrapped = "DepositedWrapped"
-)
-
 type Client struct {
 	chain Chain
 }
