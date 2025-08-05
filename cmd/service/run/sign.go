@@ -12,6 +12,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	utxoclient "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
@@ -28,6 +29,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
+	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
@@ -305,6 +307,23 @@ func configureSigningSession(
 			panic(errors.Wrap(err, "failed to build TON session"))
 		}
 		sess = tonSession
+
+	case chain.TypeSolana:
+		solanaSession := solanaSigning.NewSession(
+			tss.LocalSignParty{
+				Account:   account,
+				Share:     share,
+				Threshold: params.Threshold,
+			},
+			parties,
+			params,
+			db,
+			logger.WithField("component", "signing_session"),
+		).WithDepositFetcher(fetcher).WithClient(client.(*solana.Client)).WithCoreConnector(connector)
+		if err := solanaSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build solana session"))
+		}
+		sess = solanaSession
 	}
 
 	return sess
