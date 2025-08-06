@@ -2,6 +2,7 @@ package pg
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -171,20 +172,17 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 	if len(selector.Ids) > 0 {
 		sql = sql.Where(squirrel.Eq{depositsId: selector.Ids})
 	}
-
 	if selector.ChainId != nil {
 		sql = sql.Where(squirrel.Eq{depositsChainId: *selector.ChainId})
 	}
 	if selector.WithdrawalChainId != nil {
 		sql = sql.Where(squirrel.Eq{depositsWithdrawalChainId: *selector.WithdrawalChainId})
 	}
-
 	if selector.Status != nil {
 		sql = sql.Where(squirrel.Eq{depositsWithdrawalStatus: *selector.Status})
 	}
-
 	if selector.One {
-		sql = sql.Limit(1)
+		sql = sql.OrderBy(fmt.Sprintf("%s ASC", depositsId)).Limit(1)
 	}
 
 	return sql
