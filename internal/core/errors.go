@@ -11,6 +11,8 @@ var (
 )
 
 func IsInvalidDepositError(err error) bool {
-	return errors.Is(err, ErrTokenPairNotFound) || errors.Is(err, ErrTokenInfoNotFound) || errors.Is(err,
-		ErrDestinationTokenInfoNotFound) || errors.Is(err, ErrSourceTokenInfoNotFound)
+	return errors.Is(err, ErrTokenPairNotFound) ||
+		errors.Is(err, ErrTokenInfoNotFound) ||
+		errors.Is(err, ErrDestinationTokenInfoNotFound) ||
+		errors.Is(err, ErrSourceTokenInfoNotFound)
 }

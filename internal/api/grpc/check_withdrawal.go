@@ -12,14 +12,23 @@ import (
 )
 
 func (Implementation) CheckWithdrawal(ctxt context.Context, identifier *types.DepositIdentifier) (*apiTypes.CheckWithdrawalResponse, error) {
-	if identifier == nil {
-		return nil, status.Error(codes.InvalidArgument, "identifier is required")
+	if err := common.ValidateIdentifier(identifier); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	var (
-		data   = ctx.DB(ctxt)
-		logger = ctx.Logger(ctxt)
+		data        = ctx.DB(ctxt)
+		logger      = ctx.Logger(ctxt)
+		clientsRepo = ctx.Clients(ctxt)
 	)
+
+	client, err := clientsRepo.Client(identifier.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "unsupported chain")
+	}
+	if err = common.ValidateChainIdentifier(identifier, client); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	deposit, err := data.Get(common.ToDbIdentifier(identifier))
 	if err != nil {
