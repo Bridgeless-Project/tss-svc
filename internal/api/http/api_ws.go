@@ -65,7 +65,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 
 	gracefulClose := make(chan struct{})
 	go watchConnectionClosing(ws, gracefulClose)
-	watchWithdrawalStatus(ctxt, ws, gracefulClose, *deposit)
+	watchWithdrawalStatus(ctxt, ws, gracefulClose, deposit)
 }
 
 func watchConnectionClosing(ws *websocket.Conn, done chan struct{}) {
@@ -84,16 +84,17 @@ func watchConnectionClosing(ws *websocket.Conn, done chan struct{}) {
 	}
 }
 
-func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed chan struct{}, deposit database.Deposit) {
+func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed chan struct{}, withdrawal *database.Deposit) {
 	defer func() { _ = ws.Close() }()
 
-	rawMsg := common.ProtoJsonMustMarshal(common.ToStatusResponse(&deposit))
-	if err := ws.WriteMessage(websocket.TextMessage, rawMsg); err != nil {
+	rawMsg := common.ProtoJsonMustMarshal(common.ToStatusResponse(withdrawal))
+	err := ws.WriteMessage(websocket.TextMessage, rawMsg)
+	if err != nil {
 		_ = ws.Close()
 		return
 	}
 
-	if slices.Contains(database.FinalWithdrawalStatuses, deposit.WithdrawalStatus) {
+	if slices.Contains(database.FinalWithdrawalStatuses, withdrawal.WithdrawalStatus) {
 		_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		_ = ws.Close()
 		return
@@ -102,7 +103,7 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 	var (
 		db         = ctx.DB(ctxt)
 		logger     = ctx.Logger(ctxt)
-		prevStatus = deposit.WithdrawalStatus
+		prevStatus = withdrawal.WithdrawalStatus
 		ticker     = time.NewTicker(pollingPeriod)
 	)
 
@@ -119,7 +120,7 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 			// doing nothing, just waiting some period
 		}
 
-		withdrawal, err := db.Get(deposit.DepositIdentifier)
+		withdrawal, err = db.Get(withdrawal.DepositIdentifier)
 		if err != nil {
 			logger.WithError(err).Error("failed to get withdrawal")
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal server error"))
@@ -131,7 +132,7 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 			continue
 		}
 
-		rawMsg = common.ProtoJsonMustMarshal(common.ToStatusResponse(&deposit))
+		rawMsg = common.ProtoJsonMustMarshal(common.ToStatusResponse(withdrawal))
 		if err = ws.WriteMessage(websocket.TextMessage, rawMsg); err != nil {
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal server error"))
 			return
