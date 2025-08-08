@@ -29,7 +29,7 @@ func ValidateIdentifier(identifier *types.DepositIdentifier) error {
 	return validation.Errors{
 		"tx_hash":  validation.Validate(identifier.TxHash, validation.Required),
 		"chain_id": validation.Validate(identifier.ChainId, validation.Required),
-		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Required, validation.Min(0)),
+		"tx_nonce": validation.Validate(identifier.TxNonce, validation.Min(0)),
 	}.Filter()
 }
 
