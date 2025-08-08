@@ -32,7 +32,7 @@ func NewWithdrawNativeContent(data db.Deposit) (*WithdrawNativeContent, error) {
 	return &WithdrawNativeContent{
 		Amount:   ToBytes32(withdrawalAmount.Bytes()),
 		Receiver: hexutil.MustDecode(data.Receiver),
-		TxHash:   hexutil.MustDecode(data.TxHash),
+		TxHash:   TxHashToBytes32(data.TxHash),
 		TxNonce:  IntToBytes32(data.TxNonce),
 		ChainID:  ToBytes32(destinationChainID.Bytes()),
 	}, nil

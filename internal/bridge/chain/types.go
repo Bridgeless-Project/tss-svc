@@ -15,6 +15,7 @@ var (
 	ErrDepositNotFound        = errors.New("deposit not found")
 	ErrTxNotConfirmed         = errors.New("transaction not confirmed")
 	ErrInvalidReceiverAddress = errors.New("invalid receiver address")
+	ErrInvalidBridgeId        = errors.New("invalid bridge id")
 	ErrInvalidDepositedAmount = errors.New("invalid deposited amount")
 	ErrInvalidScriptPubKey    = errors.New("invalid script pub key")
 	ErrInvalidTxNonce         = errors.New("invalid tx nonce")

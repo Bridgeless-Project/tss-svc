@@ -47,14 +47,6 @@ func NewWithdrawERC20Content(data db.Deposit) (*WithdrawERC20Content, error) {
 	}, nil
 }
 
-func TxHashToBytes32(txHash string) []byte {
-	hashBytes, err := hexutil.Decode(txHash)
-	if err != nil || len(hashBytes) != 32 {
-		return crypto.Keccak256(([]byte)(txHash))
-	}
-	return hashBytes
-}
-
 func (w WithdrawERC20Content) CalculateHash() []byte {
 	return crypto.Keccak256(
 		w.DestinationTokenAddress,
