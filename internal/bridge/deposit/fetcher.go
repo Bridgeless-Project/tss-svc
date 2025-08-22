@@ -1,6 +1,7 @@
 package deposit
 
 import (
+	"fmt"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -27,54 +28,65 @@ func NewFetcher(clients chain.Repository, core *connector.Connector) *Fetcher {
 func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	sourceClient, err := p.clients.Client(identifier.ChainId)
 	if err != nil {
+		fmt.Println("error getting source clients:", err)
 		return nil, errors.Wrap(err, "error getting source clients")
 	}
 
 	if !sourceClient.TransactionHashValid(identifier.TxHash) {
+		fmt.Println("invalid transaction hash:", identifier.TxHash)
 		return nil, errors.New("invalid transaction hash")
 	}
 
 	depositData, err := sourceClient.GetDepositData(identifier)
 	if err != nil {
+		fmt.Println("failed to get deposit data:", err)
 		return nil, errors.Wrap(err, "failed to get deposit data")
 	}
 
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)
 	if err != nil {
+		fmt.Println("error getting destination clients:", err)
 		return nil, errors.Wrap(err, "error getting destination clients")
 	}
+
 	if !dstClient.AddressValid(depositData.DestinationAddress) {
+		fmt.Println("invalid destination address:", depositData.DestinationAddress)
 		return nil, errors.Wrap(chain.ErrInvalidReceiverAddress, depositData.DestinationAddress)
 	}
 
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
 	if err != nil {
+		fmt.Println("failed to get source token info:", err)
 		return nil, errors.Wrap(err, "failed to get source token info")
 	}
 
 	token, err := p.core.GetToken(srcTokenInfo.TokenId)
 	if err != nil {
+		fmt.Println("failed to get source token:", err)
 		return nil, errors.Wrap(err, "failed to get source token")
 	}
 
 	dstTokenInfo, err := getDstTokenInfo(token, depositData.DestinationChainId)
 	if err != nil {
+		fmt.Println("failed to get destination token info:", err)
 		return nil, errors.Wrap(err, "failed to get dst token info")
 	}
 
 	withdrawalAmount := transformAmount(depositData.DepositAmount, srcTokenInfo.Decimals, dstTokenInfo.Decimals)
 	if !dstClient.WithdrawalAmountValid(withdrawalAmount) {
+		fmt.Println("invalid withdrawal amount:", withdrawalAmount)
 		return nil, chain.ErrInvalidDepositedAmount
 	}
 
 	commissionAmount, err := getCommissionAmount(withdrawalAmount, token.CommissionRate)
-
 	if err != nil {
+		fmt.Println("failed to get commission amount:", err)
 		return nil, errors.Wrap(err, "failed to get commission amount")
 	}
 
 	finalWithdrawalAmount := big.NewInt(0).Sub(withdrawalAmount, commissionAmount)
 	if !dstClient.WithdrawalAmountValid(finalWithdrawalAmount) {
+		fmt.Println("invalid final withdrawal amount:", finalWithdrawalAmount)
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, "invalid final withdrawal amount")
 	}
 

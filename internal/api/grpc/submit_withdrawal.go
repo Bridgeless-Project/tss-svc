@@ -76,7 +76,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 					logger.WithError(err).Error("failed to process deposit")
 				}
 			}()
-
+			logger.WithError(err).Error("failed to process deposit")
 			return nil, status.Error(codes.InvalidArgument, "invalid deposit")
 		}
 
