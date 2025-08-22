@@ -26,70 +26,82 @@ func NewFetcher(clients chain.Repository, core *connector.Connector) *Fetcher {
 }
 
 func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
+	fmt.Println("fetching deposit for identifier:", identifier)
 	sourceClient, err := p.clients.Client(identifier.ChainId)
 	if err != nil {
 		fmt.Println("error getting source clients:", err)
 		return nil, errors.Wrap(err, "error getting source clients")
 	}
 
+	fmt.Println("checking transaction hash validity for:", identifier.TxHash)
 	if !sourceClient.TransactionHashValid(identifier.TxHash) {
 		fmt.Println("invalid transaction hash:", identifier.TxHash)
 		return nil, errors.New("invalid transaction hash")
 	}
 
+	fmt.Println("getting deposit data for identifier:", identifier)
 	depositData, err := sourceClient.GetDepositData(identifier)
 	if err != nil {
 		fmt.Println("failed to get deposit data:", err)
 		return nil, errors.Wrap(err, "failed to get deposit data")
 	}
 
+	fmt.Println("deposit data fetched successfully:", depositData)
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)
 	if err != nil {
 		fmt.Println("error getting destination clients:", err)
 		return nil, errors.Wrap(err, "error getting destination clients")
 	}
 
+	fmt.Println("checking destination address validity for:", depositData.DestinationAddress)
 	if !dstClient.AddressValid(depositData.DestinationAddress) {
 		fmt.Println("invalid destination address:", depositData.DestinationAddress)
 		return nil, errors.Wrap(chain.ErrInvalidReceiverAddress, depositData.DestinationAddress)
 	}
 
+	fmt.Println("getting source token info for chain ID:", identifier.ChainId, "and token address:", depositData.TokenAddress)
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
 	if err != nil {
 		fmt.Println("failed to get source token info:", err)
 		return nil, errors.Wrap(err, "failed to get source token info")
 	}
 
+	fmt.Println("source token info fetched successfully:", srcTokenInfo)
 	token, err := p.core.GetToken(srcTokenInfo.TokenId)
 	if err != nil {
 		fmt.Println("failed to get source token:", err)
 		return nil, errors.Wrap(err, "failed to get source token")
 	}
 
+	fmt.Println("getting destination token info for token:", token, "and destination chain ID:", depositData.DestinationChainId)
 	dstTokenInfo, err := getDstTokenInfo(token, depositData.DestinationChainId)
 	if err != nil {
 		fmt.Println("failed to get destination token info:", err)
 		return nil, errors.Wrap(err, "failed to get dst token info")
 	}
 
+	fmt.Println("destination token info fetched successfully:", dstTokenInfo)
 	withdrawalAmount := transformAmount(depositData.DepositAmount, srcTokenInfo.Decimals, dstTokenInfo.Decimals)
 	if !dstClient.WithdrawalAmountValid(withdrawalAmount) {
 		fmt.Println("invalid withdrawal amount:", withdrawalAmount)
 		return nil, chain.ErrInvalidDepositedAmount
 	}
 
+	fmt.Println("getting commission amount for withdrawal amount:", withdrawalAmount, "and commission rate:", token.CommissionRate)
 	commissionAmount, err := getCommissionAmount(withdrawalAmount, token.CommissionRate)
 	if err != nil {
 		fmt.Println("failed to get commission amount:", err)
 		return nil, errors.Wrap(err, "failed to get commission amount")
 	}
 
+	fmt.Println("commission amount calculated successfully:", commissionAmount)
 	finalWithdrawalAmount := big.NewInt(0).Sub(withdrawalAmount, commissionAmount)
 	if !dstClient.WithdrawalAmountValid(finalWithdrawalAmount) {
 		fmt.Println("invalid final withdrawal amount:", finalWithdrawalAmount)
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, "invalid final withdrawal amount")
 	}
 
+	fmt.Println("creating new deposit with final withdrawal amount:", finalWithdrawalAmount, "and commission amount:", commissionAmount)
 	deposit := depositData.ToNewDeposit(finalWithdrawalAmount, commissionAmount,
 		dstTokenInfo.Address, dstTokenInfo.IsWrapped)
 
@@ -128,6 +140,7 @@ func getCommissionAmount(withdrawalAmount *big.Int, commissionRate string) (*big
 }
 
 func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.TokenInfo, error) {
+	fmt.Println("getting destination token info for chain ID:", dstChainId, "in token:", token)
 	for _, info := range token.Info {
 		if info.ChainId == dstChainId {
 			return info, nil
