@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 )
 
@@ -19,6 +21,14 @@ func NewClientsRepository(clients []chain.Client) chain.Repository {
 }
 
 func (p clientsRepository) Client(chainId string) (chain.Client, error) {
+	fmt.Println("getting client for chain ID:", chainId)
+
+	for id, cl := range p.clients {
+		fmt.Printf("Available client: %s\n", id)
+		fmt.Println("Client Type:", cl.ChainId())
+		fmt.Println("Client Type:", cl.Type())
+	}
+
 	cl, ok := p.clients[chainId]
 	if !ok {
 		return nil, chain.ErrChainNotSupported

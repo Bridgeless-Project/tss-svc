@@ -33,6 +33,9 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(err, "error getting source clients")
 	}
 
+	fmt.Println("Source client:", sourceClient.Type())
+	fmt.Println("Source client chain ID:", sourceClient.ChainId())
+
 	fmt.Println("checking transaction hash validity for:", identifier.TxHash)
 	if !sourceClient.TransactionHashValid(identifier.TxHash) {
 		fmt.Println("invalid transaction hash:", identifier.TxHash)
@@ -46,7 +49,14 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(err, "failed to get deposit data")
 	}
 
-	fmt.Println("deposit data fetched successfully:", depositData)
+	fmt.Println("deposit DestinationChainId", depositData.DestinationChainId)
+	fmt.Println("deposit DestinationAddress", depositData.DestinationAddress)
+	fmt.Println("deposit TokenAddress", depositData.TokenAddress)
+	fmt.Println("deposit DepositAmount", depositData.DepositAmount)
+	fmt.Println("deposit TxHash", depositData.TxHash)
+	fmt.Println("deposit TxNonce", depositData.TxNonce)
+	fmt.Println("deposit DepositIdentifier", depositData.DepositIdentifier)
+	fmt.Println("deposit data fetched successfully:", depositData.String())
 	dstClient, err := p.clients.Client(depositData.DestinationChainId)
 	if err != nil {
 		fmt.Println("error getting destination clients:", err)
