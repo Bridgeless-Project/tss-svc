@@ -8,6 +8,7 @@ import (
 
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	tonAddress "github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tvm/cell"
@@ -82,4 +83,12 @@ func fillBytesToSize(str string, size int, fill byte) ([]byte, error) {
 	copy(buf, raw)
 
 	return buf, nil
+}
+
+func TxHashToBytes32(txHash string) []byte {
+	hashBytes, err := hexutil.Decode(txHash)
+	if err != nil || len(hashBytes) != 32 {
+		return crypto.Keccak256(([]byte)(txHash))
+	}
+	return hashBytes
 }
