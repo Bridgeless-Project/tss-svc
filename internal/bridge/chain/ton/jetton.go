@@ -5,8 +5,10 @@ import (
 	"math/big"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/sha3"
 )
 
 func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
@@ -41,7 +43,23 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 	}
 
 	txNonce := big.NewInt(0).SetUint64(uint64(deposit.TxNonce))
-	txHash := big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash))
+	_, _, err = base58.CheckDecode(deposit.TxHash)
+	if err == nil {
+		h := sha3.New256()
+
+		_, err = h.Write([]byte(deposit.TxHash))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to hash the tx hash")
+		}
+		deposit.TxHash = string(h.Sum(nil))
+	}
+
+	txhash, err := hexutil.Decode(deposit.TxHash)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode hash")
+	}
+
+	txHash := big.NewInt(0).SetBytes(txhash)
 	res, err := c.Client.RunGetMethod(context.Background(),
 		master,
 		c.BridgeContractAddress,

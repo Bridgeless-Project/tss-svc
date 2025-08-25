@@ -5,8 +5,10 @@ import (
 	"math/big"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/sha3"
 )
 
 func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
@@ -28,6 +30,17 @@ func (c *Client) getWithdrawalNativeHash(deposit db.Deposit) ([]byte, error) {
 	withdrawalAmount, ok := big.NewInt(0).SetString(deposit.WithdrawalAmount, 10)
 	if !ok {
 		return nil, errors.New("failed to parse withdrawal amount")
+	}
+
+	_, _, err = base58.CheckDecode(deposit.TxHash)
+	if err == nil {
+		h := sha3.New256()
+
+		_, err = h.Write([]byte(deposit.TxHash))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to hash the tx hash")
+		}
+		deposit.TxHash = string(h.Sum(nil))
 	}
 
 	hashBytes, err := hexutil.Decode(deposit.TxHash)
