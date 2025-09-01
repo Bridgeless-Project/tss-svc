@@ -62,7 +62,7 @@ type UtxoWithdrawalConstructor struct {
 	tssAddr string
 }
 
-func NewBitcoinConstructor(client client.Client, tssPub *ecdsa.PublicKey) *UtxoWithdrawalConstructor {
+func NewUtxoConstructor(client client.Client, tssPub *ecdsa.PublicKey) *UtxoWithdrawalConstructor {
 	hlp := client.UtxoHelper()
 	return &UtxoWithdrawalConstructor{
 		client:  client,
@@ -98,6 +98,8 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 		// TODO: check not enough funds err
 		return nil, errors.Wrap(err, "failed to create unsigned transaction")
 	}
+
+	unsignedTxData = c.subtractFeeFromWithdrawal(unsignedTxData, feeRate)
 
 	sigHashes, err := c.formSignatureHashes(unsignedTxData)
 	if err != nil {
@@ -165,6 +167,8 @@ func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposit db.
 		return false, errors.Wrap(err, "failed to create unsigned transaction")
 	}
 
+	unsignedTxData = c.subtractFeeFromWithdrawal(unsignedTxData, feeRate)
+
 	var buf bytes.Buffer
 	if err = unsignedTxData.Tx.Serialize(&buf); err != nil {
 		return false, errors.Wrap(err, "failed to serialize transaction")
@@ -207,4 +211,52 @@ func (c *UtxoWithdrawalConstructor) formSignatureHashes(unsignedTxData *txauthor
 	}
 
 	return sigHashes, nil
+}
+
+func (c *UtxoWithdrawalConstructor) subtractFeeFromWithdrawal(tx *txauthor.AuthoredTx, feeRate btcutil.Amount) *txauthor.AuthoredTx {
+	fee := c.helper.EstimateFee(tx.Tx, feeRate)
+	withdrawalAmount := tx.Tx.TxOut[0].Value - int64(fee)
+
+	if !c.client.WithdrawalAmountValid(big.NewInt(withdrawalAmount)) {
+		// cannot subtract fee from withdrawalAmount, it would result in an invalid amount
+		// commission will be paid by the TSS service
+		// should not happen if the bridging is configured correctly
+		return tx
+	}
+
+	if tx.ChangeIndex != -1 {
+		tx.Tx.TxOut[0].Value -= int64(fee)
+		tx.Tx.TxOut[tx.ChangeIndex].Value += int64(fee)
+
+		return tx
+	}
+
+	// try adding a change output
+	txWithChange := tx.Tx.Copy()
+	changeScript, _ := c.helper.PayToAddrScript(c.tssAddr)
+	txWithChange.AddTxOut(wire.NewTxOut(0, changeScript))
+
+	feeWithChange := c.helper.EstimateFee(txWithChange, feeRate)
+	withdrawalAmountWithChange := tx.Tx.TxOut[0].Value - int64(feeWithChange)
+	if !c.client.WithdrawalAmountValid(big.NewInt(withdrawalAmountWithChange)) {
+		// commission still will be paid by the TSS service
+		// should not happen if the bridging is configured correctly
+		return tx
+	}
+
+	change := int64(tx.TotalInput) - withdrawalAmountWithChange - int64(feeWithChange)
+
+	if !c.client.WithdrawalAmountValid(big.NewInt(change)) {
+		// cannot add change output, just pay the old fee from the withdrawalAmount
+		tx.Tx.TxOut[0].Value -= int64(fee)
+
+		return tx
+	}
+
+	txWithChange.TxOut[0].Value -= int64(feeWithChange)
+	txWithChange.TxOut[1].Value = change
+	tx.Tx = txWithChange
+	tx.ChangeIndex = 1
+
+	return tx
 }
