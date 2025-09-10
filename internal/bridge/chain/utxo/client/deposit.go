@@ -186,8 +186,15 @@ func (d *DepositDecoder) decodeDestinationOutput(out btcjson.Vout) (addr, chainI
 
 func decodeDestinationData(raw string) (addr, chainId string, err error) {
 	parts := strings.Split(raw, dstSeparator)
-	if len(parts) != dstParamsCount {
+	if len(parts) < dstParamsCount {
 		return addr, chainId, errors.New("invalid destination parameters")
+	}
+	if len(parts) > dstParamsCount {
+		// try concatenating all but the last parts in case the raw bytes sequence in a string contains the separator
+		parts = []string{
+			strings.Join(parts[:len(parts)-1], dstSeparator),
+			parts[len(parts)-1],
+		}
 	}
 
 	addr, chainId = parts[dstAddrIdx], parts[dstChainIdIdx]
