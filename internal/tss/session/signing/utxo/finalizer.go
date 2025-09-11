@@ -88,8 +88,6 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		return
 	}
 
-	// TODO: update final withdrawal amount (?)
-
 	withdrawalTxHash := bridge.HexPrefix + f.client.UtxoHelper().TxHash(tx)
 	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
