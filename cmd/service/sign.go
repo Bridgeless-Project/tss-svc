@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
@@ -31,8 +33,8 @@ func registerSignCmdFlags(cmd *cobra.Command) {
 }
 
 var signCmd = &cobra.Command{
-	Use:   "sign [data-string]",
-	Short: "Signs the given data using TSS",
+	Use:   "sign [data-hex]",
+	Short: "Signs the given hex-decoded data using TSS",
 	Args:  cobra.ExactArgs(1),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
@@ -46,7 +48,12 @@ var signCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to read config from flags")
 		}
 
-		dataToSign := args[0]
+		rawData := args[0]
+		if !strings.HasPrefix(bridge.HexPrefix, rawData) {
+			rawData = bridge.HexPrefix + rawData
+		}
+
+		dataToSign := hexutil.MustDecode(rawData)
 		if len(dataToSign) == 0 {
 			return errors.Wrap(errors.New("empty data to-sign"), "invalid data")
 		}
@@ -119,7 +126,7 @@ var signCmd = &cobra.Command{
 			}
 
 			if verify {
-				if valid := tss.Verify(localSaveData.ECDSAPub.ToECDSAPubKey(), []byte(dataToSign), result); !valid {
+				if valid := tss.Verify(localSaveData.ECDSAPub.ToECDSAPubKey(), dataToSign, result); !valid {
 					return errors.New("signature verification failed")
 				} else {
 					cfg.Log().Info("Signature verification passed")

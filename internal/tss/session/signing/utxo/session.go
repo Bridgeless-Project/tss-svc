@@ -119,7 +119,7 @@ func (s *Session) Build() error {
 	s.signConsMechanism = signing.NewConsensusMechanism[withdrawal.UtxoWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewBitcoinConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
+		withdrawal.NewUtxoConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
 		s.fetcher,
 	)
 
