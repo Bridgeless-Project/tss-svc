@@ -9,6 +9,8 @@ const (
 	TransferMethod               = "transfer"
 	SendExtSignedAssetTxMethod   = "send_ext_signed_asset_tx"
 
+	StatusSendExtSignedAssetTxOk = "OK"
+
 	// node methods
 	DecryptTxDetailsMethod = "decrypt_tx_details"
 	GetHeightMethod        = "getheight"
