@@ -141,15 +141,15 @@ var signCmd = &cobra.Command{
 
 func saveSigningResult(result *common.SignatureData) error {
 	signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
-	raw, err := json.Marshal(signature)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal signing result")
-	}
 
 	switch utils.OutputType {
 	case "console":
-		fmt.Println(string(raw))
+		fmt.Println(signature)
 	case "file":
+		raw, err := json.Marshal(signature)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal signing result")
+		}
 		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
 			return errors.Wrap(err, "failed to write signing result to file")
 		}
