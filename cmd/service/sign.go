@@ -49,7 +49,7 @@ var signCmd = &cobra.Command{
 		}
 
 		rawData := args[0]
-		if !strings.HasPrefix(bridge.HexPrefix, rawData) {
+		if !strings.HasPrefix(rawData, bridge.HexPrefix) {
 			rawData = bridge.HexPrefix + rawData
 		}
 
@@ -89,7 +89,7 @@ var signCmd = &cobra.Command{
 			},
 			signing.DefaultSessionParams{
 				Params:      cfg.TssSessionParams(),
-				SigningData: []byte(dataToSign),
+				SigningData: dataToSign,
 			},
 			parties,
 			connectionManager.GetReadyCount,
