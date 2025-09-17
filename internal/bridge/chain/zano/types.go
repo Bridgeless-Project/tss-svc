@@ -5,6 +5,12 @@ import (
 	"encoding/json"
 )
 
+type DestinationData struct {
+	Address    string `json:"dst_add"`
+	ChainId    string `json:"dst_net_id"`
+	ReferralId uint16 `json:"referral_id"`
+}
+
 type SignedTransaction struct {
 	UnsignedTransaction
 	Signature string
