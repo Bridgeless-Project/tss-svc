@@ -31,3 +31,12 @@ func (p clientsRepository) SupportsChain(chainId string) bool {
 	_, ok := p.clients[chainId]
 	return ok
 }
+
+func (p clientsRepository) HealthCheck() map[string]error {
+	health := make(map[string]error, len(p.clients))
+	for id, cl := range p.clients {
+		health[id] = cl.HealthCheck()
+	}
+
+	return health
+}

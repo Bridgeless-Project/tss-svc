@@ -1,9 +1,12 @@
 package solana
 
 import (
+	"context"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/gagliardetto/solana-go"
+	"github.com/pkg/errors"
 )
 
 type Client struct {
@@ -32,4 +35,16 @@ func (p *Client) AddressValid(addr string) bool {
 
 func (p *Client) TransactionHashValid(hash string) bool {
 	return bridge.SolanaTransactionHashPattern.MatchString(hash)
+}
+
+func (p *Client) HealthCheck() error {
+	status, err := p.chain.Rpc.GetHealth(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "failed to check node health")
+	}
+	if status != "ok" {
+		return errors.New("node is not healthy with status: " + status)
+	}
+
+	return nil
 }

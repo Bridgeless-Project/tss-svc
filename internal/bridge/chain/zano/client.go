@@ -32,3 +32,8 @@ func (p *Client) TransactionHashValid(hash string) bool {
 func NewBridgeClient(chain Chain) *Client {
 	return &Client{chain}
 }
+
+func (p *Client) HealthCheck() error {
+	//TODO: add health check logic
+	return nil
+}

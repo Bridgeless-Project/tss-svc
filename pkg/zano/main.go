@@ -169,6 +169,13 @@ func (z Sdk) SendExtSignedAssetTX(ethSig, expectedTXID, finalizedTx, unsignedTx 
 func (z Sdk) CurrentHeight() (uint64, error) {
 	resp := new(types.GetHeightResponse)
 	err := z.client.CallRaw(types.GetHeightMethod, resp)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.Status != "OK" {
+		return 0, errors.Errorf("unexpected status: %s", resp.Status)
+	}
 
 	return resp.Height, err
 }
