@@ -200,17 +200,17 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 // deposit memo structure:
 //
 // [chainId][referralId][addressEncodingType][destinationAddress]
-//   - chainId: left padded to 6 bytes, UTF-8
-//   - referralId: 2 bytes big-endian
+//   - chainId: right-padded to 6 bytes, UTF-8
+//   - referralId: 2 bytes, big-endian
 //   - addressEncodingType: 1 byte
 //   - destinationAddress: variable length
 func (d *DepositDecoder) decodeDepositMemo(raw []byte) (*DepositMemo, error) {
-	if len(raw) < chainIdLength+referralIdLength+1 {
+	if len(raw) <= chainIdLength+referralIdLength+1 {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid deposit memo length")
 	}
 
 	var depositMemo DepositMemo
-	depositMemo.ChainId = string(bytes.TrimLeft(raw[:chainIdLength], string(PaddingByte)))
+	depositMemo.ChainId = string(bytes.TrimRight(raw[:chainIdLength], string(PaddingByte)))
 	depositMemo.ReferralId = binary.BigEndian.Uint16(raw[chainIdLength : chainIdLength+referralIdLength])
 
 	encodingTypeByte := raw[chainIdLength+referralIdLength]
