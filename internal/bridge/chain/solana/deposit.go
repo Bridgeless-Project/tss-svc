@@ -2,6 +2,8 @@ package solana
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana/contract"
@@ -10,7 +12,6 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
@@ -49,7 +50,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	}
 
 	switch deposit := instr.Impl.(type) {
-	case *contract.DepositNativeInstruction:
+	case *contract.DepositNative:
 		if *deposit.BridgeId != p.chain.Meta.BridgeId {
 			return nil, bridgeTypes.ErrInvalidBridgeId
 		}
@@ -61,9 +62,10 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			TokenAddress:       bridge.DefaultNativeTokenAddress,
 			DestinationAddress: *deposit.Address,
 			DestinationChainId: *deposit.ChainId,
+			ReferralId:         *deposit.ReferralId,
 		}, nil
 
-	case *contract.DepositSplInstruction:
+	case *contract.DepositSpl:
 		if *deposit.BridgeId != p.chain.Meta.BridgeId {
 			return nil, bridgeTypes.ErrInvalidBridgeId
 		}
@@ -75,9 +77,10 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			TokenAddress:       deposit.GetMintAccount().PublicKey.String(),
 			DestinationAddress: *deposit.Address,
 			DestinationChainId: *deposit.ChainId,
+			ReferralId:         *deposit.ReferralId,
 		}, nil
 
-	case *contract.DepositWrappedInstruction:
+	case *contract.DepositWrapped:
 		if *deposit.BridgeId != p.chain.Meta.BridgeId {
 			return nil, bridgeTypes.ErrInvalidBridgeId
 		}
@@ -89,6 +92,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			TokenAddress:       deposit.GetMintAccount().PublicKey.String(),
 			DestinationAddress: *deposit.Address,
 			DestinationChainId: *deposit.ChainId,
+			ReferralId:         *deposit.ReferralId,
 		}, nil
 	}
 
