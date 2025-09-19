@@ -11,12 +11,12 @@ ENV GOPRIVATE=github.com/*
 ENV GONOSUMDB=github.com/*
 ENV GONOPROXY=github.com/*
 
-COPY ./go.mod ./go.sum ./
-RUN go mod download
+COPY ./go.mod ./go.sum ./vendor ./
+RUN #go mod download
 
 COPY . .
 
-RUN go mod vendor
+RUN #go mod vendor
 RUN go build  -o /usr/local/bin/tss-svc /go/src/github.com/Bridgeless-Project/tss-svc
 
 

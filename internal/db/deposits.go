@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
