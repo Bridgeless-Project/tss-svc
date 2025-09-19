@@ -14,7 +14,6 @@ replace (
 	github.com/cosmos/iavl => github.com/cosmos/iavl v0.19.6
 	// bridge cosmos sdk protobuf fix
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/hyle-team/bridgeless-core/v12 => github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4
 	// bridge cosmos sdk comebft change
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0
@@ -24,6 +23,7 @@ replace (
 
 require (
 	cosmossdk.io/math v1.5.3
+	github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
 	github.com/btcsuite/btcd v0.24.2
@@ -49,7 +49,6 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/hashicorp/vault/api v1.15.0
-	github.com/hyle-team/bridgeless-core/v12 v12.1.16-rc1
 	github.com/ignite/cli v0.26.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
@@ -63,6 +62,7 @@ require (
 	gitlab.com/distributed_lab/kit v1.11.3
 	gitlab.com/distributed_lab/logan v3.8.1+incompatible
 	go.uber.org/atomic v1.10.0
+	golang.org/x/crypto v0.40.0
 	golang.org/x/sync v0.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b
 	google.golang.org/grpc v1.74.2
@@ -74,7 +74,6 @@ require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
-	github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.23 // indirect
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
@@ -228,7 +227,6 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/ratelimit v0.2.0 // indirect
 	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect

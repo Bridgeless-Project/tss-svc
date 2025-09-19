@@ -1166,8 +1166,6 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.3/go.mod h1:KLF4gFr6DcKFZwSu
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0/go.mod h1:tPaiy8S5bQ+S5sOiDlINkp7+Ef339+Nz5L5XO+cnOHo=
 github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4 h1:ahem56xjJKQ8BXQ/iBj9wC9KEewWhRSXRWyNS37c+fk=
 github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.23 h1:JLLa7vGAQLGP3pTNXyatCC/8XndR/ZDM2IqwA47zyBI=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.23/go.mod h1:PoyaO13xr+QTx2CE8qmi6L7MpqVtykR7QTgO59LAt4I=
 github.com/Bridgeless-Project/cosmos-sdk v0.46.33 h1:577v3h/g5XRrwxannT88jEi16EYOxkJU1ApD+IhEzdM=
 github.com/Bridgeless-Project/cosmos-sdk v0.46.33/go.mod h1:exJNK+hAaBpOdCPfS60Y9UvSy/iepf0pzd9XLeUDaso=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=

@@ -16,7 +16,7 @@ function depositERC20(
 
 Note:
 - before executing the `depositERC20` function, the user should approve the contract to spend the amount of tokens that should be transferred;
-- to obtain the information about the available tokens to transfer, their addresses, chain identifiers and more, query the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core) [`bridge`](https://github.com/hyle-team/bridgeless-core/tree/main/x/bridge) module.
+- to obtain the information about the available tokens to transfer, their addresses, chain identifiers and more, query the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core) [`bridge`](https://github.com/Bridgeless-Project/bridgeless-core/tree/main/x/bridge) module.
 
 `depositNative` function:
 ```solidity
@@ -184,4 +184,4 @@ After the transaction is broadcast, the user should provide the TSS network with
 - source chain id — the identifier of the source chain where the deposit operation was executed.
 
 # Bridging Parameters
-To find the required information about the supported tokens and chains, the user should query the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core) [`bridge`](https://github.com/hyle-team/bridgeless-core/tree/main/x/bridge) module, which contains the information about the available tokens, their addresses, chain identifiers and more.
+To find the required information about the supported tokens and chains, the user should query the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core) [`bridge`](https://github.com/Bridgeless-Project/bridgeless-core/tree/main/x/bridge) module, which contains the information about the available tokens, their addresses, chain identifiers and more.

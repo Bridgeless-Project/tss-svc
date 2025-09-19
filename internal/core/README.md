@@ -1,7 +1,7 @@
 # Bridge Core
 
 ## Description
-Module for interacting with the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core), especially with its `bridge` module
+Module for interacting with the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core), especially with its `bridge` module
 
 ## Components
 To be added
