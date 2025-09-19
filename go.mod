@@ -49,7 +49,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/hashicorp/vault/api v1.15.0
-	github.com/hyle-team/bridgeless-core/v12 v12.1.16-rc1
+	github.com/hyle-team/bridgeless-core/v12 v12.0.0-00010101000000-000000000000
 	github.com/ignite/cli v0.26.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
