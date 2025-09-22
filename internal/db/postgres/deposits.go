@@ -26,6 +26,7 @@ const (
 	depositsReceiver         = "receiver"
 	depositsWithdrawalToken  = "withdrawal_token"
 	depositsDepositBlock     = "deposit_block"
+	depositsReferralId       = "referral_id"
 
 	depositsWithdrawalChainId = "withdrawal_chain_id"
 	depositsWithdrawalTxHash  = "withdrawal_tx_hash"
@@ -67,6 +68,7 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalToken:   deposit.WithdrawalToken,
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 			depositsCommissionAmount:  deposit.CommissionAmount,
+			depositsReferralId:        deposit.ReferralId,
 		}).
 		Suffix("RETURNING id")
 
@@ -210,6 +212,7 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalTxHash:  deposit.WithdrawalTxHash,
 			depositsSignature:         deposit.Signature,
 			depositsWithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+			depositsReferralId:        deposit.ReferralId,
 		}).
 		Suffix("RETURNING id")
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	coretypes "github.com/Bridgeless-Project/bridgeless-core/v12/types"
+	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	clienttx "github.com/cosmos/cosmos-sdk/client/tx"
@@ -15,8 +17,6 @@ import (
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	coretypes "github.com/hyle-team/bridgeless-core/v12/types"
-	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
