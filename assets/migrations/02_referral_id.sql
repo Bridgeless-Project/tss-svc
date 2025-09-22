@@ -4,7 +4,7 @@ CREATE DOMAIN uint16 AS integer
 
 
 ALTER TABLE deposits
-    ADD COLUMN referral_id uint16 NOT NULL;
+    ADD COLUMN referral_id uint16 NOT NULL DEFAULT 0;
 
 -- +migrate Down
 
