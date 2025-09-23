@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *Connector) GetTokenInfo(chainId string, addr string) (bridgetypes.TokenInfo, error) {
+func (c *Connector) GetTokenInfo(chainId string, addr string) (*bridgetypes.TokenInfo, error) {
 	req := bridgetypes.QueryGetTokenInfo{
 		Chain:   chainId,
 		Address: addr,
@@ -17,11 +17,11 @@ func (c *Connector) GetTokenInfo(chainId string, addr string) (bridgetypes.Token
 	resp, err := c.querier.GetTokenInfo(context.Background(), &req)
 	if err != nil {
 		if errors.Is(err, bridgetypes.ErrTokenInfoNotFound.GRPCStatus().Err()) {
-			return bridgetypes.TokenInfo{}, core.ErrSourceTokenInfoNotFound
+			return nil, core.ErrSourceTokenInfoNotFound
 		}
 
-		return bridgetypes.TokenInfo{}, errors.Wrap(err, "failed to get token info")
+		return nil, errors.Wrap(err, "failed to get token info")
 	}
 
-	return resp.Info, nil
+	return &resp.Info, nil
 }
