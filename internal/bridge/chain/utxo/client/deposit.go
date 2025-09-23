@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"math/big"
@@ -98,11 +97,7 @@ type DepositMemo struct {
 	ReferralId uint16
 }
 
-const (
-	PaddingByte      byte = 0x00
-	chainIdLength         = 6
-	referralIdLength      = 2
-)
+const referralIdLength = 2
 
 func NewDepositDecoder(helper helper.UtxoHelper, bridgeAddresses []string) *DepositDecoder {
 	return &DepositDecoder{
@@ -199,27 +194,34 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 // decodeDepositMemo decodes the deposit memo from raw bytes.
 // deposit memo structure:
 //
-// [chainId][referralId][addressEncodingType][destinationAddress]
-//   - chainId: right-padded to 6 bytes, UTF-8
+// [lenChainId][chainId][referralId][addressEncodingType][destinationAddress]
+//   - lenChainId: 1 byte, length of chainId
+//   - chainId: variable length
 //   - referralId: 2 bytes, big-endian
 //   - addressEncodingType: 1 byte
 //   - destinationAddress: variable length
 func (d *DepositDecoder) decodeDepositMemo(raw []byte) (*DepositMemo, error) {
-	if len(raw) <= chainIdLength+referralIdLength+1 {
-		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid deposit memo length")
+	if len(raw) == 0 {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "empty deposit memo")
 	}
 
-	var depositMemo DepositMemo
-	depositMemo.ChainId = string(bytes.TrimRight(raw[:chainIdLength], string(PaddingByte)))
-	depositMemo.ReferralId = binary.BigEndian.Uint16(raw[chainIdLength : chainIdLength+referralIdLength])
+	chainIdLength := int(raw[0])
+	if len(raw) <= 1+chainIdLength+referralIdLength+1 {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid deposit memo length")
+	}
+	chainIdEndIdx := 1 + chainIdLength
 
-	encodingTypeByte := raw[chainIdLength+referralIdLength]
+	var depositMemo DepositMemo
+	depositMemo.ChainId = string(raw[1:chainIdEndIdx])
+	depositMemo.ReferralId = binary.BigEndian.Uint16(raw[chainIdEndIdx : chainIdEndIdx+referralIdLength])
+
+	encodingTypeByte := raw[chainIdEndIdx+referralIdLength]
 	encoder := encoding.GetEncoder(encoding.Type(encodingTypeByte))
 	if encoder == nil {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "unknown address encoding type")
 	}
 
-	depositMemo.Address = encoder.Encode(raw[chainIdLength+referralIdLength+1:])
+	depositMemo.Address = encoder.Encode(raw[chainIdEndIdx+referralIdLength+1:])
 
 	return &depositMemo, nil
 }
