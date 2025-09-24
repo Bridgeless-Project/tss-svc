@@ -14,6 +14,7 @@ const (
 	networkCellSizeBit         = 256
 	amountBitSize              = 257
 	receiverBitSize            = 1016
+	referralBitSize            = 16
 	withdrawalNativeHashMethod = "nativeHash"
 	withdrawalJettonHashMethod = "jettonHash"
 	trueBit                    = -1
@@ -29,11 +30,13 @@ type depositJettonContent struct {
 	ChainId      string
 	IsWrapped    bool
 	TokenAddress *address.Address
+	ReferralId   uint16
 }
 
 type depositNativeContent struct {
-	Sender   *address.Address
-	Amount   *big.Int
-	Receiver string
-	ChainId  string
+	Sender     *address.Address
+	Amount     *big.Int
+	Receiver   string
+	ChainId    string
+	ReferralId uint16
 }
