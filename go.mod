@@ -23,7 +23,7 @@ replace (
 
 require (
 	cosmossdk.io/math v1.5.3
-	github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4
+	github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250922141418-82edc9f7244b
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
 	github.com/btcsuite/btcd v0.24.2

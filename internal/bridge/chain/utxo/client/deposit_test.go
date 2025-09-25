@@ -11,17 +11,11 @@ import (
 )
 
 func constructMemo(chainId string, referralId uint16, addrEncodingType byte, rawAddr []byte) []byte {
-	// pad chainId to 6 bytes with leading PaddingByte
-	paddedChainId := make([]byte, 6)
-	copy(paddedChainId, chainId)
-	for i := len(chainId); i < 6; i++ {
-		paddedChainId[i] = PaddingByte
-	}
-
+	decodedChainId := append([]byte{byte(len(chainId))}, []byte(chainId)...)
 	referralIdBytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(referralIdBytes, referralId)
 
-	return append(append(paddedChainId, referralIdBytes...), append([]byte{addrEncodingType}, rawAddr...)...)
+	return append(append(decodedChainId, referralIdBytes...), append([]byte{addrEncodingType}, rawAddr...)...)
 }
 
 func Test_DepositDecoding(t *testing.T) {
@@ -93,6 +87,8 @@ func Test_DepositDecoding(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Logf("expected memo: %+v", tc.expected)
+			t.Logf("prepared raw memo: %v", tc.prepareMemo())
 			memo, err := decoder.decodeDepositMemo(tc.prepareMemo())
 			if err != nil {
 				if !tc.err {

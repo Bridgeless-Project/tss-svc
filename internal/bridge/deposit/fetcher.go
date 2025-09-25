@@ -3,7 +3,6 @@ package deposit
 import (
 	"math/big"
 
-	sdkmath "cosmossdk.io/math"
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -29,7 +28,6 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting source clients")
 	}
-
 	if !sourceClient.TransactionHashValid(identifier.TxHash) {
 		return nil, errors.New("invalid transaction hash")
 	}
@@ -43,21 +41,26 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting destination clients")
 	}
-
 	if !dstClient.AddressValid(depositData.DestinationAddress) {
 		return nil, errors.Wrap(chain.ErrInvalidReceiverAddress, depositData.DestinationAddress)
+	}
+
+	if !bridgetypes.IsDefaultReferralId(uint32(depositData.ReferralId)) {
+		// check if referral id is valid
+		_, err = p.core.GetReferralById(depositData.ReferralId)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get referral info")
+		}
 	}
 
 	srcTokenInfo, err := p.core.GetTokenInfo(identifier.ChainId, depositData.TokenAddress)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get source token info")
 	}
-
 	token, err := p.core.GetToken(srcTokenInfo.TokenId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get source token")
 	}
-
 	dstTokenInfo, err := getDstTokenInfo(token, depositData.DestinationChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get dst token info")
@@ -67,13 +70,11 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 	if !dstClient.WithdrawalAmountValid(withdrawalAmount) {
 		return nil, chain.ErrInvalidDepositedAmount
 	}
-
-	commissionAmount, err := getCommissionAmount(withdrawalAmount, token.CommissionRate)
+	commissionAmount, err := bridgetypes.GetCommissionAmount(withdrawalAmount, token.CommissionRate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get commission amount")
 	}
-
-	finalWithdrawalAmount := big.NewInt(0).Sub(withdrawalAmount, commissionAmount)
+	finalWithdrawalAmount := new(big.Int).Sub(withdrawalAmount, commissionAmount)
 	if !dstClient.WithdrawalAmountValid(finalWithdrawalAmount) {
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, "invalid final withdrawal amount")
 	}
@@ -106,17 +107,6 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 	}
 
 	return result
-}
-
-// getCommissionAmount returns a commission amount basing on provided withdrawal amount and token commission rate.
-func getCommissionAmount(withdrawalAmount *big.Int, commissionRate string) (*big.Int, error) {
-	rate, err := sdkmath.LegacyNewDecFromStr(commissionRate)
-
-	if err != nil {
-		return big.NewInt(0), errors.Wrap(err, "failed to parse commission rate")
-	}
-
-	return rate.Mul(sdkmath.LegacyNewDecFromBigInt(withdrawalAmount)).TruncateInt().BigInt(), nil
 }
 
 func getDstTokenInfo(token bridgetypes.Token, dstChainId string) (bridgetypes.TokenInfo, error) {
