@@ -53,20 +53,12 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		}
 	}
 
-	token, srcInfo, dstInfo, err := p.GetTokens(
-		identifier.ChainId,
-		depositData.TokenAddress,
-		depositData.DestinationChainId,
-	)
+	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
 
-	withdrawalAmount, commission, err := p.GetWithdrawalAmount(
-		depositData.DepositAmount,
-		srcInfo, dstInfo,
-		token.CommissionRate,
-	)
+	withdrawalAmount, commission, err := p.GetWithdrawalAmount(depositData.DepositAmount, srcInfo, dstInfo)
 	if err != nil {
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
 	}
@@ -86,36 +78,31 @@ func (p *Fetcher) GetTokens(
 	srcTokenAddress string,
 	dstChainId string,
 ) (
-	token *bridgetypes.Token,
 	srcInfo, dstInfo *bridgetypes.TokenInfo,
 	err error,
 ) {
 	srcInfo, err = p.core.GetTokenInfo(srcChainId, srcTokenAddress)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "failed to get source token info")
+		return nil, nil, errors.Wrap(err, "failed to get source token info")
 	}
-	token, err = p.core.GetToken(srcInfo.TokenId)
+	token, err := p.core.GetToken(srcInfo.TokenId)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "failed to get source token")
+		return nil, nil, errors.Wrap(err, "failed to get source token")
 	}
 
 	for _, info := range token.Info {
 		if info.ChainId == dstChainId {
-			return token, srcInfo, &info, nil
+			return srcInfo, &info, nil
 		}
 	}
 
-	return nil, nil, nil, core.ErrDestinationTokenInfoNotFound
+	return nil, nil, core.ErrDestinationTokenInfoNotFound
 }
 
-func (p *Fetcher) GetWithdrawalAmount(
-	depositAmount *big.Int,
-	srcInfo, dstInfo *bridgetypes.TokenInfo,
-	commissionRate string,
-) (*big.Int, *big.Int, error) {
+func (p *Fetcher) GetWithdrawalAmount(depositAmount *big.Int, srcInfo, dstInfo *bridgetypes.TokenInfo) (*big.Int, *big.Int, error) {
 	withdrawalAmount := transformAmount(depositAmount, srcInfo.Decimals, dstInfo.Decimals)
 
-	commissionAmount, err := bridgetypes.GetCommissionAmount(withdrawalAmount, commissionRate)
+	commissionAmount, err := bridgetypes.GetCommissionAmount(withdrawalAmount, dstInfo.CommissionRate)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get commission amount")
 	}
