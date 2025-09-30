@@ -1168,6 +1168,8 @@ github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408
 github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
 github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250922141418-82edc9f7244b h1:uINlXWttrP5YiU/0D8PrjVutHztsKNz0zT1xy4uNnt4=
 github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250922141418-82edc9f7244b/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
+github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250930075726-0a996f79255e h1:co0nOUbJM202aWGmVaskYiwLb7zJkvxFbXbEyAqrQbY=
+github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250930075726-0a996f79255e/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
 github.com/Bridgeless-Project/cosmos-sdk v0.46.33 h1:577v3h/g5XRrwxannT88jEi16EYOxkJU1ApD+IhEzdM=
 github.com/Bridgeless-Project/cosmos-sdk v0.46.33/go.mod h1:exJNK+hAaBpOdCPfS60Y9UvSy/iepf0pzd9XLeUDaso=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
