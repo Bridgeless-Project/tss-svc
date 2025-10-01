@@ -59,6 +59,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			DepositAmount:      eventBody.Amount,
 			Block:              int64(log.BlockNumber),
 			SourceAddress:      from.String(),
+			ReferralId:         eventBody.ReferralId,
 		}
 
 		break
@@ -77,6 +78,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			TokenAddress:       strings.ToLower(eventBody.Token.String()),
 			Block:              int64(log.BlockNumber),
 			SourceAddress:      from.String(),
+			ReferralId:         eventBody.ReferralId,
 		}
 
 		break

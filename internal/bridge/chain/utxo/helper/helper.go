@@ -12,7 +12,7 @@ import (
 
 type UtxoHelper interface {
 	ScriptSupported(script []byte) bool
-	RetrieveOpReturnData(script []byte) (string, error)
+	RetrieveOpReturnData(script []byte) ([]byte, error)
 
 	P2pkhAddress(pk *ecdsa.PublicKey) string
 	AddressValid(string) bool

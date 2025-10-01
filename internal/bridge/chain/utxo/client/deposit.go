@@ -1,31 +1,21 @@
 package client
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"math/big"
-	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/pkg/encoding"
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil/base58"
-	"github.com/gagliardetto/solana-go"
 	"github.com/pkg/errors"
 )
 
 const (
-	dstSeparator   = "#"
-	dstParamsCount = 2
-	dstAddrIdx     = 0
-	dstChainIdIdx  = 1
-
-	dstEthAddrLen  = 42
-	dstZanoAddrLen = 71
-	dstTonAddrLen  = 48
-
 	defaultDepositorAddressOutputIdx = 0
 )
 
@@ -46,7 +36,7 @@ func (c *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, errors.Wrap(err, "failed to get block")
 	}
 
-	addr, chainId, amount, err := c.depositDecoder.Decode(tx, id.TxNonce)
+	depositData, err := c.depositDecoder.Decode(tx, id.TxNonce)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode deposit data")
 	}
@@ -58,10 +48,11 @@ func (c *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 
 	return &db.DepositData{
 		DepositIdentifier:  id,
-		DestinationChainId: chainId,
-		DestinationAddress: addr,
+		DestinationChainId: depositData.ChainId,
+		DestinationAddress: depositData.Address,
 		SourceAddress:      depositor,
-		DepositAmount:      amount,
+		DepositAmount:      depositData.Amount,
+		ReferralId:         depositData.ReferralId,
 		// as Bitcoin does not have any other currencies
 		TokenAddress: bridge.DefaultNativeTokenAddress,
 		Block:        block.Height,
@@ -95,6 +86,19 @@ type DepositDecoder struct {
 	bridgeAddresses []string
 }
 
+type DepositData struct {
+	Amount *big.Int
+	DepositMemo
+}
+
+type DepositMemo struct {
+	Address    string
+	ChainId    string
+	ReferralId uint16
+}
+
+const referralIdLength = 2
+
 func NewDepositDecoder(helper helper.UtxoHelper, bridgeAddresses []string) *DepositDecoder {
 	return &DepositDecoder{
 		helper:          helper,
@@ -102,9 +106,9 @@ func NewDepositDecoder(helper helper.UtxoHelper, bridgeAddresses []string) *Depo
 	}
 }
 
-func (d *DepositDecoder) Decode(tx *btcjson.TxRawResult, depositIdx int64) (addr, chainId string, amount *big.Int, err error) {
+func (d *DepositDecoder) Decode(tx *btcjson.TxRawResult, depositIdx int64) (*DepositData, error) {
 	if depositIdx < 0 {
-		return "", "", nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionData, "invalid deposit index")
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionData, "invalid deposit index")
 	}
 	var (
 		depositOutputIdx     = int(depositIdx)
@@ -112,20 +116,23 @@ func (d *DepositDecoder) Decode(tx *btcjson.TxRawResult, depositIdx int64) (addr
 	)
 
 	if depositOutputIdx < 0 || destinationOutputIdx >= len(tx.Vout) {
-		return "", "", nil, bridgeTypes.ErrDepositNotFound
+		return nil, bridgeTypes.ErrDepositNotFound
 	}
 
-	amount, err = d.decodeDepositOutput(tx.Vout[depositOutputIdx])
+	amount, err := d.decodeDepositOutput(tx.Vout[depositOutputIdx])
 	if err != nil {
-		return "", "", nil, errors.Wrap(err, "failed to decode deposit output")
+		return nil, errors.Wrap(err, "failed to decode deposit output")
 	}
 
-	addr, chainId, err = d.decodeDestinationOutput(tx.Vout[destinationOutputIdx])
+	depositMemo, err := d.decodeDepositMemoOutput(tx.Vout[destinationOutputIdx])
 	if err != nil {
-		return "", "", nil, errors.Wrap(err, "failed to decode destination output")
+		return nil, errors.Wrap(err, "failed to decode destination output")
 	}
 
-	return
+	return &DepositData{
+		Amount:      amount,
+		DepositMemo: *depositMemo,
+	}, nil
 }
 
 func (d *DepositDecoder) decodeDepositOutput(out btcjson.Vout) (amount *big.Int, err error) {
@@ -165,53 +172,56 @@ func (d *DepositDecoder) isBridgeAddress(addr string) bool {
 	return false
 }
 
-func (d *DepositDecoder) decodeDestinationOutput(out btcjson.Vout) (addr, chainId string, err error) {
+func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo, error) {
 	scriptRaw, err := hex.DecodeString(out.ScriptPubKey.Hex)
 	if err != nil {
-		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
 
 	raw, err := d.helper.RetrieveOpReturnData(scriptRaw)
 	if err != nil {
-		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
 
-	addr, chainId, err = decodeDestinationData(raw)
+	depositMemo, err := d.decodeDepositMemo(raw)
 	if err != nil {
-		return addr, chainId, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
 
-	return
+	return depositMemo, nil
 }
 
-func decodeDestinationData(raw string) (addr, chainId string, err error) {
-	parts := strings.Split(raw, dstSeparator)
-	if len(parts) < dstParamsCount {
-		return addr, chainId, errors.New("invalid destination parameters")
-	}
-	if len(parts) > dstParamsCount {
-		// try concatenating all but the last parts in case the raw bytes sequence in a string contains the separator
-		parts = []string{
-			strings.Join(parts[:len(parts)-1], dstSeparator),
-			parts[len(parts)-1],
-		}
+// decodeDepositMemo decodes the deposit memo from raw bytes.
+// deposit memo structure:
+//
+// [lenChainId][chainId][referralId][addressEncodingType][destinationAddress]
+//   - lenChainId: 1 byte, length of chainId
+//   - chainId: variable length
+//   - referralId: 2 bytes, big-endian
+//   - addressEncodingType: 1 byte
+//   - destinationAddress: variable length
+func (d *DepositDecoder) decodeDepositMemo(raw []byte) (*DepositMemo, error) {
+	if len(raw) == 0 {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "empty deposit memo")
 	}
 
-	addr, chainId = parts[dstAddrIdx], parts[dstChainIdIdx]
-
-	switch len(addr) {
-	case dstEthAddrLen, dstTonAddrLen:
-		return
-	case dstZanoAddrLen:
-		addr = base58.Encode([]byte(addr))
-		return
-	default:
-		// Solana address is not fixed-length, so just try parsing it
-		_, err = solana.PublicKeyFromBase58(addr)
-		if err != nil {
-			err = errors.New("invalid destination address parameter")
-			return
-		}
+	chainIdLength := int(raw[0])
+	if len(raw) <= 1+chainIdLength+referralIdLength+1 {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid deposit memo length")
 	}
-	return
+	chainIdEndIdx := 1 + chainIdLength
+
+	var depositMemo DepositMemo
+	depositMemo.ChainId = string(raw[1:chainIdEndIdx])
+	depositMemo.ReferralId = binary.BigEndian.Uint16(raw[chainIdEndIdx : chainIdEndIdx+referralIdLength])
+
+	encodingTypeByte := raw[chainIdEndIdx+referralIdLength]
+	encoder := encoding.GetEncoder(encoding.Type(encodingTypeByte))
+	if encoder == nil {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "unknown address encoding type")
+	}
+
+	depositMemo.Address = encoder.Encode(raw[chainIdEndIdx+referralIdLength+1:])
+
+	return &depositMemo, nil
 }

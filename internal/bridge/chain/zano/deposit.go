@@ -11,11 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type destinationData struct {
-	Address string `json:"dst_add"`
-	ChainId string `json:"dst_net_id"`
-}
-
 func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
 	transaction, _, err := p.GetTransaction(id.TxHash, true, false, false)
 	if err != nil {
@@ -36,7 +31,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	if int64(len(transaction.ServiceEntries)) < id.TxNonce+1 {
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
-	addr, chainId, err := parseDestinationData(transaction.ServiceEntries[id.TxNonce])
+	depositMemo, err := parseDepositMemo(transaction.ServiceEntries[id.TxNonce])
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse destination data")
 	}
@@ -48,8 +43,9 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 
 	return &db.DepositData{
 		DepositIdentifier:  id,
-		DestinationChainId: chainId,
-		DestinationAddress: addr,
+		DestinationChainId: depositMemo.ChainId,
+		DestinationAddress: depositMemo.Address,
+		ReferralId:         depositMemo.ReferralId,
 		SourceAddress:      depositor,
 		DepositAmount:      transaction.Ado.OptAmount,
 		TokenAddress:       *transaction.Ado.OptAssetId,
@@ -74,16 +70,16 @@ func (p *Client) validateConfirmations(txHeight uint64) error {
 	return nil
 }
 
-func parseDestinationData(entry zanoTypes.ServiceEntry) (addr, chainId string, err error) {
+func parseDepositMemo(entry zanoTypes.ServiceEntry) (*DepositMemo, error) {
 	raw, err := hex.DecodeString(entry.Body)
 	if err != nil {
-		return "", "", errors.Wrap(err, "failed to decode hex body")
+		return nil, errors.Wrap(err, "failed to decode hex body")
 	}
 
-	var dstData destinationData
-	if err = json.Unmarshal(raw, &dstData); err != nil {
-		return "", "", errors.Wrap(err, "failed to unmarshal json data")
+	var depositMemo DepositMemo
+	if err = json.Unmarshal(raw, &depositMemo); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal json data")
 	}
 
-	return dstData.Address, dstData.ChainId, nil
+	return &depositMemo, nil
 }

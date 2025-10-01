@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
@@ -77,6 +77,7 @@ type Deposit struct {
 	WithdrawalToken  string  `structs:"withdrawal_token" db:"withdrawal_token"`
 	DepositBlock     int64   `structs:"deposit_block" db:"deposit_block"`
 	CommissionAmount string  `structs:"commission_amount" db:"commission_amount"`
+	ReferralId       uint16  `structs:"referral_id" db:"referral_id"`
 
 	WithdrawalStatus types.WithdrawalStatus `structs:"withdrawal_status" db:"withdrawal_status"`
 
@@ -106,6 +107,7 @@ func (d Deposit) ToTransaction(rawTxData *string) bridgetypes.Transaction {
 		DepositBlock:      uint64(d.DepositBlock),
 		Signature:         stringOrEmpty(d.Signature),
 		IsWrapped:         d.IsWrappedToken,
+		ReferralId:        uint32(d.ReferralId),
 		TxData:            stringOrEmpty(rawTxData),
 	}
 }
@@ -117,6 +119,7 @@ type DepositData struct {
 	SourceAddress string
 	DepositAmount *big.Int
 	TokenAddress  string
+	ReferralId    uint16
 
 	DestinationAddress string
 	DestinationChainId string
@@ -141,6 +144,7 @@ func (d DepositData) ToNewDeposit(
 		WithdrawalAmount:  withdrawalAmount.String(),
 		IsWrappedToken:    isWrappedToken,
 		CommissionAmount:  commissionAmount.String(),
+		ReferralId:        d.ReferralId,
 	}
 }
 

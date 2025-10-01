@@ -118,6 +118,11 @@ func (dd DepositDecoder) parseDepositJettonBody(body *cell.Cell) (*depositJetton
 		return nil, errors.Wrap(err, "error loading amount")
 	}
 
+	referralId, err := slice.LoadUInt(referralBitSize)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing referralId")
+	}
+
 	receiverCell, err := body.PeekRef(receiverCellId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting address")
@@ -145,13 +150,13 @@ func (dd DepositDecoder) parseDepositJettonBody(body *cell.Cell) (*depositJetton
 		ChainId:      cleanPrintable(network),
 		IsWrapped:    isWrapped,
 		TokenAddress: tokenAddr.Testnet(dd.isTestnet),
+		ReferralId:   uint16(referralId),
 	}, nil
 }
 
 // parseDepositNativeBody parses the body of a native deposit message and returns the content and error
 func (dd DepositDecoder) parseDepositNativeBody(body *cell.Cell) (*depositNativeContent, error) {
 	slice := body.BeginParse()
-
 	// Skip opCode bytes
 	_, err := slice.LoadInt(opCodeBitSize)
 	if err != nil {
@@ -168,6 +173,10 @@ func (dd DepositDecoder) parseDepositNativeBody(body *cell.Cell) (*depositNative
 		return nil, errors.Wrap(err, "error parsing amount")
 	}
 
+	referralId, err := slice.LoadUInt(referralBitSize)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing referralId")
+	}
 	receiverCell, err := body.PeekRef(receiverCellId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting receiver ref")
@@ -189,10 +198,11 @@ func (dd DepositDecoder) parseDepositNativeBody(body *cell.Cell) (*depositNative
 	}
 
 	return &depositNativeContent{
-		Sender:   sender.Testnet(dd.isTestnet),
-		Amount:   big.NewInt(amount),
-		Receiver: cleanPrintable(string(receiver)),
-		ChainId:  cleanPrintable(network),
+		Sender:     sender.Testnet(dd.isTestnet),
+		Amount:     big.NewInt(amount),
+		Receiver:   cleanPrintable(string(receiver)),
+		ChainId:    cleanPrintable(network),
+		ReferralId: uint16(referralId),
 	}, nil
 }
 
@@ -205,6 +215,7 @@ func (dd DepositDecoder) formJettonDepositData(content *depositJettonContent, tx
 		TokenAddress:       content.TokenAddress.String(),
 		DestinationChainId: content.ChainId,
 		DestinationAddress: content.Receiver,
+		ReferralId:         content.ReferralId,
 	}
 }
 
@@ -217,5 +228,6 @@ func (dd DepositDecoder) formNativeDepositData(content *depositNativeContent, tx
 		TokenAddress:       bridge.DefaultNativeTokenAddress,
 		DestinationAddress: content.Receiver,
 		DestinationChainId: content.ChainId,
+		ReferralId:         content.ReferralId,
 	}
 }
