@@ -2,7 +2,7 @@
 
 ## Description
 
-Deposit fetcher submodule is designed to fetch deposit data and check deposit existence on core using provided network rpc connection and [Bridge Core connector](#components)
+Deposit fetcher submodule is designed to fetch deposit data and check deposit existence on core using provided network rpc connection and [Bridge Core connector](../../core/README.md#connector)
 
 ## Fetching data
 
