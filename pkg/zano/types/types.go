@@ -207,3 +207,8 @@ type GetHeightResponse struct {
 	Height uint64 `json:"height"`
 	Status string `json:"status"`
 }
+
+type GetWalletInfoResponse struct {
+	Address string `json:"address"`
+	// TODO: add more fields if needed
+}

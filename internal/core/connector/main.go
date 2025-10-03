@@ -3,6 +3,7 @@ package connector
 import (
 	"context"
 	"sync"
+	"time"
 
 	coretypes "github.com/Bridgeless-Project/bridgeless-core/v12/types"
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
@@ -19,6 +20,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const gasLimit = 3_000_000
@@ -30,6 +32,8 @@ type Settings struct {
 }
 
 type Connector struct {
+	conn *grpc.ClientConn
+
 	transactor txclient.ServiceClient
 	txConfiger sdkclient.TxConfig
 	auther     authtypes.QueryClient
@@ -50,6 +54,7 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 	}
 
 	return &Connector{
+		conn:       conn,
 		transactor: txclient.NewServiceClient(conn),
 		txConfiger: authtx.NewTxConfig(codec.NewProtoCodec(codectypes.NewInterfaceRegistry()), []signing.SignMode{signing.SignMode_SIGN_MODE_DIRECT}),
 		auther:     authtypes.NewQueryClient(conn),
@@ -63,6 +68,24 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 		mu: &sync.Mutex{},
 	}, nil
 
+}
+
+func (c *Connector) HealthCheck() error {
+	checker := grpc_health_v1.NewHealthClient(c.conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := checker.Check(ctx, &grpc_health_v1.HealthCheckRequest{Service: ""})
+	if err != nil {
+		return errors.Wrap(err, "failed to perform health check")
+	}
+
+	if resp.Status != grpc_health_v1.HealthCheckResponse_SERVING {
+		return errors.Errorf("service not healthy: %s", resp.Status.String())
+	}
+
+	return nil
 }
 
 func (c *Connector) getAccountSequence() uint64 {

@@ -43,7 +43,7 @@ func (z Sdk) Transfer(comment string, service []types.ServiceEntry, destinations
 	}
 
 	resp := new(types.TransferResponse)
-	if err := z.client.Call(types.TransferMethod, resp, req, true); err != nil {
+	if err := z.client.Call(types.WalletMethodTransfer, resp, req, true); err != nil {
 		return nil, err
 	}
 
@@ -65,7 +65,7 @@ func (z Sdk) GetTransactions(txid string) (*types.GetTxResponse, error) {
 		TxID:           txid,
 	}
 	resp := new(types.GetTxResponse)
-	if err := z.client.Call(types.SearchForTransactionsMethod, resp, req, true); err != nil {
+	if err := z.client.Call(types.WalletMethodSearchForTransactions, resp, req, true); err != nil {
 		return nil, err
 	}
 
@@ -87,7 +87,7 @@ func (z Sdk) EmitAsset(assetId string, destinations ...types.Destination) (*type
 	}
 
 	resp := new(types.EmitAssetResponse)
-	if err := z.client.Call(types.EmitAssetMethod, resp, req, true); err != nil {
+	if err := z.client.Call(types.WalletMethodEmitAsset, resp, req, true); err != nil {
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func (z Sdk) TransferAssetOwnership(assetId, ownerEthPubKey string) (*types.Tran
 	}
 
 	resp := new(types.TransferAssetOwnershipResponse)
-	if err := z.client.Call(types.TransferAssetOwnershipMethod, resp, req, true); err != nil {
+	if err := z.client.Call(types.WalletMethodTransferAssetOwnership, resp, req, true); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +122,7 @@ func (z Sdk) BurnAsset(assetId string, amount string) (*types.BurnAssetResponse,
 	}
 
 	resp := new(types.BurnAssetResponse)
-	if err := z.client.Call(types.BurnAssetMethod, resp, req, true); err != nil {
+	if err := z.client.Call(types.WalletMethodBurnAsset, resp, req, true); err != nil {
 		return nil, err
 	}
 
@@ -140,7 +140,7 @@ func (z Sdk) TxDetails(outputAddress []string, txBlob, txID, txSecretKey string)
 	}
 
 	resp := new(types.DecryptTxDetailsResponse)
-	if err := z.client.Call(types.DecryptTxDetailsMethod, resp, req, false); err != nil {
+	if err := z.client.Call(types.NodeMethodDecryptTxDetails, resp, req, false); err != nil {
 		return nil, err
 	}
 
@@ -159,16 +159,18 @@ func (z Sdk) SendExtSignedAssetTX(ethSig, expectedTXID, finalizedTx, unsignedTx 
 	}
 
 	resp := new(types.SendExtSignedAssetTXResult)
-	if err := z.client.Call(types.SendExtSignedAssetTxMethod, resp, req, true); err != nil {
+	if err := z.client.Call(types.WalletMethodSendExtSignedAssetTx, resp, req, true); err != nil {
 		return nil, err
 	}
 
 	return resp, nil
 }
 
+// CurrentHeight Get current blockchain height
+// node rpc api method
 func (z Sdk) CurrentHeight() (uint64, error) {
 	resp := new(types.GetHeightResponse)
-	err := z.client.CallRaw(types.GetHeightMethod, resp)
+	err := z.client.CallRaw(types.NodeMethodGetHeight, resp)
 	if err != nil {
 		return 0, err
 	}
@@ -178,4 +180,14 @@ func (z Sdk) CurrentHeight() (uint64, error) {
 	}
 
 	return resp.Height, err
+}
+
+func (z Sdk) GetWalletInfo() (*types.GetWalletInfoResponse, error) {
+	resp := new(types.GetWalletInfoResponse)
+	err := z.client.Call(types.WalletMethodGetWalletInfo, resp, nil, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }

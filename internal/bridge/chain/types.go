@@ -57,11 +57,9 @@ type Client interface {
 }
 
 type Repository interface {
+	Clients() map[string]Client
 	Client(chainId string) (Client, error)
 	SupportsChain(chainId string) bool
-
-	// HealthCheck maps chain ID to error (nil if healthy)
-	HealthCheck() map[string]error
 }
 
 type Chain struct {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/pkg/errors"
 )
 
 var addressPattern = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{97}$`)
@@ -34,6 +35,15 @@ func NewBridgeClient(chain Chain) *Client {
 }
 
 func (p *Client) HealthCheck() error {
-	//TODO: add health check logic
+	_, err := p.chain.Client.CurrentHeight()
+	if err != nil {
+		return errors.Wrap(err, "failed to get current height from zano daemon")
+	}
+
+	_, err = p.chain.Client.GetWalletInfo()
+	if err != nil {
+		return errors.Wrap(err, "failed to get wallet info from zano wallet")
+	}
+
 	return nil
 }
