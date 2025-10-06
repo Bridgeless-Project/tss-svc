@@ -9,6 +9,7 @@ import (
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/grpc/reflection"
 	clienttx "github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -20,7 +21,6 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const gasLimit = 3_000_000
@@ -70,19 +70,18 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 
 }
 
+// HealthCheck performs a health check on the gRPC connection.
+// Instead of calling the unimplemented grpc_health_v1.Health service,
+// we use the reflection service to check if the connection is healthy.
 func (c *Connector) HealthCheck() error {
-	checker := grpc_health_v1.NewHealthClient(c.conn)
+	checker := reflection.NewReflectionServiceClient(c.conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	resp, err := checker.Check(ctx, &grpc_health_v1.HealthCheckRequest{Service: ""})
+	_, err := checker.ListAllInterfaces(ctx, &reflection.ListAllInterfacesRequest{})
 	if err != nil {
 		return errors.Wrap(err, "failed to perform health check")
-	}
-
-	if resp.Status != grpc_health_v1.HealthCheckResponse_SERVING {
-		return errors.Errorf("service not healthy: %s", resp.Status.String())
 	}
 
 	return nil

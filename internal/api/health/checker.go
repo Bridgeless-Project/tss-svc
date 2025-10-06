@@ -31,8 +31,9 @@ type Map struct {
 
 func NewMap() *Map {
 	return &Map{
-		statuses: make(map[string]Status),
-		mu:       &sync.Mutex{},
+		statuses:  make(map[string]Status),
+		overallOk: true,
+		mu:        &sync.Mutex{},
 	}
 }
 
@@ -81,7 +82,7 @@ func NewChecker(coreConnector Checkable, clientsRepo chain.Repository) *Checker 
 
 func (h *Checker) Check() Response {
 	response, _, _ := h.rg.Do("health_check", func() (interface{}, error) {
-		return nil, nil
+		return h.check(), nil
 	})
 
 	return response.(Response)
@@ -93,6 +94,8 @@ func (h *Checker) check() Response {
 		statusesMap = NewMap()
 		clients     = h.clientsRepo.Clients()
 	)
+
+	fmt.Println("Checking health of core connector and", len(clients), "chain clients")
 
 	wg.Add(len(clients) + 1)
 	go func() {
