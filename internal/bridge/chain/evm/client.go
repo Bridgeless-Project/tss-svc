@@ -2,6 +2,7 @@ package evm
 
 import (
 	"bytes"
+	"context"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
@@ -81,4 +82,12 @@ func (p *Client) AddressValid(addr string) bool {
 
 func (p *Client) TransactionHashValid(hash string) bool {
 	return bridge.DefaultTransactionHashPattern.MatchString(hash)
+}
+
+func (p *Client) HealthCheck() error {
+	if _, err := p.chain.Rpc.BlockNumber(context.Background()); err != nil {
+		return errors.Wrap(err, "failed to check block number")
+	}
+
+	return nil
 }

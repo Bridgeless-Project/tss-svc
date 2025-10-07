@@ -14,4 +14,6 @@ var (
 
 var _ types.APIServer = Implementation{}
 
-type Implementation struct{}
+type Implementation struct {
+	types.UnimplementedAPIServer
+}

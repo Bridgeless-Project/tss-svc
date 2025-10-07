@@ -57,3 +57,15 @@ func (c *Client) AddressValid(addr string) bool {
 func (c *Client) TransactionHashValid(hash string) bool {
 	return bridge.DefaultTransactionHashPattern.MatchString(hash)
 }
+
+func (c *Client) HealthCheck() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := c.Client.GetMasterchainInfo(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to get masterchain info from ton client")
+	}
+
+	return nil
+}

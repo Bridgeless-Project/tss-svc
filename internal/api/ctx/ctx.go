@@ -3,6 +3,7 @@ package ctx
 import (
 	"context"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/api/health"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -15,13 +16,14 @@ import (
 type ctxKey int
 
 const (
-	dbKey            ctxKey = iota
-	loggerKey        ctxKey = iota
-	clientsKey       ctxKey = iota
-	processorKey     ctxKey = iota
-	broadcasterKey   ctxKey = iota
-	selfKey          ctxKey = iota
-	coreConnectorKey ctxKey = iota
+	dbKey ctxKey = iota
+	loggerKey
+	clientsKey
+	processorKey
+	broadcasterKey
+	selfKey
+	coreConnectorKey
+	healthCheckerKey
 )
 
 func DBProvider(q db.DepositsQ) func(context.Context) context.Context {
@@ -93,4 +95,14 @@ func CoreConnectorProvider(connector *coreConnector.Connector) func(context.Cont
 
 func CoreConnector(ctx context.Context) *coreConnector.Connector {
 	return ctx.Value(coreConnectorKey).(*coreConnector.Connector)
+}
+
+func HealthCheckerProvider(checker *health.Checker) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, healthCheckerKey, checker)
+	}
+}
+
+func HealthChecker(ctx context.Context) *health.Checker {
+	return ctx.Value(healthCheckerKey).(*health.Checker)
 }

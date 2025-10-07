@@ -52,9 +52,12 @@ type Client interface {
 	AddressValid(addr string) bool
 	TransactionHashValid(hash string) bool
 	WithdrawalAmountValid(amount *big.Int) bool
+
+	HealthCheck() error
 }
 
 type Repository interface {
+	Clients() map[string]Client
 	Client(chainId string) (Client, error)
 	SupportsChain(chainId string) bool
 }

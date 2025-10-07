@@ -140,6 +140,12 @@ func (c *Client) SendRawTransaction(tx *wire.MsgTx) (string, error) {
 	return txHash, extractRpcError(err)
 }
 
+func (c *Client) GetBlockCount() (int64, error) {
+	var count int64
+	err := c.Call(&count, "getblockcount")
+	return count, extractRpcError(err)
+}
+
 //
 // WALLET METHODS
 //

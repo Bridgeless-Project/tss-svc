@@ -3,11 +3,13 @@ package connector
 import (
 	"context"
 	"sync"
+	"time"
 
 	coretypes "github.com/Bridgeless-Project/bridgeless-core/v12/types"
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/grpc/reflection"
 	clienttx "github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -30,6 +32,8 @@ type Settings struct {
 }
 
 type Connector struct {
+	conn *grpc.ClientConn
+
 	transactor txclient.ServiceClient
 	txConfiger sdkclient.TxConfig
 	auther     authtypes.QueryClient
@@ -50,6 +54,7 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 	}
 
 	return &Connector{
+		conn:       conn,
 		transactor: txclient.NewServiceClient(conn),
 		txConfiger: authtx.NewTxConfig(codec.NewProtoCodec(codectypes.NewInterfaceRegistry()), []signing.SignMode{signing.SignMode_SIGN_MODE_DIRECT}),
 		auther:     authtypes.NewQueryClient(conn),
@@ -63,6 +68,23 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 		mu: &sync.Mutex{},
 	}, nil
 
+}
+
+// HealthCheck performs a health check on the gRPC connection.
+// Instead of calling the unimplemented grpc_health_v1.Health service,
+// we use the reflection service to check if the connection is healthy.
+func (c *Connector) HealthCheck() error {
+	checker := reflection.NewReflectionServiceClient(c.conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := checker.ListAllInterfaces(ctx, &reflection.ListAllInterfacesRequest{})
+	if err != nil {
+		return errors.Wrap(err, "failed to perform health check")
+	}
+
+	return nil
 }
 
 func (c *Connector) getAccountSequence() uint64 {
