@@ -23,21 +23,21 @@ type Response struct {
 	Statuses map[string]Status `json:"statuses"`
 }
 
-type Map struct {
+type StatusMap struct {
 	statuses  map[string]Status
 	overallOk bool
 	mu        *sync.Mutex
 }
 
-func NewMap() *Map {
-	return &Map{
+func NewStatusMap() *StatusMap {
+	return &StatusMap{
 		statuses:  make(map[string]Status),
 		overallOk: true,
-		mu:        &sync.Mutex{},
+		mu:        new(sync.Mutex),
 	}
 }
 
-func (s *Map) Set(name string, err error) {
+func (s *StatusMap) Set(name string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -51,7 +51,7 @@ func (s *Map) Set(name string, err error) {
 	return
 }
 
-func (s *Map) Collect() Response {
+func (s *StatusMap) Collect() Response {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -91,11 +91,9 @@ func (h *Checker) Check() Response {
 func (h *Checker) check() Response {
 	var (
 		wg          sync.WaitGroup
-		statusesMap = NewMap()
+		statusesMap = NewStatusMap()
 		clients     = h.clientsRepo.Clients()
 	)
-
-	fmt.Println("Checking health of core connector and", len(clients), "chain clients")
 
 	wg.Add(len(clients) + 1)
 	go func() {

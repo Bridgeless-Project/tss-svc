@@ -2,6 +2,7 @@ package solana
 
 import (
 	"context"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -38,7 +39,10 @@ func (p *Client) TransactionHashValid(hash string) bool {
 }
 
 func (p *Client) HealthCheck() error {
-	status, err := p.chain.Rpc.GetHealth(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	status, err := p.chain.Rpc.GetHealth(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to check node health")
 	}
