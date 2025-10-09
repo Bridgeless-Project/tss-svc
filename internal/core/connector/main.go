@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -88,12 +89,45 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 		Mode:    txclient.BroadcastMode_BROADCAST_MODE_BLOCK,
 		TxBytes: tx,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "failed to broadcast transaction")
 	}
+
 	if res.TxResponse.Code != txCodeSuccess {
-		return errors.Errorf("transaction failed with code %d", res.TxResponse.Code)
+		if res.TxResponse.Code != txCodeWrongSequence {
+			return errors.Errorf("transaction failed with code %d", res.TxResponse.Code)
+		}
+
+		// resubmit the transaction with the correct sequence in the background
+		// without returning an error to the caller
+		go func() {
+			retryNum, ok := ctx.Value("retryNum").(int)
+			if !ok {
+				retryNum = 0
+			}
+			if retryNum >= 5 {
+				fmt.Println("max retry attempts reached, giving up")
+				return
+			}
+			retryNum++
+
+			// fetch the latest account sequence
+			accountData, err := getAccountData(context.Background(), c.auther, c.account.CosmosAddress())
+			if err != nil {
+				fmt.Println("failed to get account data")
+				return
+			}
+
+			c.mu.Lock()
+			c.accountSequence = accountData.Sequence
+			c.mu.Unlock()
+
+			fmt.Printf("resubmitting transaction, attempt %d\n", retryNum)
+			ctx = context.WithValue(context.Background(), "retryNum", retryNum)
+			if err = c.submitMsgs(ctx, msgs...); err != nil {
+				fmt.Printf("failed to resubmit transaction: %v\n", err)
+			}
+		}()
 	}
 
 	return nil
