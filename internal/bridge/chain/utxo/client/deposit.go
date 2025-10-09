@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"math/big"
+	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -12,6 +13,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/pkg/encoding"
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/pkg/errors"
 )
 
@@ -183,7 +185,13 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
 
-	depositMemo, err := d.decodeDepositMemo(raw)
+	depositMemo, err := d.decodeDepositMemoV2(raw)
+	if err == nil {
+		return depositMemo, nil
+	}
+
+	// fallback to v1
+	depositMemo, err = d.decodeDepositMemoV1(raw)
 	if err != nil {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
@@ -191,7 +199,7 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 	return depositMemo, nil
 }
 
-// decodeDepositMemo decodes the deposit memo from raw bytes.
+// decodeDepositMemoV2 decodes the deposit memo from raw bytes.
 // deposit memo structure:
 //
 // [lenChainId][chainId][referralId][addressEncodingType][destinationAddress]
@@ -200,7 +208,7 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 //   - referralId: 2 bytes, big-endian
 //   - addressEncodingType: 1 byte
 //   - destinationAddress: variable length
-func (d *DepositDecoder) decodeDepositMemo(raw []byte) (*DepositMemo, error) {
+func (d *DepositDecoder) decodeDepositMemoV2(raw []byte) (*DepositMemo, error) {
 	if len(raw) == 0 {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "empty deposit memo")
 	}
@@ -224,4 +232,42 @@ func (d *DepositDecoder) decodeDepositMemo(raw []byte) (*DepositMemo, error) {
 	depositMemo.Address = encoder.Encode(raw[chainIdEndIdx+referralIdLength+1:])
 
 	return &depositMemo, nil
+}
+
+const (
+	dstSeparator   = "#"
+	dstParamsCount = 2
+	dstAddrIdx     = 0
+	dstChainIdIdx  = 1
+
+	dstZanoAddrLen = 71
+)
+
+func (d *DepositDecoder) decodeDepositMemoV1(raw []byte) (*DepositMemo, error) {
+	parts := strings.Split(string(raw), dstSeparator)
+	if len(parts) < dstParamsCount {
+		return nil, errors.New("invalid destination parameters")
+	}
+	if len(parts) > dstParamsCount {
+		// try concatenating all but the last parts in case the raw bytes sequence in a string contains the separator
+		parts = []string{
+			strings.Join(parts[:len(parts)-1], dstSeparator),
+			parts[len(parts)-1],
+		}
+	}
+
+	addr, chainId := parts[dstAddrIdx], parts[dstChainIdIdx]
+	if len(addr) == 0 || len(chainId) == 0 {
+		return nil, errors.New("invalid destination parameters")
+	}
+
+	if len(addr) == dstZanoAddrLen {
+		addr = base58.Encode([]byte(addr))
+	}
+
+	return &DepositMemo{
+		Address:    addr,
+		ChainId:    chainId,
+		ReferralId: 0,
+	}, nil
 }

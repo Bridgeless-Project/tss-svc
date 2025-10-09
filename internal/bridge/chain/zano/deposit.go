@@ -81,5 +81,9 @@ func parseDepositMemo(entry zanoTypes.ServiceEntry) (*DepositMemo, error) {
 		return nil, errors.Wrap(err, "failed to unmarshal json data")
 	}
 
+	if err = depositMemo.Validate(); err != nil {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+	}
+ 
 	return &depositMemo, nil
 }

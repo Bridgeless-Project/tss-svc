@@ -10,7 +10,7 @@ import (
 	"github.com/mr-tron/base58"
 )
 
-func constructMemo(chainId string, referralId uint16, addrEncodingType byte, rawAddr []byte) []byte {
+func constructMemoV2(chainId string, referralId uint16, addrEncodingType byte, rawAddr []byte) []byte {
 	decodedChainId := append([]byte{byte(len(chainId))}, []byte(chainId)...)
 	referralIdBytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(referralIdBytes, referralId)
@@ -18,7 +18,74 @@ func constructMemo(chainId string, referralId uint16, addrEncodingType byte, raw
 	return append(append(decodedChainId, referralIdBytes...), append([]byte{addrEncodingType}, rawAddr...)...)
 }
 
-func Test_DepositDecoding(t *testing.T) {
+func Test_DecodeDepositMemo_V1(t *testing.T) {
+	tests := map[string]struct {
+		prepareMemo func() []byte
+		expected    DepositMemo
+		err         bool
+	}{
+		"valid memo (ETH)": {
+			prepareMemo: func() []byte {
+				return []byte("0xbeefD475A76Ec312502ba7B566a9B4CEA91ab030#123")
+			},
+			expected: DepositMemo{
+				ChainId:    "123",
+				Address:    "0xbeefD475A76Ec312502ba7B566a9B4CEA91ab030",
+				ReferralId: 0,
+			},
+		},
+		"valid memo (ZANO)": {
+			prepareMemo: func() []byte {
+				raw, _ := base58.Decode("ZxCQtdbr6YPHEWr5Yucy2wTT87yKPwBMHGfJg8RVXg2m3bCDzgWjtbxR7TtGPgDxhWNrauwyPAKEyDdknkBG3Rit1Do9rXG1q")
+				return []byte(string(raw) + "#2")
+			},
+			expected: DepositMemo{
+				ChainId:    "2",
+				Address:    "ZxCQtdbr6YPHEWr5Yucy2wTT87yKPwBMHGfJg8RVXg2m3bCDzgWjtbxR7TtGPgDxhWNrauwyPAKEyDdknkBG3Rit1Do9rXG1q",
+				ReferralId: 0,
+			},
+		},
+		"valid memo (ZANO which produces # in base58)": {
+			prepareMemo: func() []byte {
+				raw, _ := base58.Decode("ZxDVeKjCvceATxJ75a6BULddbcytgxHweGjRPqioF9pgF9YSUkFe7fo56WgGr6izuPjg74p4iJvPeY4xNntuoerK1WKNMJQoZ")
+				return []byte(string(raw) + "#2")
+			},
+			expected: DepositMemo{
+				ChainId: "2",
+				Address: "ZxDVeKjCvceATxJ75a6BULddbcytgxHweGjRPqioF9pgF9YSUkFe7fo56WgGr6izuPjg74p4iJvPeY4xNntuoerK1WKNMJQoZ",
+			},
+		},
+		"invalid memo (missing separator)": {
+			prepareMemo: func() []byte {
+				return []byte("1230xbeefD475A76Ec312502ba7B566a9B4CEA91ab030")
+			},
+			err: true,
+		},
+	}
+
+	decoder := &DepositDecoder{}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			memo, err := decoder.decodeDepositMemoV1(tc.prepareMemo())
+			if err != nil {
+				if !tc.err {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+			if tc.err {
+				t.Fatal("expected error but got none")
+			}
+
+			if *memo != tc.expected {
+				t.Fatalf("expected memo %v, got %v", tc.expected, *memo)
+			}
+		})
+	}
+}
+
+func Test_DecodeDepositMemo_V2(t *testing.T) {
 	tests := map[string]struct {
 		prepareMemo func() []byte
 		expected    DepositMemo
@@ -27,7 +94,7 @@ func Test_DepositDecoding(t *testing.T) {
 		"valid ETH memo (hex checksum)": {
 			prepareMemo: func() []byte {
 				rawAddr := common.HexToAddress("0xbeefD475A76Ec312502ba7B566a9B4CEA91ab030").Bytes()
-				return constructMemo("123", 123, byte(encoding.TypeHexCheckSum), rawAddr)
+				return constructMemoV2("123", 123, byte(encoding.TypeHexCheckSum), rawAddr)
 			},
 			expected: DepositMemo{
 				ChainId:    "123",
@@ -38,7 +105,7 @@ func Test_DepositDecoding(t *testing.T) {
 		"valid ZANO memo (base58)": {
 			prepareMemo: func() []byte {
 				rawAddr, _ := base58.Decode("ZxCQtdbr6YPHEWr5Yucy2wTT87yKPwBMHGfJg8RVXg2m3bCDzgWjtbxR7TtGPgDxhWNrauwyPAKEyDdknkBG3Rit1Do9rXG1q")
-				return constructMemo("2", 3, byte(encoding.TypeBase58), rawAddr)
+				return constructMemoV2("2", 3, byte(encoding.TypeBase58), rawAddr)
 			},
 			expected: DepositMemo{
 				ChainId:    "2",
@@ -49,7 +116,7 @@ func Test_DepositDecoding(t *testing.T) {
 		"valid TON memo (base64url)": {
 			prepareMemo: func() []byte {
 				rawAddr, _ := base64.URLEncoding.DecodeString("EQDKbjIcfM6ezt8KjKJJLshZJJSqX7XOA4ff-W72r5gqPrHF")
-				return constructMemo("45", 0, byte(encoding.TypeBase64Url), rawAddr)
+				return constructMemoV2("45", 0, byte(encoding.TypeBase64Url), rawAddr)
 			},
 			expected: DepositMemo{
 				ChainId:    "45",
@@ -60,7 +127,7 @@ func Test_DepositDecoding(t *testing.T) {
 		"valid Solana memo (base58)": {
 			prepareMemo: func() []byte {
 				rawAddr, _ := base58.Decode("14grJpemFaf88c8tiVb77W7TYg2W3ir6pfkKz3YjhhZ5")
-				return constructMemo("101", 65500, byte(encoding.TypeBase58), rawAddr)
+				return constructMemoV2("101", 65500, byte(encoding.TypeBase58), rawAddr)
 			},
 			expected: DepositMemo{
 				ChainId:    "101",
@@ -77,7 +144,7 @@ func Test_DepositDecoding(t *testing.T) {
 		"invalid encoding type": {
 			prepareMemo: func() []byte {
 				rawAddr := common.HexToAddress("0xbeefD475A76Ec312502ba7B566a9B4CEA91ab030").Bytes()
-				return constructMemo("123", 123, 0xFF, rawAddr)
+				return constructMemoV2("123", 123, 0xFF, rawAddr)
 			},
 			err: true,
 		},
@@ -87,9 +154,7 @@ func Test_DepositDecoding(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Logf("expected memo: %+v", tc.expected)
-			t.Logf("prepared raw memo: %v", tc.prepareMemo())
-			memo, err := decoder.decodeDepositMemo(tc.prepareMemo())
+			memo, err := decoder.decodeDepositMemoV2(tc.prepareMemo())
 			if err != nil {
 				if !tc.err {
 					t.Fatalf("unexpected error: %v", err)

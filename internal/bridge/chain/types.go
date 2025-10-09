@@ -23,6 +23,7 @@ var (
 	ErrUnsupportedEvent       = errors.New("unsupported event")
 	ErrUnsupportedContract    = errors.New("unsupported contract")
 	ErrInvalidTransactionData = errors.New("invalid transaction data")
+	ErrInvalidTransactionMemo = errors.New("invalid memo")
 )
 
 func IsPendingDepositError(err error) bool {
