@@ -66,9 +66,6 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 }
 
 func (c *Connector) getAccountSequence() uint64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	seq := c.accountSequence
 	c.accountSequence++
 
@@ -104,6 +101,9 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 
 // buildTx builds a transaction from the given messages.
 func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	txBuilder := c.txConfiger.NewTxBuilder()
 
 	if err := txBuilder.SetMsgs(msgs...); err != nil {
