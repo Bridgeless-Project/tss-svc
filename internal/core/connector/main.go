@@ -19,6 +19,7 @@ import (
 	coretypes "github.com/hyle-team/bridgeless-core/v12/types"
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
+	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/grpc"
 )
 
@@ -31,6 +32,7 @@ type Settings struct {
 }
 
 type Connector struct {
+	logger     *logan.Entry
 	transactor txclient.ServiceClient
 	txConfiger sdkclient.TxConfig
 	auther     authtypes.QueryClient
@@ -44,7 +46,7 @@ type Connector struct {
 	mu              *sync.Mutex
 }
 
-func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings) (*Connector, error) {
+func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings, logger *logan.Entry) (*Connector, error) {
 	accountData, err := getAccountData(context.Background(), authtypes.NewQueryClient(conn), account.CosmosAddress())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account data")
@@ -57,6 +59,7 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 		querier:    bridgetypes.NewQueryClient(conn),
 		settings:   settings,
 		account:    account,
+		logger:     logger,
 
 		accountNumber:   accountData.AccountNumber,
 		accountSequence: accountData.Sequence,
@@ -89,24 +92,20 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 		Mode:    txclient.BroadcastMode_BROADCAST_MODE_BLOCK,
 		TxBytes: tx,
 	})
-	if err != nil {
-		return errors.Wrap(err, "failed to broadcast transaction")
-	}
-
-	if res.TxResponse.Code != txCodeSuccess {
-		if res.TxResponse.Code != txCodeWrongSequence {
-			return errors.Errorf("transaction failed with code %d", res.TxResponse.Code)
-		}
-
-		// resubmit the transaction with the correct sequence in the background
-		// without returning an error to the caller
+	if err != nil || res.TxResponse.Code != txCodeSuccess {
 		go func() {
+			if err != nil {
+				c.logger.WithError(err).Warn("failed to broadcast transaction")
+			} else {
+				c.logger.Warn(fmt.Sprintf("transaction failed with code %d: %s", res.TxResponse.Code, res.TxResponse.RawLog))
+			}
+
 			retryNum, ok := ctx.Value("retryNum").(int)
 			if !ok {
 				retryNum = 0
 			}
 			if retryNum >= 5 {
-				fmt.Println("max retry attempts reached, giving up")
+				c.logger.Error("max retry submit attempts reached, giving up")
 				return
 			}
 			retryNum++
@@ -114,7 +113,7 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 			// fetch the latest account sequence
 			accountData, err := getAccountData(context.Background(), c.auther, c.account.CosmosAddress())
 			if err != nil {
-				fmt.Println("failed to get account data")
+				c.logger.WithError(err).Error("failed to get account data")
 				return
 			}
 
@@ -122,12 +121,16 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 			c.accountSequence = accountData.Sequence
 			c.mu.Unlock()
 
-			fmt.Printf("resubmitting transaction, attempt %d\n", retryNum)
+			c.logger.WithField("retryNum", retryNum).Info("retrying to submit transaction")
 			ctx = context.WithValue(context.Background(), "retryNum", retryNum)
 			if err = c.submitMsgs(ctx, msgs...); err != nil {
-				fmt.Printf("failed to resubmit transaction: %v\n", err)
+				c.logger.WithField("retryNum", retryNum).WithError(err).Error("failed to submit transaction")
 			}
 		}()
+	} else {
+		if retryNum, ok := ctx.Value("retryNum").(int); ok {
+			c.logger.WithField("retryNum", retryNum).Info("transaction broadcasted successfully")
+		}
 	}
 
 	return nil
