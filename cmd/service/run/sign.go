@@ -210,8 +210,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	})
 
 	// Core deposit subscriber spin-up
-	// subscriber runs two goroutines now
-	wg.Add(2)
+	wg.Add(1)
 	eg.Go(func() error {
 		defer wg.Done()
 

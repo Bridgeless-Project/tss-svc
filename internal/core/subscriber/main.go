@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -50,8 +51,18 @@ func (s *SubmitEventSubscriber) Run(ctx context.Context) error {
 		return errors.Wrap(err, "subscriber init failed")
 	}
 
-	go s.run(ctx, out)
-	go s.runSubmitter(ctx)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		s.run(ctx, out)
+		wg.Done()
+	}()
+	go func() {
+		s.runSubmitter(ctx)
+		wg.Done()
+	}()
+
+	wg.Wait()
 
 	return nil
 }
