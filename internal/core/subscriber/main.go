@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
@@ -22,13 +25,14 @@ const (
 )
 
 type SubmitEventSubscriber struct {
-	db     database.DepositsQ
-	client *http.HTTP
-	query  string
-	log    *logan.Entry
+	db        database.DepositsQ
+	client    *http.HTTP
+	query     string
+	log       *logan.Entry
+	connector *connector.Connector
 }
 
-func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan.Entry) *SubmitEventSubscriber {
+func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan.Entry, connector *connector.Connector) *SubmitEventSubscriber {
 	return &SubmitEventSubscriber{
 		db:     db,
 		client: client,
@@ -37,6 +41,7 @@ func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *
 			bridgeTypes.EventType_DEPOSIT_SUBMITTED.String(),
 			bridgeTypes.AttributeKeyDepositTxHash,
 		),
+		connector: connector,
 	}
 }
 
@@ -46,9 +51,63 @@ func (s *SubmitEventSubscriber) Run(ctx context.Context) error {
 		return errors.Wrap(err, "subscriber init failed")
 	}
 
-	go s.run(ctx, out)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		s.run(ctx, out)
+		wg.Done()
+	}()
+	go func() {
+		s.runSubmitter(ctx)
+		wg.Done()
+	}()
+
+	wg.Wait()
 
 	return nil
+}
+
+func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			s.log.Info("context cancelled, stopping transaction submitter")
+			return
+		default:
+			requiredStatus := types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED
+			pendingDeposit, err := s.db.GetWithSelector(database.DepositsSelector{
+				NotSubmitted: true,
+				Status:       &requiredStatus,
+				One:          true,
+			})
+			if err != nil {
+				s.log.WithError(err).Error("failed to get pending submit")
+				time.Sleep(5 * time.Second)
+				continue
+			} else if pendingDeposit == nil {
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("got deposit to submit")
+
+			err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
+			if err == nil || errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+				s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("deposit submitted")
+				if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
+					s.log.WithError(err).Error("failed to update deposit as submitted")
+				}
+				continue
+			}
+
+			s.log.
+				WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).
+				WithError(err).
+				Error("failed to submit deposit, will retry later")
+
+			time.Sleep(5 * time.Second)
+		}
+	}
 }
 
 func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) {
@@ -57,11 +116,11 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 		case <-ctx.Done():
 			s.log.Info("context cancelled, stopping receiving events")
 			shutdownDeadline, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
 			if err := s.client.Unsubscribe(shutdownDeadline, OpServiceName, s.query); err != nil {
 				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 
+			cancel()
 			return
 		case c, ok := <-out:
 			if !ok {

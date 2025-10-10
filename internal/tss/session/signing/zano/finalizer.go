@@ -70,16 +70,16 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 
 func (f *Finalizer) finalize(ctx context.Context) {
 	withdrawalTxHash := bridge.HexPrefix + f.withdrawalData.ProposalData.TxId
-	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
-		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
-		return
-	}
+	//if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
+	//	f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
+	//	return
+	//}
 
-	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
-	if err != nil {
-		f.errChan <- errors.Wrap(err, "failed to get deposit")
-		return
-	}
+	//dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
+	//if err != nil {
+	//	f.errChan <- errors.Wrap(err, "failed to get deposit")
+	//	return
+	//}
 
 	signedTx := zano.SignedTransaction{
 		Signature: zano.EncodeSignature(f.signature),
@@ -91,18 +91,26 @@ func (f *Finalizer) finalize(ctx context.Context) {
 	}
 	encodedTx := signedTx.Encode()
 
-	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
-		f.errChan <- errors.Wrap(err, "failed to submit deposit")
+	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
+		Identifier: f.withdrawalData.DepositIdentifier(),
+		TxData:     &encodedTx,
+		TxHash:     &withdrawalTxHash,
+	}); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to update signature")
 		return
 	}
+
+	//if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
+	//	f.errChan <- errors.Wrap(err, "failed to submit deposit")
+	//	return
+	//}
 
 	if !f.sessionLeader {
 		f.errChan <- nil
 		return
 	}
 
-	_, err = f.client.SendSignedTransaction(signedTx)
-	if err != nil {
+	if _, err := f.client.SendSignedTransaction(signedTx); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to emit signed transaction")
 		return
 	}
