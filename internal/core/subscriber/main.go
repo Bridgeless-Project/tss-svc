@@ -89,26 +89,21 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 
 			s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("got deposit to submit")
 
-			submitted := false
-			for i := 0; i < 5; i++ {
-				err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
-				if err == nil || errors.Is(err, core.ErrTransactionAlreadySubmitted) {
-					submitted = true
-					s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("deposit submitted")
-					if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
-						s.log.WithError(err).Error("failed to update deposit as submitted")
-					}
-					break
+			err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
+			if err == nil || errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+				s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("deposit submitted")
+				if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
+					s.log.WithError(err).Error("failed to update deposit as submitted")
 				}
-
-				s.log.WithError(err).WithField("attempt", i+1).Error("failed to submit deposit, retrying")
-				time.Sleep(1 * time.Second)
+				continue
 			}
 
-			if !submitted {
-				s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Error("failed to submit deposit after retries, will retry later")
-				time.Sleep(10 * time.Second)
-			}
+			s.log.
+				WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).
+				WithError(err).
+				Error("failed to submit deposit, will retry later")
+
+			time.Sleep(5 * time.Second)
 		}
 	}
 }
