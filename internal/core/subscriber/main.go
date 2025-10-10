@@ -74,8 +74,10 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 			s.log.Info("context cancelled, stopping transaction submitter")
 			return
 		default:
+			requiredStatus := types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED
 			pendingDeposit, err := s.db.GetWithSelector(database.DepositsSelector{
 				NotSubmitted: true,
+				Status:       &requiredStatus,
 				One:          true,
 			})
 			if err != nil {
