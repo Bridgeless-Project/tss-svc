@@ -190,12 +190,12 @@ func (s *Session) runSession(ctx context.Context) error {
 	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
-	defer func() {
-		// compensating status update in case of error
-		if err != nil {
-			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING)
-		}
-	}()
+	//defer func() {
+	//	// compensating status update in case of error
+	//	if err != nil {
+	//		_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING)
+	//	}
+	//}()
 
 	var (
 		distributionCtx    context.Context

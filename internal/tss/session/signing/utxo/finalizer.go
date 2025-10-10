@@ -89,33 +89,42 @@ func (f *Finalizer) finalize(ctx context.Context) {
 	}
 
 	withdrawalTxHash := bridge.HexPrefix + f.client.UtxoHelper().TxHash(tx)
-	if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
-		f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
-		return
-	}
+	//if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
+	//	f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
+	//	return
+	//}
 
 	// ignoring error here, as the mempool tx can be already observed by the wallet
 	_ = f.client.LockOutputs(tx)
 
-	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
-	if err != nil {
-		f.errChan <- errors.Wrap(err, "failed to get deposit")
+	//dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
+	//if err != nil {
+	//	f.errChan <- errors.Wrap(err, "failed to get deposit")
+	//	return
+	//}
+
+	encodedTx := utils.EncodeTransaction(tx)
+
+	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
+		Identifier: f.withdrawalData.DepositIdentifier(),
+		TxData:     &encodedTx,
+		TxHash:     &withdrawalTxHash,
+	}); err != nil {
+		f.errChan <- errors.Wrap(err, "failed to update signature")
 		return
 	}
 
-	encodedTx := utils.EncodeTransaction(tx)
-	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
-		f.errChan <- errors.Wrap(err, "failed to submit deposit")
-		return
-	}
+	//if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
+	//	f.errChan <- errors.Wrap(err, "failed to submit deposit")
+	//	return
+	//}
 
 	if !f.sessionLeader {
 		f.errChan <- nil
 		return
 	}
 
-	_, err = f.client.SendSignedTransaction(tx)
-	if err != nil {
+	if _, err := f.client.SendSignedTransaction(tx); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to send signed transaction")
 		return
 	}

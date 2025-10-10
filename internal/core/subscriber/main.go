@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	bridgeTypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
@@ -22,13 +24,14 @@ const (
 )
 
 type SubmitEventSubscriber struct {
-	db     database.DepositsQ
-	client *http.HTTP
-	query  string
-	log    *logan.Entry
+	db        database.DepositsQ
+	client    *http.HTTP
+	query     string
+	log       *logan.Entry
+	connector *connector.Connector
 }
 
-func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan.Entry) *SubmitEventSubscriber {
+func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *logan.Entry, connector *connector.Connector) *SubmitEventSubscriber {
 	return &SubmitEventSubscriber{
 		db:     db,
 		client: client,
@@ -37,6 +40,7 @@ func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *
 			bridgeTypes.EventType_DEPOSIT_SUBMITTED.String(),
 			bridgeTypes.AttributeKeyDepositTxHash,
 		),
+		connector: connector,
 	}
 }
 
@@ -47,8 +51,55 @@ func (s *SubmitEventSubscriber) Run(ctx context.Context) error {
 	}
 
 	go s.run(ctx, out)
+	go s.runSubmitter(ctx)
 
 	return nil
+}
+
+func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			s.log.Info("context cancelled, stopping transaction submitter")
+			return
+		default:
+			pendingDeposit, err := s.db.GetWithSelector(database.DepositsSelector{
+				NotSubmitted: true,
+				One:          true,
+			})
+			if err != nil {
+				s.log.WithError(err).Error("failed to get pending submit")
+				time.Sleep(5 * time.Second)
+				continue
+			} else if pendingDeposit == nil {
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("got deposit to submit")
+
+			submitted := false
+			for i := 0; i < 5; i++ {
+				err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
+				if err == nil || errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+					submitted = true
+					s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("deposit submitted")
+					if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
+						s.log.WithError(err).Error("failed to update deposit as submitted")
+					}
+					break
+				}
+
+				s.log.WithError(err).WithField("attempt", i+1).Error("failed to submit deposit, retrying")
+				time.Sleep(1 * time.Second)
+			}
+
+			if !submitted {
+				s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Error("failed to submit deposit after retries, will retry later")
+				time.Sleep(10 * time.Second)
+			}
+		}
+	}
 }
 
 func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) {
@@ -57,11 +108,11 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 		case <-ctx.Done():
 			s.log.Info("context cancelled, stopping receiving events")
 			shutdownDeadline, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
 			if err := s.client.Unsubscribe(shutdownDeadline, OpServiceName, s.query); err != nil {
 				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 
+			cancel()
 			return
 		case c, ok := <-out:
 			if !ok {

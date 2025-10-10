@@ -35,6 +35,8 @@ const (
 	depositsCommissionAmount = "commission_amount"
 
 	depositsSignature = "signature"
+	depositsTxData    = "tx_data"
+	depositsSubmitted = "submitted"
 )
 
 type depositsQ struct {
@@ -66,6 +68,8 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalToken:   deposit.WithdrawalToken,
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 			depositsCommissionAmount:  deposit.CommissionAmount,
+
+			depositsSubmitted: false,
 		}).
 		Suffix("RETURNING id")
 
@@ -124,6 +128,7 @@ func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, has
 	query := squirrel.Update(depositsTable).
 		Set(depositsWithdrawalTxHash, hash).
 		Set(depositsSignature, signature).
+		Set(depositsSubmitted, true).
 		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
 		Where(identifierToPredicate(identifier))
 
@@ -156,6 +161,34 @@ func (d *depositsQ) UpdateWithdrawalTx(identifier db.DepositIdentifier, hash str
 	return d.db.Exec(query)
 }
 
+func (d *depositsQ) UpdateProcessed(data db.ProcessedDepositData) error {
+	query := squirrel.Update(depositsTable)
+
+	if data.TxHash != nil {
+		query = query.Set(depositsWithdrawalTxHash, *data.TxHash)
+	}
+	if data.Signature != nil {
+		query = query.Set(depositsSignature, *data.Signature)
+	}
+	if data.TxData != nil {
+		query = query.Set(depositsTxData, *data.TxData)
+	}
+
+	query = query.
+		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
+		Where(identifierToPredicate(data.Identifier))
+
+	return d.db.Exec(query)
+}
+
+func (d *depositsQ) UpdateSubmittedStatus(identifier db.DepositIdentifier, submitted bool) error {
+	query := squirrel.Update(depositsTable).
+		Set(depositsSubmitted, submitted).
+		Where(identifierToPredicate(identifier))
+
+	return d.db.Exec(query)
+}
+
 func NewDepositsQ(db *pgdb.DB) db.DepositsQ {
 	return &depositsQ{
 		db:       db.Clone(),
@@ -171,18 +204,18 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 	if len(selector.Ids) > 0 {
 		sql = sql.Where(squirrel.Eq{depositsId: selector.Ids})
 	}
-
 	if selector.ChainId != nil {
 		sql = sql.Where(squirrel.Eq{depositsChainId: *selector.ChainId})
 	}
 	if selector.WithdrawalChainId != nil {
 		sql = sql.Where(squirrel.Eq{depositsWithdrawalChainId: *selector.WithdrawalChainId})
 	}
-
 	if selector.Status != nil {
 		sql = sql.Where(squirrel.Eq{depositsWithdrawalStatus: *selector.Status})
 	}
-
+	if selector.NotSubmitted {
+		sql = sql.Where(squirrel.Eq{depositsSubmitted: false})
+	}
 	if selector.One {
 		sql = sql.Limit(1)
 	}
@@ -212,6 +245,8 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalTxHash:  deposit.WithdrawalTxHash,
 			depositsSignature:         deposit.Signature,
 			depositsWithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+			depositsTxData:            deposit.TxData,
+			depositsSubmitted:         true,
 		}).
 		Suffix("RETURNING id")
 
