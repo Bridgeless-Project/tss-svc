@@ -24,6 +24,10 @@ const (
 	OpPoolSize    = 50
 )
 
+var (
+	statusProcessed = types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED
+)
+
 type SubmitEventSubscriber struct {
 	db        database.DepositsQ
 	client    *http.HTTP
@@ -68,44 +72,42 @@ func (s *SubmitEventSubscriber) Run(ctx context.Context) error {
 }
 
 func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
+	cooldown := time.Second * 0
+
 	for {
 		select {
 		case <-ctx.Done():
 			s.log.Info("context cancelled, stopping transaction submitter")
 			return
-		default:
-			requiredStatus := types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED
+		case <-time.After(cooldown):
+			cooldown = time.Second * 5
+
 			pendingDeposit, err := s.db.GetWithSelector(database.DepositsSelector{
+				Status:       &statusProcessed,
 				NotSubmitted: true,
-				Status:       &requiredStatus,
 				One:          true,
 			})
 			if err != nil {
 				s.log.WithError(err).Error("failed to get pending submit")
-				time.Sleep(5 * time.Second)
 				continue
 			} else if pendingDeposit == nil {
-				time.Sleep(5 * time.Second)
 				continue
 			}
 
-			s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("got deposit to submit")
+			logger := s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash)
+			logger.Info("got deposit to submit")
 
 			err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
-			if err == nil || errors.Is(err, core.ErrTransactionAlreadySubmitted) {
-				s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).Info("deposit submitted")
-				if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
-					s.log.WithError(err).Error("failed to update deposit as submitted")
-				}
+			if err != nil || !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+				logger.WithError(err).Error("failed to submit deposit, will retry later")
 				continue
 			}
 
-			s.log.
-				WithField("deposit", pendingDeposit.DepositIdentifier.TxHash).
-				WithError(err).
-				Error("failed to submit deposit, will retry later")
-
-			time.Sleep(5 * time.Second)
+			logger.Info("deposit submitted successfully")
+			if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
+				logger.WithError(err).Error("failed to update deposit as submitted")
+			}
+			cooldown = time.Second * 0
 		}
 	}
 }
@@ -124,7 +126,7 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 			return
 		case c, ok := <-out:
 			if !ok {
-				s.log.Warn("chanel closed, stopping receiving messages")
+				s.log.Warn("channel closed, stopping receiving messages")
 				return
 			}
 
@@ -171,7 +173,9 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 }
 
 func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, error) {
-	deposit := &database.Deposit{}
+	deposit := &database.Deposit{
+		Submitted: true,
+	}
 
 	for keys, attribute := range attributes {
 		parts := strings.SplitN(keys, ".", 2)
