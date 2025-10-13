@@ -18,6 +18,7 @@ import (
 	coretypes "github.com/hyle-team/bridgeless-core/v12/types"
 	bridgetypes "github.com/hyle-team/bridgeless-core/v12/x/bridge/types"
 	"github.com/pkg/errors"
+	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/grpc"
 )
 
@@ -30,6 +31,7 @@ type Settings struct {
 }
 
 type Connector struct {
+	logger     *logan.Entry
 	transactor txclient.ServiceClient
 	txConfiger sdkclient.TxConfig
 	auther     authtypes.QueryClient
@@ -43,7 +45,7 @@ type Connector struct {
 	mu              *sync.Mutex
 }
 
-func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings) (*Connector, error) {
+func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings, logger *logan.Entry) (*Connector, error) {
 	accountData, err := getAccountData(context.Background(), authtypes.NewQueryClient(conn), account.CosmosAddress())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get account data")
@@ -56,6 +58,7 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 		querier:    bridgetypes.NewQueryClient(conn),
 		settings:   settings,
 		account:    account,
+		logger:     logger,
 
 		accountNumber:   accountData.AccountNumber,
 		accountSequence: accountData.Sequence,
@@ -66,10 +69,21 @@ func NewConnector(account core.Account, conn *grpc.ClientConn, settings Settings
 }
 
 func (c *Connector) getAccountSequence() uint64 {
-	seq := c.accountSequence
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	accountData, err := getAccountData(context.Background(), c.auther, c.account.CosmosAddress())
+	if err != nil {
+		c.logger.WithError(err).Error("failed to get account data")
+		seq := c.accountSequence
+		c.accountSequence++
+		return seq
+	}
+
+	c.accountSequence = accountData.Sequence
 	c.accountSequence++
 
-	return seq
+	return accountData.Sequence
 }
 
 func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
@@ -88,12 +102,11 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 		Mode:    txclient.BroadcastMode_BROADCAST_MODE_BLOCK,
 		TxBytes: tx,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "failed to broadcast transaction")
 	}
-	if res.TxResponse.Code != txCodeSuccess {
-		return errors.Errorf("transaction failed with code %d", res.TxResponse.Code)
+	if res.TxResponse.Code != 0 {
+		return errors.Errorf("transaction failed with code %d: %s", res.TxResponse.Code, res.TxResponse.RawLog)
 	}
 
 	return nil
@@ -101,9 +114,6 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 
 // buildTx builds a transaction from the given messages.
 func (c *Connector) buildTx(gasLimit, feeAmount uint64, msgs ...sdk.Msg) ([]byte, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	txBuilder := c.txConfiger.NewTxBuilder()
 
 	if err := txBuilder.SetMsgs(msgs...); err != nil {

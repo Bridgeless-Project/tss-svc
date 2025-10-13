@@ -67,21 +67,29 @@ func (ef *Finalizer) Finalize(ctx context.Context) error {
 
 func (ef *Finalizer) finalize(ctx context.Context) {
 	signature := convertToEthSignature(ef.signature)
-	if err := ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature); err != nil {
+	if err := ef.db.UpdateProcessed(database.ProcessedDepositData{
+		Identifier: ef.withdrawalData.DepositIdentifier(),
+		Signature:  &signature,
+	}); err != nil {
 		ef.errChan <- errors.Wrap(err, "failed to update signature")
 		return
 	}
 
-	dep, err := ef.db.Get(ef.withdrawalData.DepositIdentifier())
-	if err != nil {
-		ef.errChan <- errors.Wrap(err, "failed to get deposit")
-		return
-	}
+	//if err := ef.db.UpdateSignature(ef.withdrawalData.DepositIdentifier(), signature); err != nil {
+	//	ef.errChan <- errors.Wrap(err, "failed to update signature")
+	//	return
+	//}
 
-	if err = ef.core.SubmitDeposits(ctx, dep.ToTransaction(nil)); err != nil {
-		ef.errChan <- errors.Wrap(err, "failed to submit deposit")
-		return
-	}
+	//dep, err := ef.db.Get(ef.withdrawalData.DepositIdentifier())
+	//if err != nil {
+	//	ef.errChan <- errors.Wrap(err, "failed to get deposit")
+	//	return
+	//}
+	//
+	//if err = ef.core.SubmitDeposits(ctx, dep.ToTransaction(nil)); err != nil {
+	//	ef.errChan <- errors.Wrap(err, "failed to submit deposit")
+	//	return
+	//}
 
 	ef.errChan <- nil
 }
