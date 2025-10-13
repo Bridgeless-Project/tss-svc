@@ -98,7 +98,7 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 			logger.Info("got deposit to submit")
 
 			err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
-			if err != nil || !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+			if err != nil && !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
 				logger.WithError(err).Error("failed to submit deposit, will retry later")
 				continue
 			}
