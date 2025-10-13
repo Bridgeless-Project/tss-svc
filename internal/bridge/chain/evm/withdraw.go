@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
-	operations2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/operations"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/operations"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
 )
@@ -26,16 +26,16 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	var err error
 
 	if data.WithdrawalToken == bridge.DefaultNativeTokenAddress {
-		operation, err = operations2.NewWithdrawNativeContent(data)
+		operation, err = operations.NewWithdrawNativeContent(data)
 	} else {
-		operation, err = operations2.NewWithdrawERC20Content(data)
+		operation, err = operations.NewWithdrawERC20Content(data)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create operation")
 	}
 
 	hash := operation.CalculateHash()
-	prefixedHash := operations2.SetSignaturePrefix(hash)
+	prefixedHash := operations.SetSignaturePrefix(hash)
 
 	return prefixedHash, nil
 }

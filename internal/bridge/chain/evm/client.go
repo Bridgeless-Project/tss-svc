@@ -1,55 +1,62 @@
 package evm
 
 import (
-	"bytes"
 	"context"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts"
+	v1 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v1"
+	v2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v2"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 )
 
-const (
-	EventDepositedNative = "DepositedNative"
-	EventDepositedERC20  = "DepositedERC20"
-)
-
-var events = []string{
-	EventDepositedNative,
-	EventDepositedERC20,
+var requiredEvents = []string{
+	EventNameDepositedNative,
+	EventNameDepositedERC20,
 }
 
 type Client struct {
-	chain         Chain
-	contractABI   abi.ABI
-	depositEvents []abi.Event
+	chain           Chain
+	abiV1           abi.ABI
+	abiV2           abi.ABI
+	supportedEvents map[string]EventType
 }
 
 // NewBridgeClient creates a new bridge Client for the given chain.
 func NewBridgeClient(chain Chain) *Client {
-	bridgeAbi, err := abi.JSON(strings.NewReader(contracts.BridgeMetaData.ABI))
+	abiV1, err := abi.JSON(strings.NewReader(v1.BridgeMetaData.ABI))
 	if err != nil {
-		panic(errors.Wrap(err, "failed to parse bridge ABI"))
+		panic(errors.Wrap(err, "failed to parse bridge ABI v1"))
+	}
+	abiV2, err := abi.JSON(strings.NewReader(v2.BridgeMetaData.ABI))
+	if err != nil {
+		panic(errors.Wrap(err, "failed to parse bridge ABI v2"))
 	}
 
-	depositEvents := make([]abi.Event, len(events))
-	for i, event := range events {
-		depositEvent, ok := bridgeAbi.Events[event]
+	supportedEvents := make(map[string]EventType)
+	for _, eventName := range requiredEvents {
+		v1Event, ok := abiV1.Events[eventName]
 		if !ok {
-			panic("wrong bridge ABI events")
+			panic("required eventName not found in ABI v1: " + eventName)
 		}
-		depositEvents[i] = depositEvent
+		supportedEvents[v1Event.ID.String()] = EventNameToEventV1[eventName]
+
+		v2Event, ok := abiV2.Events[eventName]
+		if !ok {
+			panic("required eventName not found in ABI v2: " + eventName)
+		}
+		supportedEvents[v2Event.ID.String()] = EventNameToEventV2[eventName]
 	}
 
 	return &Client{
-		chain:         chain,
-		contractABI:   bridgeAbi,
-		depositEvents: depositEvents,
+		chain:           chain,
+		abiV1:           abiV1,
+		abiV2:           abiV2,
+		supportedEvents: supportedEvents,
 	}
 }
 
@@ -59,21 +66,6 @@ func (p *Client) ChainId() string {
 
 func (p *Client) Type() chain.Type {
 	return chain.TypeEVM
-}
-
-func (p *Client) getDepositLogType(log *types.Log) string {
-	if log == nil || len(log.Topics) == 0 {
-		return ""
-	}
-
-	for _, event := range p.depositEvents {
-		isEqual := bytes.Equal(log.Topics[0].Bytes(), event.ID.Bytes())
-		if isEqual {
-			return event.Name
-		}
-	}
-
-	return ""
 }
 
 func (p *Client) AddressValid(addr string) bool {
@@ -90,4 +82,12 @@ func (p *Client) HealthCheck() error {
 	}
 
 	return nil
+}
+
+func (p *Client) GetDepositEventType(log *types.Log) EventType {
+	if log == nil || len(log.Topics) == 0 {
+		return ""
+	}
+
+	return p.supportedEvents[log.Topics[0].String()]
 }
