@@ -65,21 +65,13 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (f *Finalizer) finalize(ctx context.Context) {
+func (f *Finalizer) finalize(_ context.Context) {
 	signature := convertToSolanaSignature(f.signature)
-	if err := f.db.UpdateSignature(f.withdrawalData.DepositIdentifier(), signature); err != nil {
+	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
+		Identifier: f.withdrawalData.DepositIdentifier(),
+		Signature:  &signature,
+	}); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update signature")
-		return
-	}
-
-	dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
-	if err != nil {
-		f.errChan <- errors.Wrap(err, "failed to get deposit")
-		return
-	}
-
-	if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(nil)); err != nil {
-		f.errChan <- errors.Wrap(err, "failed to submit deposit")
 		return
 	}
 

@@ -65,21 +65,13 @@ func (tf *Finalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (tf *Finalizer) finalize(ctx context.Context) {
+func (tf *Finalizer) finalize(_ context.Context) {
 	signature := tonchain.СonvertToTonSignature(tf.signature)
-	if err := tf.db.UpdateSignature(tf.withdrawalData.DepositIdentifier(), signature); err != nil {
+	if err := tf.db.UpdateProcessed(database.ProcessedDepositData{
+		Identifier: tf.withdrawalData.DepositIdentifier(),
+		Signature:  &signature,
+	}); err != nil {
 		tf.errChan <- errors.Wrap(err, "failed to update signature")
-		return
-	}
-
-	dep, err := tf.db.Get(tf.withdrawalData.DepositIdentifier())
-	if err != nil {
-		tf.errChan <- errors.Wrap(err, "failed to get deposit")
-		return
-	}
-
-	if err = tf.core.SubmitDeposits(ctx, dep.ToTransaction(nil)); err != nil {
-		tf.errChan <- errors.Wrap(err, "failed to submit deposit")
 		return
 	}
 

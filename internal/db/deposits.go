@@ -33,6 +33,9 @@ type DepositsQ interface {
 	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
 	InsertProcessedDeposit(deposit Deposit) (int64, error)
 
+	UpdateProcessed(data ProcessedDepositData) error
+	UpdateSubmittedStatus(identifier DepositIdentifier, submitted bool) error
+
 	Transaction(f func() error) error
 }
 
@@ -60,6 +63,7 @@ type DepositsSelector struct {
 	WithdrawalChainId *string
 	One               bool
 	Status            *types.WithdrawalStatus
+	NotSubmitted      bool
 }
 
 func (d DepositIdentifier) String() string {
@@ -88,9 +92,12 @@ type Deposit struct {
 	IsWrappedToken bool `structs:"is_wrapped_token" db:"is_wrapped_token"`
 
 	Signature *string `structs:"signature" db:"signature"`
+	TxData    *string `structs:"tx_data" db:"tx_data"`
+
+	Submitted bool `structs:"submitted" db:"submitted"`
 }
 
-func (d Deposit) ToTransaction(rawTxData *string) bridgetypes.Transaction {
+func (d Deposit) ToTransaction() bridgetypes.Transaction {
 	return bridgetypes.Transaction{
 		DepositTxHash:     d.TxHash,
 		DepositTxIndex:    uint64(d.TxNonce),
@@ -108,7 +115,7 @@ func (d Deposit) ToTransaction(rawTxData *string) bridgetypes.Transaction {
 		Signature:         stringOrEmpty(d.Signature),
 		IsWrapped:         d.IsWrappedToken,
 		ReferralId:        uint32(d.ReferralId),
-		TxData:            stringOrEmpty(rawTxData),
+		TxData:            stringOrEmpty(d.TxData),
 	}
 }
 
@@ -150,6 +157,14 @@ func (d DepositData) ToNewDeposit(
 
 func (d DepositData) OriginTxId() string {
 	return d.DepositIdentifier.String()
+}
+
+type ProcessedDepositData struct {
+	Identifier DepositIdentifier
+
+	Signature *string
+	TxHash    *string
+	TxData    *string
 }
 
 func stringOrEmpty(s *string) string {
