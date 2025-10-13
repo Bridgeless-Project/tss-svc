@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -35,4 +36,12 @@ func SetSignaturePrefix(message []byte) []byte {
 	prefixedMessage := bytes.Join([][]byte{prefix, lenMessage, message}, nil)
 
 	return crypto.Keccak256(prefixedMessage)
+}
+
+func TxHashToBytes32(txHash string) []byte {
+	hashBytes, err := hexutil.Decode(txHash)
+	if err != nil || len(hashBytes) != 32 {
+		return crypto.Keccak256(([]byte)(txHash))
+	}
+	return hashBytes
 }

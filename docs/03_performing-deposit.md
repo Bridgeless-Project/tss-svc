@@ -16,7 +16,7 @@ function depositERC20(
 
 Note:
 - before executing the `depositERC20` function, the user should approve the contract to spend the amount of tokens that should be transferred;
-- to obtain the information about the available tokens to transfer, their addresses, chain identifiers and more, query the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core) [`bridge`](https://github.com/hyle-team/bridgeless-core/tree/main/x/bridge) module.
+- to obtain the information about the available tokens to transfer, their addresses, chain identifiers and more, query the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core) [`bridge`](https://github.com/Bridgeless-Project/bridgeless-core/tree/main/x/bridge) module.
 
 `depositNative` function:
 ```solidity
@@ -124,5 +124,64 @@ To initiate the transfer processing, the user should provide any of the availabl
 - source chain id—the identifier of the source chain where the deposit operation was executed.
 
 
+## Solana
+
+To initiate a transfer from Solana network, the user should invoke one of the following instructions on the bridge program:
+
+### `DepositNative` 
+`DepositNative` instruction is used to deposit SOL (lamports) and requires the following accounts and parameters:
+``` rust
+bridge_id: String,
+amount: u64,        // amount of tokens to transfer (18 decimals)
+chain_id: String,   // destination network identifier
+address: String,    // receiver address on the target network
+```
+
+### `DepositSpl`
+`DepositSpl` instruction is used to deposit non-wrapped tokens and requires the following accounts and parameters:
+``` rust
+bridge_id: String,
+amount: u64,        // amount of tokens to transfer
+chain_id: String,   // destination network identifier
+address: String,    // receiver address on the target network
+
+mint: InterfaceAccount<'info, Mint>,
+sender: InterfaceAccount<'info, TokenAccount>,
+```
+
+- `mint` is a Mint account of the token to be sent. Before depositing tokens of a given mint, 
+an auxiliary instruction `InitSplVault` needs to be used by bridge admin with that mint.
+- `sender` is a TokenAccount of the given Mint, not necessarily an associated one, belonging to the signer.
+
+### `DepositWrapped`
+`DepositWrapped` instruction is used to deposit wrapped (bridge-owned) tokens and requires the following accounts and parameters:
+``` rust
+bridge_id: String,
+mint_nonce: u64,
+symbol: String,
+amount: u64,        // amount of tokens to transfer (18 decimals)
+chain_id: String,   // destination network identifier
+address: String,    // receiver address on the target network
+
+sender: InterfaceAccount<'info, TokenAccount>,
+```
+- `symbol` and `mint_nonce` of a token must be the same as configured on core blockchain,
+  (nonce exists to prevent symbol squatting by malicious actors). 
+- `sender` is a TokenAccount of the Mint, not necessarily an associated one, belonging to the signer.
+
+`bridge_id` is an arbitrary constant string, set on the TSS service side. 
+To be successfully processed, a deposit must contain an identical one.
+
+Some used accounts are derived automatically and are not described here.
+
+
+After the transaction is broadcast, the user should provide the TSS network with the deposit operation data:
+
+- transaction hash — the hash of the transaction that contains the deposit operation 
+(on Solana - the first signature in tx, in Base58 encoding);
+- transaction nonce — the index of the target instruction in the tx 
+(the first one if called directly);
+- source chain id — the identifier of the source chain where the deposit operation was executed.
+
 # Bridging Parameters
-To find the required information about the supported tokens and chains, the user should query the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core) [`bridge`](https://github.com/hyle-team/bridgeless-core/tree/main/x/bridge) module, which contains the information about the available tokens, their addresses, chain identifiers and more.
+To find the required information about the supported tokens and chains, the user should query the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core) [`bridge`](https://github.com/Bridgeless-Project/bridgeless-core/tree/main/x/bridge) module, which contains the information about the available tokens, their addresses, chain identifiers and more.

@@ -4,26 +4,17 @@ import (
 	"context"
 	"net/http"
 	"slices"
-	"strconv"
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/api/common"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
 
-const (
-	paramChainId = "chain_id"
-	paramTxHash  = "tx_hash"
-	paramTxNonce = "tx_nonce"
-
-	pollingPeriod = 1 * time.Second
-)
+const pollingPeriod = 1 * time.Second
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -33,18 +24,28 @@ var upgrader = websocket.Upgrader{
 
 func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 	var (
-		ctxt   = r.Context()
-		logger = ctx.Logger(ctxt)
-		db     = ctx.DB(ctxt)
+		ctxt        = r.Context()
+		logger      = ctx.Logger(ctxt)
+		db          = ctx.DB(ctxt)
+		clientsRepo = ctx.Clients(ctxt)
 	)
 
-	depositIdentifier, err := identifierFromParams(r)
+	identifier, err := common.IdentifierFromParams(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
+	client, err := clientsRepo.Client(identifier.ChainId)
+	if err != nil {
+		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
+	if err = common.ValidateChainIdentifier(common.FromDbIdentifier(*identifier), client); err != nil {
+		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
 
-	deposit, err := db.Get(*depositIdentifier)
+	deposit, err := db.Get(*identifier)
 	if err != nil {
 		logger.WithError(err).Error("failed to get withdrawal")
 		ape.RenderErr(w, problems.InternalError())
@@ -64,23 +65,7 @@ func CheckWithdrawalWs(w http.ResponseWriter, r *http.Request) {
 
 	gracefulClose := make(chan struct{})
 	go watchConnectionClosing(ws, gracefulClose)
-
-	response := common.ToStatusResponse(deposit)
-	raw := common.ProtoJsonMustMarshal(response)
-	if err = ws.WriteMessage(websocket.TextMessage, raw); err != nil {
-		logger.WithError(err).Error("failed to write message to websocket")
-		_ = ws.Close()
-		return
-	}
-
-	// no websocket needed for non-changeable statuses
-	if slices.Contains(database.FinalWithdrawalStatuses, deposit.WithdrawalStatus) {
-		_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		_ = ws.Close()
-		return
-	}
-
-	watchWithdrawalStatus(ctxt, ws, gracefulClose, *deposit)
+	watchWithdrawalStatus(ctxt, ws, gracefulClose, deposit)
 }
 
 func watchConnectionClosing(ws *websocket.Conn, done chan struct{}) {
@@ -99,13 +84,26 @@ func watchConnectionClosing(ws *websocket.Conn, done chan struct{}) {
 	}
 }
 
-func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed chan struct{}, deposit database.Deposit) {
+func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed chan struct{}, withdrawal *database.Deposit) {
 	defer func() { _ = ws.Close() }()
+
+	rawMsg := common.ProtoJsonMustMarshal(common.ToStatusResponse(withdrawal))
+	err := ws.WriteMessage(websocket.TextMessage, rawMsg)
+	if err != nil {
+		_ = ws.Close()
+		return
+	}
+
+	if slices.Contains(database.FinalWithdrawalStatuses, withdrawal.WithdrawalStatus) {
+		_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		_ = ws.Close()
+		return
+	}
 
 	var (
 		db         = ctx.DB(ctxt)
 		logger     = ctx.Logger(ctxt)
-		prevStatus = deposit.WithdrawalStatus
+		prevStatus = withdrawal.WithdrawalStatus
 		ticker     = time.NewTicker(pollingPeriod)
 	)
 
@@ -122,22 +120,20 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 			// doing nothing, just waiting some period
 		}
 
-		withdrawal, err := db.Get(deposit.DepositIdentifier)
+		withdrawal, err = db.Get(withdrawal.DepositIdentifier)
 		if err != nil {
 			logger.WithError(err).Error("failed to get withdrawal")
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal server error"))
 			return
 		}
 
-		//poll until our new status is different from the previous one
+		// poll until our new status is different from the previous one
 		if withdrawal.WithdrawalStatus == prevStatus {
 			continue
 		}
 
-		response := common.ToStatusResponse(withdrawal)
-		raw := common.ProtoJsonMustMarshal(response)
-		if err = ws.WriteMessage(websocket.TextMessage, raw); err != nil {
-			logger.WithError(err).Error("failed to write message to websocket")
+		rawMsg = common.ProtoJsonMustMarshal(common.ToStatusResponse(withdrawal))
+		if err = ws.WriteMessage(websocket.TextMessage, rawMsg); err != nil {
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal server error"))
 			return
 		}
@@ -150,23 +146,4 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 
 		prevStatus = withdrawal.WithdrawalStatus
 	}
-}
-
-func identifierFromParams(r *http.Request) (*database.DepositIdentifier, error) {
-	identifier := &database.DepositIdentifier{
-		ChainId: chi.URLParam(r, paramChainId),
-		TxHash:  chi.URLParam(r, paramTxHash),
-	}
-
-	nonce, err := strconv.ParseInt(chi.URLParam(r, paramTxNonce), 10, 64)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse tx nonce")
-	}
-	if nonce < 0 {
-		return nil, errors.New("tx nonce cannot be negative")
-	}
-
-	identifier.TxNonce = nonce
-
-	return identifier, nil
 }

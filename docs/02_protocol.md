@@ -85,25 +85,30 @@ Then, the session leader distributes the obtained signature to all parties in th
 Each party can ensure the signature is valid and matches the previously obtained data to be signed.
 
 #### Finalization
-After the data is signed by the required number of parties, the final signature is produced and sent to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core).
+After the data is signed by the required number of parties, the final signature is produced and sent to the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core).
 Additionally, it can be used to broadcast the signed transfers to the network or do other finalization steps (different for each chain).
 
 ##### EVM networks
-For EVM networks, the finalization process is performed only by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core).
+For EVM networks, the finalization process is performed only by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core).
 Then it can be used by anyone to construct and broadcast the withdrawal transaction to the destination network.
 
 **Note:** TSS network does not broadcast the signed EVM transactions to the network, user should do it manually and pay the gas fee.
 
 ##### Bitcoin network
-For the Bitcoin network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core)., also broadcasts the signed transaction to the Bitcoin network.
+For the Bitcoin network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core)., also broadcasts the signed transaction to the Bitcoin network.
 
 ##### Zano network
-For the Zano network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core)., also broadcasts the signed transaction to the Zano network.
+For the Zano network, the finalization process, in addition to saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core)., also broadcasts the signed transaction to the Zano network.
 
 #### TON network
-For TON, the finalization process is performed only by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/hyle-team/bridgeless-core).
+For TON, the finalization process is performed only by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core).
 Then it can be used by anyone to construct and broadcast the withdrawal transaction to the destination network.
 
+##### Solana network
+For the Solana network, the finalization process is performed by saving the signed withdrawal data to the Cosmos [Bridge Core](https://github.com/Bridgeless-Project/bridgeless-core). 
+Then it can be used by anyone to construct and broadcast the withdrawal transaction.
+Note that it is not a fully assembled transaction that is being signed, but a structure with the withdrawal parameters
+(e.g. amount, receiver).
 
 **Note:** currently, the finalization process should be performed by the session proposer.
 

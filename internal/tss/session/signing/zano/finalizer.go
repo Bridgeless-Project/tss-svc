@@ -68,19 +68,8 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 	}
 }
 
-func (f *Finalizer) finalize(ctx context.Context) {
+func (f *Finalizer) finalize(_ context.Context) {
 	withdrawalTxHash := bridge.HexPrefix + f.withdrawalData.ProposalData.TxId
-	//if err := f.db.UpdateWithdrawalTx(f.withdrawalData.DepositIdentifier(), withdrawalTxHash); err != nil {
-	//	f.errChan <- errors.Wrap(err, "failed to update withdrawal tx")
-	//	return
-	//}
-
-	//dep, err := f.db.Get(f.withdrawalData.DepositIdentifier())
-	//if err != nil {
-	//	f.errChan <- errors.Wrap(err, "failed to get deposit")
-	//	return
-	//}
-
 	signedTx := zano.SignedTransaction{
 		Signature: zano.EncodeSignature(f.signature),
 		UnsignedTransaction: zano.UnsignedTransaction{
@@ -99,11 +88,6 @@ func (f *Finalizer) finalize(ctx context.Context) {
 		f.errChan <- errors.Wrap(err, "failed to update signature")
 		return
 	}
-
-	//if err = f.core.SubmitDeposits(ctx, dep.ToTransaction(&encodedTx)); err != nil {
-	//	f.errChan <- errors.Wrap(err, "failed to submit deposit")
-	//	return
-	//}
 
 	if !f.sessionLeader {
 		f.errChan <- nil

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/api/health"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
@@ -34,8 +35,13 @@ type Server struct {
 	grpc net.Listener
 	http net.Listener
 
-	logger       *logan.Entry
-	ctxExtenders []func(context.Context) context.Context
+	db          db.DepositsQ
+	logger      *logan.Entry
+	clients     chain.Repository
+	processor   *deposit.Fetcher
+	broadcaster *broadcast.Broadcaster
+	self        core.Address
+	connector   *coreConnector.Connector
 }
 
 // NewServer creates a new GRPC server.
@@ -51,19 +57,15 @@ func NewServer(
 	connector *coreConnector.Connector,
 ) *Server {
 	return &Server{
-		grpc:   grpc,
-		http:   http,
-		logger: logger,
-
-		ctxExtenders: []func(context.Context) context.Context{
-			ctx.LoggerProvider(logger),
-			ctx.DBProvider(db),
-			ctx.ClientsProvider(clients),
-			ctx.FetcherProvider(processor),
-			ctx.BroadcasterProvider(broadcaster),
-			ctx.SelfProvider(self),
-			ctx.CoreConnectorProvider(connector),
-		},
+		grpc:        grpc,
+		http:        http,
+		logger:      logger,
+		db:          db,
+		clients:     clients,
+		processor:   processor,
+		broadcaster: broadcaster,
+		self:        self,
+		connector:   connector,
 	}
 }
 
@@ -104,7 +106,16 @@ func (s *Server) httpRouter(ctxt context.Context) http.Handler {
 	router.Use(
 		ape.LoganMiddleware(s.logger),
 		ape.RecoverMiddleware(s.logger),
-		ape.CtxMiddleware(s.ctxExtenders...),
+		ape.CtxMiddleware(
+			ctx.LoggerProvider(s.logger),
+			ctx.DBProvider(s.db),
+			ctx.ClientsProvider(s.clients),
+			ctx.FetcherProvider(s.processor),
+			ctx.BroadcasterProvider(s.broadcaster),
+			ctx.SelfProvider(s.self),
+			ctx.CoreConnectorProvider(s.connector),
+			ctx.HealthCheckerProvider(health.NewChecker(s.connector, s.clients)),
+		),
 	)
 
 	// pointing to grpc implementation
@@ -112,7 +123,10 @@ func (s *Server) httpRouter(ctxt context.Context) http.Handler {
 	_ = types.RegisterAPIHandlerServer(ctxt, grpcGatewayRouter, srvgrpc.Implementation{})
 
 	router.Mount("/", grpcGatewayRouter)
+
 	router.With(middlewares.HijackedConnectionCloser(ctxt)).Get("/ws/check/{chain_id}/{tx_hash}/{tx_nonce}", srvhttp.CheckWithdrawalWs)
+	router.Get("/private/health", srvhttp.Health)
+
 	router.Mount("/static/api_server.swagger.json", http.FileServer(http.FS(api.Docs)))
 	router.HandleFunc("/api", openapiconsole.Handler("TSS service API", "/static/api_server.swagger.json"))
 
@@ -122,7 +136,15 @@ func (s *Server) httpRouter(ctxt context.Context) http.Handler {
 func (s *Server) grpcServer() *grpc.Server {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			middlewares.ContextExtenderInterceptor(s.ctxExtenders...),
+			middlewares.ContextExtenderInterceptor(
+				ctx.LoggerProvider(s.logger),
+				ctx.DBProvider(s.db),
+				ctx.ClientsProvider(s.clients),
+				ctx.FetcherProvider(s.processor),
+				ctx.BroadcasterProvider(s.broadcaster),
+				ctx.SelfProvider(s.self),
+				ctx.CoreConnectorProvider(s.connector),
+			),
 			middlewares.LoggerInterceptor(s.logger),
 			// RecoveryInterceptor should be the last one
 			middlewares.RecoveryInterceptor(s.logger),

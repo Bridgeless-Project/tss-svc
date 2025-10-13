@@ -2,6 +2,7 @@ package pg
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -25,6 +26,7 @@ const (
 	depositsReceiver         = "receiver"
 	depositsWithdrawalToken  = "withdrawal_token"
 	depositsDepositBlock     = "deposit_block"
+	depositsReferralId       = "referral_id"
 
 	depositsWithdrawalChainId = "withdrawal_chain_id"
 	depositsWithdrawalTxHash  = "withdrawal_tx_hash"
@@ -68,6 +70,7 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalToken:   deposit.WithdrawalToken,
 			depositsWithdrawalChainId: deposit.WithdrawalChainId,
 			depositsCommissionAmount:  deposit.CommissionAmount,
+			depositsReferralId:        deposit.ReferralId,
 
 			depositsSubmitted: false,
 		}).
@@ -217,7 +220,7 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 		sql = sql.Where(squirrel.Eq{depositsSubmitted: false})
 	}
 	if selector.One {
-		sql = sql.Limit(1)
+		sql = sql.OrderBy(fmt.Sprintf("%s ASC", depositsId)).Limit(1)
 	}
 
 	return sql
@@ -245,6 +248,7 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsWithdrawalTxHash:  deposit.WithdrawalTxHash,
 			depositsSignature:         deposit.Signature,
 			depositsWithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+			depositsReferralId:        deposit.ReferralId,
 			depositsTxData:            deposit.TxData,
 			depositsSubmitted:         true,
 		}).

@@ -56,7 +56,6 @@ func storePreParams(cmd *cobra.Command, params *tss.LocalPreParams) error {
 	case "console":
 		fmt.Println(string(raw))
 	case "file":
-		fmt.Println(utils.FilePath)
 		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
 			return errors.Wrap(err, "failed to write pre-parameters to file")
 		}

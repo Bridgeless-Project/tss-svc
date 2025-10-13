@@ -119,7 +119,7 @@ func (s *Session) Build() error {
 	s.signConsMechanism = signing.NewConsensusMechanism[withdrawal.UtxoWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewBitcoinConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
+		withdrawal.NewUtxoConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
 		s.fetcher,
 	)
 
@@ -251,12 +251,12 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
-	//defer func() {
-	//	// compensating status update in case of error
-	//	if err != nil {
-	//		_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING)
-	//	}
-	//}()
+	defer func() {
+		// compensating status update in case of error
+		if err != nil {
+			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
+		}
+	}()
 
 	var (
 		distributionCtx    context.Context

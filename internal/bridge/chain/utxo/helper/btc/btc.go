@@ -164,20 +164,20 @@ func (b *helper) TxHash(tx *wire.MsgTx) string {
 	return tx.TxHash().String()
 }
 
-func (b *helper) RetrieveOpReturnData(script []byte) (string, error) {
+func (b *helper) RetrieveOpReturnData(script []byte) ([]byte, error) {
 	if !btcscript.IsNullData(script) {
-		return "", errors.New("invalid script type, expected valid OP_RETURN")
+		return nil, errors.New("invalid script type, expected valid OP_RETURN")
 	}
 
 	data, err := btcscript.PushedData(script)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to retrieve pushed data from script")
+		return nil, errors.Wrap(err, "failed to retrieve pushed data from script")
 	}
 	if len(data) != 1 {
-		return "", errors.New("expected exactly one pushed data item in OP_RETURN script")
+		return nil, errors.New("expected exactly one pushed data item in OP_RETURN script")
 	}
 
-	return string(data[0]), nil
+	return data[0], nil
 }
 
 func (b *helper) NewUnsignedTransaction(

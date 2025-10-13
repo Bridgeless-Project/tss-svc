@@ -2,14 +2,17 @@ package types
 
 const (
 	// wallet methods
-	SearchForTransactionsMethod  = "search_for_transactions"
-	EmitAssetMethod              = "emit_asset"
-	TransferAssetOwnershipMethod = "transfer_asset_ownership"
-	BurnAssetMethod              = "burn_asset"
-	TransferMethod               = "transfer"
-	SendExtSignedAssetTxMethod   = "send_ext_signed_asset_tx"
+	WalletMethodSearchForTransactions  = "search_for_transactions"
+	WalletMethodEmitAsset              = "emit_asset"
+	WalletMethodTransferAssetOwnership = "transfer_asset_ownership"
+	WalletMethodBurnAsset              = "burn_asset"
+	WalletMethodTransfer               = "transfer"
+	WalletMethodSendExtSignedAssetTx   = "send_ext_signed_asset_tx"
+	WalletMethodGetWalletInfo          = "get_wallet_info"
+
+	StatusSendExtSignedAssetTxOk = "OK"
 
 	// node methods
-	DecryptTxDetailsMethod = "decrypt_tx_details"
-	GetHeightMethod        = "getheight"
+	NodeMethodDecryptTxDetails = "decrypt_tx_details"
+	NodeMethodGetHeight        = "getheight"
 )

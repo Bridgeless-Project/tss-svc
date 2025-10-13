@@ -48,16 +48,19 @@ func (p *Client) DecryptTxDetails(data zanoTypes.DataForExternalSigning) (*zanoT
 }
 
 func (p *Client) SendSignedTransaction(signedTx SignedTransaction) (string, error) {
-	_, err := p.chain.Client.SendExtSignedAssetTX(
+	response, err := p.chain.Client.SendExtSignedAssetTX(
 		signedTx.Signature,
 		signedTx.ExpectedTxHash,
 		signedTx.FinalizedTx,
 		signedTx.Data,
-		// TODO: investigate
-		true,
+		false,
 	)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to send signed transaction")
+	}
+
+	if response.Status != zanoTypes.StatusSendExtSignedAssetTxOk {
+		return "", errors.Errorf("unexpected send signed transaction status: %s", response.Status)
 	}
 
 	return bridge.HexPrefix + signedTx.ExpectedTxHash, nil

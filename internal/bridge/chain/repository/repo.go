@@ -18,6 +18,10 @@ func NewClientsRepository(clients []chain.Client) chain.Repository {
 	return &clientsRepository{clients: clientsMap}
 }
 
+func (p clientsRepository) Clients() map[string]chain.Client {
+	return p.clients
+}
+
 func (p clientsRepository) Client(chainId string) (chain.Client, error) {
 	cl, ok := p.clients[chainId]
 	if !ok {

@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 )
 
@@ -41,7 +40,8 @@ func (c *Client) getWithdrawalJettonHash(deposit db.Deposit) ([]byte, error) {
 	}
 
 	txNonce := big.NewInt(0).SetUint64(uint64(deposit.TxNonce))
-	txHash := big.NewInt(0).SetBytes(hexutil.MustDecode(deposit.TxHash))
+
+	txHash := big.NewInt(0).SetBytes(TxHashToBytes32(deposit.TxHash))
 	res, err := c.Client.RunGetMethod(context.Background(),
 		master,
 		c.BridgeContractAddress,

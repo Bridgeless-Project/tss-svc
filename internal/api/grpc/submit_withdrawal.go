@@ -19,8 +19,8 @@ import (
 )
 
 func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.DepositIdentifier) (*emptypb.Empty, error) {
-	if identifier == nil {
-		return nil, status.Error(codes.InvalidArgument, "identifier is required")
+	if err := common.ValidateIdentifier(identifier); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	var (
@@ -35,7 +35,7 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "unsupported chain")
 	}
-	if err = common.ValidateIdentifier(identifier, client); err != nil {
+	if err = common.ValidateChainIdentifier(identifier, client); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -64,21 +64,19 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 
 	deposit, err = processor.FetchDeposit(id)
 	if err != nil {
-		logger.Debug("failed to fetch deposit data: ", err)
-
 		if chain.IsPendingDepositError(err) {
 			return nil, ErrDepositPending
 		}
 		if chain.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
-			deposit = &db.Deposit{
-				DepositIdentifier: id,
-				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
-			}
-			if _, err = data.Insert(*deposit); err != nil {
-				logger.WithError(err).Error("failed to process deposit")
-				return nil, ErrInternal
-			}
-
+			go func() {
+				if _, err = data.Insert(db.Deposit{
+					DepositIdentifier: id,
+					WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
+				}); err != nil {
+					logger.WithError(err).Error("failed to process deposit")
+				}
+			}()
+			logger.WithError(err).Error("failed to process deposit")
 			return nil, status.Error(codes.InvalidArgument, "invalid deposit")
 		}
 

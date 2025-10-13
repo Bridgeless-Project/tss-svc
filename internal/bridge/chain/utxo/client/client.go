@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/pkg/errors"
 )
 
 type Client interface {
@@ -72,4 +73,18 @@ func (c *client) WithdrawalAmountValid(amount *big.Int) bool {
 	}
 
 	return true
+}
+
+func (c *client) HealthCheck() error {
+	_, err := c.chain.Rpc.Node.GetBlockCount()
+	if err != nil {
+		return errors.Wrap(err, "failed to check node health")
+	}
+
+	_, err = c.chain.Rpc.Wallet.GetWalletInfo()
+	if err != nil {
+		return errors.Wrap(err, "failed to check wallet health")
+	}
+
+	return nil
 }

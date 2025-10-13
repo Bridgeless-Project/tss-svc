@@ -1,7 +1,4 @@
-// Code generated - DO NOT EDIT.
-// This file is a generated binding and any manual changes will be lost.
-
-package contracts
+package v1
 
 import (
 	"errors"
