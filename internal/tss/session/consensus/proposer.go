@@ -13,7 +13,6 @@ import (
 
 func (c *Consensus[T]) propose(ctx context.Context) {
 	defer c.wg.Done()
-	c.logger.Info("proposing data to sign...")
 
 	signingData, err := c.mechanism.FormProposalData()
 	if err != nil {
@@ -29,12 +28,9 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 
 	// nothing to sign for this session
 	if signingData == nil {
-		c.logger.Info("no signing data were found")
 		return
 	}
-
 	c.result.sigData = signingData
-	c.logger.Info("data proposed, waiting for acceptances...")
 
 	boundedCtx, cancel := context.WithTimeout(context.Background(), session.BoundaryProposalAcceptance)
 	defer cancel()
@@ -47,8 +43,6 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 			c.result.err = ctx.Err()
 			return
 		case <-boundedCtx.Done():
-			c.logger.Info("collecting received acceptances...")
-
 			possibleSigners := acceptances.Acceptors()
 			// including proposer in total, possible signers count
 			signersCount := len(possibleSigners) + 1
@@ -75,8 +69,6 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 				c.result.err = errors.New("sign start message broadcast failure")
 				return
 			}
-
-			c.logger.Info("signing parties selected and notified")
 
 			return
 		case msg := <-c.msgs:
