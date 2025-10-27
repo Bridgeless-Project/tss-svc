@@ -1,12 +1,14 @@
 package solana
 
 import (
+	"reflect"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana/contract"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
-	"reflect"
 )
 
 type Chain struct {
@@ -64,6 +66,9 @@ func FromChain(c chain.Chain) Chain {
 	if err := figure.Out(&chain.BridgeAddress).FromInterface(c.BridgeAddresses).With(SolanaHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain bridge addresses"))
 	}
+
+	// Set program ID for contract bindings
+	contract.SetProgramID(chain.BridgeAddress)
 
 	return chain
 }
