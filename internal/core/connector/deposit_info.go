@@ -25,7 +25,7 @@ func (c *Connector) GetDepositInfo(identifier *types.DepositIdentifier) (*bridge
 			return nil, nil
 		}
 
-		return nil, errors.Wrap(err, "failed to get token info")
+		return nil, errors.Wrap(err, "failed to get transaction info")
 	}
 
 	return &resp.Transaction, nil
