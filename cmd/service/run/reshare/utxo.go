@@ -19,17 +19,15 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var consolidateParams = utxoutils.DefaultConsolidateOutputsParams
+var consolidateParams = utxoutils.DefaultResharingParams
 
 func init() {
 	registerReshareUtxoOptions(reshareUtxoCmd)
-	consolidateParams.InputsThreshold = 1 // allow to consolidate even if there is only one input
 }
 
 func registerReshareUtxoOptions(cmd *cobra.Command) {
-	cmd.Flags().Uint64Var(&consolidateParams.FeeRate, "fee-rate", consolidateParams.FeeRate, "Fee rate for the transaction (sats/KvB)")
-	cmd.Flags().IntVar(&consolidateParams.OutputsCount, "outputs-count", consolidateParams.OutputsCount, "Number of outputs to split the funds into")
-	cmd.Flags().IntVar(&consolidateParams.MaxInputsCount, "max-inputs-count", consolidateParams.MaxInputsCount, "Maximum number of inputs to use in the transaction")
+	cmd.Flags().UintVar(&consolidateParams.SetParams[0].OutsCount, "outputs-count", consolidateParams.SetParams[0].OutsCount, "Number of outputs to split the funds into")
+	cmd.Flags().UintVar(&consolidateParams.SetParams[0].MaxInputsCount, "max-inputs-count", consolidateParams.SetParams[0].MaxInputsCount, "Maximum number of inputs to use in the transaction")
 }
 
 var reshareUtxoCmd = &cobra.Command{
