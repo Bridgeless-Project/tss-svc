@@ -8,13 +8,10 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
-	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -92,15 +89,6 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		logger.WithError(err).Error("failed to save deposit")
 		return nil, ErrInternal
 	}
-
-	raw, _ := anypb.New(&p2p.DepositDistributionData{DepositId: identifier})
-	// broadcasting in a separate goroutine to avoid request blocking
-	go ctx.Broadcaster(ctxt).Broadcast(&p2p.SubmitRequest{
-		Sender:    ctx.Self(ctxt).String(),
-		Type:      p2p.RequestType_RT_DEPOSIT_DISTRIBUTION,
-		SessionId: acceptor.DepositAcceptorSessionIdentifier,
-		Data:      raw,
-	})
 
 	return nil, nil
 }

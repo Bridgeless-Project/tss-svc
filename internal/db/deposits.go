@@ -22,19 +22,18 @@ var FinalWithdrawalStatuses = []types.WithdrawalStatus{
 
 type DepositsQ interface {
 	New() DepositsQ
-	Insert(Deposit) (id int64, err error)
+	Insert(deposit Deposit) (id int64, err error)
 	Select(selector DepositsSelector) ([]Deposit, error)
 	Get(identifier DepositIdentifier) (*Deposit, error)
 	GetWithSelector(selector DepositsSelector) (*Deposit, error)
 
 	UpdateWithdrawalDetails(identifier DepositIdentifier, hash *string, signature *string) error
-	UpdateWithdrawalTx(DepositIdentifier, string) error
-	UpdateSignature(DepositIdentifier, string) error
 	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
 	InsertProcessedDeposit(deposit Deposit) (int64, error)
 
 	UpdateProcessed(data ProcessedDepositData) error
 	UpdateSubmittedStatus(identifier DepositIdentifier, submitted bool) error
+	UpdateDistributedStatus(identifier DepositIdentifier, distributed bool) error
 
 	Transaction(f func() error) error
 }
@@ -64,10 +63,21 @@ type DepositsSelector struct {
 	One               bool
 	Status            *types.WithdrawalStatus
 	NotSubmitted      bool
+
+	Distributed    bool
+	NotDistributed bool
 }
 
 func (d DepositIdentifier) String() string {
 	return fmt.Sprintf(OriginTxIdPattern, d.TxHash, d.TxNonce, d.ChainId)
+}
+
+func (d DepositIdentifier) ToMsgDepositIdentifier() *types.DepositIdentifier {
+	return &types.DepositIdentifier{
+		TxHash:  d.TxHash,
+		TxNonce: d.TxNonce,
+		ChainId: d.ChainId,
+	}
 }
 
 type Deposit struct {
@@ -94,7 +104,8 @@ type Deposit struct {
 	Signature *string `structs:"signature" db:"signature"`
 	TxData    *string `structs:"tx_data" db:"tx_data"`
 
-	Submitted bool `structs:"submitted" db:"submitted"`
+	Submitted   bool `structs:"submitted" db:"submitted"`
+	Distributed bool `structs:"distributed" db:"distributed"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
