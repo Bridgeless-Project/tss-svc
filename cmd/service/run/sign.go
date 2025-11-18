@@ -8,7 +8,6 @@ import (
 	"syscall"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
-	"github.com/Bridgeless-Project/tss-svc/internal/api"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
@@ -24,10 +23,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	pg "github.com/Bridgeless-Project/tss-svc/internal/db/postgres"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
-	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/acceptor"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
 	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
@@ -103,17 +101,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"), connector)
 	fetcher := deposit.NewFetcher(clientsRepo, connector)
 
-	apiServer := api.NewServer(
-		cfg.ApiGrpcListener(),
-		cfg.ApiHttpListener(),
-		dtb,
-		logger.WithField("component", "api_server"),
-		clientsRepo,
-		fetcher,
-		broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
-		account.CosmosAddress(),
-		connector,
-	)
 	p2pServer := p2p.NewServer(
 		cfg.P2pGrpcListener(),
 		sessionManager,
@@ -135,17 +122,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		p2pServer.SetStatus(status)
 
 		return errors.Wrap(p2pServer.Run(ctx), "error while running p2p server")
-	})
-
-	// API server spin-up
-	wg.Add(2)
-	eg.Go(func() error {
-		defer wg.Done()
-		return errors.Wrap(apiServer.RunHTTP(ctx), "error while running API HTTP gateway")
-	})
-	eg.Go(func() error {
-		defer wg.Done()
-		return errors.Wrap(apiServer.RunGRPC(ctx), "error while running API GRPC server")
 	})
 
 	// sessions spin-up
@@ -199,11 +175,12 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	eg.Go(func() error {
 		defer wg.Done()
 
-		depositAcceptorSession := acceptor.NewDepositAcceptorSession(
+		depositAcceptorSession := distributor.NewDepositDistributionSession(
+			account.CosmosAddress(),
 			parties,
 			fetcher,
 			dtb,
-			logger.WithField("component", "deposit_acceptor_session"),
+			logger.WithField("component", "deposit_distribution_session"),
 		)
 		sessionManager.Add(depositAcceptorSession)
 		depositAcceptorSession.Run(ctx)

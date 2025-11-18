@@ -6,10 +6,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/api/health"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
-	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -20,8 +18,6 @@ const (
 	loggerKey
 	clientsKey
 	processorKey
-	broadcasterKey
-	selfKey
 	coreConnectorKey
 	healthCheckerKey
 )
@@ -67,26 +63,6 @@ func FetcherProvider(processor *deposit.Fetcher) func(context.Context) context.C
 
 func Fetcher(ctx context.Context) *deposit.Fetcher {
 	return ctx.Value(processorKey).(*deposit.Fetcher)
-}
-
-func BroadcasterProvider(b *broadcast.Broadcaster) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		return context.WithValue(ctx, broadcasterKey, b)
-	}
-}
-
-func Broadcaster(ctx context.Context) *broadcast.Broadcaster {
-	return ctx.Value(broadcasterKey).(*broadcast.Broadcaster)
-}
-
-func SelfProvider(self core.Address) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		return context.WithValue(ctx, selfKey, self)
-	}
-}
-
-func Self(ctx context.Context) core.Address {
-	return ctx.Value(selfKey).(core.Address)
 }
 
 func CoreConnectorProvider(connector *coreConnector.Connector) func(context.Context) context.Context {
