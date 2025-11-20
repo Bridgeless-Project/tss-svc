@@ -97,10 +97,14 @@ func (z Sdk) EmitAsset(assetId string, destinations ...types.Destination) (*type
 // TransferAssetOwnership Transfer asset ownership to another wallet.
 // assetId must be non-empty and without prefix 0x
 // wallet rpc api method
-func (z Sdk) TransferAssetOwnership(assetId, ownerEthPubKey string) (*types.TransferAssetOwnershipResponse, error) {
+func (z Sdk) TransferAssetOwnership(assetId, newOwnerPubKey string, ethKey bool) (*types.TransferAssetOwnershipResponse, error) {
 	req := types.TransferAssetOwnershipParams{
-		AssetID:           assetId,
-		NewOwnerEthPubKey: ownerEthPubKey,
+		AssetID: assetId,
+	}
+	if ethKey {
+		req.NewOwnerEthPubKey = &newOwnerPubKey
+	} else {
+		req.NewOwner = &newOwnerPubKey
 	}
 
 	resp := new(types.TransferAssetOwnershipResponse)

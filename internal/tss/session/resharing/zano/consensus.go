@@ -37,25 +37,28 @@ func (s SigningData) HashString() string {
 }
 
 type ConsensusMechanism struct {
-	assetId        string
-	ownerEthPubKey string
-	client         *zano.Client
+	assetId     string
+	ownerPubKey string
+	isEthKey    bool
+	client      *zano.Client
 }
 
 func NewConsensusMechanism(
 	assetId string,
-	ownerEthPubKey string,
+	ownerPubKey string,
+	IsEthKey bool,
 	client *zano.Client,
 ) *ConsensusMechanism {
 	return &ConsensusMechanism{
-		assetId:        assetId,
-		ownerEthPubKey: ownerEthPubKey,
-		client:         client,
+		assetId:     assetId,
+		ownerPubKey: ownerPubKey,
+		isEthKey:    IsEthKey,
+		client:      client,
 	}
 }
 
 func (c ConsensusMechanism) FormProposalData() (*SigningData, error) {
-	tx, err := c.client.TransferAssetOwnershipUnsigned(c.assetId, c.ownerEthPubKey)
+	tx, err := c.client.TransferAssetOwnershipUnsigned(c.assetId, c.ownerPubKey, c.isEthKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to form ownership unsigned transaction")
 	}
@@ -63,7 +66,7 @@ func (c ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	return &SigningData{
 		ProposalData: &p2p.ZanoResharingProposalData{
 			AssetId:        c.assetId,
-			OwnerEthPubKey: c.ownerEthPubKey,
+			OwnerEthPubKey: c.ownerPubKey,
 
 			OutputsAddresses: tx.DataForExternalSigning.OutputsAddresses,
 			UnsignedTx:       tx.DataForExternalSigning.UnsignedTx,
@@ -100,12 +103,12 @@ func (c ConsensusMechanism) VerifyProposedData(data SigningData) error {
 			fmt.Sprintf("asset id mismatch: expected %s, got %s", c.assetId, *assetInfo.OptAssetId),
 		)
 	}
-	if assetInfo.OptDescriptor.OwnerEthPubKey != c.ownerEthPubKey {
+	if data.ProposalData.OwnerEthPubKey != c.ownerPubKey {
 		return errors.New(
 			fmt.Sprintf(
-				"owner eth pub key mismatch: expected %s, got %s",
-				c.ownerEthPubKey,
-				assetInfo.OptDescriptor.OwnerEthPubKey,
+				"new owner pub key mismatch: expected %s, got %s",
+				c.ownerPubKey,
+				data.ProposalData.OwnerEthPubKey,
 			),
 		)
 	}
