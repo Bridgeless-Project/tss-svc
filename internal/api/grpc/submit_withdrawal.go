@@ -36,6 +36,16 @@ func (Implementation) SubmitWithdrawal(ctxt context.Context, identifier *types.D
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	tx, err := coreConnector.GetStopListTx(identifier)
+	if err != nil {
+		logger.WithError(err).Error("error checking stop list transaction on core")
+		return nil, ErrInternal
+	}
+
+	if tx != nil {
+		return nil, status.Error(codes.AlreadyExists, "deposit already exists")
+	}
+
 	existingDeposit, err := coreConnector.GetDepositInfo(identifier)
 	if err != nil {
 		logger.WithError(err).Error("error checking deposit info on core")

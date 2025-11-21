@@ -1164,12 +1164,8 @@ github.com/AlekSi/pointer v1.1.0/go.mod h1:y7BvfRI3wXPWKXEBhU71nbnIEEZX0QTSB2Bj4
 github.com/Azure/azure-sdk-for-go/sdk/azcore v0.21.1/go.mod h1:fBF9PQNqB8scdgpZ3ufzaLntG0AG7C1WjPMsiFOmfHM=
 github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.3/go.mod h1:KLF4gFr6DcKFZwSuH8w8yEK6DpFl3LP5rhdvAb7Yz5I=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0/go.mod h1:tPaiy8S5bQ+S5sOiDlINkp7+Ef339+Nz5L5XO+cnOHo=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4 h1:ahem56xjJKQ8BXQ/iBj9wC9KEewWhRSXRWyNS37c+fk=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20250911144817-6f9b408890e4/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250922141418-82edc9f7244b h1:uINlXWttrP5YiU/0D8PrjVutHztsKNz0zT1xy4uNnt4=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250922141418-82edc9f7244b/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250930075726-0a996f79255e h1:co0nOUbJM202aWGmVaskYiwLb7zJkvxFbXbEyAqrQbY=
-github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250930075726-0a996f79255e/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
+github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20251030145122-1f327f9a5083 h1:YjQ2fWgrr5S80bUMLSxC/1W3gFHn8LXdrNGQDmzhiYA=
+github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20251030145122-1f327f9a5083/go.mod h1:uVb3Zh+RkeVW35z+K/nnRAAOFkBNkuk2Iab9+RQGsF4=
 github.com/Bridgeless-Project/cosmos-sdk v0.46.33 h1:577v3h/g5XRrwxannT88jEi16EYOxkJU1ApD+IhEzdM=
 github.com/Bridgeless-Project/cosmos-sdk v0.46.33/go.mod h1:exJNK+hAaBpOdCPfS60Y9UvSy/iepf0pzd9XLeUDaso=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
@@ -1550,7 +1546,7 @@ github.com/gagliardetto/treeout v0.1.4 h1:ozeYerrLCmCubo1TcIjFiOWTTGteOOHND1twdF
 github.com/gagliardetto/treeout v0.1.4/go.mod h1:loUefvXTrlRG5rYmJmExNryyBRh8f89VZhmMOyCyqok=
 github.com/garslo/gogen v0.0.0-20170306192744-1d203ffc1f61/go.mod h1:Q0X6pkwTILDlzrGEckF6HKjXe48EgsY/l7K7vhY4MW8=
 github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff/go.mod h1:x7DCsMOv1taUwEWCzT4cmDeAkigA5/QCwUodaVOe8Ww=
-github.com/gcash/bchd v0.21.1 h1:rJV2FYUZtsURUqOypFLus1SgAFxwPHUzylS9astQVOU=
+github.com/gcash/bchd v0.21.1 h1:YTFdypPLIF6vfEyzUXoGCQVg+8JmneZIwb9SYlk5YcE=
 github.com/gcash/bchd v0.21.1/go.mod h1:Zco1+b37+qx7xmy+rwFn4XWlbD7PP5z63NBNtrSBfEQ=
 github.com/gcash/bchlog v0.0.0-20180913005452-b4f036f92fa6 h1:3pZvWJ8MSfWstGrb8Hfh4ZpLyZNcXypcGx2Ju4ZibVM=
 github.com/gcash/bchlog v0.0.0-20180913005452-b4f036f92fa6/go.mod h1:PpfmXTLfjRp7Tf6v/DCGTRXHz+VFbiRcsoUxi7HvwlQ=
