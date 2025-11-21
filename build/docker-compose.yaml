@@ -76,7 +76,7 @@ services:
       MOUNT_PATH: tss1
     volumes:
       - ./configs/tss1.local.yaml:/config.yaml
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run api"
+    entrypoint: sh -c "tss-svc service run api"
     depends_on:
       vault_init:
         condition: service_completed_successfully

@@ -19,9 +19,10 @@ import (
 var _ p2p.TssSession = &Session{}
 
 type SessionParams struct {
-	SessionParams  session.Params
-	AssetId        string
-	OwnerEthPubKey string
+	SessionParams session.Params
+	AssetId       string
+	OwnerPubKey   string
+	IsEthKey      bool
 }
 
 type Session struct {
@@ -77,7 +78,8 @@ func NewSession(
 			leader,
 			NewConsensusMechanism(
 				params.AssetId,
-				params.OwnerEthPubKey,
+				params.OwnerPubKey,
+				params.IsEthKey,
 				client,
 			),
 			logger.WithField("phase", "consensus"),
