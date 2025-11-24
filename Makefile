@@ -1,4 +1,3 @@
-# Mark 'help' as a phony target (it doesn't produce a file)
 .PHONY: help
 
 protogen: ## Generate protobuf types using buf

@@ -29,6 +29,7 @@ func NewConsensusMechanism[T withdrawal.DepositSigningData](
 		depositSelector: db.DepositsSelector{
 			WithdrawalChainId: &chainId,
 			Status:            &pendingWithdrawalStatus,
+			Distributed:       true, // only consider deposits that have been distributed to other parties
 			One:               true,
 		},
 		depositsQ:   depositsQ,
@@ -64,6 +65,7 @@ func (c *ConsensusMechanism[T]) VerifyProposedData(data T) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to fetch deposit")
 		}
+		unsignedDeposit.Distributed = true
 		if _, err := c.depositsQ.Insert(*unsignedDeposit); err != nil {
 			if !errors.Is(err, db.ErrAlreadySubmitted) {
 				return errors.Wrap(err, "failed to save fetched deposit")

@@ -109,8 +109,8 @@ func (s *Session) Run(ctx context.Context) error {
 		s.logger.Info("resharing session cancelled")
 		return nil
 	case <-time.After(runDelay):
-		// T+1 parties required
-		if s.connectedPartiesCount() < s.self.Threshold+1 {
+		// T+1 parties required, including self
+		if s.connectedPartiesCount()+1 < s.self.Threshold+1 {
 			return errors.New("cannot start resharing session: not enough parties connected")
 		}
 	}

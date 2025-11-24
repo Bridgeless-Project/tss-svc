@@ -19,9 +19,10 @@ import (
 var _ p2p.TssSession = &Session{}
 
 type SessionParams struct {
-	SessionParams  session.Params
-	AssetId        string
-	OwnerEthPubKey string
+	SessionParams session.Params
+	AssetId       string
+	OwnerPubKey   string
+	IsEthKey      bool
 }
 
 type Session struct {
@@ -77,7 +78,8 @@ func NewSession(
 			leader,
 			NewConsensusMechanism(
 				params.AssetId,
-				params.OwnerEthPubKey,
+				params.OwnerPubKey,
+				params.IsEthKey,
 				client,
 			),
 			logger.WithField("phase", "consensus"),
@@ -104,8 +106,8 @@ func (s *Session) Run(ctx context.Context) error {
 		s.logger.Info("resharing session cancelled")
 		return nil
 	case <-time.After(runDelay):
-		// T+1 parties required
-		if s.connectedPartiesCount() < s.self.Threshold+1 {
+		// T+1 parties required, including self
+		if s.connectedPartiesCount()+1 < s.self.Threshold+1 {
 			return errors.New("cannot start resharing session: not enough parties connected")
 		}
 	}

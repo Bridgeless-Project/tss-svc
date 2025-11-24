@@ -62,13 +62,32 @@ services:
     volumes:
       - tss-3-data:/pgdata
 
+  tss-1-api:
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    hostname: tss-1-api
+    ports:
+      - "8081:8080"
+    container_name: tss-1-api
+    environment:
+      VAULT_PATH: http://vault:8200
+      VAULT_TOKEN: root
+      MOUNT_PATH: tss1
+    volumes:
+      - ./configs/tss1.local.yaml:/config.yaml
+    entrypoint: sh -c "tss-svc service run api"
+    depends_on:
+      vault_init:
+        condition: service_completed_successfully
+      tss-1-db:
+        condition: service_started
+
   tss-1:
     build:
       context: ../
       dockerfile: build/Dockerfile
     hostname: tss-1
-    ports:
-      - "8081:8080"
     container_name: tss-1
     environment:
       VAULT_PATH: http://vault:8200
@@ -91,8 +110,6 @@ services:
       context: ../
       dockerfile: build/Dockerfile
     hostname: tss-2
-    ports:
-      - "8082:8080"
     container_name: tss-2
     environment:
       VAULT_PATH: http://vault:8200
@@ -115,8 +132,6 @@ services:
       context: ../
       dockerfile: build/Dockerfile
     hostname: tss-3
-    ports:
-      - "8083:8080"
     container_name: tss-3
     environment:
       VAULT_PATH: http://vault:8200

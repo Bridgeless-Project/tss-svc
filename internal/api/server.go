@@ -6,19 +6,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/api/health"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
-	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
-	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
-
 	"github.com/Bridgeless-Project/tss-svc/api"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
 	srvgrpc "github.com/Bridgeless-Project/tss-svc/internal/api/grpc"
+	"github.com/Bridgeless-Project/tss-svc/internal/api/health"
 	srvhttp "github.com/Bridgeless-Project/tss-svc/internal/api/http"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/middlewares"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/types"
-	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
+	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/go-chi/chi/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -35,13 +32,11 @@ type Server struct {
 	grpc net.Listener
 	http net.Listener
 
-	db          db.DepositsQ
-	logger      *logan.Entry
-	clients     chain.Repository
-	processor   *deposit.Fetcher
-	broadcaster *broadcast.Broadcaster
-	self        core.Address
-	connector   *coreConnector.Connector
+	db        db.DepositsQ
+	logger    *logan.Entry
+	clients   chain.Repository
+	processor *deposit.Fetcher
+	connector *coreConnector.Connector
 }
 
 // NewServer creates a new GRPC server.
@@ -52,20 +47,16 @@ func NewServer(
 	logger *logan.Entry,
 	clients chain.Repository,
 	processor *deposit.Fetcher,
-	broadcaster *broadcast.Broadcaster,
-	self core.Address,
 	connector *coreConnector.Connector,
 ) *Server {
 	return &Server{
-		grpc:        grpc,
-		http:        http,
-		logger:      logger,
-		db:          db,
-		clients:     clients,
-		processor:   processor,
-		broadcaster: broadcaster,
-		self:        self,
-		connector:   connector,
+		grpc:      grpc,
+		http:      http,
+		logger:    logger,
+		db:        db,
+		clients:   clients,
+		processor: processor,
+		connector: connector,
 	}
 }
 
@@ -111,8 +102,6 @@ func (s *Server) httpRouter(ctxt context.Context) http.Handler {
 			ctx.DBProvider(s.db),
 			ctx.ClientsProvider(s.clients),
 			ctx.FetcherProvider(s.processor),
-			ctx.BroadcasterProvider(s.broadcaster),
-			ctx.SelfProvider(s.self),
 			ctx.CoreConnectorProvider(s.connector),
 			ctx.HealthCheckerProvider(health.NewChecker(s.connector, s.clients)),
 		),
@@ -141,8 +130,6 @@ func (s *Server) grpcServer() *grpc.Server {
 				ctx.DBProvider(s.db),
 				ctx.ClientsProvider(s.clients),
 				ctx.FetcherProvider(s.processor),
-				ctx.BroadcasterProvider(s.broadcaster),
-				ctx.SelfProvider(s.self),
 				ctx.CoreConnectorProvider(s.connector),
 			),
 			middlewares.LoggerInterceptor(s.logger),
