@@ -122,8 +122,9 @@ type EmitAssetResponse struct {
 }
 
 type TransferAssetOwnershipParams struct {
-	AssetID           string `json:"asset_id"`
-	NewOwnerEthPubKey string `json:"new_owner_eth_pub_key"`
+	AssetID           string  `json:"asset_id"`
+	NewOwnerEthPubKey *string `json:"new_owner_eth_pub_key,omitempty"`
+	NewOwner          *string `json:"new_owner,omitempty"`
 }
 
 type TransferAssetOwnershipResponse struct {

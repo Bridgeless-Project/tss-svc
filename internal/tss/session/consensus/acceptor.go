@@ -13,7 +13,6 @@ import (
 
 func (c *Consensus[T]) accept(ctx context.Context) {
 	defer c.wg.Done()
-	c.logger.Info("accepting proposal...")
 
 	var proposalAccepted bool
 
@@ -40,12 +39,10 @@ func (c *Consensus[T]) accept(ctx context.Context) {
 				}
 				// there will be no data to sign in the current session
 				if c.result.sigData == nil {
-					c.logger.Info("got empty data to sign")
 					return
 				}
 
 				proposalAccepted = true
-				c.logger.Info("proposal accepted, waiting for sign start message...")
 			case p2p.RequestType_RT_SIGN_START:
 				if !proposalAccepted {
 					c.logger.Warn("sign start message received before proposal, ignoring")
@@ -56,7 +53,6 @@ func (c *Consensus[T]) accept(ctx context.Context) {
 					c.result.err = errors.Wrap(err, "failed to handle sign start message")
 				}
 
-				c.logger.Info("sign start message with signing parties received")
 				return
 			default:
 				c.logger.Warn(fmt.Sprintf("unsupported request type %s from proposer", msg.Type))

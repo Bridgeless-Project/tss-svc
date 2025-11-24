@@ -36,9 +36,10 @@ const (
 	depositsIsWrappedToken   = "is_wrapped_token"
 	depositsCommissionAmount = "commission_amount"
 
-	depositsSignature = "signature"
-	depositsTxData    = "tx_data"
-	depositsSubmitted = "submitted"
+	depositsSignature   = "signature"
+	depositsTxData      = "tx_data"
+	depositsSubmitted   = "submitted"
+	depositsDistributed = "distributed"
 )
 
 type depositsQ struct {
@@ -72,7 +73,8 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsCommissionAmount:  deposit.CommissionAmount,
 			depositsReferralId:        deposit.ReferralId,
 
-			depositsSubmitted: false,
+			depositsSubmitted:   false,
+			depositsDistributed: deposit.Distributed,
 		}).
 		Suffix("RETURNING id")
 
@@ -138,27 +140,9 @@ func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, has
 	return d.db.Exec(query)
 }
 
-func (d *depositsQ) UpdateSignature(identifier db.DepositIdentifier, sig string) error {
-	query := squirrel.Update(depositsTable).
-		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
-		Set(depositsSignature, sig).
-		Where(identifierToPredicate(identifier))
-
-	return d.db.Exec(query)
-}
-
 func (d *depositsQ) UpdateStatus(identifier db.DepositIdentifier, status types.WithdrawalStatus) error {
 	query := squirrel.Update(depositsTable).
 		Set(depositsWithdrawalStatus, status).
-		Where(identifierToPredicate(identifier))
-
-	return d.db.Exec(query)
-}
-
-func (d *depositsQ) UpdateWithdrawalTx(identifier db.DepositIdentifier, hash string) error {
-	query := squirrel.Update(depositsTable).
-		Set(depositsWithdrawalTxHash, hash).
-		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
 		Where(identifierToPredicate(identifier))
 
 	return d.db.Exec(query)
@@ -192,6 +176,14 @@ func (d *depositsQ) UpdateSubmittedStatus(identifier db.DepositIdentifier, submi
 	return d.db.Exec(query)
 }
 
+func (d *depositsQ) UpdateDistributedStatus(identifier db.DepositIdentifier, distributed bool) error {
+	query := squirrel.Update(depositsTable).
+		Set(depositsDistributed, distributed).
+		Where(identifierToPredicate(identifier))
+
+	return d.db.Exec(query)
+}
+
 func NewDepositsQ(db *pgdb.DB) db.DepositsQ {
 	return &depositsQ{
 		db:       db.Clone(),
@@ -218,6 +210,12 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 	}
 	if selector.NotSubmitted {
 		sql = sql.Where(squirrel.Eq{depositsSubmitted: false})
+	}
+	if selector.Distributed {
+		sql = sql.Where(squirrel.Eq{depositsDistributed: true})
+	}
+	if selector.NotDistributed {
+		sql = sql.Where(squirrel.Eq{depositsDistributed: false})
 	}
 	if selector.One {
 		sql = sql.OrderBy(fmt.Sprintf("%s ASC", depositsId)).Limit(1)
@@ -251,6 +249,7 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsReferralId:        deposit.ReferralId,
 			depositsTxData:            deposit.TxData,
 			depositsSubmitted:         true,
+			depositsDistributed:       true,
 		}).
 		Suffix("RETURNING id")
 

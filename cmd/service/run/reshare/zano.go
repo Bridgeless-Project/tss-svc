@@ -16,8 +16,18 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var isEthOwner bool
+
+func init() {
+	registerReshareZanoOptions(reshareZanoCmd)
+}
+
+func registerReshareZanoOptions(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&isEthOwner, "is-eth-key", false, "Indicates if the new owner public key is an Ethereum key")
+}
+
 var reshareZanoCmd = &cobra.Command{
-	Use:   "zano [asset-id] [owner-eth-pub-key]",
+	Use:   "zano [asset-id] [owner-pub-key]",
 	Short: "Command for service migration during key resharing for Zano network",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -66,9 +76,10 @@ var reshareZanoCmd = &cobra.Command{
 			},
 			client,
 			zanoResharing.SessionParams{
-				AssetId:        args[0],
-				OwnerEthPubKey: args[1],
-				SessionParams:  cfg.TssSessionParams(),
+				AssetId:       args[0],
+				OwnerPubKey:   args[1],
+				IsEthKey:      isEthOwner,
+				SessionParams: cfg.TssSessionParams(),
 			},
 			parties,
 			connectionManager.GetReadyCount,
