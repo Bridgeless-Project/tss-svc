@@ -108,6 +108,7 @@ func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	return &SigningData{
 		ProposalData: &p2p.BitcoinResharingProposalData{
 			SerializedTx: buf.Bytes(),
+			FeeRate:      int64(*m.feeRate),
 			SigData:      sigHashes,
 		},
 	}, nil
@@ -169,9 +170,17 @@ func (m *ConsensusMechanism) consolidateOutputs(unspent []btcjson.ListUnspentRes
 }
 
 func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {
-	if m.consolidationSet == nil || m.feeRate == nil {
-		return errors.New("consolidation set is not selected")
+	if m.consolidationSet == nil {
+		return errors.New("consolidation set was not selected")
 	}
+	feeRate := btcutil.Amount(data.ProposalData.FeeRate)
+	if !utxoutils.FeeRateValid(feeRate) {
+		return errors.Errorf("invalid fee rate %d", feeRate)
+	}
+	if feeRate > m.maxFeeRate {
+		return errors.Errorf("fee rate %d exceeds maximum allowed %d", feeRate, m.maxFeeRate)
+	}
+	m.feeRate = &feeRate
 
 	tx := wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(data.ProposalData.SerializedTx)); err != nil {

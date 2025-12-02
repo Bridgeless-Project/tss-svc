@@ -6,6 +6,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
+	"gitlab.com/distributed_lab/figure/v3"
 )
 
 var DefaultResharingParams = ConsolidationParams{
@@ -21,45 +22,77 @@ var DefaultResharingParams = ConsolidationParams{
 	},
 }
 
-// FIXME: adjust consolidation params
 var DefaultConsolidationParams = ConsolidationParams{
 	MaxFeeRateSatsPerKb: MaxConsolidationFeeRateBtcPerKvb,
 	SetParams: []ConsolidationSetParams{
 		{
-			LowerBound:     btcutil.Amount(2000),
-			UpperBound:     btcutil.Amount(50000),
-			Threshold:      20,
-			MaxInputsCount: 15,
-			OutsCount:      1,
+			LowerBound:     btcutil.Amount(1_000),
+			UpperBound:     btcutil.Amount(100_000),
+			Threshold:      30,
+			MaxInputsCount: 20,
+			OutsCount:      5,
 		},
 		{
-			LowerBound:     btcutil.Amount(50001),
-			UpperBound:     btcutil.Amount(200000),
-			Threshold:      15,
-			MaxInputsCount: 10,
-			OutsCount:      1,
+			LowerBound:     btcutil.Amount(100_001),
+			UpperBound:     btcutil.Amount(1_000_000),
+			Threshold:      30,
+			MaxInputsCount: 20,
+			OutsCount:      5,
 		},
 		{
-			LowerBound: btcutil.Amount(200001),
-			UpperBound: btcutil.Amount(1000000),
+			LowerBound:     btcutil.Amount(1_000_001),
+			UpperBound:     btcutil.Amount(10_000_000),
+			Threshold:      30,
+			MaxInputsCount: 20,
+			OutsCount:      5,
+		},
+		{
+			LowerBound:     btcutil.Amount(10_000_001),
+			UpperBound:     btcutil.Amount(100_000_000),
+			Threshold:      30,
+			MaxInputsCount: 20,
+			OutsCount:      5,
+		},
+		{
+			LowerBound:     btcutil.Amount(100_000_001),
+			UpperBound:     btcutil.Amount(100_000_000_000_000),
+			Threshold:      30,
+			MaxInputsCount: 20,
+			OutsCount:      5,
 		},
 	},
 }
 
+var _ figure.Validatable = ConsolidationParams{}
+
 type ConsolidationParams struct {
-	SetParams           []ConsolidationSetParams
-	MaxFeeRateSatsPerKb btcutil.Amount
+	SetParams           []ConsolidationSetParams `fig:"sets"`
+	MaxFeeRateSatsPerKb btcutil.Amount           `fig:"max_fee_rate"`
+}
+
+func (c ConsolidationParams) Validate() error {
+	if !FeeRateValid(c.MaxFeeRateSatsPerKb) {
+		return errors.Errorf("max fee rate %s is invalid", c.MaxFeeRateSatsPerKb)
+	}
+
+	for i, set := range c.SetParams {
+		if err := set.Validate(); err != nil {
+			return errors.Wrapf(err, "consolidation set %d is invalid", i)
+		}
+	}
+
+	return nil
 }
 
 type ConsolidationSetParams struct {
-	LowerBound     btcutil.Amount // inclusive
-	UpperBound     btcutil.Amount // inclusive
-	Threshold      uint           // number of inputs to trigger consolidation
-	MaxInputsCount uint
-	OutsCount      uint // number of inputs and outputs in consolidation tx
+	LowerBound     btcutil.Amount `fig:"lower_bound"`      // inclusive
+	UpperBound     btcutil.Amount `fig:"upper_bound"`      // inclusive
+	Threshold      uint           `fig:"threshold"`        // number of inputs to trigger consolidation
+	MaxInputsCount uint           `fig:"max_inputs_count"` // max number of inputs to use in consolidation tx
+	OutsCount      uint           `fig:"outs_count"`       // number of inputs and outputs in consolidation tx
 }
 
-func (p *ConsolidationSetParams) Validate() error {
+func (p ConsolidationSetParams) Validate() error {
 	if p.UpperBound == 0 {
 		return errors.New("upper bound must be greater than 0")
 	}
@@ -144,6 +177,7 @@ func (c *ConsolidationSelector) SelectConsolidationSet(outs []btcjson.ListUnspen
 		for i := range sets {
 			if sets[i].OutputSuitable(out) {
 				sets[i].AddOutput(out)
+				break
 			}
 		}
 	}
