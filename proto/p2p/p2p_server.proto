@@ -108,7 +108,9 @@ message BitcoinProposalData {
 
 message BitcoinResharingProposalData {
   bytes serializedTx = 1;
-  repeated bytes sigData = 2;
+  int64 feeRate = 2;
+
+  repeated bytes sigData = 3;
 }
 
 message ZanoResharingProposalData {
