@@ -284,7 +284,7 @@ func (d *depositsQ) UpdateSignedBatch(signed []db.SignedDeposit) error {
 	const query = `
 		UPDATE deposits
 		SET
-			status = $1,
+			withdrawal_status = $1,
 			signature = unnested_data.signature
 		FROM (
 			SELECT unnest($2::bigint[]) AS id, unnest($3::text[]) AS signature
