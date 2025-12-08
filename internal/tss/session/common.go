@@ -73,8 +73,8 @@ func GetReshareSessionIdentifier(sessionId int64) string {
 	return fmt.Sprintf("%s_%d", ReshareSessionPrefix, sessionId)
 }
 
-func GetDefaultSigningSessionIdentifier(sessionId int64) string {
-	return fmt.Sprintf("%s_%d", SignSessionPrefix, sessionId)
+func GetDefaultSigningSessionIdentifier(sessionId string) string {
+	return fmt.Sprintf("%s_%s", SignSessionPrefix, sessionId)
 }
 
 func GetConcreteSigningSessionIdentifier(chainId string, sessionId int64) string {

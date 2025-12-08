@@ -6,6 +6,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/operations"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 )
 
@@ -38,4 +39,24 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	prefixedHash := operations.SetSignaturePrefix(hash)
 
 	return prefixedHash, nil
+}
+
+func (p *Client) Sign(data db.Deposit) ([]byte, error) {
+	if !p.chain.Meta.Centralized {
+		return nil, errors.New("signing is only supported for centralized chains")
+	}
+
+	signHash, err := p.GetSignHash(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to form withdrawal signing hash")
+	}
+
+	signature, err := crypto.Sign(signHash, p.chain.Meta.SignerKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to sign withdrawal")
+	}
+
+	signature[64] += 27
+
+	return signature, nil
 }

@@ -135,7 +135,7 @@ func (d *DepositDistributionSession) runDistributor(ctx context.Context) {
 				continue
 			}
 
-			cooldown = time.Second * 0
+			cooldown = 500 * time.Millisecond
 		}
 	}
 }

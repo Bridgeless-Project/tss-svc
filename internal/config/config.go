@@ -1,7 +1,7 @@
 package config
 
 import (
-	config2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/config"
+	chain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/config"
 	connector "github.com/Bridgeless-Project/tss-svc/internal/core/connector/config"
 	subscriber "github.com/Bridgeless-Project/tss-svc/internal/core/subscriber/config"
 	p2p "github.com/Bridgeless-Project/tss-svc/internal/p2p/config"
@@ -19,7 +19,7 @@ type Config interface {
 	Listenerer
 	p2p.PartiesConfigurator
 	tss.SessionParamsConfigurator
-	config2.Chainer
+	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
 }
@@ -33,7 +33,7 @@ type config struct {
 	Listenerer
 	p2p.PartiesConfigurator
 	tss.SessionParamsConfigurator
-	config2.Chainer
+	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
 }
@@ -49,7 +49,7 @@ func New(getter kv.Getter) Config {
 		Listenerer:                NewListenerer(getter),
 		PartiesConfigurator:       p2p.NewPartiesConfigurator(getter, secreter.SecretsStorage()),
 		SessionParamsConfigurator: tss.NewSessionParamsConfigurator(getter),
-		Chainer:                   config2.NewChainer(getter),
+		Chainer:                   chain.NewChainer(getter),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),
 		SubscriberConfigurator:    subscriber.NewSubscriberConfigurator(getter),
 	}
