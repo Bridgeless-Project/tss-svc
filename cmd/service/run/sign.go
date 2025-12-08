@@ -27,6 +27,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
+	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
 	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
@@ -226,21 +227,30 @@ func configureSigningSession(
 ) (sess p2p.RunnableTssSession) {
 	switch client.Type() {
 	case chain.TypeEVM:
-		evmSession := evmSigning.NewSession(
-			tss.LocalSignParty{
-				Account:   account,
-				Share:     share,
-				Threshold: params.Threshold,
-			},
-			parties,
-			params,
-			db,
-			logger.WithField("component", "signing_session"),
-		).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
-		if err := evmSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build evm session"))
+		evmClient := client.(*evm.Client)
+		switch {
+		case evmClient.IsCentralized():
+			sess = evmCentralized.NewSession(
+				evmClient, db,
+				logger.WithField("component", "centralized_signing_session"),
+			)
+		default:
+			evmSession := evmSigning.NewSession(
+				tss.LocalSignParty{
+					Account:   account,
+					Share:     share,
+					Threshold: params.Threshold,
+				},
+				parties,
+				params,
+				db,
+				logger.WithField("component", "signing_session"),
+			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
+			if err := evmSession.Build(); err != nil {
+				panic(errors.Wrap(err, "failed to build evm session"))
+			}
+			sess = evmSession
 		}
-		sess = evmSession
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(
 			tss.LocalSignParty{

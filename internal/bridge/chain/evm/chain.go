@@ -48,7 +48,7 @@ func FromChain(c chain.Chain) Chain {
 	if err := figure.Out(&chain.BridgeAddress).FromInterface(c.BridgeAddresses).With(figure.EthereumHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain bridge addresses"))
 	}
-	if err := figure.Out(&chain.Meta).FromInterface(c.Meta).Please(); err != nil {
+	if err := figure.Out(&chain.Meta).FromInterface(c.Meta).With(figure.BaseHooks, figure.EthereumHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode chain meta"))
 	}
 	if err := chain.Meta.ValidateE(); err != nil {

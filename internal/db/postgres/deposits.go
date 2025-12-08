@@ -8,6 +8,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/Masterminds/squirrel"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/kit/pgdb"
 )
@@ -220,6 +221,12 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 	if selector.One {
 		sql = sql.OrderBy(fmt.Sprintf("%s ASC", depositsId)).Limit(1)
 	}
+	if selector.SortAscending {
+		sql = sql.OrderBy(fmt.Sprintf("%s ASC", depositsId))
+	}
+	if selector.Limit > 0 {
+		sql = sql.Limit(selector.Limit)
+	}
 
 	return sql
 }
@@ -263,4 +270,31 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 	}
 
 	return id, nil
+}
+
+func (d *depositsQ) UpdateSignedBatch(signed []db.SignedDeposit) error {
+	var (
+		signatures = make(pq.StringArray, len(signed))
+		ids        = make(pq.Int64Array, len(signed))
+	)
+	for i, deposit := range signed {
+		ids[i], signatures[i] = deposit.Id, deposit.Signature
+	}
+
+	const query = `
+		UPDATE deposits
+		SET
+			status = $1,
+			signature = unnested_data.signature
+		FROM (
+			SELECT unnest($2::bigint[]) AS id, unnest($3::text[]) AS signature
+		) AS unnested_data
+		WHERE deposits.id = unnested_data.id;
+`
+	return d.db.ExecRaw(
+		query,
+		types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+		ids,
+		signatures,
+	)
 }

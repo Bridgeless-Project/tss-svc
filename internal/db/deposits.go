@@ -29,6 +29,7 @@ type DepositsQ interface {
 
 	UpdateWithdrawalDetails(identifier DepositIdentifier, hash *string, signature *string) error
 	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
+	UpdateSignedBatch(signed []SignedDeposit) error
 	InsertProcessedDeposit(deposit Deposit) (int64, error)
 
 	UpdateProcessed(data ProcessedDepositData) error
@@ -60,6 +61,8 @@ type DepositsSelector struct {
 	Ids               []int64
 	ChainId           *string
 	WithdrawalChainId *string
+	Limit             uint64
+	SortAscending     bool
 	One               bool
 	Status            *types.WithdrawalStatus
 	NotSubmitted      bool
@@ -178,6 +181,11 @@ type ProcessedDepositData struct {
 	Signature *string
 	TxHash    *string
 	TxData    *string
+}
+
+type SignedDeposit struct {
+	Id        int64
+	Signature string
 }
 
 func stringOrEmpty(s *string) string {

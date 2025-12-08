@@ -47,7 +47,7 @@ func NewDefaultSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *DefaultSession {
-	sessionId := session.GetDefaultSigningSessionIdentifier(params.Id)
+	sessionId := session.GetDefaultSigningSessionIdentifier(fmt.Sprintf("%v", params.Id))
 	return &DefaultSession{
 		sessionId:             sessionId,
 		params:                params,
