@@ -47,3 +47,7 @@ func (p *Client) HealthCheck() error {
 
 	return nil
 }
+
+func (p *Client) IsCentralized() bool {
+	return false
+}

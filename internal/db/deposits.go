@@ -148,6 +148,7 @@ func (d DepositData) ToNewDeposit(
 	commissionAmount *big.Int,
 	dstTokenAddress string,
 	isWrappedToken bool,
+	ignoreDistribution bool,
 ) Deposit {
 	return Deposit{
 		DepositIdentifier: d.DepositIdentifier,
@@ -163,6 +164,7 @@ func (d DepositData) ToNewDeposit(
 		IsWrappedToken:    isWrappedToken,
 		CommissionAmount:  commissionAmount.String(),
 		ReferralId:        d.ReferralId,
+		Distributed:       ignoreDistribution,
 	}
 }
 

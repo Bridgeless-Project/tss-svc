@@ -63,11 +63,14 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
 	}
 
+	ignoreDistribution := dstClient.IsCentralized()
+
 	deposit := depositData.ToNewDeposit(
 		withdrawalAmount,
 		commission,
 		dstInfo.Address,
 		dstInfo.IsWrapped,
+		ignoreDistribution,
 	)
 
 	return &deposit, nil

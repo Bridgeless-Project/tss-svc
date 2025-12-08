@@ -49,6 +49,7 @@ type Client interface {
 	Type() Type
 	ChainId() string
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
+	IsCentralized() bool
 
 	AddressValid(addr string) bool
 	TransactionHashValid(hash string) bool

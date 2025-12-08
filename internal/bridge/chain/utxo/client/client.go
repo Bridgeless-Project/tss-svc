@@ -88,3 +88,7 @@ func (c *client) HealthCheck() error {
 
 	return nil
 }
+
+func (c *client) IsCentralized() bool {
+	return false
+}
