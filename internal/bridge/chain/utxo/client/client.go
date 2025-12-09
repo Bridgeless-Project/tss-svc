@@ -18,13 +18,13 @@ import (
 type Client interface {
 	chain.Client
 
-	ConsolidationThreshold() int
 	UnspentCount() (int, error)
 	LockOutputs(tx *wire.MsgTx) error
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	SendSignedTransaction(tx *wire.MsgTx) (string, error)
 	EstimateFeeOrDefault() btcutil.Amount
 
+	ConsolidationParams() utils.ConsolidationParams
 	UtxoHelper() helper.UtxoHelper
 }
 
@@ -55,10 +55,6 @@ func (c *client) Type() chain.Type {
 	return chain.TypeBitcoin
 }
 
-func (c *client) ConsolidationThreshold() int {
-	return utils.ConsolidationThreshold
-}
-
 func (c *client) AddressValid(addr string) bool {
 	return c.helper.AddressValid(addr)
 }
@@ -73,6 +69,10 @@ func (c *client) WithdrawalAmountValid(amount *big.Int) bool {
 	}
 
 	return true
+}
+
+func (c *client) ConsolidationParams() utils.ConsolidationParams {
+	return c.chain.Meta.ConsolidationParams
 }
 
 func (c *client) HealthCheck() error {

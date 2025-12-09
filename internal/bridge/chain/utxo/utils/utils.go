@@ -11,14 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func FeeRateValid(fee btcutil.Amount) bool {
-	if fee < DefaultFeeRateBtcPerKvb || fee > MaxFeeRateBtcPerKvb {
-		return false
-	}
-
-	return true
-}
-
 func EncodeTransaction(tx *wire.MsgTx) string {
 	buf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
 	if err := tx.Serialize(buf); err != nil {

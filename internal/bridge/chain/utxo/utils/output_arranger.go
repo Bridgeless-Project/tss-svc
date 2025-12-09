@@ -25,3 +25,19 @@ func (LargestFirstOutputArranger) ArrangeOutputs(outs []btcjson.ListUnspentResul
 
 	return outs
 }
+
+type sortByConfirmations []btcjson.ListUnspentResult
+
+func (s sortByConfirmations) Len() int { return len(s) }
+func (s sortByConfirmations) Less(i, j int) bool {
+	return s[i].Confirmations < s[j].Confirmations
+}
+func (s sortByConfirmations) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+type OldestFirstOutputArranger struct{}
+
+func (OldestFirstOutputArranger) ArrangeOutputs(outs []btcjson.ListUnspentResult) []btcjson.ListUnspentResult {
+	sort.Sort(sort.Reverse(sortByConfirmations(outs)))
+
+	return outs
+}

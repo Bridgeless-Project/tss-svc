@@ -23,7 +23,7 @@ var _ p2p.TssSession = &Session{}
 type SessionParams struct {
 	SessionParams     session.Params
 	TargetAddr        string
-	ConsolidateParams utxoutils.ConsolidateOutputsParams
+	ConsolidateParams utxoutils.ConsolidationParams
 }
 
 type Session struct {
@@ -36,10 +36,11 @@ type Session struct {
 	connectedPartiesCount func() int
 	parties               []p2p.Party
 
-	client         client.Client
-	signingParty   *tss.SignParty
-	consensusParty *consensus.Consensus[SigningData]
-	finalizer      *Finalizer
+	client             client.Client
+	signingParty       *tss.SignParty
+	consensusParty     *consensus.Consensus[SigningData]
+	consensusMechanism *ConsensusMechanism
+	finalizer          *Finalizer
 
 	resultTx string
 	err      error
@@ -58,6 +59,8 @@ func NewSession(
 	sessionId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
 	sortedPartyIds := session.SortAllParties(parties, self.Account.CosmosAddress())
 	leader := session.DetermineLeader(sessionId, sortedPartyIds)
+
+	consensusMechanism := NewConsensusMechanism(client, params.TargetAddr, params.ConsolidateParams)
 
 	return &Session{
 		sessionId: sessionId,
@@ -79,9 +82,10 @@ func NewSession(
 			},
 			parties,
 			leader,
-			NewConsensusMechanism(client, params.TargetAddr, params.ConsolidateParams),
+			consensusMechanism,
 			logger.WithField("phase", "consensus"),
 		),
+		consensusMechanism: consensusMechanism,
 		finalizer: NewFinalizer(
 			client, self.Share.ECDSAPub.ToECDSAPubKey(),
 			logger.WithField("phase", "finalization"),
@@ -125,6 +129,15 @@ func (s *Session) run(ctx context.Context) {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
+
+	selected, err := s.consensusMechanism.SelectConsolidationSet()
+	if err != nil {
+		s.err = errors.Wrap(err, "failed to select consolidation set")
+		return
+	} else if !selected {
+		s.err = errors.New("no consolidation set were found by provided parameters")
+		return
+	}
 
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()

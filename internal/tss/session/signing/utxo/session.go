@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
-	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -50,7 +49,7 @@ type Session struct {
 	client        client.Client
 
 	signConsMechanism          consensus.Mechanism[withdrawal.UtxoWithdrawalData]
-	consolidationConsMechanism consensus.Mechanism[resharingConsensus.SigningData]
+	consolidationConsMechanism *resharingConsensus.ConsensusMechanism
 
 	signConsParty          *consensus.Consensus[withdrawal.UtxoWithdrawalData]
 	consolidationConsParty *consensus.Consensus[resharingConsensus.SigningData]
@@ -126,7 +125,7 @@ func (s *Session) Build() error {
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
 		s.client.UtxoHelper().P2pkhAddress(s.self.Share.ECDSAPub.ToECDSAPubKey()),
-		utxoutils.DefaultConsolidateOutputsParams,
+		s.client.ConsolidationParams(),
 	)
 
 	return nil
@@ -203,15 +202,14 @@ func (s *Session) Run(ctx context.Context) error {
 		}
 
 		// define the next session type
-		unspentCount, err := s.client.UnspentCount()
-		if err != nil {
-			s.logger.WithError(err).Error("failed to get unspent count")
-			s.logger.Info("starting signing session")
-			s.isSignSession.Store(true)
-		} else if unspentCount > s.client.ConsolidationThreshold() {
+		selected, err := s.consolidationConsMechanism.SelectConsolidationSet()
+		if selected {
 			s.logger.Info("starting consolidation session")
 			s.isSignSession.Store(false)
 		} else {
+			if err != nil {
+				s.logger.WithError(err).Error("failed to get check consolidation requirements")
+			}
 			s.logger.Info("starting signing session")
 			s.isSignSession.Store(true)
 		}
