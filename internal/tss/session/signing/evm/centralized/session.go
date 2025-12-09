@@ -10,6 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -60,19 +61,22 @@ func (s *Session) Run(ctx context.Context) error {
 
 	var (
 		statusPending = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
+		chainId       = s.client.ChainId()
 		cooldown      = time.Second * 0
 		batchSize     = uint64(100)
 	)
 
-FetchCycle:
 	for {
 		select {
 		case <-ctx.Done():
 			s.logger.Info("signing session cancelled")
 			return nil
 		case <-time.After(cooldown):
+			cooldown = time.Second * 1
 			deposits, err := s.db.Select(db.DepositsSelector{
+				ChainId:       &chainId,
 				Status:        &statusPending,
+				Distributed:   true,
 				SortAscending: true,
 				Limit:         batchSize,
 			})
@@ -81,33 +85,37 @@ FetchCycle:
 				s.logger.WithError(err).Error("failed to fetch pending deposits")
 				fallthrough
 			case len(deposits) == 0:
-				cooldown = time.Second * 1
 				continue
 			default:
 				s.logger.Infof("fetched %d pending deposits", len(deposits))
 			}
 
-			var (
-				signedDeposits = make([]db.SignedDeposit, len(deposits))
-				start          = time.Now()
-			)
-			for i, deposit := range deposits {
-				signature, err := s.client.Sign(deposit)
-				if err != nil {
-					s.logger.WithError(err).Errorf("failed to sign deposit %d", deposit.Id)
-					continue FetchCycle
-				}
-
-				signedDeposits[i] = db.SignedDeposit{Id: deposit.Id, Signature: hexutil.Encode(signature)}
-			}
-			if err = s.db.UpdateSignedBatch(signedDeposits); err != nil {
-				s.logger.WithError(err).Error("failed to update signed deposits")
-				cooldown = time.Second * 1
+			start := time.Now()
+			if err = s.processDeposits(deposits); err != nil {
+				s.logger.WithError(err).Error("failed to process deposits")
 				continue
 			}
+			s.logger.Infof("signed and updated %d deposits in %s", len(deposits), time.Since(start))
 
-			s.logger.Infof("signed and updated %d deposits in %s", len(signedDeposits), time.Since(start))
 			cooldown = time.Second * 0
 		}
 	}
+}
+
+func (s *Session) processDeposits(deposits []db.Deposit) error {
+	var signedDeposits = make([]db.SignedDeposit, len(deposits))
+
+	for i, deposit := range deposits {
+		signature, err := s.client.Sign(deposit)
+		if err != nil {
+			return errors.Wrapf(err, "failed to sign deposit id %d", deposit.Id)
+		}
+
+		signedDeposits[i] = db.SignedDeposit{Id: deposit.Id, Signature: hexutil.Encode(signature)}
+	}
+	if err := s.db.UpdateSignedBatch(signedDeposits); err != nil {
+		return errors.Wrap(err, "failed to update signed deposits")
+	}
+
+	return nil
 }
