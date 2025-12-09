@@ -74,11 +74,11 @@ func (s *Session) Run(ctx context.Context) error {
 		case <-time.After(cooldown):
 			cooldown = time.Second * 1
 			deposits, err := s.db.Select(db.DepositsSelector{
-				ChainId:       &chainId,
-				Status:        &statusPending,
-				Distributed:   true,
-				SortAscending: true,
-				Limit:         batchSize,
+				WithdrawalChainId: &chainId,
+				Status:            &statusPending,
+				Distributed:       true,
+				SortAscending:     true,
+				Limit:             batchSize,
 			})
 			switch {
 			case err != nil:
