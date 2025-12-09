@@ -113,7 +113,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 }
 
 func (p *Client) validateConfirmations(receipt *types.Receipt) error {
-	curHeight, err := p.chain.Rpc.BlockNumber(context.Background())
+	curHeight, err := p.GetCurrentBlockNumber()
 	if err != nil {
 		return errors.Wrap(err, "failed to get current block number")
 	}
@@ -124,4 +124,15 @@ func (p *Client) validateConfirmations(receipt *types.Receipt) error {
 	}
 
 	return nil
+}
+
+func (p *Client) GetCurrentBlockNumber() (uint64, error) {
+	val, err, _ := p.reqGroup.Do("getCurrentBlockNumber", func() (interface{}, error) {
+		return p.chain.Rpc.BlockNumber(context.Background())
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get current block number")
+	}
+
+	return val.(uint64), nil
 }

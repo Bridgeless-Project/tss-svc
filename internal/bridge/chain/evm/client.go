@@ -1,7 +1,6 @@
 package evm
 
 import (
-	"context"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
@@ -12,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/singleflight"
 )
 
 var requiredEvents = []string{
@@ -24,6 +24,8 @@ type Client struct {
 	abiV1           abi.ABI
 	abiV2           abi.ABI
 	supportedEvents map[string]EventType
+
+	reqGroup singleflight.Group
 }
 
 // NewBridgeClient creates a new bridge Client for the given chain.
@@ -77,7 +79,7 @@ func (p *Client) TransactionHashValid(hash string) bool {
 }
 
 func (p *Client) HealthCheck() error {
-	if _, err := p.chain.Rpc.BlockNumber(context.Background()); err != nil {
+	if _, err := p.GetCurrentBlockNumber(); err != nil {
 		return errors.Wrap(err, "failed to check block number")
 	}
 
