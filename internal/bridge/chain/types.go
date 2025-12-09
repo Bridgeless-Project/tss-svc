@@ -28,13 +28,13 @@ var (
 
 func IsPendingDepositError(err error) bool {
 	return errors.Is(err, ErrTxPending) ||
-		errors.Is(err, ErrTxNotConfirmed)
+		errors.Is(err, ErrTxNotConfirmed) ||
+		errors.Is(err, ErrTxNotFound)
 }
 
 func IsInvalidDepositError(err error) bool {
 	return errors.Is(err, ErrChainNotSupported) ||
 		errors.Is(err, ErrTxFailed) ||
-		errors.Is(err, ErrTxNotFound) ||
 		errors.Is(err, ErrDepositNotFound) ||
 		errors.Is(err, ErrInvalidReceiverAddress) ||
 		errors.Is(err, ErrInvalidDepositedAmount) ||

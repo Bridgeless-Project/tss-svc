@@ -22,7 +22,6 @@ replace (
 )
 
 require (
-	cosmossdk.io/math v1.5.3
 	github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20250930075726-0a996f79255e
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
@@ -50,6 +49,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/hashicorp/vault/api v1.15.0
 	github.com/ignite/cli v0.26.1
+	github.com/lib/pq v1.10.9
 	github.com/mr-tron/base58 v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.7.0
@@ -71,6 +71,7 @@ require (
 
 require (
 	cosmossdk.io/errors v1.0.0-beta.7 // indirect
+	cosmossdk.io/math v1.5.3 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
@@ -162,7 +163,6 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
-	github.com/lib/pq v1.10.9 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
