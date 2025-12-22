@@ -70,9 +70,7 @@ func NewConsensusMechanism(client client.Client, dst string, params utxoutils.Co
 }
 
 func (m *ConsensusMechanism) SelectConsolidationSet() (bool, error) {
-	// clear previous state
-	m.consolidationSet = nil
-	m.feeRate = nil
+	m.resetPreviousConsolidationParams()
 
 	feeRate := m.client.EstimateFeeOrDefault()
 	if feeRate > m.maxFeeRate {
@@ -210,4 +208,9 @@ func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {
 	}
 
 	return nil
+}
+
+func (m *ConsensusMechanism) resetPreviousConsolidationParams() {
+	m.consolidationSet = nil
+	m.feeRate = nil
 }
