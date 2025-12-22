@@ -43,13 +43,17 @@ func (s SigningData) HashString() string {
 }
 
 type ConsensusMechanism struct {
-	client  client.Client
-	helper  helper.UtxoHelper
-	dstAddr string
-	params  utxoutils.ConsolidateOutputsParams
+	client     client.Client
+	helper     helper.UtxoHelper
+	dstAddr    string
+	maxFeeRate btcutil.Amount
+
+	selector         *utxoutils.ConsolidationSelector
+	consolidationSet *utxoutils.ConsolidationSet
+	feeRate          *btcutil.Amount
 }
 
-func NewConsensusMechanism(client client.Client, dst string, params utxoutils.ConsolidateOutputsParams) *ConsensusMechanism {
+func NewConsensusMechanism(client client.Client, dst string, params utxoutils.ConsolidationParams) *ConsensusMechanism {
 	helper := client.UtxoHelper()
 	if _, err := helper.PayToAddrScript(dst); err != nil {
 		panic(errors.Wrapf(err, "failed to create script for destination address %s", dst))
@@ -59,20 +63,36 @@ func NewConsensusMechanism(client client.Client, dst string, params utxoutils.Co
 		client,
 		helper,
 		dst,
-		params,
+		params.MaxFeeRateSatsPerKb,
+		utxoutils.NewConsolidationSelector(params.SetParams),
+		nil, nil,
 	}
 }
 
-func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
+func (m *ConsensusMechanism) SelectConsolidationSet() (bool, error) {
+	m.resetPreviousConsolidationParams()
+
+	feeRate := m.client.EstimateFeeOrDefault()
+	if feeRate > m.maxFeeRate {
+		return false, nil
+	}
+	m.feeRate = &feeRate
 	unspent, err := m.client.ListUnspent()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list unspent outputs")
+		return false, errors.Wrap(err, "failed to list unspent outputs")
 	}
 
-	if len(unspent) < m.params.InputsThreshold {
-		return nil, errors.New("not enough unspent outputs to consolidate")
+	m.consolidationSet = m.selector.SelectConsolidationSet(unspent)
+
+	return m.consolidationSet != nil, nil
+}
+
+func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
+	if m.consolidationSet == nil || m.feeRate == nil {
+		return nil, errors.New("consolidation set is not selected")
 	}
 
+	unspent := m.consolidationSet.Select()
 	tx, sigHashes, err := m.consolidateOutputs(unspent)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to consolidate outputs")
@@ -86,6 +106,7 @@ func (m *ConsensusMechanism) FormProposalData() (*SigningData, error) {
 	return &SigningData{
 		ProposalData: &p2p.BitcoinResharingProposalData{
 			SerializedTx: buf.Bytes(),
+			FeeRate:      int64(*m.feeRate),
 			SigData:      sigHashes,
 		},
 	}, nil
@@ -96,7 +117,9 @@ func (m *ConsensusMechanism) consolidateOutputs(unspent []btcjson.ListUnspentRes
 	receiverScript, _ := m.helper.PayToAddrScript(m.dstAddr)
 
 	tx := wire.NewMsgTx(wire.TxVersion)
-	for range m.params.OutputsCount {
+
+	outsCount := m.consolidationSet.Params.OutsCount
+	for range outsCount {
 		tx.AddTxOut(wire.NewTxOut(0, receiverScript))
 	}
 
@@ -111,9 +134,9 @@ func (m *ConsensusMechanism) consolidateOutputs(unspent []btcjson.ListUnspentRes
 		totalAmount += utxoutils.ToUnits(unspent[i].Amount)
 	}
 
-	fees := m.helper.EstimateFee(tx, btcutil.Amount(m.params.FeeRate))
+	fees := m.helper.EstimateFee(tx, *m.feeRate)
 	consolidationAmount := totalAmount - int64(fees)
-	amountPerOutput := consolidationAmount / int64(m.params.OutputsCount)
+	amountPerOutput := consolidationAmount / int64(outsCount)
 
 	if !m.client.WithdrawalAmountValid(big.NewInt(amountPerOutput)) {
 		return nil, nil, errors.New("amount per output is too small")
@@ -123,7 +146,7 @@ func (m *ConsensusMechanism) consolidateOutputs(unspent []btcjson.ListUnspentRes
 		out.Value = amountPerOutput
 	}
 	// adding the remainder to the first output
-	tx.TxOut[0].Value += consolidationAmount % int64(m.params.OutputsCount)
+	tx.TxOut[0].Value += consolidationAmount % int64(outsCount)
 
 	sigHashes := make([][]byte, len(tx.TxIn))
 	for i := range tx.TxIn {
@@ -145,25 +168,25 @@ func (m *ConsensusMechanism) consolidateOutputs(unspent []btcjson.ListUnspentRes
 }
 
 func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {
+	if m.consolidationSet == nil {
+		return errors.New("consolidation set was not selected")
+	}
+	feeRate := btcutil.Amount(data.ProposalData.FeeRate)
+	if !utxoutils.FeeRateValid(feeRate) {
+		return errors.Errorf("invalid fee rate %d", feeRate)
+	}
+	if feeRate > m.maxFeeRate {
+		return errors.Errorf("fee rate %d exceeds maximum allowed %d", feeRate, m.maxFeeRate)
+	}
+	m.feeRate = &feeRate
+
 	tx := wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(data.ProposalData.SerializedTx)); err != nil {
 		return errors.Wrap(err, "failed to deserialize transaction")
 	}
 
-	if len(tx.TxIn) < m.params.InputsThreshold {
-		return errors.New("not enough inputs in the transaction to consolidate")
-	}
-
-	unspent, err := m.client.ListUnspent()
-	if err != nil {
-		return errors.Wrap(err, "failed to list unspent outputs")
-	}
-	used, err := utxoutils.FindUsedInputs(tx, unspent)
-	if err != nil {
-		return errors.Wrap(err, "failed to find used inputs in the transaction")
-	}
-
-	originalTx, sigHashes, err := m.consolidateOutputs(used)
+	unspent := m.consolidationSet.Select()
+	originalTx, sigHashes, err := m.consolidateOutputs(unspent)
 	if err != nil {
 		return errors.Wrap(err, "failed to consolidate outputs from used inputs")
 	}
@@ -185,4 +208,9 @@ func (m *ConsensusMechanism) VerifyProposedData(data SigningData) error {
 	}
 
 	return nil
+}
+
+func (m *ConsensusMechanism) resetPreviousConsolidationParams() {
+	m.consolidationSet = nil
+	m.feeRate = nil
 }

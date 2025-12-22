@@ -14,29 +14,36 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	utxoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
 
-var consolidateParams = utxoutils.DefaultConsolidateOutputsParams
+var (
+	consolidateParams   = utxoutils.DefaultResharingParams
+	maxFeeRateSatsPerKb = int64(consolidateParams.MaxFeeRateSatsPerKb)
+)
 
 func init() {
 	registerReshareUtxoOptions(reshareUtxoCmd)
-	consolidateParams.InputsThreshold = 1 // allow to consolidate even if there is only one input
 }
 
 func registerReshareUtxoOptions(cmd *cobra.Command) {
-	cmd.Flags().Uint64Var(&consolidateParams.FeeRate, "fee-rate", consolidateParams.FeeRate, "Fee rate for the transaction (sats/KvB)")
-	cmd.Flags().IntVar(&consolidateParams.OutputsCount, "outputs-count", consolidateParams.OutputsCount, "Number of outputs to split the funds into")
-	cmd.Flags().IntVar(&consolidateParams.MaxInputsCount, "max-inputs-count", consolidateParams.MaxInputsCount, "Maximum number of inputs to use in the transaction")
+	cmd.Flags().UintVar(&consolidateParams.SetParams[0].OutsCount, "outputs-count", consolidateParams.SetParams[0].OutsCount, "Number of outputs to split the funds into")
+	cmd.Flags().UintVar(&consolidateParams.SetParams[0].MaxInputsCount, "max-inputs-count", consolidateParams.SetParams[0].MaxInputsCount, "Maximum number of inputs to use in the transaction")
+	cmd.Flags().Int64Var(&maxFeeRateSatsPerKb, "max-fee-rate", maxFeeRateSatsPerKb, "Maximum fee rate in sats per KB for the migration transaction")
 }
 
 var reshareUtxoCmd = &cobra.Command{
 	Use:   "utxo [chain-id] [target-addr]",
 	Short: "Command for service migration during key resharing for utxo chains",
 	Args:  cobra.ExactArgs(2),
+	PreRun: func(cmd *cobra.Command, args []string) {
+		consolidateParams.MaxFeeRateSatsPerKb = btcutil.Amount(maxFeeRateSatsPerKb)
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+
 		cfg, err := utils.ConfigFromFlags(cmd)
 		if err != nil {
 			return errors.Wrap(err, "failed to get config from flags")
