@@ -107,6 +107,7 @@ var reshareZanoCmd = &cobra.Command{
 		eg.Go(func() error {
 			defer cancel()
 
+			// FIXME: handle start time
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run zano resharing session")
 			}

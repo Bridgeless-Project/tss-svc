@@ -195,3 +195,11 @@ func (z Sdk) GetWalletInfo() (*types.GetWalletInfoResponse, error) {
 
 	return resp, nil
 }
+
+func (z Sdk) GetAssetInfo(assetId string) (*types.GetAssetInfoResponse, error) {
+	req := types.GetAssetInfoRequest{AssetId: assetId}
+	resp := new(types.GetAssetInfoResponse)
+
+	if err := z.client.Call(types.NodeMethodGetAssetInfo, resp, req, false); err != nil {
+	}
+}

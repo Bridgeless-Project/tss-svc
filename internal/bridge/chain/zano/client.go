@@ -5,6 +5,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	zanoTypes "github.com/Bridgeless-Project/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 )
 
@@ -50,4 +51,13 @@ func (p *Client) HealthCheck() error {
 
 func (p *Client) IsCentralized() bool {
 	return false
+}
+
+func (p *Client) GetAssetInfo(address string) (*zanoTypes.AssetDescriptor, error) {
+	resp, err := p.chain.Client.GetAssetInfo(address)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.AssetDescriptor, nil
 }

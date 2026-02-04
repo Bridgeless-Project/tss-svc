@@ -58,12 +58,6 @@ var keygenCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_KEYGEN,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		session := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
@@ -72,7 +66,6 @@ var keygenCmd = &cobra.Command{
 			},
 			parties,
 			cfg.TssSessionParams(),
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 		)
 

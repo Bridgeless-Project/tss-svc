@@ -4,31 +4,28 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-type DefaultSessionParams struct {
+type SessionParams struct {
 	session.Params
 	SigningData []byte
 }
 
-type DefaultSession struct {
+type Session struct {
 	sessionId string
 
-	params DefaultSessionParams
+	params SessionParams
 	logger *logan.Entry
 	wg     *sync.WaitGroup
-
-	connectedPartiesCount func() int
-	partiesCount          int
 
 	signingParty interface {
 		Run(ctx context.Context)
@@ -40,44 +37,26 @@ type DefaultSession struct {
 	err    error
 }
 
-func NewDefaultSession(
+func NewSession(
 	self tss.LocalSignParty,
-	params DefaultSessionParams,
+	params SessionParams,
 	parties []p2p.Party,
-	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
-) *DefaultSession {
-	sessionId := session.GetDefaultSigningSessionIdentifier(fmt.Sprintf("%v", params.Id))
-	return &DefaultSession{
-		sessionId:             sessionId,
-		params:                params,
-		wg:                    &sync.WaitGroup{},
-		logger:                logger,
-		connectedPartiesCount: connectedPartiesCountFunc,
+) *Session {
+	sessionId := session.GetSigningSessionIdentifier(fmt.Sprintf("%v", hexutil.Encode(params.SigningData)))
+	return &Session{
+		sessionId: sessionId,
+		params:    params,
+		wg:        &sync.WaitGroup{},
+		logger:    logger,
 		signingParty: tss.NewSignParty(self, sessionId, logger).
 			WithSigningData(params.SigningData).
 			WithParties(parties),
-		partiesCount: len(parties),
 	}
 }
 
-func (s *DefaultSession) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.StartTime)
-	if runDelay <= 0 {
-		return errors.New("target time is in the past")
-	}
-
-	s.logger.Info(fmt.Sprintf("signing session will start in %s", runDelay))
-
-	select {
-	case <-ctx.Done():
-		s.logger.Info("signing session cancelled")
-		return nil
-	case <-time.After(runDelay):
-		if s.connectedPartiesCount() != s.partiesCount {
-			return errors.New("cannot start signing session: not all parties connected")
-		}
-	}
+func (s *Session) Run(ctx context.Context) error {
+	s.logger.Info("signing session started")
 
 	s.wg.Add(1)
 	go s.run(ctx)
@@ -85,7 +64,7 @@ func (s *DefaultSession) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *DefaultSession) run(ctx context.Context) {
+func (s *Session) run(ctx context.Context) {
 	defer s.wg.Done()
 
 	boundedCtx, cancel := context.WithTimeout(ctx, session.BoundarySign)
@@ -104,16 +83,16 @@ func (s *DefaultSession) run(ctx context.Context) {
 	}
 }
 
-func (s *DefaultSession) WaitFor() (*common.SignatureData, error) {
+func (s *Session) WaitFor() (*common.SignatureData, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }
 
-func (s *DefaultSession) Id() string {
+func (s *Session) Id() string {
 	return s.sessionId
 }
 
-func (s *DefaultSession) Receive(request *p2p.SubmitRequest) error {
+func (s *Session) Receive(request *p2p.SubmitRequest) error {
 	if request == nil || request.Data == nil {
 		return errors.New("nil request")
 	}
@@ -139,10 +118,10 @@ func (s *DefaultSession) Receive(request *p2p.SubmitRequest) error {
 	return nil
 }
 
-// RegisterIdChangeListener is a no-op for DefaultSession
-func (s *DefaultSession) RegisterIdChangeListener(func(oldId, newId string)) {}
+// RegisterIdChangeListener is a no-op for Session
+func (s *Session) RegisterIdChangeListener(func(oldId, newId string)) {}
 
-// SigningSessionInfo is a no-op for DefaultSession
-func (s *DefaultSession) SigningSessionInfo() *p2p.SigningSessionInfo {
+// SigningSessionInfo is a no-op for Session
+func (s *Session) SigningSessionInfo() *p2p.SigningSessionInfo {
 	return nil
 }
