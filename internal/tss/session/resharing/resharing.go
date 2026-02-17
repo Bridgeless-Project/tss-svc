@@ -53,7 +53,7 @@ func (s *Session) Run(ctx context.Context) error {
 	// - handler for ton session
 	// TODO: create handler for swapping shares
 
-	state := &resharingTypes.State{}
+	state := resharingTypes.InitializeState(s.params.StartTime)
 
 	keygenRound := NewKeygenRound()
 	maxKeygenDuration := keygenRound.MaxHandleDuration()
@@ -88,6 +88,8 @@ func (s *Session) Run(ctx context.Context) error {
 	}
 
 	// TODO: SAVE STATE ON CORE
+
+	// TODO: IMPORT WALLETS FOR UTXO networks (all parties)
 
 	if s.selfOld && !s.selfNew {
 		// old party only - no further steps

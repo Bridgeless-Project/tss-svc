@@ -10,7 +10,7 @@ import (
 )
 
 var DefaultResharingParams = ConsolidationParams{
-	MaxFeeRateSatsPerKb: DefaultFeeRateBtcPerKvb * 2,
+	MaxFeeRateSatsPerKb: MaxFeeRateBtcPerKvb,
 	SetParams: []ConsolidationSetParams{
 		{
 			LowerBound:     btcutil.Amount(1000),

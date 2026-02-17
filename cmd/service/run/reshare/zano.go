@@ -62,12 +62,6 @@ var reshareZanoCmd = &cobra.Command{
 			return errors.New("zano client configuration not found")
 		}
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_RESHARE,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		session := zanoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
@@ -82,7 +76,6 @@ var reshareZanoCmd = &cobra.Command{
 				SessionParams: cfg.TssSessionParams(),
 			},
 			parties,
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "zano_reshare_session"),
 		)
 

@@ -53,7 +53,7 @@ func NewSession(
 	parties []p2p.Party,
 	logger *logan.Entry,
 ) *Session {
-	sessId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
+	sessId := session.GetReshareSessionIdentifier(client.ChainId(), params.SessionParams.Id)
 	sortedPartyIds := session.SortAllParties(parties, self.Account.CosmosAddress())
 	leader := session.DetermineLeader(sessId, sortedPartyIds)
 
@@ -97,21 +97,7 @@ func (s *Session) MaxDuration() time.Duration {
 }
 
 func (s *Session) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.SessionParams.StartTime)
-	if runDelay <= 0 {
-		return errors.New("target time is in the past")
-	}
-
-	s.logger.Info(fmt.Sprintf("resharing session will start in %s", runDelay))
-
-	select {
-	case <-ctx.Done():
-		s.logger.Info("resharing session cancelled")
-		return nil
-	case <-time.After(runDelay):
-		s.logger.Info("resharing session started")
-	}
-
+	s.logger.Info("resharing session started")
 	s.wg.Add(1)
 	go s.run(ctx)
 

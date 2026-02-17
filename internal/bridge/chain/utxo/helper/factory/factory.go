@@ -1,6 +1,8 @@
 package factory
 
 import (
+	"fmt"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/bch"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/btc"
@@ -24,6 +26,8 @@ func NewUtxoHelper(
 		case utxotypes.NetworkTestnet4:
 			// TODO: add support for testnet4
 			panic("testnet4 is not yet supported for BTC")
+		default:
+			panic(fmt.Sprintf("unknown network: %s", network))
 		}
 
 		return btc.NewHelper(params)
@@ -36,10 +40,12 @@ func NewUtxoHelper(
 			params = &bchcfg.TestNet3Params
 		case utxotypes.NetworkTestnet4:
 			params = &bchcfg.TestNet4Params
+		default:
+			panic(fmt.Sprintf("unknown network: %s", network))
 		}
 
 		return bch.NewHelper(params)
 	}
 
-	panic("unsupported chain subtype")
+	panic(fmt.Sprintf("unknown chain type: %s", chainType))
 }

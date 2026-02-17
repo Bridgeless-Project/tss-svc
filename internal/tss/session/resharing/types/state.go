@@ -6,10 +6,19 @@ import (
 )
 
 type State struct {
-	GlobalStartTime  time.Time
-	SessionStartTime time.Time
-	NewPubKey        *ecdsa.PublicKey
-	EvmData          EvmData
+	Epoch              uint32
+	GlobalStartTime    time.Time
+	SessionStartTime   time.Time
+	NewPubKey          *ecdsa.PublicKey
+	EvmData            EvmData
+	NewBridgeAddresses map[string]string // chainId -> addr
+}
+
+func InitializeState(globalStartTime time.Time) *State {
+	return &State{
+		GlobalStartTime:    globalStartTime,
+		NewBridgeAddresses: make(map[string]string),
+	}
 }
 
 // TODO: consider defining on Core

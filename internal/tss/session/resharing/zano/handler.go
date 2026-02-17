@@ -23,7 +23,6 @@ var _ resharingTypes.Handler = &Handler{}
 type Handler struct {
 	connector      connector.Connector
 	client         *zano.Client
-	params         session.Params
 	sessionManager *p2p.SessionManager
 	parties        []p2p.Party
 	logger         *logan.Entry
@@ -37,7 +36,6 @@ func NewHandler(
 	self tss.LocalSignParty,
 	parties []p2p.Party,
 	client *zano.Client,
-	params session.Params,
 	sessionManager *p2p.SessionManager,
 	logger *logan.Entry,
 	connector connector.Connector,
@@ -45,7 +43,6 @@ func NewHandler(
 	handler := &Handler{
 		connector:      connector,
 		client:         client,
-		params:         params,
 		parties:        parties,
 		self:           self,
 		logger:         logger,
@@ -102,10 +99,10 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		sessParams := SessionParams{
 			SessionParams: session.Params{
 				Id:        int64(idx + 1),
-				Threshold: h.params.Threshold,
+				Threshold: h.self.Threshold,
 			},
 			AssetId:     assetId,
-			OwnerPubKey: hexutil.Encode(crypto.CompressPubkey(state.NewPubKey)),
+			OwnerPubKey: newPubKeyHex,
 			IsEthKey:    true,
 		}
 		session := NewSession(

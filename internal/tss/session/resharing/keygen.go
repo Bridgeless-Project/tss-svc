@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
@@ -53,7 +55,7 @@ func (r *KeygenRound) RecoverStateIfProcessed(state *resharingTypes.State) (bool
 func (r *KeygenRound) Handle(ctx context.Context, state *resharingTypes.State) error {
 	if r.oldParty && !r.newParty {
 		// old party only - wait for confirmation of new pubkey
-		return r.listenForConfirmation(ctx, state)
+		return r.listenForPubkeyConfirmation(ctx, state)
 	}
 
 	preparams, err := r.secrets.GetKeygenPreParams()
@@ -69,7 +71,7 @@ func (r *KeygenRound) Handle(ctx context.Context, state *resharingTypes.State) e
 		tss.LocalKeygenParty{
 			PreParams: *preparams,
 			Address:   account.CosmosAddress(),
-			// FIXME: calculate th dynamically
+			Threshold: r.sessionParams.Threshold,
 		},
 		r.parties,
 		r.sessionParams,
@@ -90,18 +92,51 @@ func (r *KeygenRound) Handle(ctx context.Context, state *resharingTypes.State) e
 		return errors.Wrap(err, "failed to save key share")
 	}
 
-	// TODO: SUBMIT NEW TSS PUBKEY TO CORE
+	pubkey := bridge.PubkeyToString(result.ECDSAPub.X(), result.ECDSAPub.Y())
 
-	if err = r.listenForConfirmation(ctx, state); err != nil {
-		return errors.Wrap(err, "failed to listen for core confirmation")
+	var maxRetries = 3
+	for i := 0; i < maxRetries; i++ {
+		err = r.core.SetEpochPubKey(state.Epoch, pubkey)
+		if err != nil {
+			r.logger.WithError(err).Errorf("failed to submit new pubkey to core (attempt %d/%d)", i+1, maxRetries)
+			continue
+		}
+
+		if err = r.listenForPubkeyConfirmation(ctx, state); err != nil {
+			return errors.Wrap(err, "failed to confirm new pubkey on core")
+		}
 	}
 
-	return nil
+	return errors.New("failed to submit new pubkey to core after maximum retries")
 }
 
-func (r *KeygenRound) listenForConfirmation(ctx context.Context, state *resharingTypes.State) error {
-	// TODO: listen for new pubkey confirmation from core and update state accordingly
-	return nil
+func (r *KeygenRound) listenForPubkeyConfirmation(ctx context.Context, state *resharingTypes.State) error {
+	const cooldown = 5 * time.Second
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("context cancelled while waiting for pubkey confirmation")
+		case <-time.After(cooldown):
+			pubkey, err := r.core.GetEpochPubKey(state.Epoch)
+			if err != nil {
+				if errors.Is(err, core.ErrEpochNotFound) {
+					// epoch not found means core hasn't processed the new pubkey yet, so we just wait and retry
+					continue
+				}
+
+				r.logger.WithError(err).Error("failed to get epoch pubkey from core, will retry...")
+			}
+
+			ecdsaPub, err := bridge.DecodePubkey(pubkey)
+			if err != nil {
+				return errors.Wrap(err, "failed to decode received pubkey from core")
+			}
+
+			state.NewPubKey = ecdsaPub
+			return nil
+		}
+	}
 }
 
 func (r *KeygenRound) saveKeyShare(result *keygen.LocalPartySaveData) error {
