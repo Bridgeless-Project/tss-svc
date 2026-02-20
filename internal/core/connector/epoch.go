@@ -39,3 +39,18 @@ func (c *Connector) GetEpochPubKey(epoch uint32) (string, error) {
 
 	return resp.PubKey, nil
 }
+
+func (c *Connector) SubmitEpochSignatures(sigs []bridgeTypes.EpochChainSignatures, addrs []bridgeTypes.EpochBridgeAddress) error {
+	msg := bridgeTypes.NewMsgSetEpochSignature(c.account.CosmosAddress().String(), sigs, addrs)
+
+	err := c.submitMsgs(context.Background(), msg)
+	if err == nil {
+		return nil
+	}
+	// no new error is defined for this case in the core module
+	if strings.Contains(err.Error(), bridgeTypes.ErrTranscationAlreadySubmitted.Error()) {
+		return core.ErrTransactionAlreadySubmitted
+	}
+
+	return nil
+}

@@ -43,7 +43,6 @@ var reshareUtxoCmd = &cobra.Command{
 		consolidateParams.MaxFeeRateSatsPerKb = btcutil.Amount(maxFeeRateSatsPerKb)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		cfg, err := utils.ConfigFromFlags(cmd)
 		if err != nil {
 			return errors.Wrap(err, "failed to get config from flags")
@@ -82,12 +81,6 @@ var reshareUtxoCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to decode target address")
 		}
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_RESHARE,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
@@ -101,7 +94,6 @@ var reshareUtxoCmd = &cobra.Command{
 				SessionParams:     cfg.TssSessionParams(),
 			},
 			parties,
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "btc_reshare_session"),
 		)
 

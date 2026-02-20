@@ -12,5 +12,5 @@ var Cmd = &cobra.Command{
 }
 
 func registerCommands(cmd *cobra.Command) {
-	cmd.AddCommand(reshareUtxoCmd, reshareZanoCmd)
+	cmd.AddCommand(reshareAllCmd, reshareUtxoCmd, reshareZanoCmd)
 }

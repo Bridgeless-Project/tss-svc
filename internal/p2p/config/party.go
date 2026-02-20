@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	partiesConfigKey = "parties"
+	PartiesDefaultConfigKey = "parties"
 )
 
 type PartiesConfigurator interface {
@@ -35,11 +35,17 @@ type Party struct {
 	TlsCertificatePath string       `fig:"tls_certificate_path,required"`
 }
 
-func NewPartiesConfigurator(getter kv.Getter, tslCertProvider LocalPartyTlsCertificateProvider) PartiesConfigurator {
-	return &partiesConfigurator{getter: getter, tlsCertProvider: tslCertProvider}
+func NewPartiesConfigurator(getter kv.Getter, tslCertProvider LocalPartyTlsCertificateProvider, cfgKey ...string) PartiesConfigurator {
+	key := PartiesDefaultConfigKey
+	if len(cfgKey) > 0 {
+		key = cfgKey[0]
+	}
+
+	return &partiesConfigurator{cfgKey: key, getter: getter, tlsCertProvider: tslCertProvider}
 }
 
 type partiesConfigurator struct {
+	cfgKey          string
 	getter          kv.Getter
 	once            comfig.Once
 	tlsCertProvider LocalPartyTlsCertificateProvider
@@ -53,7 +59,7 @@ func (p *partiesConfigurator) Parties() []p2p.Party {
 
 		err := figure.
 			Out(&cfg).
-			From(kv.MustGetStringMap(p.getter, partiesConfigKey)).
+			From(kv.MustGetStringMap(p.getter, p.cfgKey)).
 			With(figure.BaseHooks, partyHook(p.tlsCertProvider)).
 			Please()
 		if err != nil {

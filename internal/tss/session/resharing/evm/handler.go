@@ -100,19 +100,21 @@ func (r *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		return errors.Wrap(err, "failed to produce remove signer signature")
 	}
 
-	state.EvmData.AddNewSignerSignature = resharingTypes.UpdateSignerEvmSignature{
-		Signer:    addSignerOperation.Signer.String(),
-		StartTime: addSignerOperation.StartTime,
-		Deadline:  addSignerOperation.Deadline,
-		Nonce:     addSignerOperation.Nonce.Uint64(),
-		Signature: evm.ConvertSignature(addSignerResult),
-	}
-	state.EvmData.RemoveOldSignerSignature = resharingTypes.UpdateSignerEvmSignature{
-		Signer:    removeSignerOperation.Signer.String(),
-		StartTime: removeSignerOperation.StartTime,
-		Deadline:  removeSignerOperation.Deadline,
-		Nonce:     removeSignerOperation.Nonce.Uint64(),
-		Signature: evm.ConvertSignature(removeSignerResult),
+	state.EvmData = &resharingTypes.EvmData{
+		AddNewSignerSignature: resharingTypes.UpdateSignerEvmSignature{
+			Signer:    addSignerOperation.Signer.String(),
+			StartTime: addSignerOperation.StartTime,
+			Deadline:  addSignerOperation.Deadline,
+			Nonce:     addSignerOperation.Nonce.Uint64(),
+			Signature: evm.ConvertSignature(addSignerResult),
+		},
+		RemoveOldSignerSignature: resharingTypes.UpdateSignerEvmSignature{
+			Signer:    removeSignerOperation.Signer.String(),
+			StartTime: removeSignerOperation.StartTime,
+			Deadline:  removeSignerOperation.Deadline,
+			Nonce:     removeSignerOperation.Nonce.Uint64(),
+			Signature: evm.ConvertSignature(removeSignerResult),
+		},
 	}
 
 	return nil

@@ -21,7 +21,7 @@ import (
 var _ resharingTypes.Handler = &Handler{}
 
 type Handler struct {
-	connector      connector.Connector
+	connector      *connector.Connector
 	client         *zano.Client
 	sessionManager *p2p.SessionManager
 	parties        []p2p.Party
@@ -38,7 +38,7 @@ func NewHandler(
 	client *zano.Client,
 	sessionManager *p2p.SessionManager,
 	logger *logan.Entry,
-	connector connector.Connector,
+	connector *connector.Connector,
 ) *Handler {
 	handler := &Handler{
 		connector:      connector,

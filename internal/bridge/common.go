@@ -31,6 +31,10 @@ func PubkeyToString(x, y *big.Int) string {
 	return hexutil.Encode(marshaled[1:])
 }
 
+func PubkeyPrefixedToString(x, y *big.Int) string {
+	return hexutil.Encode(elliptic.Marshal(tss.S256(), x, y))
+}
+
 func PubkeyCompressedToString(x, y *big.Int) string {
 	marshalled := elliptic.Marshal(tss.S256(), x, y)
 

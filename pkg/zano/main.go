@@ -201,5 +201,8 @@ func (z Sdk) GetAssetInfo(assetId string) (*types.GetAssetInfoResponse, error) {
 	resp := new(types.GetAssetInfoResponse)
 
 	if err := z.client.Call(types.NodeMethodGetAssetInfo, resp, req, false); err != nil {
+		return nil, err
 	}
+
+	return resp, nil
 }

@@ -86,6 +86,9 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		targetAddr      = h.client.UtxoHelper().P2pkhAddress(state.NewPubKey)
 	)
 
+	// FIXME: remove
+	resharingParams.SetParams[0].MaxInputsCount = 5
+
 	nextStartTime := state.SessionStartTime
 	for idx := range h.sessionsCount {
 		// last session might have fewer inputs than maxUnspentPerSession,
@@ -135,7 +138,7 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		<-time.After(time.Until(nextStartTime))
 	}
 
-	state.NewBridgeAddresses[h.client.ChainId()] = targetAddr
+	state.AddBridgeAddress(h.client.ChainId(), targetAddr)
 
 	return nil
 }
