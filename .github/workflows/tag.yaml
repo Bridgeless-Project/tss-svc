@@ -25,7 +25,7 @@ jobs:
 
       - name: Build and Push Image
         env:
-          IMAGE: ${{ env.GITHUB_REPOSITORY }}:${{ github.sha }}
+          IMAGE: ${{ env.GITHUB_REPOSITORY }}:${{ github.ref_name }}
           CACHE_REPO: ${{ env.GITHUB_REPOSITORY }}/cache
         run: |
           buildah build \
@@ -39,7 +39,7 @@ jobs:
 
       - name: Push Image
         env:
-          IMAGE: ${{ env.GITHUB_REPOSITORY }}:${{ github.sha }}
+          IMAGE: ${{ env.GITHUB_REPOSITORY }}:${{ github.ref_name }}
         run: buildah push $IMAGE
 
       - uses: shrink/actions-docker-extract@v3
