@@ -9,7 +9,7 @@ env:
 jobs:
   converge-github:
     name: Build To Github
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -28,6 +28,7 @@ jobs:
             -f build/Dockerfile \
             --layers \
             --cache-from $CACHE_REPO \
+            --cache-to $CACHE_REPO \
             -t $IMAGE \
             --build-arg CI_ACCESS_TOKEN=$CI_ACCESS_TOKEN \
             .
