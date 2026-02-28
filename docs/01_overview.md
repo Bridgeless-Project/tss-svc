@@ -11,6 +11,13 @@
 - [Key Resharing](#key-resharing)
 
 ---
+## Motivation
+Standard services which provide processing of cross-chain transfers are based on signing transactions by one oracle. 
+This makes a risk of mistakes can be made by oracle, or money can be stolen. 
+Also as it has only one oracle, there is only one point of failure, which means if something will be happened with oracle bridge will be stopped until it wont start working or be replaced by another one. 
+Threshold service is developed as a decentralized solution to validate cross-chain transfers, using tss-lib it removes single point of failure making cross-chain transfers more secure.
+
+---
 
 ## Service description
 Threshold signature service provides the processing and signing of the deposited token transfers to another chains.
