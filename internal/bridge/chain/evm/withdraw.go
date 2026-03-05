@@ -41,6 +41,32 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	return prefixedHash, nil
 }
 
+func (p *Client) GetSignHashMerkle(deposits []db.Deposit) ([][]byte, error) {
+	var operation Operation
+	var err error
+
+	if len(deposits) == 0 {
+		return nil, errors.New("empty deposits slice provided")
+	}
+
+	hashedDeposits := make([][]byte, len(deposits))
+	for i, deposit := range deposits {
+		if deposit.WithdrawalToken == bridge.DefaultNativeTokenAddress {
+			operation, err = operations.NewWithdrawNativeContent(deposit)
+		} else {
+			operation, err = operations.NewWithdrawERC20Content(deposit)
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create operation")
+		}
+
+		hash := operation.CalculateHash()
+		hashedDeposits[i] = hash
+	}
+
+	return hashedDeposits, nil
+}
+
 func (p *Client) Sign(data db.Deposit) ([]byte, error) {
 	if !p.chain.Meta.Centralized {
 		return nil, errors.New("signing is only supported for centralized chains")
