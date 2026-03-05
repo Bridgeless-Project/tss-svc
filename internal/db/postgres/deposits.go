@@ -162,11 +162,8 @@ func (d *depositsQ) UpdateProcessed(data ...db.ProcessedDepositData) error {
 		for _, item := range data {
 			query := squirrel.Update(depositsTable).
 				Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
-				Where(squirrel.Eq{
-					depositsTxHash:  item.Identifier.TxHash,
-					depositsTxNonce: item.Identifier.TxNonce,
-					depositsChainId: item.Identifier.ChainId,
-				})
+				Where(identifierToPredicate(item.Identifier))
+
 			if item.Signature != nil {
 				query = query.Set(depositsSignature, *item.Signature)
 			}
