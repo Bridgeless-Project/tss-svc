@@ -68,7 +68,7 @@ func (ef *Finalizer) Finalize(ctx context.Context) error {
 func (ef *Finalizer) finalize(_ context.Context) {
 	signature := convertToEthSignature(ef.signature)
 	if err := ef.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: ef.withdrawalData.DepositIdentifier(),
+		Identifier: ef.withdrawalData.DepositIdentifiers()[0],
 		Signature:  &signature,
 	}); err != nil {
 		ef.errChan <- errors.Wrap(err, "failed to update signature")

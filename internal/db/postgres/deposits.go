@@ -101,12 +101,16 @@ func (d *depositsQ) Get(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	return &deposit, err
 }
 
-func identifierToPredicate(identifier db.DepositIdentifier) squirrel.Eq {
-	return squirrel.Eq{
-		depositsTxHash:  identifier.TxHash,
-		depositsTxNonce: identifier.TxNonce,
-		depositsChainId: identifier.ChainId,
+func identifierToPredicate(identifier ...db.DepositIdentifier) squirrel.Or {
+	var orClause squirrel.Or
+	for _, id := range identifier {
+		orClause = append(orClause, squirrel.Eq{
+			depositsTxHash:  id.TxHash,
+			depositsTxNonce: id.TxNonce,
+			depositsChainId: id.ChainId,
+		})
 	}
+	return orClause
 }
 
 func (d *depositsQ) GetWithSelector(selector db.DepositsSelector) (*db.Deposit, error) {
@@ -141,32 +145,45 @@ func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, has
 	return d.db.Exec(query)
 }
 
-func (d *depositsQ) UpdateStatus(identifier db.DepositIdentifier, status types.WithdrawalStatus) error {
+func (d *depositsQ) UpdateStatus(status types.WithdrawalStatus, identifier ...db.DepositIdentifier) error {
 	query := squirrel.Update(depositsTable).
 		Set(depositsWithdrawalStatus, status).
-		Where(identifierToPredicate(identifier))
+		Where(identifierToPredicate(identifier...))
 
 	return d.db.Exec(query)
 }
 
-func (d *depositsQ) UpdateProcessed(data db.ProcessedDepositData) error {
-	query := squirrel.Update(depositsTable)
-
-	if data.TxHash != nil {
-		query = query.Set(depositsWithdrawalTxHash, *data.TxHash)
-	}
-	if data.Signature != nil {
-		query = query.Set(depositsSignature, *data.Signature)
-	}
-	if data.TxData != nil {
-		query = query.Set(depositsTxData, *data.TxData)
+func (d *depositsQ) UpdateProcessed(data ...db.ProcessedDepositData) error {
+	if len(data) == 0 {
+		return nil
 	}
 
-	query = query.
-		Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
-		Where(identifierToPredicate(data.Identifier))
+	return d.db.Transaction(func() error {
+		for _, item := range data {
+			query := squirrel.Update(depositsTable).
+				Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
+				Where(squirrel.Eq{
+					depositsTxHash:  item.Identifier.TxHash,
+					depositsTxNonce: item.Identifier.TxNonce,
+					depositsChainId: item.Identifier.ChainId,
+				})
+			if item.Signature != nil {
+				query = query.Set(depositsSignature, *item.Signature)
+			}
 
-	return d.db.Exec(query)
+			if item.TxHash != nil {
+				query = query.Set(depositsWithdrawalTxHash, *item.TxHash)
+			}
+			if item.TxData != nil {
+				query = query.Set(depositsTxData, *item.TxData)
+			}
+
+			if err := d.db.Exec(query); err != nil {
+				return errors.Wrap(err, "failed to update deposit record")
+			}
+		}
+		return nil
+	})
 }
 
 func (d *depositsQ) UpdateSubmittedStatus(identifier db.DepositIdentifier, submitted bool) error {
@@ -226,6 +243,9 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 	}
 	if selector.Limit > 0 {
 		sql = sql.Limit(selector.Limit)
+	}
+	if len(selector.Identifiers) > 0 {
+		sql = sql.Where(identifierToPredicate(selector.Identifiers...))
 	}
 
 	return sql

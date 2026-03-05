@@ -187,13 +187,13 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 		return nil
 	}
 
-	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
+	if err = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING, result.SigData.DepositIdentifiers()[0]); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
 	defer func() {
 		// compensating status update in case of error
 		if err != nil {
-			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
+			_ = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED, result.SigData.DepositIdentifiers()[0])
 		}
 	}()
 

@@ -7,15 +7,15 @@ import (
 
 type DepositSigningData interface {
 	consensus.SigningData
-	DepositIdentifier() db.DepositIdentifier
-}
+	DepositIdentifiers() []db.DepositIdentifier //Shared interface returns a slice to support processing more than one deposit on evm
+} //Other chains support processing of only one deposit at a time
 
 type SigDataFormer[T DepositSigningData] interface {
-	FormSigningData(deposit db.Deposit) (*T, error)
+	FormSigningData(deposits ...db.Deposit) (*T, error)
 }
 
 type SigDataValidator[T DepositSigningData] interface {
-	IsValid(data T, deposit db.Deposit) (bool, error)
+	IsValid(data T, deposits ...db.Deposit) (bool, error)
 }
 
 type Constructor[T DepositSigningData] interface {

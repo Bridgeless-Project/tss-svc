@@ -28,11 +28,11 @@ type DepositsQ interface {
 	GetWithSelector(selector DepositsSelector) (*Deposit, error)
 
 	UpdateWithdrawalDetails(identifier DepositIdentifier, hash *string, signature *string) error
-	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
+	UpdateStatus(status types.WithdrawalStatus, identifier ...DepositIdentifier) error
 	UpdateSignedBatch(signed []SignedDeposit) error
 	InsertProcessedDeposit(deposit Deposit) (int64, error)
 
-	UpdateProcessed(data ProcessedDepositData) error
+	UpdateProcessed(data ...ProcessedDepositData) error
 	UpdateSubmittedStatus(identifier DepositIdentifier, submitted bool) error
 	UpdateDistributedStatus(identifier DepositIdentifier, distributed bool) error
 
@@ -69,6 +69,8 @@ type DepositsSelector struct {
 
 	Distributed    bool
 	NotDistributed bool
+
+	Identifiers []DepositIdentifier
 }
 
 func (d DepositIdentifier) String() string {
