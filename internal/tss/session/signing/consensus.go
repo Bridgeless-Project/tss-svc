@@ -30,7 +30,8 @@ func NewConsensusMechanism[T withdrawal.DepositSigningData](
 			WithdrawalChainId: &chainId,
 			Status:            &pendingWithdrawalStatus,
 			Distributed:       true, // only consider deposits that have been distributed to other parties
-			One:               true,
+			Limit:             100,
+			One:               false,
 		},
 		depositsQ:   depositsQ,
 		constructor: constructor,
@@ -38,16 +39,24 @@ func NewConsensusMechanism[T withdrawal.DepositSigningData](
 	}
 }
 
+type ErrMissingDeposits struct {
+	MissingIDs []db.DepositIdentifier
+}
+
+func (e *ErrMissingDeposits) Error() string {
+	return "missing deposits in proposal"
+}
+
 func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
-	unsignedDeposit, err := c.depositsQ.GetWithSelector(c.depositSelector)
+	unsignedDeposits, err := c.depositsQ.Select(c.depositSelector)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get deposit")
+		return nil, errors.Wrap(err, "failed to get deposits")
 	}
-	if unsignedDeposit == nil {
+	if len(unsignedDeposits) == 0 {
 		return nil, nil
 	}
 
-	proposalData, err := c.constructor.FormSigningData(*unsignedDeposit)
+	proposalData, err := c.constructor.FormSigningData(unsignedDeposits...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to form proposal data")
 	}
@@ -56,27 +65,48 @@ func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
 }
 
 func (c *ConsensusMechanism[T]) VerifyProposedData(data T) error {
-	unsignedDeposit, err := c.depositsQ.Get(data.DepositIdentifier())
-	if err != nil {
-		return errors.Wrap(err, "failed to get deposit")
-	}
-	if unsignedDeposit == nil {
-		unsignedDeposit, err = c.fetcher.FetchDeposit(data.DepositIdentifier())
-		if err != nil {
-			return errors.Wrap(err, "failed to fetch deposit")
-		}
-		unsignedDeposit.Distributed = true
-		if _, err := c.depositsQ.Insert(*unsignedDeposit); err != nil {
-			if !errors.Is(err, db.ErrAlreadySubmitted) {
-				return errors.Wrap(err, "failed to save fetched deposit")
-			}
-		}
-	}
-	if unsignedDeposit.WithdrawalStatus != types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING {
-		return errors.New("deposit is not in pending status")
+	unsignedDeposits := data.DepositIdentifiers()
+
+	if len(unsignedDeposits) == 0 {
+		return nil
 	}
 
-	isValid, err := c.constructor.IsValid(data, *unsignedDeposit)
+	selector := db.DepositsSelector{
+		Identifiers: unsignedDeposits,
+	}
+
+	existingDeposits, err := c.depositsQ.Select(selector)
+	if err != nil {
+		return errors.Wrap(err, "failed to get deposits")
+	}
+
+	foundMap := make(map[string]db.Deposit, len(existingDeposits))
+	for _, dep := range existingDeposits {
+		foundMap[dep.TxHash] = dep
+	}
+
+	depositsToValidate := make([]db.Deposit, 0, len(unsignedDeposits))
+	missingIDs := make([]db.DepositIdentifier, 0)
+
+	for _, id := range unsignedDeposits {
+		unsignedDeposit, exists := foundMap[id.TxHash]
+		if !exists {
+			missingIDs = append(missingIDs, id)
+			continue
+		}
+		if unsignedDeposit.WithdrawalStatus != types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING {
+			return errors.New("deposit is not in pending status")
+		}
+		depositsToValidate = append(depositsToValidate, unsignedDeposit)
+	}
+
+	if len(missingIDs) > 0 {
+		return &ErrMissingDeposits{
+			MissingIDs: missingIDs,
+		}
+	}
+
+	isValid, err := c.constructor.IsValid(data, depositsToValidate...)
 	if err != nil {
 		return errors.Wrap(err, "failed to validate proposal data")
 	}
