@@ -87,7 +87,7 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 	)
 
 	// FIXME: remove
-	resharingParams.SetParams[0].MaxInputsCount = 5
+	resharingParams.SetParams[0].MaxInputsCount = 3
 
 	nextStartTime := state.SessionStartTime
 	for idx := range h.sessionsCount {
