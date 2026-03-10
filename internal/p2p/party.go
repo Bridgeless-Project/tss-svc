@@ -43,3 +43,20 @@ func NewParty(coreAddr core.Address, connection *grpc.ClientConn, pemCert []byte
 		identifier:  coreAddr.PartyIdentifier(),
 	}
 }
+
+// MergeParties takes multiple slices of parties and merges them
+// into a single slice without duplicates based on the CoreAddress.
+func MergeParties(parties ...Party) []Party {
+	var (
+		merged  []Party
+		present = make(map[string]struct{})
+	)
+
+	for _, party := range parties {
+		if _, ok := present[party.CoreAddress.String()]; !ok {
+			merged = append(merged, party)
+		}
+	}
+
+	return merged
+}

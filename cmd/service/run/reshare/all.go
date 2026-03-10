@@ -12,6 +12,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 var reshareAllCmd = &cobra.Command{
@@ -46,6 +47,8 @@ var reshareAllCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to create core connector")
 		}
 
+		serverCert, err := secrets.GetLocalPartyTlsCertificate()
+
 		session := resharing.NewSession(
 			params,
 			oldParties,
@@ -57,12 +60,23 @@ var reshareAllCmd = &cobra.Command{
 			logger.WithField("component", "resharing_session"),
 		)
 
+		errGroup := new(errgroup.Group)
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
-		if err := session.Run(ctx); err != nil {
-			return errors.Wrap(err, "failed to run resharing session")
-		}
+		errGroup.Go(func() error { return errors.Wrap(session.Run(ctx), "resharing session failed") })
+
+		errGroup.Go(func() error {
+			server := p2p.NewServer(
+				cfg.P2pGrpcListener(),
+				sessionManager,
+				p2p.MergeParties(append(oldParties, params.Parties...)...),
+				*serverCert,
+				cfg.Log().WithField("component", "p2p_server"),
+			)
+			server.SetStatus(p2p.PartyStatus_PS_RESHARE)
+			return server.Run(ctx)
+		})
 
 		return nil
 	},
