@@ -29,11 +29,13 @@ type State struct {
 
 func InitializeState(
 	epoch uint32,
+	threshold uint,
 	globalStartTime time.Time,
 	account *core.Account,
 ) *State {
 	return &State{
 		Epoch:              epoch,
+		Threshold:          threshold,
 		GlobalStartTime:    globalStartTime,
 		Account:            account,
 		NewBridgeAddresses: make(map[string]string),

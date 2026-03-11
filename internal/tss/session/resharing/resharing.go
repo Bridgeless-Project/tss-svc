@@ -77,9 +77,9 @@ func (s *Session) Run(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
-	state := resharingTypes.InitializeState(s.params.Epoch, s.params.StartTime, account)
+	state := resharingTypes.InitializeState(s.params.Epoch, s.params.Threshold, s.params.StartTime, account)
 
-	keygenRound := NewKeygenHandler()
+	keygenRound := NewKeygenHandler(s.params.Parties, s.secrets, s.core, s.sessionManager, s.logger, s.selfOld, s.selfNew)
 	keygenManager := resharingTypes.NewHandlerManager(
 		keygenRound, state, s.logger.WithField("component", "resharing_keygen_manager"),
 	)

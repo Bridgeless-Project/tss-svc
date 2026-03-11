@@ -22,7 +22,6 @@ var _ resharingTypes.Handler = &KeygenHandler{}
 
 type KeygenHandler struct {
 	parties        []p2p.Party
-	sessionParams  session.Params
 	secrets        secrets.Storage
 	core           *coreConnector.Connector
 	sessionManager *p2p.SessionManager
@@ -32,8 +31,23 @@ type KeygenHandler struct {
 	oldParty, newParty bool
 }
 
-func NewKeygenHandler() *KeygenHandler {
-	return &KeygenHandler{}
+func NewKeygenHandler(
+	parties []p2p.Party,
+	secrets secrets.Storage,
+	core *coreConnector.Connector,
+	sessionManager *p2p.SessionManager,
+	logger *logan.Entry,
+	oldParty, newParty bool,
+) *KeygenHandler {
+	return &KeygenHandler{
+		parties:        parties,
+		secrets:        secrets,
+		core:           core,
+		sessionManager: sessionManager,
+		logger:         logger.WithField("component", "resharing_keygen_handler"),
+		oldParty:       oldParty,
+		newParty:       newParty,
+	}
 }
 
 func (r *KeygenHandler) MaxHandleDuration() time.Duration {
@@ -73,7 +87,7 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 			Threshold: int(state.Threshold),
 		},
 		r.parties,
-		r.sessionParams,
+		session.Params{Id: int64(state.Epoch)},
 		r.logger,
 	)
 	r.sessionManager.Add(keygenSession)
@@ -100,6 +114,8 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 			if err = r.listenForPubkeyConfirmation(ctx, state); err != nil {
 				return errors.Wrap(err, "failed to confirm new pubkey on core")
 			}
+
+			return nil
 		}
 
 		r.logger.WithError(err).Errorf("failed to submit new pubkey to core (attempt %d/%d)", i+1, maxRetries)
@@ -109,8 +125,9 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 }
 
 func (r *KeygenHandler) listenForPubkeyConfirmation(ctx context.Context, state *resharingTypes.State) error {
-	cooldown := 0 * time.Second
+	r.logger.Debug("listening for new pubkey confirmation from core...")
 
+	cooldown := 0 * time.Second
 	for {
 		select {
 		case <-ctx.Done():
@@ -123,6 +140,8 @@ func (r *KeygenHandler) listenForPubkeyConfirmation(ctx context.Context, state *
 				if !errors.Is(err, core.ErrEpochNotFound) {
 					r.logger.WithError(err).Error("failed to get epoch pubkey from core, will retry...")
 				}
+
+				r.logger.Info("new pubkey not yet confirmed on core, will retry...")
 
 				continue
 			}
@@ -140,6 +159,8 @@ func (r *KeygenHandler) listenForPubkeyConfirmation(ctx context.Context, state *
 }
 
 func (r *KeygenHandler) saveKeyShare(result *keygen.LocalPartySaveData) error {
+	r.logger.Debug("saving new key share to secrets storage...")
+
 	var err error
 
 	if r.oldParty {

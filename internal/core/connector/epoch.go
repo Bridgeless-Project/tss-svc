@@ -22,7 +22,7 @@ func (c *Connector) SetEpochPubKey(epoch uint32, pubKey string) error {
 		return core.ErrTransactionAlreadySubmitted
 	}
 
-	return nil
+	return err
 }
 
 func (c *Connector) GetEpochPubKey(epoch uint32) (string, error) {
@@ -52,5 +52,5 @@ func (c *Connector) SubmitEpochSignatures(sigs []bridgeTypes.EpochChainSignature
 		return core.ErrTransactionAlreadySubmitted
 	}
 
-	return nil
+	return err
 }

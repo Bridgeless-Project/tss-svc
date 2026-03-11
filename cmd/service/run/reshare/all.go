@@ -60,13 +60,17 @@ var reshareAllCmd = &cobra.Command{
 			logger.WithField("component", "resharing_session"),
 		)
 
-		errGroup := new(errgroup.Group)
-		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-		defer cancel()
+		var (
+			termCtx, cancel = signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+			eg, ctx         = errgroup.WithContext(termCtx)
+		)
+		
+		eg.Go(func() error {
+			defer cancel()
 
-		errGroup.Go(func() error { return errors.Wrap(session.Run(ctx), "resharing session failed") })
-
-		errGroup.Go(func() error {
+			return errors.Wrap(session.Run(ctx), "resharing session failed")
+		})
+		eg.Go(func() error {
 			server := p2p.NewServer(
 				cfg.P2pGrpcListener(),
 				sessionManager,
@@ -75,9 +79,10 @@ var reshareAllCmd = &cobra.Command{
 				cfg.Log().WithField("component", "p2p_server"),
 			)
 			server.SetStatus(p2p.PartyStatus_PS_RESHARE)
+
 			return server.Run(ctx)
 		})
 
-		return nil
+		return eg.Wait()
 	},
 }

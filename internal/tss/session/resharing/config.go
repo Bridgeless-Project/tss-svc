@@ -12,7 +12,7 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-const ParamsConfigKey = "resharing_params"
+const ParamsConfigKey = "resharing"
 
 type ParamsConfigurator interface {
 	ResharingParams() Params
@@ -26,7 +26,7 @@ type Params struct {
 	Epoch     uint32    `fig:"epoch,required"`
 	StartTime time.Time `fig:"start_time,required"`
 
-	Parties        []p2p.Party // fig key: list
+	Parties        []p2p.Party `fig:"-"` //config key: parties -> list
 	Threshold      uint        `fig:"threshold,required"`
 	NewParticipant bool        `fig:"new_participant,required"`
 }
@@ -43,19 +43,39 @@ type paramsConfigurator struct {
 
 func (p *paramsConfigurator) ResharingParams() Params {
 	return p.once.Do(func() interface{} {
-		var cfg Params
+		var (
+			cfg       Params
+			stringMap = kv.MustGetStringMap(p.getter, ParamsConfigKey)
+		)
 
 		err := figure.
 			Out(&cfg).
-			From(kv.MustGetStringMap(p.getter, ParamsConfigKey)).
+			With(figure.BaseHooks).
+			From(stringMap).
 			Please()
 		if err != nil {
 			panic(errors.Wrap(err, "failed to figure out resharing params"))
 		}
 
-		partiesConfigurer := p2pconf.NewPartiesConfigurator(p.getter, p.tlsCertProvider, ParamsConfigKey)
+		partiesConfigurer := p2pconf.NewPartiesConfigurator(newPartiesProvider(stringMap), p.tlsCertProvider)
 		cfg.Parties = partiesConfigurer.Parties()
 
 		return cfg
 	}).(Params)
+}
+
+type partiesProvider struct {
+	partiesConfig map[string]any
+}
+
+func newPartiesProvider(partiesConfig map[string]any) *partiesProvider {
+	return &partiesProvider{partiesConfig: partiesConfig}
+}
+
+func (p *partiesProvider) GetStringMap(key string) (map[string]any, error) {
+	if stringMap, ok := p.partiesConfig[key].(map[string]any); ok {
+		return stringMap, nil
+	}
+
+	return nil, errors.Errorf("failed to get parties config: key %q not found or not a map", key)
 }
