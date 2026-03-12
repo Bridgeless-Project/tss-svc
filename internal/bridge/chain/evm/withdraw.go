@@ -22,7 +22,7 @@ func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
-func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
+func (p *Client) getSignHash(data db.Deposit) ([]byte, error) {
 	var operation Operation
 	var err error
 
@@ -36,31 +36,20 @@ func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
 	}
 
 	hash := operation.CalculateHash()
-	prefixedHash := operations.SetSignaturePrefix(hash)
-
-	return prefixedHash, nil
+	return hash, nil
 }
 
 func (p *Client) GetSignHashMerkle(deposits []db.Deposit) ([][]byte, error) {
-	var operation Operation
-	var err error
-
 	if len(deposits) == 0 {
 		return nil, errors.New("empty deposits slice provided")
 	}
 
 	hashedDeposits := make([][]byte, len(deposits))
-	for i, deposit := range deposits {
-		if deposit.WithdrawalToken == bridge.DefaultNativeTokenAddress {
-			operation, err = operations.NewWithdrawNativeContent(deposit)
-		} else {
-			operation, err = operations.NewWithdrawERC20Content(deposit)
-		}
+	for i := range deposits {
+		hash, err := p.getSignHash(deposits[i])
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create operation")
+			return nil, errors.Wrap(err, "failed to form withdrawal signing hash")
 		}
-
-		hash := operation.CalculateHash()
 		hashedDeposits[i] = hash
 	}
 
@@ -72,10 +61,11 @@ func (p *Client) Sign(data db.Deposit) ([]byte, error) {
 		return nil, errors.New("signing is only supported for centralized chains")
 	}
 
-	signHash, err := p.GetSignHash(data)
+	hash, err := p.getSignHash(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to form withdrawal signing hash")
 	}
+	signHash := operations.SetSignaturePrefix(hash)
 
 	signature, err := crypto.Sign(signHash, p.chain.Meta.SignerKey)
 	if err != nil {

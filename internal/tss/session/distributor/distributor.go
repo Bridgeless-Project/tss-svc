@@ -204,12 +204,7 @@ func (d *DepositDistributionSession) QueueMissing(ids []db.DepositIdentifier) {
 	if len(ids) == 0 {
 		return
 	}
-
-	select {
-	case d.missingIds <- ids:
-	default:
-		d.logger.Warn("missing ids queue is full, dropping request")
-	}
+	d.missingIds <- ids
 }
 
 func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) {
