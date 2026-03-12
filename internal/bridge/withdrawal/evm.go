@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"sort"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/operations"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	"github.com/Bridgeless-Project/tss-svc/pkg/merkle"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -21,18 +25,21 @@ type EvmWithdrawalData struct {
 	SignedWithdrawal string
 }
 
-func (e EvmWithdrawalData) DepositIdentifier() db.DepositIdentifier {
-	identifier := db.DepositIdentifier{}
+func (e EvmWithdrawalData) DepositIdentifiers() []db.DepositIdentifier {
+	var identifiers []db.DepositIdentifier
 
-	if e.ProposalData == nil || e.ProposalData.DepositId == nil {
-		return identifier
+	if e.ProposalData == nil {
+		return identifiers
 	}
 
-	identifier.ChainId = e.ProposalData.DepositId.ChainId
-	identifier.TxHash = e.ProposalData.DepositId.TxHash
-	identifier.TxNonce = e.ProposalData.DepositId.TxNonce
-
-	return identifier
+	for _, pbId := range e.ProposalData.DepositIds {
+		identifiers = append(identifiers, db.DepositIdentifier{
+			ChainId: pbId.ChainId,
+			TxHash:  pbId.TxHash,
+			TxNonce: pbId.TxNonce,
+		})
+	}
+	return identifiers
 }
 
 func (e EvmWithdrawalData) HashString() string {
@@ -58,37 +65,103 @@ type EvmWithdrawalConstructor struct {
 	client *evm.Client
 }
 
-func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*EvmWithdrawalData, error) {
-	sigHash, err := c.client.GetSignHash(deposit)
+func (c *EvmWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*EvmWithdrawalData, error) {
+	sort.Slice(deposits, func(i, j int) bool {
+		return deposits[i].TxHash < deposits[j].TxHash
+	})
+
+	leaves, err := c.client.GetSignHashMerkle(deposits)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get signing hash")
+		return nil, errors.Wrap(err, "failed to get signing hashes")
+	}
+
+	tree, err := merkle.BuildTree(leaves)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build merkle tree")
+	}
+
+	root, err := tree.GetRootHash()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get merkle tree root")
+	}
+
+	prefixedRoot := operations.SetSignaturePrefix(root)
+	var depositIds []*types.DepositIdentifier
+	var allProofs []*p2p.MerkleProof
+
+	for i := range deposits {
+
+		depositIds = append(depositIds, &types.DepositIdentifier{
+			ChainId: deposits[i].ChainId,
+			TxHash:  deposits[i].TxHash,
+			TxNonce: deposits[i].TxNonce,
+		})
+
+		byteProof, err := tree.GetProof(i)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get merkle proof for leaf %d", i)
+		}
+		proof := make([]string, len(byteProof)+1)
+		proof[0] = hexutil.Encode(tree.Leaves[i].Hash)
+		for j, hash := range byteProof {
+			proof[j+1] = hexutil.Encode(hash)
+		}
+
+		allProofs = append(allProofs, &p2p.MerkleProof{
+			Hashes: proof,
+		})
 	}
 
 	return &EvmWithdrawalData{
 		ProposalData: &p2p.EvmProposalData{
-			DepositId: &types.DepositIdentifier{
-				ChainId: deposit.ChainId,
-				TxHash:  deposit.TxHash,
-				TxNonce: deposit.TxNonce,
-			},
-			SigData: sigHash,
+			DepositIds:   depositIds,
+			SigData:      prefixedRoot,
+			MerkleProofs: allProofs,
 		},
 	}, nil
 }
 
-func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposits ...db.Deposit) (bool, error) {
 	if data.ProposalData == nil {
 		return false, errors.New("invalid proposal data")
 	}
 
-	sigHash, err := c.client.GetSignHash(deposit)
+	sort.Slice(deposits, func(i, j int) bool {
+		return deposits[i].TxHash < deposits[j].TxHash
+	})
+	leaves, err := c.client.GetSignHashMerkle(deposits)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to get signing hash")
+		return false, errors.Wrap(err, "failed to get signing hashes")
 	}
 
-	if !bytes.Equal(data.ProposalData.SigData, sigHash) {
+	tree, err := merkle.BuildTree(leaves)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to build merkle tree")
+	}
+
+	root, err := tree.GetRootHash()
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get merkle tree root")
+	}
+
+	prefixedRoot := operations.SetSignaturePrefix(root)
+
+	if !bytes.Equal(data.ProposalData.SigData, prefixedRoot) {
 		return false, errors.New("sig data does not match the expected one")
 	}
 
+	for i := range tree.Leaves {
+		proof, err := tree.GetProof(i)
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to get proof for leaf %d", i)
+		}
+		expectedHashes := data.ProposalData.MerkleProofs[i].Hashes
+
+		for j, hash := range proof {
+			if hexutil.Encode(hash) != expectedHashes[j+1] {
+				return false, errors.Errorf("merkle proof mismatch at leaf %d, hash %d", i, j)
+			}
+		}
+	}
 	return true, nil
 }

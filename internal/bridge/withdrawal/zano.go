@@ -25,18 +25,18 @@ type ZanoWithdrawalData struct {
 	ProposalData *p2p.ZanoProposalData
 }
 
-func (z ZanoWithdrawalData) DepositIdentifier() db.DepositIdentifier {
-	identifier := db.DepositIdentifier{}
-
+func (z ZanoWithdrawalData) DepositIdentifiers() []db.DepositIdentifier {
 	if z.ProposalData == nil || z.ProposalData.DepositId == nil {
-		return identifier
+		return nil
 	}
 
-	identifier.ChainId = z.ProposalData.DepositId.ChainId
-	identifier.TxHash = z.ProposalData.DepositId.TxHash
-	identifier.TxNonce = z.ProposalData.DepositId.TxNonce
+	identifier := db.DepositIdentifier{
+		ChainId: z.ProposalData.DepositId.ChainId,
+		TxHash:  z.ProposalData.DepositId.TxHash,
+		TxNonce: z.ProposalData.DepositId.TxNonce,
+	}
 
-	return identifier
+	return []db.DepositIdentifier{identifier}
 }
 
 func (z ZanoWithdrawalData) HashString() string {
@@ -62,7 +62,13 @@ func NewZanoConstructor(client *zano.Client) *ZanoWithdrawalConstructor {
 	}
 }
 
-func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*ZanoWithdrawalData, error) {
+func (c *ZanoWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*ZanoWithdrawalData, error) {
+	if len(deposits) == 0 {
+		return nil, errors.New("invalid data: no deposits provided")
+	}
+
+	deposit := deposits[0]
+
 	tx, err := c.client.EmitAssetUnsigned(deposit)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to form zano withdrawal data")
@@ -85,7 +91,13 @@ func (c *ZanoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*ZanoWi
 	}, nil
 }
 
-func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *ZanoWithdrawalConstructor) IsValid(data ZanoWithdrawalData, deposits ...db.Deposit) (bool, error) {
+	if len(deposits) == 0 {
+		return false, errors.New("invalid data: no deposits provided")
+	}
+
+	deposit := deposits[0]
+
 	details, err := c.client.DecryptTxDetails(zanoTypes.DataForExternalSigning{
 		OutputsAddresses: data.ProposalData.OutputsAddresses,
 		UnsignedTx:       data.ProposalData.UnsignedTx,

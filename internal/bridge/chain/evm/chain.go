@@ -20,6 +20,7 @@ type Chain struct {
 }
 
 type Meta struct {
+	Standart    bool              `fig:"standart"`
 	Centralized bool              `fig:"centralized"`
 	SignerKey   *ecdsa.PrivateKey `fig:"signer_key"`
 }

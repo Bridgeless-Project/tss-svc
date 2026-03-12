@@ -56,12 +56,12 @@ func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
 }
 
 func (c *ConsensusMechanism[T]) VerifyProposedData(data T) error {
-	unsignedDeposit, err := c.depositsQ.Get(data.DepositIdentifier())
+	unsignedDeposit, err := c.depositsQ.Get(data.DepositIdentifiers()[0])
 	if err != nil {
 		return errors.Wrap(err, "failed to get deposit")
 	}
 	if unsignedDeposit == nil {
-		unsignedDeposit, err = c.fetcher.FetchDeposit(data.DepositIdentifier())
+		unsignedDeposit, err = c.fetcher.FetchDeposit(data.DepositIdentifiers()[0])
 		if err != nil {
 			return errors.Wrap(err, "failed to fetch deposit")
 		}

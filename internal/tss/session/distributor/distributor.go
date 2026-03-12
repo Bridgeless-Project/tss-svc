@@ -49,7 +49,8 @@ type DepositDistributionSession struct {
 	broadcaster  *broadcast.Broadcaster
 	self         core.Address
 
-	msgs chan DistributedDepositMsg
+	msgs       chan DistributedDepositMsg
+	missingIds chan []db.DepositIdentifier
 }
 
 func NewDepositDistributionSession(
@@ -67,6 +68,7 @@ func NewDepositDistributionSession(
 	return &DepositDistributionSession{
 		fetcher:      fetcher,
 		msgs:         make(chan DistributedDepositMsg, 100),
+		missingIds:   make(chan []db.DepositIdentifier, 100),
 		data:         data,
 		logger:       logger,
 		self:         self,
@@ -150,47 +152,12 @@ func (d *DepositDistributionSession) runAcceptor(ctx context.Context) {
 			return
 		case msg := <-d.msgs:
 			d.logger.Info(fmt.Sprintf("received deposit from %s", msg.Distributor))
+			d.processDeposit(msg.GetIdentifier())
 
-			id := msg.GetIdentifier()
-			deposit, err := d.data.Get(id)
-			if err != nil {
-				d.logger.WithError(err).Error("failed to check if deposit exists")
-				continue
-			} else if deposit != nil {
-				d.logger.Warn("deposit already exists")
-				continue
-			}
-
-			deposit, err = d.fetcher.FetchDeposit(id)
-			if err != nil {
-				if chain.IsPendingDepositError(err) {
-					d.logger.Warn("deposit still pending")
-					continue
-				}
-				if chain.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
-					deposit = &db.Deposit{
-						DepositIdentifier: id,
-						WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
-					}
-					if _, err = d.data.Insert(*deposit); err != nil {
-						d.logger.WithError(err).Error("failed to process deposit")
-						continue
-					}
-					d.logger.Warn("invalid deposit")
-					continue
-				}
-				d.logger.WithError(err).Error("failed to fetch deposit")
-				continue
-			}
-			deposit.Distributed = true
-			if _, err = d.data.Insert(*deposit); err != nil {
-				if errors.Is(err, db.ErrAlreadySubmitted) {
-					d.logger.Info("deposit already found in db")
-				} else {
-					d.logger.WithError(err).Error("failed to insert deposit")
-				}
-				continue
-			}
+			d.logger.Info("deposit successfully fetched")
+		case ids := <-d.missingIds:
+			d.logger.Info("received missing deposits from internal consensus")
+			d.processBatch(ids)
 
 			d.logger.Info("deposit successfully fetched")
 		}
@@ -231,6 +198,81 @@ func (d *DepositDistributionSession) Receive(request *p2p.SubmitRequest) error {
 	}
 
 	return nil
+}
+
+func (d *DepositDistributionSession) QueueMissing(ctx context.Context, ids []db.DepositIdentifier) {
+	if len(ids) == 0 {
+		return
+	}
+	select {
+	case <-ctx.Done():
+		d.logger.Info("context cancelled before send")
+	case d.missingIds <- ids:
+	}
+}
+
+func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) {
+	deposit, err := d.data.Get(id)
+	if err != nil {
+		d.logger.WithError(err).Error("failed to check if deposit exists")
+		return
+	} else if deposit != nil {
+		d.logger.Warn("deposit already exists")
+		return
+	}
+
+	deposit, err = d.fetcher.FetchDeposit(id)
+	if err != nil {
+		if chain.IsPendingDepositError(err) {
+			d.logger.Warn("deposit still pending")
+			return
+		}
+		if chain.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
+			deposit = &db.Deposit{
+				DepositIdentifier: id,
+				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
+			}
+			if _, err = d.data.Insert(*deposit); err != nil {
+				d.logger.WithError(err).Error("failed to process deposit")
+				return
+			}
+			d.logger.Warn("invalid deposit")
+			return
+		}
+		d.logger.WithError(err).Error("failed to fetch deposit")
+		return
+	}
+	if deposit == nil {
+		d.logger.Warn("fetcher returned nil deposit without error")
+		return
+	}
+	deposit.Distributed = true
+	if _, err = d.data.Insert(*deposit); err != nil {
+		if errors.Is(err, db.ErrAlreadySubmitted) {
+			d.logger.Info("deposit already found in db")
+		} else {
+			d.logger.WithError(err).Error("failed to insert deposit")
+		}
+		return
+	}
+}
+
+func (d *DepositDistributionSession) processBatch(ids []db.DepositIdentifier) {
+	d.logger.WithField("count", len(ids)).Info("starting concurrent batch fetch")
+
+	sem := make(chan struct{}, 20)
+
+	var wg sync.WaitGroup
+	for _, id := range ids {
+		sem <- struct{}{}
+		wg.Go(func() {
+			defer func() { <-sem }()
+			d.processDeposit(id)
+		})
+	}
+
+	wg.Wait()
+	d.logger.Info("batch processing complete")
 }
 
 // RegisterIdChangeListener is a no-op for DepositDistributionSession

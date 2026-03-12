@@ -21,18 +21,18 @@ type TonWithdrawalData struct {
 	SignedWithdrawal string
 }
 
-func (e TonWithdrawalData) DepositIdentifier() db.DepositIdentifier {
-	identifier := db.DepositIdentifier{}
-
+func (e TonWithdrawalData) DepositIdentifiers() []db.DepositIdentifier {
 	if e.ProposalData == nil || e.ProposalData.DepositId == nil {
-		return identifier
+		return nil
 	}
 
-	identifier.ChainId = e.ProposalData.DepositId.ChainId
-	identifier.TxHash = e.ProposalData.DepositId.TxHash
-	identifier.TxNonce = e.ProposalData.DepositId.TxNonce
+	identifier := db.DepositIdentifier{
+		ChainId: e.ProposalData.DepositId.ChainId,
+		TxHash:  e.ProposalData.DepositId.TxHash,
+		TxNonce: e.ProposalData.DepositId.TxNonce,
+	}
 
-	return identifier
+	return []db.DepositIdentifier{identifier}
 }
 
 func (e TonWithdrawalData) HashString() string {
@@ -58,7 +58,12 @@ type TonWithdrawalConstructor struct {
 	client *ton.Client
 }
 
-func (c *TonWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*TonWithdrawalData, error) {
+func (c *TonWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*TonWithdrawalData, error) {
+	if len(deposits) == 0 {
+		return nil, errors.New("invalid data: no deposits provided")
+	}
+
+	deposit := deposits[0]
 	sigHash, err := c.client.GetSignHash(deposit)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get signing hash")
@@ -76,7 +81,12 @@ func (c *TonWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*TonWith
 	}, nil
 }
 
-func (c *TonWithdrawalConstructor) IsValid(data TonWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *TonWithdrawalConstructor) IsValid(data TonWithdrawalData, deposits ...db.Deposit) (bool, error) {
+	if len(deposits) == 0 {
+		return false, errors.New("invalid data: no deposits provided")
+	}
+	deposit := deposits[0]
+
 	if data.ProposalData == nil {
 		return false, errors.New("invalid proposal data")
 	}

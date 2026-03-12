@@ -68,7 +68,7 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 func (f *Finalizer) finalize(_ context.Context) {
 	signature := convertToSolanaSignature(f.signature)
 	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: f.withdrawalData.DepositIdentifier(),
+		Identifier: f.withdrawalData.DepositIdentifiers()[0],
 		Signature:  &signature,
 	}); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update signature")

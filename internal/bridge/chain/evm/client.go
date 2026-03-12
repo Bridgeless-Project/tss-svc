@@ -97,3 +97,7 @@ func (p *Client) GetDepositEventType(log *types.Log) EventType {
 func (p *Client) IsCentralized() bool {
 	return p.chain.Meta.Centralized
 }
+
+func (p *Client) IsStandart() bool {
+	return p.chain.Meta.Standart
+}

@@ -28,11 +28,11 @@ type DepositsQ interface {
 	GetWithSelector(selector DepositsSelector) (*Deposit, error)
 
 	UpdateWithdrawalDetails(identifier DepositIdentifier, hash *string, signature *string) error
-	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
+	UpdateStatus(status types.WithdrawalStatus, identifier ...DepositIdentifier) error
 	UpdateSignedBatch(signed []SignedDeposit) error
 	InsertProcessedDeposit(deposit Deposit) (int64, error)
 
-	UpdateProcessed(data ProcessedDepositData) error
+	UpdateProcessed(data ...ProcessedDepositData) error
 	UpdateSubmittedStatus(identifier DepositIdentifier, submitted bool) error
 	UpdateDistributedStatus(identifier DepositIdentifier, distributed bool) error
 
@@ -69,6 +69,8 @@ type DepositsSelector struct {
 
 	Distributed    bool
 	NotDistributed bool
+
+	Identifiers []DepositIdentifier
 }
 
 func (d DepositIdentifier) String() string {
@@ -109,6 +111,8 @@ type Deposit struct {
 
 	Submitted   bool `structs:"submitted" db:"submitted"`
 	Distributed bool `structs:"distributed" db:"distributed"`
+
+	MerkleProof *string `structs:"merkle_proof" db:"merkle_proof"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
@@ -130,6 +134,7 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		IsWrapped:         d.IsWrappedToken,
 		ReferralId:        uint32(d.ReferralId),
 		TxData:            stringOrEmpty(d.TxData),
+		MerkleProof:       stringOrEmpty(d.MerkleProof),
 	}
 }
 
@@ -181,6 +186,8 @@ type ProcessedDepositData struct {
 	Signature *string
 	TxHash    *string
 	TxData    *string
+
+	MerkleProof *string
 }
 
 type SignedDeposit struct {
