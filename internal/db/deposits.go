@@ -111,6 +111,8 @@ type Deposit struct {
 
 	Submitted   bool `structs:"submitted" db:"submitted"`
 	Distributed bool `structs:"distributed" db:"distributed"`
+
+	MerkleProof *string `structs:"merkle_proof" db:"merkle_proof"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
@@ -132,6 +134,7 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		IsWrapped:         d.IsWrappedToken,
 		ReferralId:        uint32(d.ReferralId),
 		TxData:            stringOrEmpty(d.TxData),
+		MerkleProof:       stringOrEmpty(d.MerkleProof),
 	}
 }
 
@@ -183,6 +186,8 @@ type ProcessedDepositData struct {
 	Signature *string
 	TxHash    *string
 	TxData    *string
+
+	MerkleProof *string
 }
 
 type SignedDeposit struct {

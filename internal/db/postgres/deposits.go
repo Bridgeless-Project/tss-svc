@@ -41,6 +41,8 @@ const (
 	depositsTxData      = "tx_data"
 	depositsSubmitted   = "submitted"
 	depositsDistributed = "distributed"
+
+	depositsMerkleProof = "merkle_proof"
 )
 
 type depositsQ struct {
@@ -173,6 +175,10 @@ func (d *depositsQ) UpdateProcessed(data ...db.ProcessedDepositData) error {
 			}
 			if item.TxData != nil {
 				query = query.Set(depositsTxData, *item.TxData)
+			}
+
+			if item.MerkleProof != nil {
+				query = query.Set(depositsMerkleProof, *item.MerkleProof)
 			}
 
 			if err := d.db.Exec(query); err != nil {

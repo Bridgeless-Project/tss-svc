@@ -2,6 +2,7 @@ package merklized
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
@@ -70,14 +71,26 @@ func (ef *Finalizer) finalize(_ context.Context) {
 
 	processedData := make([]database.ProcessedDepositData, 0, len(ef.withdrawalData.ProposalData.DepositIds))
 
-	for _, pbDepositId := range ef.withdrawalData.ProposalData.DepositIds {
+	for i, pbDepositId := range ef.withdrawalData.ProposalData.DepositIds {
+		merkleProof := make([]string, 0)
+
+		if ef.withdrawalData.ProposalData != nil && i < len(ef.withdrawalData.ProposalData.MerkleProofs) {
+			merkleProof = ef.withdrawalData.ProposalData.MerkleProofs[i].Hashes
+			if merkleProof == nil {
+				merkleProof = make([]string, 0)
+			}
+		}
+		merkleProofBytes, _ := json.Marshal(merkleProof)
+		merkleProofStr := string(merkleProofBytes)
+
 		processedData = append(processedData, database.ProcessedDepositData{
 			Identifier: database.DepositIdentifier{
 				ChainId: pbDepositId.ChainId,
 				TxHash:  pbDepositId.TxHash,
 				TxNonce: pbDepositId.TxNonce,
 			},
-			Signature: &signature,
+			Signature:   &signature,
+			MerkleProof: &merkleProofStr,
 		})
 	}
 

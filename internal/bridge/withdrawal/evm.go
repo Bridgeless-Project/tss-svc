@@ -11,6 +11,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	"github.com/Bridgeless-Project/tss-svc/pkg/merkle"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
@@ -73,7 +75,7 @@ func (c *EvmWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*Evm
 		return nil, errors.Wrap(err, "failed to get signing hashes")
 	}
 
-	tree, err := BuildTree(leaves)
+	tree, err := merkle.BuildTree(leaves)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build merkle tree")
 	}
@@ -85,18 +87,36 @@ func (c *EvmWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*Evm
 
 	prefixedRoot := operations.SetSignaturePrefix(root)
 	var depositIds []*types.DepositIdentifier
-	for _, d := range deposits {
+	var allProofs []*p2p.MerkleProof
+
+	for i := range deposits {
+
 		depositIds = append(depositIds, &types.DepositIdentifier{
-			ChainId: d.ChainId,
-			TxHash:  d.TxHash,
-			TxNonce: d.TxNonce,
+			ChainId: deposits[i].ChainId,
+			TxHash:  deposits[i].TxHash,
+			TxNonce: deposits[i].TxNonce,
+		})
+
+		byteProof, err := tree.GetProof(i)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get merkle proof for leaf %d", i)
+		}
+		proof := make([]string, len(byteProof)+1)
+		proof[0] = hexutil.Encode(tree.Leaves[i].Hash)
+		for j, hash := range byteProof {
+			proof[j+1] = hexutil.Encode(hash)
+		}
+
+		allProofs = append(allProofs, &p2p.MerkleProof{
+			Hashes: proof,
 		})
 	}
 
 	return &EvmWithdrawalData{
 		ProposalData: &p2p.EvmProposalData{
-			DepositIds: depositIds,
-			SigData:    prefixedRoot,
+			DepositIds:   depositIds,
+			SigData:      prefixedRoot,
+			MerkleProofs: allProofs,
 		},
 	}, nil
 }
@@ -109,13 +129,12 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposits ...d
 	sort.Slice(deposits, func(i, j int) bool {
 		return deposits[i].TxHash < deposits[j].TxHash
 	})
-
 	leaves, err := c.client.GetSignHashMerkle(deposits)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get signing hashes")
 	}
 
-	tree, err := BuildTree(leaves)
+	tree, err := merkle.BuildTree(leaves)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to build merkle tree")
 	}
@@ -128,12 +147,21 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposits ...d
 	prefixedRoot := operations.SetSignaturePrefix(root)
 
 	if !bytes.Equal(data.ProposalData.SigData, prefixedRoot) {
-		var hashes []string
-		for _, d := range deposits {
-			hashes = append(hashes, d.TxHash)
-		}
 		return false, errors.New("sig data does not match the expected one")
 	}
 
+	for i := range tree.Leaves {
+		proof, err := tree.GetProof(i)
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to get proof for leaf %d", i)
+		}
+		expectedHashes := data.ProposalData.MerkleProofs[i].Hashes
+
+		for j, hash := range proof {
+			if hexutil.Encode(hash) != expectedHashes[j+1] {
+				return false, errors.Errorf("merkle proof mismatch at leaf %d, hash %d", i, j)
+			}
+		}
+	}
 	return true, nil
 }
