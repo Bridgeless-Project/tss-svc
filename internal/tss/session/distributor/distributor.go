@@ -200,11 +200,15 @@ func (d *DepositDistributionSession) Receive(request *p2p.SubmitRequest) error {
 	return nil
 }
 
-func (d *DepositDistributionSession) QueueMissing(ids []db.DepositIdentifier) {
+func (d *DepositDistributionSession) QueueMissing(ctx context.Context, ids []db.DepositIdentifier) {
 	if len(ids) == 0 {
 		return
 	}
-	d.missingIds <- ids
+	select {
+	case <-ctx.Done():
+		d.logger.Info("context cancelled before send")
+	case d.missingIds <- ids:
+	}
 }
 
 func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) {

@@ -192,7 +192,7 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 				Info("missing deposits in proposal, pushing to internal queue")
 
 			if s.depositDistributor != nil {
-				s.depositDistributor.QueueMissing(missingErr.MissingIDs)
+				s.depositDistributor.QueueMissing(ctx, missingErr.MissingIDs)
 			} else {
 				s.logger.Warn("deposit distributor is not set")
 			}
