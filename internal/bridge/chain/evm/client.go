@@ -98,6 +98,6 @@ func (p *Client) IsCentralized() bool {
 	return p.chain.Meta.Centralized
 }
 
-func (p *Client) IsMerklized() bool {
-	return p.chain.Meta.Merklized
+func (p *Client) IsStandart() bool {
+	return p.chain.Meta.Standart
 }

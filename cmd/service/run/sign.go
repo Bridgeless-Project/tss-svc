@@ -26,9 +26,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
-	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
 	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
 	evmMerklized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/merklized"
+	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/standart"
 	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
@@ -238,25 +238,7 @@ func configureSigningSession(
 				logger.WithField("component", "centralized_signing_session"),
 			)
 
-		case evmClient.IsMerklized():
-			evmMerklizedSession := evmMerklized.NewSession(
-				tss.LocalSignParty{
-					Account:   account,
-					Share:     share,
-					Threshold: params.Threshold,
-				},
-				parties,
-				params,
-				db,
-				logger.WithField("component", "signing_session"),
-			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector).WithDistributor(distributor)
-			if err := evmMerklizedSession.Build(); err != nil {
-				panic(errors.Wrap(err, "failed to build evm session"))
-			}
-
-			sess = evmMerklizedSession
-
-		default:
+		case evmClient.IsStandart():
 			evmSession := evmSigning.NewSession(
 				tss.LocalSignParty{
 					Account:   account,
@@ -271,7 +253,24 @@ func configureSigningSession(
 			if err := evmSession.Build(); err != nil {
 				panic(errors.Wrap(err, "failed to build evm session"))
 			}
+
 			sess = evmSession
+		default:
+			evmMerklizedSession := evmMerklized.NewSession(
+				tss.LocalSignParty{
+					Account:   account,
+					Share:     share,
+					Threshold: params.Threshold,
+				},
+				parties,
+				params,
+				db,
+				logger.WithField("component", "signing_session"),
+			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector).WithDistributor(distributor)
+			if err := evmMerklizedSession.Build(); err != nil {
+				panic(errors.Wrap(err, "failed to build evm session"))
+			}
+			sess = evmMerklizedSession
 		}
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(

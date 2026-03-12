@@ -47,7 +47,7 @@ type Session struct {
 	fetcher       *deposit.Fetcher
 	client        *evm.Client
 
-	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
+	mechanism Mechanism[withdrawal.EvmWithdrawalData]
 
 	signingParty          *tss.SignParty
 	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
@@ -112,7 +112,7 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.mechanism = signing.NewConsensusMechanism[withdrawal.EvmWithdrawalData](
+	s.mechanism = NewConsensusMechanism[withdrawal.EvmWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewEvmConstructor(s.client),
@@ -186,7 +186,7 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
 	if err != nil {
-		var missingErr *signing.ErrMissingDeposits
+		var missingErr *ErrMissingDeposits
 		if errors.As(err, &missingErr) {
 			s.logger.WithField("count", len(missingErr.MissingIDs)).
 				Info("missing deposits in proposal, pushing to internal queue")
