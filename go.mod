@@ -20,7 +20,7 @@ replace (
 )
 
 require (
-	github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20260220101251-bf2d1b58fdde
+	github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20260311155649-1d75040e532f
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
 	github.com/btcsuite/btcd v0.24.2

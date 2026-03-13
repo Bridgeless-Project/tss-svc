@@ -40,8 +40,8 @@ func (c *Connector) GetEpochPubKey(epoch uint32) (string, error) {
 	return resp.PubKey, nil
 }
 
-func (c *Connector) SubmitEpochSignatures(sigs []bridgeTypes.EpochChainSignatures, addrs []bridgeTypes.EpochBridgeAddress) error {
-	msg := bridgeTypes.NewMsgSetEpochSignature(c.account.CosmosAddress().String(), sigs, addrs)
+func (c *Connector) SubmitEpochSignatures(epochId uint32, sigs []bridgeTypes.EpochChainSignatures, addrs []bridgeTypes.EpochBridgeAddress) error {
+	msg := bridgeTypes.NewMsgSetEpochSignature(c.account.CosmosAddress().String(), epochId, sigs, addrs)
 
 	err := c.submitMsgs(context.Background(), msg)
 	if err == nil {

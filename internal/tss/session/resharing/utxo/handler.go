@@ -56,6 +56,9 @@ func (h *Handler) init() error {
 	}
 
 	h.unspentCount = uint(len(unspent))
+	if h.unspentCount == 0 {
+		return nil
+	}
 
 	maxUnspentPerSession := utxoutils.DefaultResharingParams.SetParams[0].MaxInputsCount
 	sessionsCount := (h.unspentCount + maxUnspentPerSession - 1) / maxUnspentPerSession // rounding up
@@ -66,7 +69,11 @@ func (h *Handler) init() error {
 }
 
 func (h *Handler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, error) {
-	// TODO: check count of UTXOs controlled by old key
+	if h.sessionsCount == 0 {
+		// no unspent outputs, so no resharing needed, state is considered processed
+		state.AddBridgeAddress(h.client.ChainId(), h.client.UtxoHelper().P2pkhAddress(state.NewPubKey))
+		return true, nil
+	}
 
 	return false, nil
 }
@@ -81,21 +88,17 @@ func (h *Handler) MaxHandleDuration() time.Duration {
 func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error {
 	var (
 		maxInputsCount  = utxoutils.DefaultResharingParams.SetParams[0].MaxInputsCount
+		maxOutsCount    = utxoutils.DefaultResharingParams.SetParams[0].OutsCount
 		inputsLeft      = h.unspentCount
 		resharingParams = utxoutils.DefaultResharingParams
 		targetAddr      = h.client.UtxoHelper().P2pkhAddress(state.NewPubKey)
 	)
 
-	// FIXME: remove
-	resharingParams.SetParams[0].MaxInputsCount = 3
-
 	nextStartTime := state.SessionStartTime
 	for idx := range h.sessionsCount {
-		// last session might have fewer inputs than maxUnspentPerSession,
-		// so we need to recalculate outs count
 		if idx == h.sessionsCount-1 {
-			// proportionally calculate outs count based on inputs left and max inputs count
-			maxOutsCount := utxoutils.DefaultResharingParams.SetParams[0].OutsCount
+			// last session might have fewer inputs than maxUnspentPerSession,
+			// so we need to proportionally calculate outs count based on inputs left and max inputs count
 			outsCount := (inputsLeft*maxOutsCount + maxInputsCount - 1) / maxInputsCount // rounding up
 			resharingParams.SetParams[0].OutsCount = outsCount
 		}

@@ -47,7 +47,7 @@ func (h *SubmitHandler) Handle(ctx context.Context, state *resharingTypes.State)
 		case <-time.After(cooldown):
 			cooldown = 5 * time.Second
 
-			err := h.connector.SubmitEpochSignatures(signatures, addresses)
+			err := h.connector.SubmitEpochSignatures(state.Epoch, signatures, addresses)
 			if err == nil || errors.Is(err, core.ErrTransactionAlreadySubmitted) {
 				return nil
 			}
@@ -89,7 +89,7 @@ func (h *SubmitHandler) stateToEpochData(state *resharingTypes.State) ([]bridgeT
 		})
 	}
 
-	addresses := make([]bridgeTypes.EpochBridgeAddress, len(state.NewBridgeAddresses))
+	addresses := make([]bridgeTypes.EpochBridgeAddress, 0, len(state.NewBridgeAddresses))
 	for chainId, addr := range state.NewBridgeAddresses {
 		addresses = append(addresses, bridgeTypes.EpochBridgeAddress{
 			EpochId: state.Epoch,

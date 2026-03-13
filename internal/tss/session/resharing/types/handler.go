@@ -36,6 +36,7 @@ func (m *HandlerManager) Manage(ctx context.Context, startTime time.Time) error 
 	if processed, err := m.handler.RecoverStateIfProcessed(m.state); err != nil {
 		return errors.Wrap(err, "failed to check if handler is already processed")
 	} else if processed {
+		m.logger.Info("handler is already processed, state recovered, skipping execution")
 		return nil
 	}
 
@@ -57,6 +58,8 @@ func (m *HandlerManager) Manage(ctx context.Context, startTime time.Time) error 
 	if err := m.handler.Handle(handleCtx, m.state); err != nil {
 		return errors.Wrap(err, "failed to execute handler")
 	}
+
+	m.logger.Info("handler finished")
 
 	return nil
 }
