@@ -103,16 +103,12 @@ func (d *depositsQ) Get(identifier db.DepositIdentifier) (*db.Deposit, error) {
 	return &deposit, err
 }
 
-func identifierToPredicate(identifier ...db.DepositIdentifier) squirrel.Or {
-	var orClause squirrel.Or
-	for _, id := range identifier {
-		orClause = append(orClause, squirrel.Eq{
-			depositsTxHash:  id.TxHash,
-			depositsTxNonce: id.TxNonce,
-			depositsChainId: id.ChainId,
-		})
+func identifierToPredicate(identifier db.DepositIdentifier) squirrel.Eq {
+	return squirrel.Eq{
+		depositsTxHash:  identifier.TxHash,
+		depositsTxNonce: identifier.TxNonce,
+		depositsChainId: identifier.ChainId,
 	}
-	return orClause
 }
 
 func (d *depositsQ) GetWithSelector(selector db.DepositsSelector) (*db.Deposit, error) {
@@ -148,11 +144,42 @@ func (d *depositsQ) UpdateWithdrawalDetails(identifier db.DepositIdentifier, has
 }
 
 func (d *depositsQ) UpdateStatus(status types.WithdrawalStatus, identifier ...db.DepositIdentifier) error {
-	query := squirrel.Update(depositsTable).
-		Set(depositsWithdrawalStatus, status).
-		Where(identifierToPredicate(identifier...))
+	if len(identifier) == 0 {
+		return nil
+	}
 
-	return d.db.Exec(query)
+	var (
+		hashes   = make(pq.StringArray, len(identifier))
+		nonces   = make(pq.Int64Array, len(identifier))
+		chainIds = make(pq.StringArray, len(identifier))
+	)
+
+	for i, id := range identifier {
+		hashes[i] = id.TxHash
+		nonces[i] = id.TxNonce
+		chainIds[i] = id.ChainId
+	}
+
+	const query = `
+        UPDATE deposits
+        SET withdrawal_status = $1
+        FROM (
+            SELECT 
+                unnest($2::text[]) AS hash, 
+                unnest($3::bigint[]) AS nonce, 
+                unnest($4::text[]) AS chain_id
+        ) AS unnested_data
+        WHERE deposits.tx_hash = unnested_data.hash
+          AND deposits.tx_nonce = unnested_data.nonce
+          AND deposits.chain_id = unnested_data.chain_id;
+    `
+
+	return d.db.ExecRaw(query,
+		types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+		hashes,
+		nonces,
+		chainIds,
+	)
 }
 
 func (d *depositsQ) UpdateProcessed(data ...db.ProcessedDepositData) error {
@@ -160,33 +187,60 @@ func (d *depositsQ) UpdateProcessed(data ...db.ProcessedDepositData) error {
 		return nil
 	}
 
-	return d.db.Transaction(func() error {
-		for _, item := range data {
-			query := squirrel.Update(depositsTable).
-				Set(depositsWithdrawalStatus, types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED).
-				Where(identifierToPredicate(item.Identifier))
+	var (
+		hashes   = make(pq.StringArray, len(data))
+		nonces   = make(pq.Int64Array, len(data))
+		chainIds = make(pq.StringArray, len(data))
 
-			if item.Signature != nil {
-				query = query.Set(depositsSignature, *item.Signature)
-			}
+		withdrawalHashes = make([]*string, len(data))
+		txData           = make([]*string, len(data))
+		signatures       = make([]*string, len(data))
+		proofs           = make([]*string, len(data))
+	)
 
-			if item.TxHash != nil {
-				query = query.Set(depositsWithdrawalTxHash, *item.TxHash)
-			}
-			if item.TxData != nil {
-				query = query.Set(depositsTxData, *item.TxData)
-			}
+	for i, deposit := range data {
+		hashes[i] = deposit.Identifier.TxHash
+		nonces[i] = deposit.Identifier.TxNonce
+		chainIds[i] = deposit.Identifier.ChainId
 
-			if item.MerkleProof != nil {
-				query = query.Set(depositsMerkleProof, *item.MerkleProof)
-			}
+		withdrawalHashes[i] = deposit.TxHash
+		txData[i] = deposit.TxData
+		signatures[i] = deposit.Signature
+		proofs[i] = deposit.MerkleProof
+	}
 
-			if err := d.db.Exec(query); err != nil {
-				return errors.Wrap(err, "failed to update deposit record")
-			}
-		}
-		return nil
-	})
+	const query = `
+        UPDATE deposits
+        SET
+            withdrawal_status  = $1,
+            withdrawal_tx_hash = unnested_data.withdrawal_tx_hash,
+            tx_data            = unnested_data.tx_data,
+            signature          = unnested_data.signature,
+            merkle_proof       = unnested_data.merkle_proof
+        FROM (
+            SELECT
+                unnest($2::text[])   AS tx_hash,
+                unnest($3::bigint[]) AS tx_nonce,
+                unnest($4::text[])   AS chain_id,
+                unnest($5::text[])   AS withdrawal_tx_hash,
+                unnest($6::text[])   AS tx_data,
+                unnest($7::text[])   AS signature,
+                unnest($8::text[])   AS merkle_proof
+        ) AS unnested_data
+        WHERE deposits.tx_hash  = unnested_data.tx_hash
+          AND deposits.tx_nonce = unnested_data.tx_nonce
+          AND deposits.chain_id = unnested_data.chain_id;`
+
+	return d.db.ExecRaw(query,
+		types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+		hashes,
+		nonces,
+		chainIds,
+		pq.Array(withdrawalHashes),
+		pq.Array(txData),
+		pq.Array(signatures),
+		pq.Array(proofs),
+	)
 }
 
 func (d *depositsQ) UpdateSubmittedStatus(identifier db.DepositIdentifier, submitted bool) error {
@@ -248,7 +302,21 @@ func (d *depositsQ) applySelector(selector db.DepositsSelector, sql squirrel.Sel
 		sql = sql.Limit(selector.Limit)
 	}
 	if len(selector.Identifiers) > 0 {
-		sql = sql.Where(identifierToPredicate(selector.Identifiers...))
+		hashes := make(pq.StringArray, len(selector.Identifiers))
+		nonces := make(pq.Int64Array, len(selector.Identifiers))
+		chainIds := make(pq.StringArray, len(selector.Identifiers))
+
+		for i, id := range selector.Identifiers {
+			hashes[i] = id.TxHash
+			nonces[i] = id.TxNonce
+			chainIds[i] = id.ChainId
+		}
+
+		sql = sql.Where(
+			`(tx_hash, tx_nonce, chain_id) IN (
+        	SELECT unnest(?::text[]), unnest(?::bigint[]), unnest(?::text[]))`,
+			hashes, nonces, chainIds,
+		)
 	}
 
 	return sql
