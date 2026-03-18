@@ -62,8 +62,8 @@ type SolanaWithdrawalConstructor struct {
 func (c *SolanaWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*SolanaWithdrawalData, error) {
 	if len(deposits) == 0 {
 		return nil, errors.New("invalid data: no deposits provided")
-	} //Only evm supports processing of multiple deposits
-	deposit := deposits[0] //for other chains this structure is used to process the first element of slice
+	}
+	deposit := deposits[0] // Expecting only one deposit to process
 
 	sigHash, err := c.client.GetSignHash(deposit)
 	if err != nil {

@@ -51,6 +51,7 @@ type DepositDistributionSession struct {
 
 	msgs       chan DistributedDepositMsg
 	missingIds chan []db.DepositIdentifier
+	jobs       chan db.DepositIdentifier
 }
 
 func NewDepositDistributionSession(
@@ -67,8 +68,9 @@ func NewDepositDistributionSession(
 
 	return &DepositDistributionSession{
 		fetcher:      fetcher,
-		msgs:         make(chan DistributedDepositMsg, 100),
-		missingIds:   make(chan []db.DepositIdentifier, 100),
+		msgs:         make(chan DistributedDepositMsg, 1000),
+		missingIds:   make(chan []db.DepositIdentifier, 1000),
+		jobs:         make(chan db.DepositIdentifier, 2000),
 		data:         data,
 		logger:       logger,
 		self:         self,
@@ -144,22 +146,27 @@ func (d *DepositDistributionSession) runDistributor(ctx context.Context) {
 
 func (d *DepositDistributionSession) runAcceptor(ctx context.Context) {
 	d.logger.Info("acceptor started")
+	sem := make(chan struct{}, 20)
+
+	go d.enqueueJobs(ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
 			d.logger.Info("acceptor cancelled")
 			return
-		case msg := <-d.msgs:
-			d.logger.Info(fmt.Sprintf("received deposit from %s", msg.Distributor))
-			d.processDeposit(msg.GetIdentifier())
-
-			d.logger.Info("deposit successfully fetched")
-		case ids := <-d.missingIds:
-			d.logger.Info("received missing deposits from internal consensus")
-			d.processBatch(ids)
-
-			d.logger.Info("deposit successfully fetched")
+		case id := <-d.jobs:
+			select {
+			case <-ctx.Done():
+				return
+			case sem <- struct{}{}:
+				go func(id db.DepositIdentifier) {
+					if err := d.processDeposit(id); err != nil {
+						d.logger.WithError(err).Error("failed to process deposit")
+					}
+					<-sem
+				}(id)
+			}
 		}
 	}
 }
@@ -211,21 +218,21 @@ func (d *DepositDistributionSession) QueueMissing(ctx context.Context, ids []db.
 	}
 }
 
-func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) {
+func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) error {
+	log := d.logger.WithField("tx_hash", id.TxHash).WithField("chain_id", id.ChainId)
 	deposit, err := d.data.Get(id)
 	if err != nil {
-		d.logger.WithError(err).Error("failed to check if deposit exists")
-		return
+		return errors.Wrap(err, "failed to check if deposit exists")
 	} else if deposit != nil {
-		d.logger.Warn("deposit already exists")
-		return
+		log.Warnf("deposit already exists")
+		return nil
 	}
 
 	deposit, err = d.fetcher.FetchDeposit(id)
 	if err != nil {
 		if chain.IsPendingDepositError(err) {
-			d.logger.Warn("deposit still pending")
-			return
+			log.Warn("deposit still pending")
+			return nil
 		}
 		if chain.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
 			deposit = &db.Deposit{
@@ -233,46 +240,36 @@ func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) {
 				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
 			}
 			if _, err = d.data.Insert(*deposit); err != nil {
-				d.logger.WithError(err).Error("failed to process deposit")
-				return
+				return errors.Wrap(err, "failed to insert invalid deposit")
 			}
-			d.logger.Warn("invalid deposit")
-			return
 		}
-		d.logger.WithError(err).Error("failed to fetch deposit")
-		return
-	}
-	if deposit == nil {
-		d.logger.Warn("fetcher returned nil deposit without error")
-		return
+		return errors.Wrap(err, "failed to fetch deposit")
 	}
 	deposit.Distributed = true
 	if _, err = d.data.Insert(*deposit); err != nil {
 		if errors.Is(err, db.ErrAlreadySubmitted) {
-			d.logger.Info("deposit already found in db")
+			log.Info("deposit already found in db")
+			return nil
 		} else {
-			d.logger.WithError(err).Error("failed to insert deposit")
+			return errors.Wrap(err, "failed to insert deposit")
 		}
-		return
 	}
+	return nil
 }
 
-func (d *DepositDistributionSession) processBatch(ids []db.DepositIdentifier) {
-	d.logger.WithField("count", len(ids)).Info("starting concurrent batch fetch")
-
-	sem := make(chan struct{}, 20)
-
-	var wg sync.WaitGroup
-	for _, id := range ids {
-		sem <- struct{}{}
-		wg.Go(func() {
-			defer func() { <-sem }()
-			d.processDeposit(id)
-		})
+func (d *DepositDistributionSession) enqueueJobs(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg := <-d.msgs:
+			d.jobs <- msg.GetIdentifier()
+		case ids := <-d.missingIds:
+			for _, id := range ids {
+				d.jobs <- id
+			}
+		}
 	}
-
-	wg.Wait()
-	d.logger.Info("batch processing complete")
 }
 
 // RegisterIdChangeListener is a no-op for DepositDistributionSession

@@ -1,33 +1,33 @@
-package merklized
+package consensus
 
 import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/pkg/errors"
 )
 
-var _ Mechanism[withdrawal.DepositSigningData] = &ConsensusMechanism[withdrawal.DepositSigningData]{}
+var _ consensus.Mechanism[withdrawal.DepositSigningData] = &BatchDepositConsensusMechanism[withdrawal.DepositSigningData]{}
 
-type ConsensusMechanism[T withdrawal.DepositSigningData] struct {
+type BatchDepositConsensusMechanism[T withdrawal.DepositSigningData] struct {
 	depositSelector db.DepositsSelector
 	depositsQ       db.DepositsQ
 	constructor     withdrawal.Constructor[T]
 	fetcher         deposit.Fetcher
 }
 
-func NewConsensusMechanism[T withdrawal.DepositSigningData](
+func NewBatchDepositConsensusMechanism[T withdrawal.DepositSigningData](
 	chainId string,
 	depositsQ db.DepositsQ,
 	constructor withdrawal.Constructor[T],
 	fetcher *deposit.Fetcher,
-) *ConsensusMechanism[T] {
-	var pendingWithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
-	return &ConsensusMechanism[T]{
+) *BatchDepositConsensusMechanism[T] {
+	return &BatchDepositConsensusMechanism[T]{
 		depositSelector: db.DepositsSelector{
 			WithdrawalChainId: &chainId,
-			Status:            &pendingWithdrawalStatus,
+			Status:            new(types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING),
 			Distributed:       true, // only consider deposits that have been distributed to other parties
 			Limit:             100,
 			One:               false,
@@ -46,7 +46,7 @@ func (e *ErrMissingDeposits) Error() string {
 	return "missing deposits in proposal"
 }
 
-func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
+func (c *BatchDepositConsensusMechanism[T]) FormProposalData() (*T, error) {
 	unsignedDeposits, err := c.depositsQ.Select(c.depositSelector)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get deposits")
@@ -63,7 +63,7 @@ func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
 	return proposalData, nil
 }
 
-func (c *ConsensusMechanism[T]) VerifyProposedData(data T) error {
+func (c *BatchDepositConsensusMechanism[T]) VerifyProposedData(data T) error {
 	unsignedDeposits := data.DepositIdentifiers()
 
 	if len(unsignedDeposits) == 0 {
@@ -79,16 +79,21 @@ func (c *ConsensusMechanism[T]) VerifyProposedData(data T) error {
 		return errors.Wrap(err, "failed to get deposits")
 	}
 
-	foundMap := make(map[string]db.Deposit, len(existingDeposits))
+	foundMap := make(map[db.DepositIdentifier]db.Deposit, len(existingDeposits))
 	for _, dep := range existingDeposits {
-		foundMap[dep.TxHash] = dep
+		key := db.DepositIdentifier{
+			TxHash:  dep.TxHash,
+			TxNonce: dep.TxNonce,
+			ChainId: dep.ChainId,
+		}
+		foundMap[key] = dep
 	}
 
 	depositsToValidate := make([]db.Deposit, 0, len(unsignedDeposits))
 	missingIDs := make([]db.DepositIdentifier, 0)
 
 	for _, id := range unsignedDeposits {
-		unsignedDeposit, exists := foundMap[id.TxHash]
+		unsignedDeposit, exists := foundMap[id]
 		if !exists {
 			missingIDs = append(missingIDs, id)
 			continue

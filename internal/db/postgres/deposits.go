@@ -41,8 +41,6 @@ const (
 	depositsTxData      = "tx_data"
 	depositsSubmitted   = "submitted"
 	depositsDistributed = "distributed"
-
-	depositsMerkleProof = "merkle_proof"
 )
 
 type depositsQ struct {

@@ -67,7 +67,7 @@ func (c *ZanoWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*Za
 		return nil, errors.New("invalid data: no deposits provided")
 	}
 
-	deposit := deposits[0]
+	deposit := deposits[0] // Expecting only one deposit to process
 
 	tx, err := c.client.EmitAssetUnsigned(deposit)
 	if err != nil {

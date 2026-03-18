@@ -2,6 +2,7 @@ package merklized
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
+	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
@@ -47,7 +49,7 @@ type Session struct {
 	fetcher       *deposit.Fetcher
 	client        *evm.Client
 
-	mechanism Mechanism[withdrawal.EvmWithdrawalData]
+	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
 	signingParty          *tss.SignParty
 	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
@@ -111,8 +113,11 @@ func (s *Session) Build() error {
 	if s.coreConnector == nil {
 		return errors.New("core connector is not set")
 	}
+	if s.depositDistributor == nil {
+		return errors.New("deposit distributor is not set")
+	}
 
-	s.mechanism = NewConsensusMechanism[withdrawal.EvmWithdrawalData](
+	s.mechanism = signingConsensus.NewBatchDepositConsensusMechanism[withdrawal.EvmWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewEvmConstructor(s.client),
@@ -186,18 +191,12 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
 	if err != nil {
-		var missingErr *ErrMissingDeposits
-		if errors.As(err, &missingErr) {
+		if missingErr, ok := stderrors.AsType[*signingConsensus.ErrMissingDeposits](err); ok {
 			s.logger.WithField("count", len(missingErr.MissingIDs)).
 				Info("missing deposits in proposal, pushing to internal queue")
-
-			if s.depositDistributor != nil {
-				s.depositDistributor.QueueMissing(ctx, missingErr.MissingIDs)
-			} else {
-				s.logger.Warn("deposit distributor is not set")
-			}
+			s.depositDistributor.QueueMissing(ctx, missingErr.MissingIDs)
 		}
-		return fmt.Errorf("consensus phase error occurred: %w", err)
+		return errors.Wrap(err, "consensus phase error occurred")
 	}
 	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")

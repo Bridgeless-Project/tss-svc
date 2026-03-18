@@ -76,9 +76,6 @@ func (ef *Finalizer) finalize(_ context.Context) {
 
 		if ef.withdrawalData.ProposalData != nil && i < len(ef.withdrawalData.ProposalData.MerkleProofs) {
 			merkleProof = ef.withdrawalData.ProposalData.MerkleProofs[i].Hashes
-			if merkleProof == nil {
-				merkleProof = make([]string, 0)
-			}
 		}
 		merkleProofBytes, _ := json.Marshal(merkleProof)
 		merkleProofStr := string(merkleProofBytes)

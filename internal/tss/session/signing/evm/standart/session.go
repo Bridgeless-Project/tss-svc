@@ -17,6 +17,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
+	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
@@ -105,7 +106,7 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.mechanism = signing.NewConsensusMechanism[withdrawal.EvmWithdrawalData](
+	s.mechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.EvmWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewEvmConstructor(s.client),

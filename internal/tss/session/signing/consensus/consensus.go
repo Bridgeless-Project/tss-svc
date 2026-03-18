@@ -1,4 +1,4 @@
-package signing
+package consensus
 
 import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
@@ -9,23 +9,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-var _ consensus.Mechanism[withdrawal.DepositSigningData] = &ConsensusMechanism[withdrawal.DepositSigningData]{}
+var _ consensus.Mechanism[withdrawal.DepositSigningData] = &SingleDepositConsensusMechanism[withdrawal.DepositSigningData]{}
 
-type ConsensusMechanism[T withdrawal.DepositSigningData] struct {
+type SingleDepositConsensusMechanism[T withdrawal.DepositSigningData] struct {
 	depositSelector db.DepositsSelector
 	depositsQ       db.DepositsQ
 	constructor     withdrawal.Constructor[T]
 	fetcher         deposit.Fetcher
 }
 
-func NewConsensusMechanism[T withdrawal.DepositSigningData](
+func NewSingleDepositConsensusMechanism[T withdrawal.DepositSigningData](
 	chainId string,
 	depositsQ db.DepositsQ,
 	constructor withdrawal.Constructor[T],
 	fetcher *deposit.Fetcher,
-) *ConsensusMechanism[T] {
+) *SingleDepositConsensusMechanism[T] {
 	var pendingWithdrawalStatus = types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING
-	return &ConsensusMechanism[T]{
+	return &SingleDepositConsensusMechanism[T]{
 		depositSelector: db.DepositsSelector{
 			WithdrawalChainId: &chainId,
 			Status:            &pendingWithdrawalStatus,
@@ -38,7 +38,7 @@ func NewConsensusMechanism[T withdrawal.DepositSigningData](
 	}
 }
 
-func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
+func (c *SingleDepositConsensusMechanism[T]) FormProposalData() (*T, error) {
 	unsignedDeposit, err := c.depositsQ.GetWithSelector(c.depositSelector)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get deposit")
@@ -55,7 +55,10 @@ func (c *ConsensusMechanism[T]) FormProposalData() (*T, error) {
 	return proposalData, nil
 }
 
-func (c *ConsensusMechanism[T]) VerifyProposedData(data T) error {
+func (c *SingleDepositConsensusMechanism[T]) VerifyProposedData(data T) error {
+	if len(data.DepositIdentifiers()) == 0 {
+		return errors.New("no deposit identifiers in proposal")
+	}
 	unsignedDeposit, err := c.depositsQ.Get(data.DepositIdentifiers()[0])
 	if err != nil {
 		return errors.Wrap(err, "failed to get deposit")

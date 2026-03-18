@@ -39,7 +39,7 @@ func (p *Client) getSignHash(data db.Deposit) ([]byte, error) {
 	return hash, nil
 }
 
-func (p *Client) GetSignHashMerkle(deposits []db.Deposit) ([][]byte, error) {
+func (p *Client) GetSignHashes(deposits []db.Deposit) ([][]byte, error) {
 	if len(deposits) == 0 {
 		return nil, errors.New("empty deposits slice provided")
 	}

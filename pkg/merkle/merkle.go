@@ -18,12 +18,8 @@ type Tree struct {
 	Leaves []*Node
 }
 
-func (t *Tree) GetRootHash() ([]byte, error) {
-	if t == nil || t.Root == nil {
-		return nil, errors.New("failed to get merkle tree root")
-	}
-
-	return t.Root.Hash, nil
+func (t *Tree) GetRoot() []byte {
+	return t.Root.Hash
 }
 
 func BuildTree(data [][]byte) (*Tree, error) {
@@ -111,18 +107,17 @@ func buildlevel(currentLevel []*Node) []*Node {
 	return currentLevel
 }
 
-func merge(left, right *Node) *Node {
-	var parentHash []byte
-
-	if bytes.Compare(left.Hash, right.Hash) <= 0 {
-		parentHash = crypto.Keccak256(append(left.Hash, right.Hash...))
-	} else {
-		parentHash = crypto.Keccak256(append(right.Hash, left.Hash...))
+func merge(a, b *Node) *Node {
+	if bytes.Compare(a.Hash, b.Hash) <= 0 {
+		return &Node{
+			Hash:  crypto.Keccak256(append(a.Hash, b.Hash...)),
+			Left:  a,
+			Right: b,
+		}
 	}
-
 	return &Node{
-		Hash:  parentHash,
-		Left:  left,
-		Right: right,
+		Hash:  crypto.Keccak256(append(b.Hash, a.Hash...)),
+		Left:  b,
+		Right: a,
 	}
 }

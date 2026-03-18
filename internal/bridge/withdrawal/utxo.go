@@ -75,7 +75,7 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*Ut
 	if len(deposits) == 0 {
 		return nil, errors.New("invalid data: no deposits provided")
 	}
-	deposit := deposits[0]
+	deposit := deposits[0] // Expecting only one deposit to process
 
 	amount, set := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
 	if !set {

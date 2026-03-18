@@ -18,6 +18,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	resharingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
+	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
@@ -115,7 +116,7 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.signConsMechanism = signing.NewConsensusMechanism[withdrawal.UtxoWithdrawalData](
+	s.signConsMechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.UtxoWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewUtxoConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),

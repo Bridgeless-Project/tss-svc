@@ -70,7 +70,7 @@ func (c *EvmWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*Evm
 		return deposits[i].TxHash < deposits[j].TxHash
 	})
 
-	leaves, err := c.client.GetSignHashMerkle(deposits)
+	leaves, err := c.client.GetSignHashes(deposits)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get signing hashes")
 	}
@@ -80,10 +80,7 @@ func (c *EvmWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*Evm
 		return nil, errors.Wrap(err, "failed to build merkle tree")
 	}
 
-	root, err := tree.GetRootHash()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get merkle tree root")
-	}
+	root := tree.GetRoot()
 
 	prefixedRoot := operations.SetSignaturePrefix(root)
 	var depositIds []*types.DepositIdentifier
@@ -129,7 +126,7 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposits ...d
 	sort.Slice(deposits, func(i, j int) bool {
 		return deposits[i].TxHash < deposits[j].TxHash
 	})
-	leaves, err := c.client.GetSignHashMerkle(deposits)
+	leaves, err := c.client.GetSignHashes(deposits)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get signing hashes")
 	}
@@ -139,10 +136,7 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposits ...d
 		return false, errors.Wrap(err, "failed to build merkle tree")
 	}
 
-	root, err := tree.GetRootHash()
-	if err != nil {
-		return false, errors.Wrap(err, "failed to get merkle tree root")
-	}
+	root := tree.GetRoot()
 
 	prefixedRoot := operations.SetSignaturePrefix(root)
 
@@ -156,6 +150,9 @@ func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposits ...d
 			return false, errors.Wrapf(err, "failed to get proof for leaf %d", i)
 		}
 		expectedHashes := data.ProposalData.MerkleProofs[i].Hashes
+		if hexutil.Encode(tree.Leaves[i].Hash) != expectedHashes[0] {
+			return false, errors.Errorf("leaf does not match the expected one")
+		}
 
 		for j, hash := range proof {
 			if hexutil.Encode(hash) != expectedHashes[j+1] {

@@ -63,7 +63,7 @@ func (c *TonWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*Ton
 		return nil, errors.New("invalid data: no deposits provided")
 	}
 
-	deposit := deposits[0]
+	deposit := deposits[0] // Expecting only one deposit to process
 	sigHash, err := c.client.GetSignHash(deposit)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get signing hash")
