@@ -158,6 +158,7 @@ func (d *DepositDistributionSession) runAcceptor(ctx context.Context) {
 		case id := <-d.jobs:
 			select {
 			case <-ctx.Done():
+				d.logger.Info("acceptor cancelled")
 				return
 			case sem <- struct{}{}:
 				go func(id db.DepositIdentifier) {

@@ -72,11 +72,7 @@ func (ef *Finalizer) finalize(_ context.Context) {
 	processedData := make([]database.ProcessedDepositData, 0, len(ef.withdrawalData.ProposalData.DepositIds))
 
 	for i, pbDepositId := range ef.withdrawalData.ProposalData.DepositIds {
-		merkleProof := make([]string, 0)
-
-		if ef.withdrawalData.ProposalData != nil && i < len(ef.withdrawalData.ProposalData.MerkleProofs) {
-			merkleProof = ef.withdrawalData.ProposalData.MerkleProofs[i].Hashes
-		}
+		merkleProof := ef.withdrawalData.ProposalData.MerkleProofs[i].Hashes
 		merkleProofBytes, _ := json.Marshal(merkleProof)
 		merkleProofStr := string(merkleProofBytes)
 
