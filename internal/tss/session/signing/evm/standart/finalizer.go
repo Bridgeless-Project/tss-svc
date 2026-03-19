@@ -1,4 +1,4 @@
-package solana
+package standart
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 )
 
 type Finalizer struct {
-	withdrawalData *withdrawal.SolanaWithdrawalData
+	withdrawalData *withdrawal.EvmWithdrawalData
 	signature      *common.SignatureData
 
 	db   database.DepositsQ
@@ -40,45 +40,47 @@ func NewFinalizer(
 	}
 }
 
-func (f *Finalizer) WithData(withdrawalData *withdrawal.SolanaWithdrawalData) *Finalizer {
-	f.withdrawalData = withdrawalData
-	return f
+func (ef *Finalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *Finalizer {
+	ef.withdrawalData = withdrawalData
+	return ef
 }
 
-func (f *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
-	f.signature = sig
-	return f
+func (ef *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
+	ef.signature = sig
+	return ef
 }
 
-func (f *Finalizer) Finalize(ctx context.Context) error {
-	f.logger.Info("finalization started")
-	go f.finalize(ctx)
+func (ef *Finalizer) Finalize(ctx context.Context) error {
+	ef.logger.Info("finalization started")
+	go ef.finalize(ctx)
 
 	// listen for ctx and errors
 	select {
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "finalization timed out")
-	case err := <-f.errChan:
-		f.logger.Info("finalization finished")
+	case err := <-ef.errChan:
+		ef.logger.Info("finalization finished")
 
 		return errors.Wrap(err, "failed to finalize withdrawal")
 	}
 }
 
-func (f *Finalizer) finalize(_ context.Context) {
-	signature := convertToSolanaSignature(f.signature)
-	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: f.withdrawalData.DepositIdentifiers()[0],
+func (ef *Finalizer) finalize(_ context.Context) {
+	signature := convertToEthSignature(ef.signature)
+	if err := ef.db.UpdateProcessed(database.ProcessedDepositData{
+		Identifier: ef.withdrawalData.DepositIdentifiers()[0],
 		Signature:  &signature,
 	}); err != nil {
-		f.errChan <- errors.Wrap(err, "failed to update signature")
+		ef.errChan <- errors.Wrap(err, "failed to update signature")
 		return
 	}
 
-	f.errChan <- nil
+	ef.errChan <- nil
 }
 
-func convertToSolanaSignature(sig *common.SignatureData) string {
+func convertToEthSignature(sig *common.SignatureData) string {
 	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+	rawSig[64] += 27
+
 	return hexutil.Encode(rawSig)
 }

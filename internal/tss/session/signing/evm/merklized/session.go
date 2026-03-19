@@ -1,7 +1,8 @@
-package evm
+package merklized
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"sync"
 	"time"
@@ -16,7 +17,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
+	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
@@ -52,6 +55,7 @@ type Session struct {
 	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
+	depositDistributor    *distributor.DepositDistributionSession
 }
 
 func NewSession(
@@ -93,6 +97,11 @@ func (s *Session) WithCoreConnector(conn *connector.Connector) *Session {
 	return s
 }
 
+func (s *Session) WithDistributor(d *distributor.DepositDistributionSession) *Session {
+	s.depositDistributor = d
+	return s
+}
+
 // Build is a method that should be called before Run to prepare the session for execution.
 func (s *Session) Build() error {
 	if s.fetcher == nil {
@@ -104,8 +113,11 @@ func (s *Session) Build() error {
 	if s.coreConnector == nil {
 		return errors.New("core connector is not set")
 	}
+	if s.depositDistributor == nil {
+		return errors.New("deposit distributor is not set")
+	}
 
-	s.mechanism = signing.NewConsensusMechanism[withdrawal.EvmWithdrawalData](
+	s.mechanism = signingConsensus.NewBatchDepositConsensusMechanism[withdrawal.EvmWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewEvmConstructor(s.client),
@@ -179,6 +191,11 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
 	if err != nil {
+		if missingErr, ok := stderrors.AsType[*signingConsensus.ErrMissingDeposits](err); ok {
+			s.logger.WithField("count", len(missingErr.MissingIDs)).
+				Info("missing deposits in proposal, pushing to internal queue")
+			s.depositDistributor.QueueMissing(ctx, missingErr.MissingIDs)
+		}
 		return errors.Wrap(err, "consensus phase error occurred")
 	}
 	if result.SigData == nil {
@@ -186,13 +203,23 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 		return nil
 	}
 
-	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
-		return errors.Wrap(err, "failed to update deposit status")
+	identifiers := make([]db.DepositIdentifier, len(result.SigData.ProposalData.DepositIds))
+	for i, pbId := range result.SigData.ProposalData.DepositIds {
+		identifiers[i] = db.DepositIdentifier{
+			ChainId: pbId.ChainId,
+			TxHash:  pbId.TxHash,
+			TxNonce: pbId.TxNonce,
+		}
 	}
+
+	if err = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING, identifiers...); err != nil {
+		return errors.Wrap(err, "failed to update deposit status in batch")
+	}
+
 	defer func() {
 		// compensating status update in case of error
 		if err != nil {
-			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
+			_ = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED, identifiers...)
 		}
 	}()
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -21,18 +22,18 @@ type SolanaWithdrawalData struct {
 	SignedWithdrawal string
 }
 
-func (e SolanaWithdrawalData) DepositIdentifier() db.DepositIdentifier {
-	identifier := db.DepositIdentifier{}
-
+func (e SolanaWithdrawalData) DepositIdentifiers() []db.DepositIdentifier {
 	if e.ProposalData == nil || e.ProposalData.DepositId == nil {
-		return identifier
+		return nil
 	}
 
-	identifier.ChainId = e.ProposalData.DepositId.ChainId
-	identifier.TxHash = e.ProposalData.DepositId.TxHash
-	identifier.TxNonce = e.ProposalData.DepositId.TxNonce
+	identifier := db.DepositIdentifier{
+		ChainId: e.ProposalData.DepositId.ChainId,
+		TxHash:  e.ProposalData.DepositId.TxHash,
+		TxNonce: e.ProposalData.DepositId.TxNonce,
+	}
 
-	return identifier
+	return []db.DepositIdentifier{identifier}
 }
 
 func (e SolanaWithdrawalData) HashString() string {
@@ -58,7 +59,12 @@ type SolanaWithdrawalConstructor struct {
 	client *solana.Client
 }
 
-func (c *SolanaWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*SolanaWithdrawalData, error) {
+func (c *SolanaWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*SolanaWithdrawalData, error) {
+	if len(deposits) == 0 {
+		return nil, errors.New("invalid data: no deposits provided")
+	}
+	deposit := deposits[0] // Expecting only one deposit to process
+
 	sigHash, err := c.client.GetSignHash(deposit)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get signing hash")
@@ -76,7 +82,12 @@ func (c *SolanaWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*Sola
 	}, nil
 }
 
-func (c *SolanaWithdrawalConstructor) IsValid(data SolanaWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *SolanaWithdrawalConstructor) IsValid(data SolanaWithdrawalData, deposits ...db.Deposit) (bool, error) {
+	if len(deposits) == 0 {
+		return false, errors.New("invalid data: no deposits provided")
+	}
+	deposit := deposits[0]
+
 	if data.ProposalData == nil {
 		return false, errors.New("invalid proposal data")
 	}

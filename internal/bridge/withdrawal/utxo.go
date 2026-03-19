@@ -29,18 +29,18 @@ type UtxoWithdrawalData struct {
 	ProposalData *p2p.BitcoinProposalData
 }
 
-func (e UtxoWithdrawalData) DepositIdentifier() db.DepositIdentifier {
-	identifier := db.DepositIdentifier{}
-
+func (e UtxoWithdrawalData) DepositIdentifiers() []db.DepositIdentifier {
 	if e.ProposalData == nil || e.ProposalData.DepositId == nil {
-		return identifier
+		return nil
 	}
 
-	identifier.ChainId = e.ProposalData.DepositId.ChainId
-	identifier.TxHash = e.ProposalData.DepositId.TxHash
-	identifier.TxNonce = e.ProposalData.DepositId.TxNonce
+	identifier := db.DepositIdentifier{
+		ChainId: e.ProposalData.DepositId.ChainId,
+		TxHash:  e.ProposalData.DepositId.TxHash,
+		TxNonce: e.ProposalData.DepositId.TxNonce,
+	}
 
-	return identifier
+	return []db.DepositIdentifier{identifier}
 }
 
 func (e UtxoWithdrawalData) HashString() string {
@@ -71,7 +71,12 @@ func NewUtxoConstructor(client client.Client, tssPub *ecdsa.PublicKey) *UtxoWith
 	}
 }
 
-func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWithdrawalData, error) {
+func (c *UtxoWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*UtxoWithdrawalData, error) {
+	if len(deposits) == 0 {
+		return nil, errors.New("invalid data: no deposits provided")
+	}
+	deposit := deposits[0] // Expecting only one deposit to process
+
 	amount, set := new(big.Int).SetString(deposit.WithdrawalAmount, 10)
 	if !set {
 		return nil, errors.New("failed to parse amount")
@@ -126,7 +131,12 @@ func (c *UtxoWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*UtxoWi
 	}, nil
 }
 
-func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *UtxoWithdrawalConstructor) IsValid(data UtxoWithdrawalData, deposits ...db.Deposit) (bool, error) {
+	if len(deposits) == 0 {
+		return false, errors.New("invalid data: no deposits provided")
+	}
+	deposit := deposits[0]
+
 	tx := wire.MsgTx{}
 	if err := tx.Deserialize(bytes.NewReader(data.ProposalData.SerializedTx)); err != nil {
 		return false, errors.Wrap(err, "failed to deserialize transaction")

@@ -1,8 +1,6 @@
 module github.com/Bridgeless-Project/tss-svc
 
-go 1.23.4
-
-toolchain go1.23.10
+go 1.26.0
 
 replace (
 	// tss-lib fix ed25519

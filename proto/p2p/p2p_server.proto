@@ -68,9 +68,14 @@ message AcceptanceData {
   bool accepted = 1;
 }
 
-message EvmProposalData {
-  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+message MerkleProof {
+  repeated string hashes = 1;
+} 
+
+message EvmProposalData{
+  repeated deposit.DepositIdentifier depositIds = 1 [(gogoproto.nullable) = false];
   bytes sigData = 2;
+  repeated MerkleProof merkleProofs = 3;
 }
 
 message TonProposalData {
