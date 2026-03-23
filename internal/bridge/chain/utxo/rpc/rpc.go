@@ -205,7 +205,7 @@ func (c *Client) InitializeWallet(pubkey *ecdsa.PublicKey, epoch uint32, syncTim
 
 	switch c.chain {
 	case types.ChainBch:
-		return c.initializeWalletBch(pubkey, walletName, syncTime)
+		return c.initializeWalletBch(pubkey, walletName)
 	case types.ChainBtc:
 		return c.initializeWalletBtc(pubkey, walletName, syncTime)
 	default:
@@ -213,8 +213,34 @@ func (c *Client) InitializeWallet(pubkey *ecdsa.PublicKey, epoch uint32, syncTim
 	}
 }
 
-func (c *Client) initializeWalletBch(pubkey *ecdsa.PublicKey, name string, syncTime time.Time) error {
+func (c *Client) initializeWalletBch(pubkey *ecdsa.PublicKey, walletName string) error {
+	if err := c.createWalletBch(walletName); err != nil {
+		return errors.Wrap(err, "failed to create wallet")
+	}
+
+	newSettings := c.settings
+	newSettings.Host = formWalletHost(c.settings.Host, walletName)
+
+	walletClient, err := NewClient(newSettings)
+	if err != nil {
+		return errors.Wrap(err, "failed to create wallet client")
+	}
+
+	if err = walletClient.importAddressBch(c.helper.P2pkhAddress(pubkey)); err != nil {
+		return errors.Wrap(err, "failed to import address")
+	}
+
 	return nil
+}
+
+func (c *Client) createWalletBch(name string) error {
+	err := c.Call(nil, "createwallet", name, true, false)
+	return extractRpcError(err)
+}
+
+func (c *Client) importAddressBch(address string) error {
+	err := c.Call(nil, "importaddress", address, "", true, false)
+	return extractRpcError(err)
 }
 
 func (c *Client) initializeWalletBtc(pubkey *ecdsa.PublicKey, walletName string, syncTime time.Time) error {
@@ -244,7 +270,7 @@ func (c *Client) initializeWalletBtc(pubkey *ecdsa.PublicKey, walletName string,
 }
 
 func (c *Client) createWalletBtc(name string) error {
-	err := c.Call(nil, "createwallet", name, true, false, "", false, false)
+	err := c.Call(nil, "createwallet", name, true, false, "", false, true, true)
 	return extractRpcError(err)
 }
 
@@ -252,22 +278,15 @@ func (c *Client) importDescriptors(descriptor, checksum string, syncTime time.Ti
 	fullDescriptor := fmt.Sprintf("%s#%s", descriptor, checksum)
 	syncTimestamp := syncTime.Unix()
 
-	cmd := ImportDescriptorsCmd{
-		Requests: []ImportDescriptorsRequest{
-			{
-				Descriptor: &fullDescriptor,
-				Time:       &syncTimestamp,
-			},
-		},
-	}
+	request := []ImportDescriptorsRequest{{Descriptor: &fullDescriptor, Time: &syncTimestamp}}
 
-	var resp ImportDescriptorsResponse
-	err := c.Call(&resp, "importdescriptors", cmd)
+	var resp []ImportDescriptorsResponse
+	err := c.Call(&resp, "importdescriptors", request)
 	if err != nil {
 		return extractRpcError(err)
 	}
 
-	for _, result := range resp.Result {
+	for _, result := range resp {
 		if !result.Success && result.Error != nil {
 			return btcjson.NewRPCError(result.Error.Code, result.Error.Message)
 		}
@@ -283,17 +302,9 @@ type ImportDescriptorsRequest struct {
 	Range      []int   `json:"range,omitempty"`
 }
 
-type ImportDescriptorsResult struct {
+type ImportDescriptorsResponse struct {
 	Success bool      `json:"success"`
 	Error   *RPCError `json:"error,omitempty"`
-}
-
-type ImportDescriptorsResponse struct {
-	Result []ImportDescriptorsResult `json:"result"`
-}
-
-type ImportDescriptorsCmd struct {
-	Requests []ImportDescriptorsRequest `json:"requests"`
 }
 
 func (c *Client) getDescriptorInfo(descriptor string) (*btcjson.GetDescriptorInfoResult, error) {

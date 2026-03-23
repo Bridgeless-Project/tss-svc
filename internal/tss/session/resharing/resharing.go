@@ -192,7 +192,30 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 }
 
 func (s *Session) manageWallets(state *resharingTypes.State) error {
-	// TODO: implement me
+	s.logger.Info("updating chain wallets for new TSS share")
+
+	eg := errgroup.Group{}
+	for _, ch := range s.chains.Clients() {
+		if ch.Type() != chain.TypeBitcoin {
+			continue
+		}
+
+		eg.Go(func() error {
+			utxoClient := ch.(utxoclient.Client)
+			if err := utxoClient.InitializeWallet(state.NewPubKey, state.Epoch, state.GlobalStartTime); err != nil {
+				return errors.Wrap(err, "failed to initialize wallet")
+			}
+			s.logger.Infof("successfully initialized wallet for chain %s", ch.ChainId())
+
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return errors.Wrap(err, "failed to initialize wallets for new TSS share")
+	}
+	s.logger.Info("successfully initialized wallets for new TSS share")
+
 	return nil
 }
 
