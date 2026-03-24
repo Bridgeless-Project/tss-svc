@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	bridgeTypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 )
@@ -17,12 +18,12 @@ type State struct {
 	NewPubKey *ecdsa.PublicKey
 	Threshold uint
 
-	EvmData            *EvmData
-	NewBridgeAddresses map[string]string // chainId -> addr
-
 	Account  *core.Account
 	OldShare *keygen.LocalPartySaveData
 	NewShare *keygen.LocalPartySaveData
+
+	Signatures         []bridgeTypes.EpochChainSignatures
+	NewBridgeAddresses map[string]string // chainId -> addr
 
 	mu sync.Mutex
 }
@@ -47,6 +48,13 @@ func (s *State) AddBridgeAddress(chainId, addr string) {
 	defer s.mu.Unlock()
 
 	s.NewBridgeAddresses[chainId] = addr
+}
+
+func (s *State) AddSignature(signature bridgeTypes.EpochChainSignatures) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.Signatures = append(s.Signatures, signature)
 }
 
 type UpdateSignerEvmSignature struct {

@@ -2,7 +2,6 @@ package resharing
 
 import (
 	"context"
-	"math/big"
 	"time"
 
 	bridgeTypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
@@ -58,37 +57,6 @@ func (h *SubmitHandler) Handle(ctx context.Context, state *resharingTypes.State)
 }
 
 func (h *SubmitHandler) stateToEpochData(state *resharingTypes.State) ([]bridgeTypes.EpochChainSignatures, []bridgeTypes.EpochBridgeAddress) {
-	signatures := make([]bridgeTypes.EpochChainSignatures, 0)
-	data := state.EvmData
-	if data != nil {
-		signatures = append(signatures, bridgeTypes.EpochChainSignatures{
-			EpochId:   state.Epoch,
-			ChainType: bridgeTypes.ChainType_EVM,
-			AddedSignature: &bridgeTypes.EpochSignature{
-				Mod:       bridgeTypes.EpochSignatureMod_ADD,
-				EpochId:   state.Epoch,
-				Signature: data.AddNewSignerSignature.Signature,
-				Data: &bridgeTypes.EpochSignatureData{
-					NewSigner: data.AddNewSignerSignature.Signer,
-					StartTime: uint64(data.AddNewSignerSignature.StartTime),
-					EndTime:   uint64(data.AddNewSignerSignature.Deadline),
-					Nonce:     new(big.Int).SetUint64(data.AddNewSignerSignature.Nonce).String(),
-				},
-			},
-			RemovedSignature: &bridgeTypes.EpochSignature{
-				Mod:       bridgeTypes.EpochSignatureMod_REMOVE,
-				EpochId:   state.Epoch,
-				Signature: data.RemoveOldSignerSignature.Signature,
-				Data: &bridgeTypes.EpochSignatureData{
-					NewSigner: data.RemoveOldSignerSignature.Signer,
-					StartTime: uint64(data.RemoveOldSignerSignature.StartTime),
-					EndTime:   uint64(data.RemoveOldSignerSignature.Deadline),
-					Nonce:     new(big.Int).SetUint64(data.RemoveOldSignerSignature.Nonce).String(),
-				},
-			},
-		})
-	}
-
 	addresses := make([]bridgeTypes.EpochBridgeAddress, 0, len(state.NewBridgeAddresses))
 	for chainId, addr := range state.NewBridgeAddresses {
 		addresses = append(addresses, bridgeTypes.EpochBridgeAddress{
@@ -98,5 +66,5 @@ func (h *SubmitHandler) stateToEpochData(state *resharingTypes.State) ([]bridgeT
 		})
 	}
 
-	return signatures, addresses
+	return state.Signatures, addresses
 }

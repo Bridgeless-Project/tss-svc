@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	bridgeTypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	solanaclient "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana"
 	utxoclient "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	zanoclient "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
@@ -14,6 +16,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/evm"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/solana"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/ton"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/zano"
@@ -143,9 +147,47 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 			evmSessionInitialized = true
 			managers = append(managers,
 				resharingTypes.NewHandlerManager(
-					evm.NewHandler(self, s.oldParties, s.sessionManager, s.logger),
+					NewUpdateContractHandler(
+						self,
+						s.oldParties,
+						s.sessionManager,
+						bridgeTypes.ChainType_EVM,
+						evm.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
+						evm.NewRemoveSignerOperation(self.Share.ECDSAPub.ToECDSAPubKey(), state.GlobalStartTime),
+						s.logger),
 					state,
-					s.logger.WithField("component", "resharing_evm_migration_manager"),
+					s.logger.WithField("component", "evm_migration_manager"),
+				),
+			)
+		case chain.TypeSolana:
+			client := ch.(*solanaclient.Client)
+			managers = append(managers,
+				resharingTypes.NewHandlerManager(
+					NewUpdateContractHandler(
+						self,
+						s.oldParties,
+						s.sessionManager,
+						bridgeTypes.ChainType_SOLANA,
+						solana.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime, client.BridgeId()),
+						solana.NewRemoveSignerOperation(self.Share.ECDSAPub.ToECDSAPubKey(), state.GlobalStartTime, client.BridgeId()),
+						s.logger),
+					state,
+					s.logger.WithField("component", fmt.Sprintf("solana_migration_manager_%s", ch.ChainId())),
+				),
+			)
+		case chain.TypeTON:
+			managers = append(managers,
+				resharingTypes.NewHandlerManager(
+					NewUpdateContractHandler(
+						self,
+						s.oldParties,
+						s.sessionManager,
+						bridgeTypes.ChainType_TON,
+						ton.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
+						ton.NewRemoveSignerOperation(self.Share.ECDSAPub.ToECDSAPubKey(), state.GlobalStartTime),
+						s.logger),
+					state,
+					s.logger.WithField("component", "ton_migration_manager"),
 				),
 			)
 		case chain.TypeBitcoin:
@@ -153,7 +195,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 				resharingTypes.NewHandlerManager(
 					utxo.NewHandler(self, s.oldParties, ch.(utxoclient.Client), s.sessionManager, s.logger),
 					state,
-					s.logger.WithField("component", fmt.Sprintf("resharing_utxo_migration_manager_%s", ch.ChainId())),
+					s.logger.WithField("component", fmt.Sprintf("utxo_migration_manager_%s", ch.ChainId())),
 				),
 			)
 		case chain.TypeZano:
@@ -161,7 +203,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 				resharingTypes.NewHandlerManager(
 					zano.NewHandler(self, s.oldParties, ch.(*zanoclient.Client), s.sessionManager, s.logger, s.core),
 					state,
-					s.logger.WithField("component", fmt.Sprintf("resharing_zano_migration_manager_%s", ch.ChainId())),
+					s.logger.WithField("component", fmt.Sprintf("zano_migration_manager_%s", ch.ChainId())),
 				),
 			)
 		default:
