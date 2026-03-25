@@ -94,6 +94,8 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		assetsToReshare = h.getResharingAssets(newPubKeyHex)
 	)
 
+	h.logger.Infof("starting resharing process for %v assets", len(assetsToReshare))
+
 	nextStartTime := state.SessionStartTime
 	for idx, assetId := range assetsToReshare {
 		sessParams := SessionParams{
