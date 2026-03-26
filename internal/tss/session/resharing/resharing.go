@@ -172,7 +172,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 						solana.NewRemoveSignerOperation(self.Share.ECDSAPub.ToECDSAPubKey(), state.GlobalStartTime, client.BridgeId()),
 						s.logger),
 					state,
-					s.logger.WithField("component", fmt.Sprintf("solana_migration_manager_%s", ch.ChainId())),
+					s.logger.WithField("component", "solana_migration_manager"),
 				),
 			)
 		case chain.TypeTON:
@@ -234,7 +234,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 }
 
 func (s *Session) manageWallets(state *resharingTypes.State) error {
-	s.logger.Info("updating chain wallets for new TSS share")
+	s.logger.Info("updating chain wallets for new TSS share...")
 
 	eg := errgroup.Group{}
 	for _, ch := range s.chains.Clients() {
@@ -262,12 +262,14 @@ func (s *Session) manageWallets(state *resharingTypes.State) error {
 }
 
 func (s *Session) manageShares(state *resharingTypes.State) error {
+	s.logger.Info("managing TSS shares...")
 	if err := s.secrets.SaveTssShare(state.NewShare); err != nil {
 		return errors.Wrap(err, "failed to save new TSS share")
 	}
 	if err := s.secrets.SaveTemporaryTssShare(state.OldShare); err != nil {
 		return errors.Wrap(err, "failed to save old TSS share")
 	}
+	s.logger.Info("successfully managed TSS shares")
 
 	return nil
 }

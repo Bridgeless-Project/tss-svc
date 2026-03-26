@@ -60,7 +60,17 @@ func (r *KeygenHandler) MaxHandleDuration() time.Duration {
 }
 
 func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, error) {
-	// TODO: check if core has confirmed new pubkey and update state accordingly
+	pubkey, err := r.core.GetEpochPubKey(state.Epoch)
+	if err != nil {
+		return false, nil
+	}
+
+	ecdsaPub, err := bridge.DecodePubkey(pubkey)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to decode received pubkey from core")
+	}
+
+	state.NewPubKey = ecdsaPub
 
 	return false, nil
 }

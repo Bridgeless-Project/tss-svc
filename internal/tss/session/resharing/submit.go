@@ -31,7 +31,6 @@ func (h *SubmitHandler) MaxHandleDuration() time.Duration {
 }
 
 func (h *SubmitHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, error) {
-	// TODO: check if was already submitted to core
 	return false, nil
 }
 

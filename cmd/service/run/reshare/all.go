@@ -64,11 +64,17 @@ var reshareAllCmd = &cobra.Command{
 			termCtx, cancel = signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 			eg, ctx         = errgroup.WithContext(termCtx)
 		)
-		
+
 		eg.Go(func() error {
 			defer cancel()
 
-			return errors.Wrap(session.Run(ctx), "resharing session failed")
+			logger.Info("resharing started")
+			if err := session.Run(ctx); err != nil {
+				return errors.Wrap(err, "resharing failed")
+			}
+			logger.Info("resharing finished")
+
+			return nil
 		})
 		eg.Go(func() error {
 			server := p2p.NewServer(
