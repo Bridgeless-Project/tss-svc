@@ -2,6 +2,7 @@ package zano
 
 import (
 	"context"
+	"encoding/hex"
 	"slices"
 	"time"
 
@@ -90,7 +91,7 @@ func (h *Handler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, er
 
 func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error {
 	var (
-		newPubKeyHex    = hexutil.Encode(crypto.CompressPubkey(state.NewPubKey))
+		newPubKeyHex    = hex.EncodeToString(crypto.CompressPubkey(state.NewPubKey))
 		assetsToReshare = h.getResharingAssets(newPubKeyHex)
 	)
 

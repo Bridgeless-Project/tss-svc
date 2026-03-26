@@ -74,7 +74,7 @@ func FromChain(c chain.Chain) Chain {
 		ch.Meta.ConsolidationParams.SetParams = utils.DefaultConsolidationParams.SetParams
 	}
 
-	if err := figure.Out(&ch.Rpc).FromInterface(c.Rpc).With(clientHook(ch.Meta.Chain)).Please(); err != nil {
+	if err := figure.Out(&ch.Rpc).FromInterface(c.Rpc).With(clientHook(ch.Meta.Chain, ch.Meta.Network)).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to init bitcoin chain rpc"))
 	}
 	if err := figure.Out(&ch.Receivers).FromInterface(c.BridgeAddresses).Please(); err != nil {
@@ -96,7 +96,7 @@ func FromChain(c chain.Chain) Chain {
 	return ch
 }
 
-func clientHook(chain utxotypes.Chain) figure.Hooks {
+func clientHook(chain utxotypes.Chain, network utxotypes.Network) figure.Hooks {
 	return figure.Hooks{
 		"*rpc.Client": func(value interface{}) (reflect.Value, error) {
 			switch v := value.(type) {
@@ -116,6 +116,7 @@ func clientHook(chain utxotypes.Chain) figure.Hooks {
 					User:     clientConfig.User,
 					Password: clientConfig.Pass,
 					Chain:    chain,
+					Network:  network,
 				})
 				if err != nil {
 					return reflect.Value{}, errors.Wrap(err, "failed to create bitcoin rpc client")

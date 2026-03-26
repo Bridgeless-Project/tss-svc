@@ -215,6 +215,11 @@ func (c *Client) InitializeWallet(pubkey *ecdsa.PublicKey, epoch uint32, syncTim
 
 func (c *Client) initializeWalletBch(pubkey *ecdsa.PublicKey, walletName string) error {
 	if err := c.createWalletBch(walletName); err != nil {
+		// ignore code -4 (wallet already exists)
+		if rpcErr, ok := err.(*btcjson.RPCError); ok && rpcErr.Code == btcjson.ErrRPCWallet {
+			return nil
+		}
+
 		return errors.Wrap(err, "failed to create wallet")
 	}
 
@@ -245,6 +250,11 @@ func (c *Client) importAddressBch(address string) error {
 
 func (c *Client) initializeWalletBtc(pubkey *ecdsa.PublicKey, walletName string, syncTime time.Time) error {
 	if err := c.createWalletBtc(walletName); err != nil {
+		// ignore code -4 (wallet already exists)
+		if rpcErr, ok := err.(*btcjson.RPCError); ok && rpcErr.Code == btcjson.ErrRPCWallet {
+			return nil
+		}
+
 		return errors.Wrap(err, "failed to create wallet")
 	}
 
