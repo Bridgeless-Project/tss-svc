@@ -72,7 +72,21 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 
 	state.NewPubKey = ecdsaPub
 
-	return false, nil
+	if r.oldParty && !r.newParty {
+		return true, nil
+	}
+
+	// should load new share from temporary secrets
+	if r.oldParty {
+		state.NewShare, err = r.secrets.GetTemporaryTssShare()
+	} else {
+		state.NewShare, err = r.secrets.GetTssShare()
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get key share from secrets storage")
+	}
+
+	return true, nil
 }
 
 func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State) error {
