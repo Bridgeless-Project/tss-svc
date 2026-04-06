@@ -13,7 +13,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
 	zanoTypes "github.com/Bridgeless-Project/tss-svc/pkg/zano/types"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -81,7 +80,7 @@ func (h *Handler) MaxHandleDuration() time.Duration {
 }
 
 func (h *Handler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, error) {
-	newPubKeyHex := hexutil.Encode(crypto.CompressPubkey(state.NewPubKey))
+	newPubKeyHex := hex.EncodeToString(crypto.CompressPubkey(state.NewPubKey))
 	if len(h.getResharingAssets(newPubKeyHex)) == 0 {
 		return true, nil
 	}
