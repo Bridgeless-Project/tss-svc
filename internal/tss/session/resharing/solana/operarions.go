@@ -16,8 +16,8 @@ import (
 type ContractOperationUpdateSigner uint8
 
 const (
-	ContractOperationAddSigner    ContractOperationUpdateSigner = 1
-	ContractOperationRemoveSigner ContractOperationUpdateSigner = 2
+	ContractOperationAddSigner    ContractOperationUpdateSigner = 0
+	ContractOperationRemoveSigner ContractOperationUpdateSigner = 1
 )
 
 type UpdateSignerOperation struct {
