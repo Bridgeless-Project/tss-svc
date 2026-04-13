@@ -47,13 +47,13 @@ func (u UpdateSignerOperation) CalculateHash() []byte {
 
 	// pubkey
 	_ = builder.StoreBigInt(big.NewInt(4), 8)
-	_ = builder.StoreBigInt(u.signer.X, 256)
-	_ = builder.StoreBigInt(u.signer.Y, 256)
+	_ = builder.StoreBigUInt(u.signer.X, 256)
+	_ = builder.StoreBigUInt(u.signer.Y, 256)
 
 	// data
-	_ = builder.StoreBigInt(big.NewInt(u.startTime), 64)
-	_ = builder.StoreBigInt(big.NewInt(u.deadline), 64)
-	_ = builder.StoreBigUInt(u.nonce, 64)
+	_ = builder.StoreInt(u.startTime, 32)
+	_ = builder.StoreInt(u.deadline, 32)
+	_ = builder.StoreInt(u.nonce.Int64(), 64)
 
 	// operationType
 	_ = builder.StoreBoolBit(u.isAdding)
