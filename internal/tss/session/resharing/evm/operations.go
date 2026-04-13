@@ -44,12 +44,14 @@ func (u UpdateSignerOperation) ConvertSignature(sig *tsscommon.SignatureData) st
 }
 
 func (u UpdateSignerOperation) CalculateHash() []byte {
-	return crypto.Keccak256(
-		u.signer.Bytes(),
-		operations.IntToBytes32(u.startTime),
-		operations.IntToBytes32(u.deadline),
-		operations.ToBytes32(u.nonce.Bytes()),
-		operations.BoolToBytes(u.isAdding),
+	return operations.SetSignaturePrefix(
+		crypto.Keccak256(
+			u.signer.Bytes(),
+			operations.IntToBytes32(u.startTime),
+			operations.IntToBytes32(u.deadline),
+			operations.ToBytes32(u.nonce.Bytes()),
+			operations.BoolToBytes(u.isAdding),
+		),
 	)
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -100,7 +101,13 @@ var reshareZanoCmd = &cobra.Command{
 		eg.Go(func() error {
 			defer cancel()
 
-			// FIXME: handle start time
+			select {
+			case <-ctx.Done():
+				return errors.New("resharing session was interrupted before it started")
+			case <-time.After(time.Until(cfg.TssSessionParams().StartTime)):
+				break
+			}
+
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run zano resharing session")
 			}
