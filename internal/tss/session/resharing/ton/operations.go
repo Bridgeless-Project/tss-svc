@@ -43,22 +43,15 @@ func (u UpdateSignerOperation) ConvertSignature(sig *tsscommon.SignatureData) st
 }
 
 func (u UpdateSignerOperation) CalculateHash() []byte {
-	builder := cell.BeginCell()
-
-	// pubkey
-	_ = builder.StoreBigInt(big.NewInt(4), 8)
-	_ = builder.StoreBigUInt(u.signer.X, 256)
-	_ = builder.StoreBigUInt(u.signer.Y, 256)
-
-	// data
-	_ = builder.StoreInt(u.startTime, 32)
-	_ = builder.StoreInt(u.deadline, 32)
-	_ = builder.StoreInt(u.nonce.Int64(), 64)
-
-	// operationType
-	_ = builder.StoreBoolBit(u.isAdding)
-	// padding to 8 bits
-	_ = builder.StoreUInt(0, 7)
+	builder := cell.BeginCell().
+		MustStoreUInt(4, 8). // key recovery
+		MustStoreBigUInt(u.signer.X, 256). // pubkey
+		MustStoreBigUInt(u.signer.Y, 256).
+		MustStoreInt(u.startTime, 64). // data
+		MustStoreInt(u.deadline, 64).
+		MustStoreInt(u.nonce.Int64(), 64).
+		MustStoreBoolBit(u.isAdding). // operation type
+		MustStoreUInt(0, 7) // padding to 8 bits
 
 	raw := builder.EndCell().ToRawUnsafe()
 
