@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
+	swaptypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/swap/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -113,6 +114,11 @@ type Deposit struct {
 	Distributed bool `structs:"distributed" db:"distributed"`
 
 	MerkleProof *string `structs:"merkle_proof" db:"merkle_proof"`
+
+	IsSwap               bool   `structs:"is_swap" db:"is_swap"`
+	MinDestinationAmount string `structs:"min_destination_amount" db:"min_destination_amount"`
+	SwapDeadline         string `structs:"swap_deadline" db:"swap_deadline"`
+	FinalReceiver        string `structs:"final_receiver" db:"final_receiver"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
@@ -138,6 +144,14 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 	}
 }
 
+func (d Deposit) ToSwapTransaction() *swaptypes.SwapTransaction {
+	return &swaptypes.SwapTransaction{
+		Tx:            d.ToTransaction(),
+		FinalReceiver: d.FinalReceiver,
+		AmountOutMin:  d.MinDestinationAmount,
+	}
+}
+
 type DepositData struct {
 	DepositIdentifier
 
@@ -149,6 +163,9 @@ type DepositData struct {
 
 	DestinationAddress string
 	DestinationChainId string
+
+	MinDestinationAmount *big.Int
+	SwapDeadline         *big.Int
 }
 
 func (d DepositData) ToNewDeposit(
@@ -157,6 +174,8 @@ func (d DepositData) ToNewDeposit(
 	dstTokenAddress string,
 	isWrappedToken bool,
 	ignoreDistribution bool,
+	isSwapDeposit bool,
+	finalReceiver string,
 ) Deposit {
 	return Deposit{
 		DepositIdentifier: d.DepositIdentifier,
@@ -173,6 +192,8 @@ func (d DepositData) ToNewDeposit(
 		CommissionAmount:  commissionAmount.String(),
 		ReferralId:        d.ReferralId,
 		Distributed:       ignoreDistribution,
+		IsSwap:            isSwapDeposit,
+		FinalReceiver:     finalReceiver,
 	}
 }
 

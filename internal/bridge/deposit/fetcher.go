@@ -58,6 +58,13 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
 
+	//If TokenId is not the same, it's a swap operation
+	isSwapDeposit := srcInfo.TokenId != dstInfo.TokenId
+	var finalReceiver string
+	if isSwapDeposit {
+		finalReceiver = depositData.DestinationAddress
+	}
+
 	withdrawalAmount, commission, err := p.GetWithdrawalAmount(depositData.DepositAmount, srcInfo, dstInfo)
 	if err != nil {
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
@@ -71,6 +78,8 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		dstInfo.Address,
 		dstInfo.IsWrapped,
 		ignoreDistribution,
+		isSwapDeposit,
+		finalReceiver,
 	)
 
 	return &deposit, nil

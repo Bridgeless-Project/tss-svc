@@ -97,10 +97,18 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 			logger := s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash)
 			logger.Info("got deposit to submit")
 
-			err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
-			if err != nil && !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
-				logger.WithError(err).Error("failed to submit deposit, will retry later")
-				continue
+			if pendingDeposit.IsSwap {
+				err = s.connector.SubmitSwaps(ctx, pendingDeposit.ToSwapTransaction(), true)
+				if err != nil && !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+					logger.WithError(err).Error("failed to submit swap deposit, will retry later")
+					continue
+				}
+			} else {
+				err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
+				if err != nil && !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+					logger.WithError(err).Error("failed to submit deposit, will retry later")
+					continue
+				}
 			}
 
 			logger.Info("deposit submitted successfully")
