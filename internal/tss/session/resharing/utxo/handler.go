@@ -23,6 +23,9 @@ type Handler struct {
 	self           tss.LocalSignParty
 	logger         *logan.Entry
 
+	maxInputsCountPerSession  uint
+	maxOutputsCountPerSession uint
+
 	unspentCount  uint
 	sessionsCount uint
 }
@@ -40,6 +43,9 @@ func NewHandler(
 		parties:        parties,
 		self:           self,
 		logger:         logger,
+
+		maxInputsCountPerSession:  utxoutils.DefaultResharingParams.SetParams[0].MaxInputsCount,
+		maxOutputsCountPerSession: utxoutils.DefaultResharingParams.SetParams[0].OutsCount,
 	}
 
 	if err := handler.init(); err != nil {
@@ -60,8 +66,7 @@ func (h *Handler) init() error {
 		return nil
 	}
 
-	maxUnspentPerSession := utxoutils.DefaultResharingParams.SetParams[0].MaxInputsCount
-	sessionsCount := (h.unspentCount + maxUnspentPerSession - 1) / maxUnspentPerSession // rounding up
+	sessionsCount := (h.unspentCount + h.maxInputsCountPerSession - 1) / h.maxInputsCountPerSession // rounding up
 
 	h.sessionsCount = sessionsCount
 
@@ -79,16 +84,12 @@ func (h *Handler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, er
 }
 
 func (h *Handler) MaxHandleDuration() time.Duration {
-	maxUnspentPerSession := utxoutils.DefaultResharingParams.SetParams[0].MaxInputsCount
-
 	// assuming maximum possible duration without checking the unspent count in the last session
-	return time.Duration(h.sessionsCount) * MaxSessionDuration(maxUnspentPerSession)
+	return time.Duration(h.sessionsCount) * MaxSessionDuration(h.maxInputsCountPerSession)
 }
 
 func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error {
 	var (
-		maxInputsCount  = utxoutils.DefaultResharingParams.SetParams[0].MaxInputsCount
-		maxOutsCount    = utxoutils.DefaultResharingParams.SetParams[0].OutsCount
 		inputsLeft      = h.unspentCount
 		resharingParams = utxoutils.DefaultResharingParams
 		targetAddr      = h.client.UtxoHelper().P2pkhAddress(state.NewPubKey)
@@ -101,7 +102,7 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		if idx == h.sessionsCount-1 {
 			// last session might have fewer inputs than maxUnspentPerSession,
 			// so we need to proportionally calculate outs count based on inputs left and max inputs count
-			outsCount := (inputsLeft*maxOutsCount + maxInputsCount - 1) / maxInputsCount // rounding up
+			outsCount := (inputsLeft*h.maxOutputsCountPerSession + h.maxOutputsCountPerSession - 1) / h.maxOutputsCountPerSession // rounding up
 			resharingParams.SetParams[0].OutsCount = outsCount
 		}
 
@@ -124,7 +125,7 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		h.sessionManager.Add(session)
 		<-time.After(time.Second) // slight delay to ensure session is registered before first message arrives
 
-		nextStartTime = nextStartTime.Add(MaxSessionDuration(maxInputsCount) + time.Second)
+		nextStartTime = nextStartTime.Add(MaxSessionDuration(h.maxOutputsCountPerSession) + time.Second)
 		if err := session.Run(ctx); err != nil {
 			return errors.Wrapf(err, "failed to run resharing session %d", idx+1)
 		}
@@ -138,7 +139,7 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		if idx == h.sessionsCount-1 {
 			break
 		} else {
-			inputsLeft -= maxInputsCount
+			inputsLeft -= h.maxOutputsCountPerSession
 		}
 
 		// some parties won't participate in resharing, so we wait until start time to ensure synchronization
