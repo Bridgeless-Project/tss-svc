@@ -94,10 +94,10 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		assetsToReshare = h.getResharingAssets(newPubKeyHex)
 	)
 
-	h.logger.Infof("starting resharing process for %v assets", len(assetsToReshare))
-
 	nextStartTime := state.SessionStartTime
 	for idx, assetId := range assetsToReshare {
+		h.logger.Infof("starting resharing session [%v/%v] for asset %s", idx+1, len(assetsToReshare), assetId)
+
 		sessParams := SessionParams{
 			SessionParams: session.Params{
 				Id:        int64(idx + 1),
@@ -125,6 +125,8 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		if err != nil {
 			return errors.Wrapf(err, "resharing session for asset %s failed", assetId)
 		}
+
+		h.logger.Infof("finished resharing session [%v/%v] for asset %s", idx+1, len(assetsToReshare), assetId)
 
 		if idx == len(assetsToReshare)-1 {
 			break

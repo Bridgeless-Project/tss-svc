@@ -96,6 +96,8 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 
 	nextStartTime := state.SessionStartTime
 	for idx := range h.sessionsCount {
+		h.logger.Infof("starting resharing session [%v/%v]", idx+1, h.sessionsCount)
+
 		if idx == h.sessionsCount-1 {
 			// last session might have fewer inputs than maxUnspentPerSession,
 			// so we need to proportionally calculate outs count based on inputs left and max inputs count
@@ -130,6 +132,8 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 		if err != nil {
 			return errors.Wrapf(err, "resharing session %d failed", idx+1)
 		}
+
+		h.logger.Infof("finished resharing session [%v/%v]", idx+1, h.sessionsCount)
 
 		if idx == h.sessionsCount-1 {
 			break
