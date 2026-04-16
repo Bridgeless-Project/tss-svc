@@ -142,6 +142,8 @@ func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error
 			inputsLeft -= h.maxInputsCountPerSession
 		}
 
+		h.logger.Infof("next session will start in %s", time.Until(nextStartTime))
+
 		// some parties won't participate in resharing, so we wait until start time to ensure synchronization
 		<-time.After(time.Until(nextStartTime))
 	}
