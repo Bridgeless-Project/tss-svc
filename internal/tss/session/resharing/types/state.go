@@ -11,8 +11,9 @@ import (
 )
 
 type State struct {
-	GlobalStartTime  time.Time
-	SessionStartTime time.Time
+	GlobalStartTime      time.Time
+	EpochSupportDuration time.Duration
+	SessionStartTime     time.Time
 
 	Epoch     uint32
 	NewPubKey *ecdsa.PublicKey
@@ -32,14 +33,16 @@ func InitializeState(
 	epoch uint32,
 	threshold uint,
 	globalStartTime time.Time,
+	epochSupportDuration uint64,
 	account *core.Account,
 ) *State {
 	return &State{
-		Epoch:              epoch,
-		Threshold:          threshold,
-		GlobalStartTime:    globalStartTime,
-		Account:            account,
-		NewBridgeAddresses: make(map[string]string),
+		Epoch:                epoch,
+		Threshold:            threshold,
+		GlobalStartTime:      globalStartTime,
+		EpochSupportDuration: time.Duration(int64(epochSupportDuration)) * time.Second * 5, // N blocks times average block time
+		Account:              account,
+		NewBridgeAddresses:   make(map[string]string),
 	}
 }
 

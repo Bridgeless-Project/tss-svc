@@ -82,12 +82,13 @@ func NewAddSignerOperation(
 func NewRemoveSignerOperation(
 	signer *ecdsa.PublicKey,
 	startTime time.Time,
+	epochSupportDuration time.Duration,
 	bridgeId string,
 ) UpdateSignerOperation {
 	return UpdateSignerOperation{
 		signer:    signer,
-		startTime: resharingTypes.OperationRemoveSignerStartTime(startTime).Unix(),
-		deadline:  resharingTypes.OperationRemoveSignerDeadline(startTime).Unix(),
+		startTime: resharingTypes.OperationRemoveSignerStartTime(startTime, epochSupportDuration).Unix(),
+		deadline:  resharingTypes.OperationRemoveSignerDeadline(startTime, epochSupportDuration).Unix(),
 		nonce:     resharingTypes.OperationUpdateSignerNonce(startTime),
 		bridgeId:  bridgeId,
 		opType:    ContractOperationRemoveSigner,

@@ -37,13 +37,13 @@ func (h *SubmitHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 func (h *SubmitHandler) Handle(ctx context.Context, state *resharingTypes.State) error {
 	signatures, addresses := h.stateToEpochData(state)
 
-	cooldown := 0 * time.Second
+	retryCooldown := 0 * time.Second
 	for {
 		select {
 		case <-ctx.Done():
 			return errors.New("context cancelled while waiting for pubkey confirmation")
-		case <-time.After(cooldown):
-			cooldown = 5 * time.Second
+		case <-time.After(retryCooldown):
+			retryCooldown = 5 * time.Second
 
 			err := h.connector.SubmitEpochSignatures(state.Epoch, signatures, addresses)
 			if err == nil || errors.Is(err, core.ErrTransactionAlreadySubmitted) {

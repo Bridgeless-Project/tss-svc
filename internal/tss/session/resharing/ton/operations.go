@@ -44,14 +44,14 @@ func (u UpdateSignerOperation) ConvertSignature(sig *tsscommon.SignatureData) st
 
 func (u UpdateSignerOperation) CalculateHash() []byte {
 	builder := cell.BeginCell().
-		MustStoreUInt(4, 8). // key recovery
+		MustStoreUInt(4, 8).               // key recovery
 		MustStoreBigUInt(u.signer.X, 256). // pubkey
 		MustStoreBigUInt(u.signer.Y, 256).
 		MustStoreInt(u.startTime, 64). // data
 		MustStoreInt(u.deadline, 64).
 		MustStoreInt(u.nonce.Int64(), 64).
 		MustStoreBoolBit(u.isAdding). // operation type
-		MustStoreUInt(0, 7) // padding to 8 bits
+		MustStoreUInt(0, 7)           // padding to 8 bits
 
 	raw := builder.EndCell().ToRawUnsafe()
 
@@ -74,11 +74,12 @@ func NewAddSignerOperation(
 func NewRemoveSignerOperation(
 	signer *ecdsa.PublicKey,
 	startTime time.Time,
+	epochSupportDuration time.Duration,
 ) UpdateSignerOperation {
 	return UpdateSignerOperation{
 		signer:    signer,
-		startTime: resharingTypes.OperationRemoveSignerStartTime(startTime).Unix(),
-		deadline:  resharingTypes.OperationRemoveSignerDeadline(startTime).Unix(),
+		startTime: resharingTypes.OperationRemoveSignerStartTime(startTime, epochSupportDuration).Unix(),
+		deadline:  resharingTypes.OperationRemoveSignerDeadline(startTime, epochSupportDuration).Unix(),
 		nonce:     resharingTypes.OperationUpdateSignerNonce(startTime),
 		isAdding:  false,
 	}

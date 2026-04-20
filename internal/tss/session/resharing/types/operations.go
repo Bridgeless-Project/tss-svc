@@ -17,12 +17,12 @@ type ContractOperation interface {
 	ConvertSignature(sig *common.SignatureData) string
 }
 
-func OperationRemoveSignerStartTime(startTime time.Time) time.Time {
-	return startTime.Add(14 * 24 * time.Hour).UTC()
+func OperationRemoveSignerStartTime(startTime time.Time, epochSupport time.Duration) time.Time {
+	return startTime.Add(epochSupport).UTC()
 }
 
-func OperationRemoveSignerDeadline(startTime time.Time) time.Time {
-	return OperationRemoveSignerStartTime(startTime).Add(3 * 24 * time.Hour).UTC()
+func OperationRemoveSignerDeadline(startTime time.Time, epochSupport time.Duration) time.Time {
+	return OperationRemoveSignerStartTime(startTime, epochSupport).Add(3 * 24 * time.Hour).UTC()
 }
 
 func OperationAddSignerDeadline(startTime time.Time) time.Time {

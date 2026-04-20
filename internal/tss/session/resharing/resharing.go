@@ -81,7 +81,12 @@ func (s *Session) Run(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
-	state := resharingTypes.InitializeState(s.params.Epoch, s.params.Threshold, s.params.StartTime, account)
+	bridgeParams, err := s.core.GetBridgeParams()
+	if err != nil {
+		return errors.Wrap(err, "failed to get bridge params")
+	}
+
+	state := resharingTypes.InitializeState(s.params.Epoch, s.params.Threshold, s.params.StartTime, bridgeParams.SupportingTime, account)
 
 	keygenRound := NewKeygenHandler(s.params.Parties, s.secrets, s.core, s.sessionManager, s.logger, s.selfOld, s.selfNew)
 	keygenManager := resharingTypes.NewHandlerManager(
@@ -139,83 +144,88 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 	)
 
 	for _, ch := range s.chains.Clients() {
+		var manager *resharingTypes.HandlerManager
+
 		switch ch.Type() {
 		case chain.TypeEVM:
 			if evmSessionInitialized {
 				continue
 			}
 			evmSessionInitialized = true
-			managers = append(managers,
-				resharingTypes.NewHandlerManager(
-					NewUpdateContractHandler(
-						self,
-						s.oldParties,
-						s.sessionManager,
-						bridgeTypes.ChainType_EVM,
-						evm.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
-						evm.NewRemoveSignerOperation(self.Share.ECDSAPub.ToECDSAPubKey(), state.GlobalStartTime),
-						s.logger),
-					state,
-					s.logger.WithField("component", "evm_migration_manager"),
-				),
+			manager = resharingTypes.NewHandlerManager(
+				NewUpdateContractHandler(
+					self,
+					s.oldParties,
+					s.sessionManager,
+					bridgeTypes.ChainType_EVM,
+					evm.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
+					evm.NewRemoveSignerOperation(
+						self.Share.ECDSAPub.ToECDSAPubKey(),
+						state.GlobalStartTime,
+						state.EpochSupportDuration,
+					),
+					s.logger),
+				state,
+				s.logger.WithField("component", "evm_migration_manager"),
 			)
+
 		case chain.TypeSolana:
 			client := ch.(*solanaclient.Client)
-			managers = append(managers,
-				resharingTypes.NewHandlerManager(
-					NewUpdateContractHandler(
-						self,
-						s.oldParties,
-						s.sessionManager,
-						bridgeTypes.ChainType_SOLANA,
-						solana.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime, client.BridgeId()),
-						solana.NewRemoveSignerOperation(self.Share.ECDSAPub.ToECDSAPubKey(), state.GlobalStartTime, client.BridgeId()),
-						s.logger),
-					state,
-					s.logger.WithField("component", "solana_migration_manager"),
-				),
+			manager = resharingTypes.NewHandlerManager(
+				NewUpdateContractHandler(
+					self,
+					s.oldParties,
+					s.sessionManager,
+					bridgeTypes.ChainType_SOLANA,
+					solana.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime, client.BridgeId()),
+					solana.NewRemoveSignerOperation(
+						self.Share.ECDSAPub.ToECDSAPubKey(),
+						state.GlobalStartTime,
+						state.EpochSupportDuration,
+						client.BridgeId()),
+					s.logger),
+				state,
+				s.logger.WithField("component", "solana_migration_manager"),
 			)
 		case chain.TypeTON:
-			managers = append(managers,
-				resharingTypes.NewHandlerManager(
-					NewUpdateContractHandler(
-						self,
-						s.oldParties,
-						s.sessionManager,
-						bridgeTypes.ChainType_TON,
-						ton.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
-						ton.NewRemoveSignerOperation(self.Share.ECDSAPub.ToECDSAPubKey(), state.GlobalStartTime),
-						s.logger),
-					state,
-					s.logger.WithField("component", "ton_migration_manager"),
-				),
+			manager = resharingTypes.NewHandlerManager(
+				NewUpdateContractHandler(
+					self,
+					s.oldParties,
+					s.sessionManager,
+					bridgeTypes.ChainType_TON,
+					ton.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
+					ton.NewRemoveSignerOperation(
+						self.Share.ECDSAPub.ToECDSAPubKey(),
+						state.GlobalStartTime,
+						state.EpochSupportDuration,
+					),
+					s.logger),
+				state,
+				s.logger.WithField("component", "ton_migration_manager"),
 			)
 		case chain.TypeBitcoin:
-			managers = append(managers,
-				resharingTypes.NewHandlerManager(
-					utxo.NewHandler(self, s.oldParties, ch.(utxoclient.Client), s.sessionManager, s.logger),
-					state,
-					s.logger.WithField("component", fmt.Sprintf("utxo_migration_manager_%s", ch.ChainId())),
-				),
+			manager = resharingTypes.NewHandlerManager(
+				utxo.NewHandler(self, s.oldParties, ch.(utxoclient.Client), s.sessionManager, s.logger),
+				state,
+				s.logger.WithField("component", fmt.Sprintf("utxo_migration_manager_%s", ch.ChainId())),
 			)
 		case chain.TypeZano:
-			managers = append(managers,
-				resharingTypes.NewHandlerManager(
-					zano.NewHandler(self, s.oldParties, ch.(*zanoclient.Client), s.sessionManager, s.logger, s.core),
-					state,
-					s.logger.WithField("component", fmt.Sprintf("zano_migration_manager_%s", ch.ChainId())),
-				),
+			manager = resharingTypes.NewHandlerManager(
+				zano.NewHandler(self, s.oldParties, ch.(*zanoclient.Client), s.sessionManager, s.logger, s.core),
+				state,
+				s.logger.WithField("component", fmt.Sprintf("zano_migration_manager_%s", ch.ChainId())),
 			)
 		default:
 			continue
 		}
+
+		managers = append(managers, manager)
 	}
 
 	eg, egCtx := errgroup.WithContext(ctx)
 	for _, manager := range managers {
-		eg.Go(func() error {
-			return manager.Manage(egCtx, state.SessionStartTime)
-		})
+		eg.Go(func() error { return manager.Manage(egCtx, state.SessionStartTime) })
 	}
 
 	if err = eg.Wait(); err != nil {
