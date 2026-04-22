@@ -86,7 +86,7 @@ func (s *Session) Run(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get bridge params")
 	}
 
-	state := resharingTypes.InitializeState(s.params.Epoch, s.params.Threshold, s.params.StartTime, bridgeParams.SupportingTime, account)
+	state := resharingTypes.InitializeState(s.params.Epoch, s.params.Threshold, s.params.StartTime, bridgeParams.SupportingTime, *account)
 
 	keygenRound := NewKeygenHandler(s.params.Parties, s.secrets, s.core, s.sessionManager, s.logger, s.selfOld, s.selfNew)
 	keygenManager := resharingTypes.NewHandlerManager(
@@ -133,7 +133,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 	state.OldShare = share
 
 	self := tss.LocalSignParty{
-		Account:   *state.Account,
+		Account:   state.Account,
 		Share:     share,
 		Threshold: s.oldParams.Threshold,
 	}

@@ -6,18 +6,20 @@ import (
 	"syscall"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
 
-var reshareAllCmd = &cobra.Command{
-	Use:   "all",
-	Short: "Command to run all necessary operations for key resharing",
+var reshareMigrationCmd = &cobra.Command{
+	Use:   "migration",
+	Short: "Command to run final funds migration from the old to the new key after resharing",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := utils.ConfigFromFlags(cmd)
@@ -26,17 +28,27 @@ var reshareAllCmd = &cobra.Command{
 		}
 
 		params := cfg.ResharingParams()
-		oldParams := cfg.TssSessionParams()
-		oldParties := cfg.Parties()
 		secrets := cfg.SecretsStorage()
 		clients := cfg.Clients()
 		clientsRepo := repository.NewClientsRepository(clients)
 		sessionManager := p2p.NewSessionManager()
 		logger := cfg.Log()
+
 		account, err := secrets.GetCoreAccount()
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
 		}
+		oldKeyShare, err := secrets.GetTemporaryTssShare()
+		if err != nil {
+			return errors.Wrap(err, "failed to get old key share")
+		}
+
+		self := tss.LocalSignParty{
+			Account:   *account,
+			Share:     oldKeyShare,
+			Threshold: int(params.Threshold),
+		}
+
 		core, err := coreConnector.NewConnector(
 			*account,
 			cfg.CoreConnectorConfig().Connection,
@@ -46,21 +58,24 @@ var reshareAllCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to create core connector")
 		}
+		rawKey, err := core.GetEpochPubKey(params.Epoch)
+		if err != nil {
+			return errors.Wrap(err, "failed to get new public key from core")
+		}
+		newKey := bridge.MustDecodePubkey(rawKey)
 
 		serverCert, err := secrets.GetLocalPartyTlsCertificate()
 		if err != nil {
 			return errors.Wrap(err, "failed to get local party TLS certificate")
 		}
 
-		session := resharing.NewSession(
+		session := resharing.NewMigrationSession(
 			params,
-			oldParties,
-			oldParams,
-			secrets,
+			newKey,
+			self,
 			sessionManager,
-			core,
 			clientsRepo,
-			logger.WithField("component", "resharing_session"),
+			logger.WithField("component", "migration_session"),
 		)
 
 		var (
@@ -71,11 +86,11 @@ var reshareAllCmd = &cobra.Command{
 		eg.Go(func() error {
 			defer cancel()
 
-			logger.Info("resharing started")
+			logger.Info("migration started")
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "resharing failed")
 			}
-			logger.Info("resharing finished")
+			logger.Info("migration finished")
 
 			return nil
 		})
@@ -83,7 +98,7 @@ var reshareAllCmd = &cobra.Command{
 			server := p2p.NewServer(
 				cfg.P2pGrpcListener(),
 				sessionManager,
-				p2p.MergeParties(append(oldParties, params.Parties...)...),
+				params.Parties,
 				*serverCert,
 				cfg.Log().WithField("component", "p2p_server"),
 			)

@@ -19,7 +19,7 @@ type State struct {
 	NewPubKey *ecdsa.PublicKey
 	Threshold uint
 
-	Account  *core.Account
+	Account  core.Account
 	OldShare *keygen.LocalPartySaveData
 	NewShare *keygen.LocalPartySaveData
 
@@ -34,7 +34,7 @@ func InitializeState(
 	threshold uint,
 	globalStartTime time.Time,
 	epochSupportDuration uint64,
-	account *core.Account,
+	account core.Account,
 ) *State {
 	return &State{
 		Epoch:                epoch,

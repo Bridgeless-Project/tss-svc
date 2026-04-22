@@ -64,3 +64,12 @@ func DecodePubkey(pubkeyStr string) (*ecdsa.PublicKey, error) {
 
 	return pubkey, nil
 }
+
+func MustDecodePubkey(pubkeyStr string) *ecdsa.PublicKey {
+	pubkey, err := DecodePubkey(pubkeyStr)
+	if err != nil {
+		panic(fmt.Sprintf("failed to decode pubkey: %v", err))
+	}
+
+	return pubkey
+}
