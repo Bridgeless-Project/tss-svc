@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	valueKey     = "value"
-	keyPreParams = "keygen_preparams"
-	keyAccount   = "core_account"
-	keyTssShare  = "tss_share"
-	keyTlsCert   = "tls_cert"
-	tlsCertData  = "cert_data"
-	tlsKeyData   = "key_data"
+	valueKey        = "value"
+	keyPreParams    = "keygen_preparams"
+	keyAccount      = "core_account"
+	keyTssShare     = "tss_share"
+	keyTssShareTemp = "tss_share_temp"
+	keyTlsCert      = "tls_cert"
+	tlsCertData     = "cert_data"
+	tlsKeyData      = "key_data"
 )
 
 type Storage struct {
@@ -84,12 +85,20 @@ func (s *Storage) SaveKeygenPreParams(params *keygen.LocalPreParams) error {
 }
 
 func (s *Storage) SaveTssShare(data *keygen.LocalPartySaveData) error {
+	return s.saveTssShare(keyTssShare, data)
+}
+
+func (s *Storage) SaveTemporaryTssShare(data *keygen.LocalPartySaveData) error {
+	return s.saveTssShare(keyTssShareTemp, data)
+}
+
+func (s *Storage) saveTssShare(key string, data *keygen.LocalPartySaveData) error {
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal share data")
 	}
 
-	return s.store(keyTssShare, map[string]interface{}{
+	return s.store(key, map[string]interface{}{
 		valueKey: string(raw),
 	})
 }
@@ -120,7 +129,15 @@ func (s *Storage) SaveCoreAccount(account *core.Account) error {
 }
 
 func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
-	kvData, err := s.load(keyTssShare)
+	return s.getTssShare(keyTssShare)
+}
+
+func (s *Storage) GetTemporaryTssShare() (*keygen.LocalPartySaveData, error) {
+	return s.getTssShare(keyTssShareTemp)
+}
+
+func (s *Storage) getTssShare(key string) (*keygen.LocalPartySaveData, error) {
+	kvData, err := s.load(key)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load share data")
 	}

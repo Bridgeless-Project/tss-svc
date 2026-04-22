@@ -3,11 +3,11 @@ package evm
 import (
 	"context"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -66,7 +66,7 @@ func (ef *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (ef *Finalizer) finalize(_ context.Context) {
-	signature := convertToEthSignature(ef.signature)
+	signature := evm.ConvertSignature(ef.signature)
 	if err := ef.db.UpdateProcessed(database.ProcessedDepositData{
 		Identifier: ef.withdrawalData.DepositIdentifier(),
 		Signature:  &signature,
@@ -76,11 +76,4 @@ func (ef *Finalizer) finalize(_ context.Context) {
 	}
 
 	ef.errChan <- nil
-}
-
-func convertToEthSignature(sig *common.SignatureData) string {
-	rawSig := append(sig.Signature, sig.SignatureRecovery...)
-	rawSig[64] += 27
-
-	return hexutil.Encode(rawSig)
 }

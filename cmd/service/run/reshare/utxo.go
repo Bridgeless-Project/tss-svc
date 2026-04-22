@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -43,7 +44,6 @@ var reshareUtxoCmd = &cobra.Command{
 		consolidateParams.MaxFeeRateSatsPerKb = btcutil.Amount(maxFeeRateSatsPerKb)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		cfg, err := utils.ConfigFromFlags(cmd)
 		if err != nil {
 			return errors.Wrap(err, "failed to get config from flags")
@@ -82,12 +82,6 @@ var reshareUtxoCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to decode target address")
 		}
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_RESHARE,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
@@ -101,7 +95,6 @@ var reshareUtxoCmd = &cobra.Command{
 				SessionParams:     cfg.TssSessionParams(),
 			},
 			parties,
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "btc_reshare_session"),
 		)
 
@@ -125,6 +118,13 @@ var reshareUtxoCmd = &cobra.Command{
 
 		errGroup.Go(func() error {
 			defer cancel()
+
+			select {
+			case <-ctx.Done():
+				return errors.New("resharing session was interrupted before it started")
+			case <-time.After(time.Until(cfg.TssSessionParams().StartTime)):
+				break
+			}
 
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run utxo resharing session")

@@ -30,7 +30,7 @@ func NewSession(
 	db db.DepositsQ,
 	logger *logan.Entry,
 ) *Session {
-	id := session.GetDefaultSigningSessionIdentifier(client.ChainId())
+	id := session.GetSigningSessionIdentifier(client.ChainId())
 	return &Session{
 		id:     id,
 		client: client,

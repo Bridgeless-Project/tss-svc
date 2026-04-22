@@ -7,6 +7,7 @@ import (
 	p2p "github.com/Bridgeless-Project/tss-svc/internal/p2p/config"
 	vault "github.com/Bridgeless-Project/tss-svc/internal/secrets/vault/config"
 	tss "github.com/Bridgeless-Project/tss-svc/internal/tss/config"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/kit/pgdb"
@@ -22,6 +23,7 @@ type Config interface {
 	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
+	resharing.ParamsConfigurator
 }
 
 type config struct {
@@ -36,6 +38,7 @@ type config struct {
 	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
+	resharing.ParamsConfigurator
 }
 
 func New(getter kv.Getter) Config {
@@ -48,6 +51,7 @@ func New(getter kv.Getter) Config {
 		Databaser:                 pgdb.NewDatabaser(getter),
 		Listenerer:                NewListenerer(getter),
 		PartiesConfigurator:       p2p.NewPartiesConfigurator(getter, secreter.SecretsStorage()),
+		ParamsConfigurator:        resharing.NewParamsConfigurator(getter, secreter.SecretsStorage()),
 		SessionParamsConfigurator: tss.NewSessionParamsConfigurator(getter),
 		Chainer:                   chain.NewChainer(getter),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),

@@ -18,6 +18,8 @@ import (
 
 var _ p2p.TssSession = &Session{}
 
+const SessionMaxDuration = session.BoundaryConsensus + session.BoundarySign + session.BoundaryFinalize
+
 type SessionParams struct {
 	SessionParams session.Params
 	AssetId       string
@@ -31,8 +33,7 @@ type Session struct {
 	params    SessionParams
 	wg        *sync.WaitGroup
 
-	connectedPartiesCount func() int
-	parties               []p2p.Party
+	parties []p2p.Party
 
 	client         *zano.Client
 	signingParty   *tss.SignParty
@@ -50,10 +51,9 @@ func NewSession(
 	client *zano.Client,
 	params SessionParams,
 	parties []p2p.Party,
-	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *Session {
-	sessId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
+	sessId := session.GetReshareSessionIdentifier(client.ChainId(), params.SessionParams.Id)
 	sortedPartyIds := session.SortAllParties(parties, self.Account.CosmosAddress())
 	leader := session.DetermineLeader(sessId, sortedPartyIds)
 
@@ -63,8 +63,7 @@ func NewSession(
 		params:    params,
 		wg:        &sync.WaitGroup{},
 
-		connectedPartiesCount: connectedPartiesCountFunc,
-		parties:               parties,
+		parties: parties,
 
 		client:       client,
 		signingParty: tss.NewSignParty(self, sessId, logger.WithField("phase", "signing")),
@@ -93,27 +92,12 @@ func NewSession(
 	}
 }
 
+func (s *Session) MaxDuration() time.Duration {
+	return SessionMaxDuration
+}
+
 func (s *Session) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.SessionParams.StartTime)
-	if runDelay <= 0 {
-		return errors.New("target time is in the past")
-	}
-
-	s.logger.Info(fmt.Sprintf("resharing session will start in %s", runDelay))
-
-	select {
-	case <-ctx.Done():
-		s.logger.Info("resharing session cancelled")
-		return nil
-	case <-time.After(runDelay):
-		// T+1 parties required, including self
-		if s.connectedPartiesCount()+1 < s.self.Threshold+1 {
-			return errors.New("cannot start resharing session: not enough parties connected")
-		}
-	}
-
 	s.logger.Info("resharing session started")
-
 	s.wg.Add(1)
 	go s.run(ctx)
 
