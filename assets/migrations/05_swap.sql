@@ -9,8 +9,9 @@ ALTER TABLE deposits
 -- +migrate Down
 
 ALTER TABLE deposits
-    DROP COLUMN is_swap;
-    DROP COLUMN min_destination_amount;
-    DROP COLUMN swap_deadline;
+    DROP COLUMN is_swap,
+    DROP COLUMN min_destination_amount,
+    DROP COLUMN swap_deadline,
     DROP COLUMN final_receiver;
 
+    
