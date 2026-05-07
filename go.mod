@@ -19,6 +19,7 @@ replace (
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0
 	// deleted library fix that is used in other libraries
 	github.com/tyler-smith/go-bip39 => github.com/distributed-lab/go-bip39 v1.1.0
+	github.com/lyft/protoc-gen-validate => github.com/envoyproxy/protoc-gen-validate v0.0.13
 )
 
 require (
