@@ -2,9 +2,11 @@ package deposit
 
 import (
 	"math/big"
+	"strconv"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/config"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -14,12 +16,14 @@ import (
 type Fetcher struct {
 	core    *connector.Connector
 	clients chain.Repository
+	cfg     config.Config
 }
 
-func NewFetcher(clients chain.Repository, core *connector.Connector) *Fetcher {
+func NewFetcher(clients chain.Repository, core *connector.Connector, cfg config.Config) *Fetcher {
 	return &Fetcher{
 		clients: clients,
 		core:    core,
+		cfg:     cfg,
 	}
 }
 
@@ -57,14 +61,7 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
-
-	//If TokenId is not the same, it's a swap operation
-	isSwapDeposit := srcInfo.TokenId != dstInfo.TokenId
-	var finalReceiver string
-	if isSwapDeposit {
-		finalReceiver = depositData.DestinationAddress
-	}
-
+	// TODO: Implement swap commission logic
 	withdrawalAmount, commission, err := p.GetWithdrawalAmount(depositData.DepositAmount, srcInfo, dstInfo)
 	if err != nil {
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
@@ -72,14 +69,20 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 
 	ignoreDistribution := dstClient.IsCentralized()
 
+	route := p.SwapRoute(srcInfo, dstInfo, depositData)
+
 	deposit := depositData.ToNewDeposit(
 		withdrawalAmount,
 		commission,
-		dstInfo.Address,
 		dstInfo.IsWrapped,
 		ignoreDistribution,
-		isSwapDeposit,
-		finalReceiver,
+		route.IsSwap,
+		route.FinalReceiver,
+		route.Receiver,
+		route.FinalChainId,
+		route.FinalToken,
+		strconv.FormatUint(route.WithdrawalTokenId, 10),
+		route.WithdrawalChainId,
 	)
 
 	return &deposit, nil
@@ -150,4 +153,38 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 	}
 
 	return result
+}
+
+type SwapInfo struct {
+	IsSwap            bool
+	Receiver          string
+	WithdrawalTokenId uint64
+	WithdrawalChainId string
+	FinalReceiver     string
+	FinalChainId      string
+	FinalToken        string
+}
+
+func (p *Fetcher) SwapRoute(srcInfo, dstInfo *bridgetypes.TokenInfo, depositData *db.DepositData) SwapInfo {
+	//If TokenId is not the same, it's a swap operation
+	isSwap := srcInfo.TokenId != dstInfo.TokenId
+
+	info := SwapInfo{
+		IsSwap:            isSwap,
+		Receiver:          depositData.DestinationAddress,
+		WithdrawalTokenId: dstInfo.TokenId,
+		WithdrawalChainId: dstInfo.ChainId,
+	}
+
+	if isSwap {
+		info.Receiver = p.cfg.Contract()
+		info.WithdrawalTokenId = p.cfg.TokenId()
+		info.WithdrawalChainId = p.cfg.ChainId()
+
+		info.FinalReceiver = depositData.DestinationAddress
+		info.FinalChainId = depositData.DestinationChainId
+		info.FinalToken = dstInfo.Address
+	}
+
+	return info
 }

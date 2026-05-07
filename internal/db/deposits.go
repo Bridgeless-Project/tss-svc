@@ -117,8 +117,10 @@ type Deposit struct {
 
 	IsSwap               bool   `structs:"is_swap" db:"is_swap"`
 	MinDestinationAmount string `structs:"min_destination_amount" db:"min_destination_amount"`
-	SwapDeadline         string `structs:"swap_deadline" db:"swap_deadline"`
+	SwapDeadline         uint64 `structs:"swap_deadline" db:"swap_deadline"`
 	FinalReceiver        string `structs:"final_receiver" db:"final_receiver"`
+	FinalChainId         string `structs:"final_chain_id" db:"final_chain_id"`
+	FinalToken           string `structs:"final_token" db:"final_token"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
@@ -148,7 +150,10 @@ func (d Deposit) ToSwapTransaction() *swaptypes.SwapTransaction {
 	return &swaptypes.SwapTransaction{
 		Tx:            d.ToTransaction(),
 		FinalReceiver: d.FinalReceiver,
-		AmountOutMin:  d.MinDestinationAmount,
+		SwapOutAmount: d.MinDestinationAmount,
+		FinalToken:    d.FinalToken,
+		FinalChainId:  d.FinalChainId,
+		SwapDeadline:  d.SwapDeadline,
 	}
 }
 
@@ -171,22 +176,26 @@ type DepositData struct {
 func (d DepositData) ToNewDeposit(
 	withdrawalAmount,
 	commissionAmount *big.Int,
-	dstTokenAddress string,
 	isWrappedToken bool,
 	ignoreDistribution bool,
 	isSwapDeposit bool,
 	finalReceiver string,
+	receiver string,
+	finalChainId string,
+	finalToken string,
+	withdrawalToken string,
+	withdrawalChainId string,
 ) Deposit {
 	return Deposit{
 		DepositIdentifier:    d.DepositIdentifier,
 		Depositor:            &d.SourceAddress,
 		DepositAmount:        d.DepositAmount.String(),
 		DepositToken:         d.TokenAddress,
-		Receiver:             d.DestinationAddress,
-		WithdrawalToken:      dstTokenAddress,
+		Receiver:             receiver,
+		WithdrawalToken:      withdrawalToken,
 		DepositBlock:         d.Block,
 		WithdrawalStatus:     types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
-		WithdrawalChainId:    d.DestinationChainId,
+		WithdrawalChainId:    withdrawalChainId,
 		WithdrawalAmount:     withdrawalAmount.String(),
 		IsWrappedToken:       isWrappedToken,
 		CommissionAmount:     commissionAmount.String(),
@@ -194,8 +203,10 @@ func (d DepositData) ToNewDeposit(
 		Distributed:          ignoreDistribution,
 		IsSwap:               isSwapDeposit,
 		FinalReceiver:        finalReceiver,
-		MinDestinationAmount: d.MinDestinationAmount.String(),
-		SwapDeadline:         d.SwapDeadline.String(),
+		MinDestinationAmount: bigIntToStringOrEmpty(d.MinDestinationAmount),
+		SwapDeadline:         bigIntToUint64OrEmpty(d.SwapDeadline),
+		FinalChainId:         finalChainId,
+		FinalToken:           finalToken,
 	}
 }
 
@@ -224,4 +235,20 @@ func stringOrEmpty(s *string) string {
 	}
 
 	return *s
+}
+
+func bigIntToUint64OrEmpty(b *big.Int) uint64 {
+	if b == nil {
+		return 0
+	}
+
+	return b.Uint64()
+}
+
+func bigIntToStringOrEmpty(s *big.Int) string {
+	if s == nil {
+		return ""
+	}
+
+	return s.String()
 }

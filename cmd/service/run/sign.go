@@ -101,7 +101,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		return errors.Wrap(err, "failed to create core connector")
 	}
 	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"), connector)
-	fetcher := deposit.NewFetcher(clientsRepo, connector)
+	fetcher := deposit.NewFetcher(clientsRepo, connector, cfg)
 
 	p2pServer := p2p.NewServer(
 		cfg.P2pGrpcListener(),
