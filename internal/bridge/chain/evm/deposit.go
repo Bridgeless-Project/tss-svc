@@ -61,14 +61,18 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			TokenAddress:       bridge.DefaultNativeTokenAddress,
-			DepositAmount:      eventBody.Amount,
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         0, // v1 does not have referralId
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			TokenAddress:         bridge.DefaultNativeTokenAddress,
+			DepositAmount:        eventBody.Amount,
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           0,     // v1 does not have referralId
+			MinDestinationAmount: nil,   // v1 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v1 does not have SwapDeadline
+			DestinationToken:     "",    // v1 does not have DestinationToken
+			IsSwap:               false, // v1 does not have IsSwap
 		}
 	case EventV2DepositedNative:
 		eventBody := new(v2.BridgeDepositedNative)
@@ -76,14 +80,18 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			TokenAddress:       bridge.DefaultNativeTokenAddress,
-			DepositAmount:      eventBody.Amount,
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         eventBody.ReferralId,
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			TokenAddress:         bridge.DefaultNativeTokenAddress,
+			DepositAmount:        eventBody.Amount,
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           eventBody.ReferralId,
+			MinDestinationAmount: nil,   // v2 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v2 does not have SwapDeadline
+			DestinationToken:     "",    // v2 does not have DestinationToken
+			IsSwap:               false, // v2 does not have IsSwap
 		}
 	case EventV1DepositedNativeAndSwapped:
 		eventBody := new(v3.BridgeBridgedNativeAndSwapped)
@@ -110,14 +118,18 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			DepositAmount:      eventBody.Amount,
-			TokenAddress:       strings.ToLower(eventBody.Token.String()),
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         0, // v1 does not have referralId
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			DepositAmount:        eventBody.Amount,
+			TokenAddress:         strings.ToLower(eventBody.Token.String()),
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           0,     // v1 does not have referralId
+			MinDestinationAmount: nil,   // v1 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v1 does not have SwapDeadline
+			DestinationToken:     "",    // v1 does not have DestinationToken
+			IsSwap:               false, // v1 does not have IsSwap
 		}
 	case EventV2DepositedERC20:
 		eventBody := new(v2.BridgeDepositedERC20)
@@ -125,14 +137,18 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			DepositAmount:      eventBody.Amount,
-			TokenAddress:       strings.ToLower(eventBody.Token.String()),
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         eventBody.ReferralId,
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			DepositAmount:        eventBody.Amount,
+			TokenAddress:         strings.ToLower(eventBody.Token.String()),
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           eventBody.ReferralId,
+			MinDestinationAmount: nil,   // v2 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v2 does not have SwapDeadline
+			DestinationToken:     "",    // v2 does not have DestinationToken
+			IsSwap:               false, // v2 does not have IsSwap
 		}
 	case EventV1DepositedERC20AndSwapped:
 		eventBody := new(v3.BridgeDepositedERC20AndSwapped)

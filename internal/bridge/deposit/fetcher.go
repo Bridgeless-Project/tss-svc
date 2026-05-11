@@ -76,7 +76,7 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		commission,
 		dstInfo.IsWrapped,
 		ignoreDistribution,
-		route.IsSwap,
+		depositData.IsSwap,
 		&route.FinalReceiver,
 		route.Receiver,
 		&route.FinalChainId,
@@ -156,7 +156,6 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 }
 
 type SwapInfo struct {
-	IsSwap            bool
 	Receiver          string
 	WithdrawalTokenId uint64
 	WithdrawalChainId string
@@ -166,15 +165,13 @@ type SwapInfo struct {
 }
 
 func (p *Fetcher) SwapRoute(srcInfo, dstInfo *bridgetypes.TokenInfo, depositData *db.DepositData) SwapInfo {
-	isSwap := true
 	info := SwapInfo{
-		IsSwap:            isSwap,
 		Receiver:          depositData.DestinationAddress,
 		WithdrawalTokenId: dstInfo.TokenId,
 		WithdrawalChainId: dstInfo.ChainId,
 	}
 
-	if isSwap {
+	if depositData.IsSwap {
 		info.Receiver = p.swapSettings.Contract
 		info.WithdrawalTokenId = p.swapSettings.WrappedBridge
 		info.WithdrawalChainId = p.swapSettings.ChainId
