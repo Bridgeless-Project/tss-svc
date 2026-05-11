@@ -22,7 +22,7 @@ type Config interface {
 	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
-	Swap
+	SwapConfigurator
 }
 
 type config struct {
@@ -37,7 +37,7 @@ type config struct {
 	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
-	Swap
+	SwapConfigurator
 }
 
 func New(getter kv.Getter) Config {
@@ -54,6 +54,6 @@ func New(getter kv.Getter) Config {
 		Chainer:                   chain.NewChainer(getter),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),
 		SubscriberConfigurator:    subscriber.NewSubscriberConfigurator(getter),
-		Swap:                      NewSwap(getter),
+		SwapConfigurator:          NewSwapConfigurator(getter),
 	}
 }

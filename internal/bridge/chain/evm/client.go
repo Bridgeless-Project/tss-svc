@@ -1,6 +1,7 @@
 package evm
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
@@ -9,22 +10,21 @@ import (
 	v2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v2"
 	v3 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/singleflight"
 )
 
-var requiredEvents = []string{
-	EventNameDepositedNative,
-	EventNameDepositedERC20,
+type abiVersion struct {
+	metadata        *bind.MetaData
+	eventNameToType map[string]EventType
 }
 
 type Client struct {
 	chain           Chain
-	abiV1           abi.ABI
-	abiV2           abi.ABI
-	abiV3           abi.ABI
+	abis            map[string]abi.ABI
 	supportedEvents map[string]EventType
 
 	reqGroup singleflight.Group
@@ -32,44 +32,32 @@ type Client struct {
 
 // NewBridgeClient creates a new bridge Client for the given chain.
 func NewBridgeClient(chain Chain) *Client {
-	abiV1, err := abi.JSON(strings.NewReader(v1.BridgeMetaData.ABI))
-	if err != nil {
-		panic(errors.Wrap(err, "failed to parse bridge ABI v1"))
-	}
-	abiV2, err := abi.JSON(strings.NewReader(v2.BridgeMetaData.ABI))
-	if err != nil {
-		panic(errors.Wrap(err, "failed to parse bridge ABI v2"))
-	}
-	abiV3, err := abi.JSON(strings.NewReader(v3.BridgeMetaData.ABI))
-	if err != nil {
-		panic(errors.Wrap(err, "failed to parse bridge ABI v3"))
-	}
+	versions := supportedVersions()
 
+	versionedABIs := make(map[string]abi.ABI)
 	supportedEvents := make(map[string]EventType)
-	for _, eventName := range requiredEvents {
-		v1Event, ok := abiV1.Events[eventName]
-		if !ok {
-			panic("required eventName not found in ABI v1: " + eventName)
-		}
-		supportedEvents[v1Event.ID.String()] = EventNameToEventV1[eventName]
 
-		v2Event, ok := abiV2.Events[eventName]
-		if !ok {
-			panic("required eventName not found in ABI v2: " + eventName)
+	for vName, ver := range versions {
+		parsed, err := abi.JSON(strings.NewReader(ver.metadata.ABI))
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse ABI for %s: %v", vName, err))
 		}
-		supportedEvents[v2Event.ID.String()] = EventNameToEventV2[eventName]
 
-		v3Event, ok := abiV3.Events[eventName]
-		if !ok {
-			panic("required eventName not found in ABI v3: " + eventName)
+		versionedABIs[vName] = parsed
+
+		for eventName, eventType := range ver.eventNameToType {
+			event, ok := parsed.Events[eventName]
+			if !ok {
+				panic(fmt.Sprintf("required event %s not found in ABI version %s", eventName, vName))
+			}
+
+			supportedEvents[event.ID.String()] = eventType
 		}
-		supportedEvents[v3Event.ID.String()] = EventNameToEventV3[eventName]
 	}
+
 	return &Client{
 		chain:           chain,
-		abiV1:           abiV1,
-		abiV2:           abiV2,
-		abiV3:           abiV3,
+		abis:            versionedABIs,
 		supportedEvents: supportedEvents,
 	}
 }
@@ -112,4 +100,12 @@ func (p *Client) IsCentralized() bool {
 
 func (p *Client) IsStandart() bool {
 	return p.chain.Meta.Standart
+}
+
+func supportedVersions() map[string]abiVersion {
+	return map[string]abiVersion{
+		"v1": {v1.BridgeMetaData, EventNameToEventV1},
+		"v2": {v2.BridgeMetaData, EventNameToEventV2},
+		"v3": {v3.BridgeMetaData, EventNameToEventV3},
+	}
 }

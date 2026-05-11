@@ -31,7 +31,7 @@ var (
 
 // BridgeMetaData contains all meta data concerning the Bridge contract.
 var BridgeMetaData = &bind.MetaData{
-	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"beacon\",\"type\":\"address\"}],\"name\":\"BeaconUpgraded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"destinationToken\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minDestinationAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"swapDeadline\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"BridgedNativeAndSwapped\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC1155\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC20\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"destinationToken\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minDestinationAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"swapDeadline\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC20AndSwapped\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC721\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedNative\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"}],\"name\":\"Upgraded\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"signaturesThreshold_\",\"type\":\"uint256\"}],\"name\":\"__Bridge_init\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"signaturesThreshold_\",\"type\":\"uint256\"}],\"name\":\"__Signers_init\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"}],\"name\":\"addHash\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"}],\"name\":\"addSigners\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"}],\"name\":\"containsHash\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC1155\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC20\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"destinationToken_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"minDestinationAmount_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"swapDeadline_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC20AndSwap\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC721\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositNative\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"destinationToken_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"minDestinationAmount_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"swapDeadline_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositNativeAndSwap\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"}],\"name\":\"getERC1155SignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"}],\"name\":\"getERC20SignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"}],\"name\":\"getERC721SignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"}],\"name\":\"getNativeSignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getSigners\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"signerToUpdate_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"startTime_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"deadline_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isAdding_\",\"type\":\"bool\"}],\"name\":\"getUpdateSignersSignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC1155BatchReceived\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC1155Received\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC721Received\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"proxiableUUID\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"}],\"name\":\"removeSigners\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"signaturesThreshold_\",\"type\":\"uint256\"}],\"name\":\"setSignaturesThreshold\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"signaturesThreshold\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"signerToUpdate_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"startTime_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"deadline_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isAdding_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"updateSigner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"}],\"name\":\"upgradeTo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"upgradeToAndCall\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"usedHashes\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC1155\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC20\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleProof_\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC20Merkelized\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC721\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawNative\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleProof_\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawNativeMerkelized\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
+	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"beacon\",\"type\":\"address\"}],\"name\":\"BeaconUpgraded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"destinationToken\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minDestinationAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"swapDeadline\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"BridgedNativeAndSwapped\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC1155\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC20\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"destinationToken\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minDestinationAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"swapDeadline\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC20AndSwapped\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedERC721\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"referralId\",\"type\":\"uint16\"}],\"name\":\"DepositedNative\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"}],\"name\":\"Upgraded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"tokenURI\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"}],\"name\":\"WithdrawnERC1155\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"}],\"name\":\"WithdrawnERC20\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"tokenURI\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isWrapped\",\"type\":\"bool\"}],\"name\":\"WithdrawnERC721\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"}],\"name\":\"WithdrawnNative\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"signaturesThreshold_\",\"type\":\"uint256\"}],\"name\":\"__Bridge_init\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"signaturesThreshold_\",\"type\":\"uint256\"}],\"name\":\"__Signers_init\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"}],\"name\":\"addHash\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"}],\"name\":\"addSigners\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"}],\"name\":\"containsHash\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC1155\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC20\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"destinationToken_\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"minDestinationAmount_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"swapDeadline_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC20AndSwap\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositERC721\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositNative\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"destinationToken_\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"minDestinationAmount_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"swapDeadline_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"receiver_\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"network_\",\"type\":\"string\"},{\"internalType\":\"uint16\",\"name\":\"referralId_\",\"type\":\"uint16\"}],\"name\":\"depositNativeAndSwap\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"}],\"name\":\"getERC1155SignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"}],\"name\":\"getERC20SignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"}],\"name\":\"getERC721SignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"chainId_\",\"type\":\"uint256\"}],\"name\":\"getNativeSignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getSigners\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"signerToUpdate_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"startTime_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"deadline_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isAdding_\",\"type\":\"bool\"}],\"name\":\"getUpdateSignersSignHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC1155BatchReceived\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC1155Received\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"onERC721Received\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"proxiableUUID\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"signers_\",\"type\":\"address[]\"}],\"name\":\"removeSigners\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"signaturesThreshold_\",\"type\":\"uint256\"}],\"name\":\"setSignaturesThreshold\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"signaturesThreshold\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"signerToUpdate_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"startTime_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"deadline_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isAdding_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"updateSigner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"}],\"name\":\"upgradeTo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newImplementation\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"upgradeToAndCall\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"usedHashes\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC1155\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC20\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleProof_\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC20Merkelized\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token_\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"tokenId_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"tokenURI_\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isWrapped_\",\"type\":\"bool\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawERC721\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawNative\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"receiver_\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"txHash_\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"txNonce_\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"merkleProof_\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures_\",\"type\":\"bytes[]\"}],\"name\":\"withdrawNativeMerkelized\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
 }
 
 // BridgeABI is the input ABI used to generate the binding from.
@@ -678,24 +678,24 @@ func (_Bridge *BridgeTransactorSession) DepositERC20(token_ common.Address, amou
 	return _Bridge.Contract.DepositERC20(&_Bridge.TransactOpts, token_, amount_, receiver_, network_, isWrapped_, referralId_)
 }
 
-// DepositERC20AndSwap is a paid mutator transaction binding the contract method 0xb2004a97.
+// DepositERC20AndSwap is a paid mutator transaction binding the contract method 0x4310578b.
 //
-// Solidity: function depositERC20AndSwap(address token_, uint256 amount_, address destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, bool isWrapped_, uint16 referralId_) returns()
-func (_Bridge *BridgeTransactor) DepositERC20AndSwap(opts *bind.TransactOpts, token_ common.Address, amount_ *big.Int, destinationToken_ common.Address, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, isWrapped_ bool, referralId_ uint16) (*types.Transaction, error) {
+// Solidity: function depositERC20AndSwap(address token_, uint256 amount_, string destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, bool isWrapped_, uint16 referralId_) returns()
+func (_Bridge *BridgeTransactor) DepositERC20AndSwap(opts *bind.TransactOpts, token_ common.Address, amount_ *big.Int, destinationToken_ string, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, isWrapped_ bool, referralId_ uint16) (*types.Transaction, error) {
 	return _Bridge.contract.Transact(opts, "depositERC20AndSwap", token_, amount_, destinationToken_, minDestinationAmount_, swapDeadline_, receiver_, network_, isWrapped_, referralId_)
 }
 
-// DepositERC20AndSwap is a paid mutator transaction binding the contract method 0xb2004a97.
+// DepositERC20AndSwap is a paid mutator transaction binding the contract method 0x4310578b.
 //
-// Solidity: function depositERC20AndSwap(address token_, uint256 amount_, address destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, bool isWrapped_, uint16 referralId_) returns()
-func (_Bridge *BridgeSession) DepositERC20AndSwap(token_ common.Address, amount_ *big.Int, destinationToken_ common.Address, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, isWrapped_ bool, referralId_ uint16) (*types.Transaction, error) {
+// Solidity: function depositERC20AndSwap(address token_, uint256 amount_, string destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, bool isWrapped_, uint16 referralId_) returns()
+func (_Bridge *BridgeSession) DepositERC20AndSwap(token_ common.Address, amount_ *big.Int, destinationToken_ string, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, isWrapped_ bool, referralId_ uint16) (*types.Transaction, error) {
 	return _Bridge.Contract.DepositERC20AndSwap(&_Bridge.TransactOpts, token_, amount_, destinationToken_, minDestinationAmount_, swapDeadline_, receiver_, network_, isWrapped_, referralId_)
 }
 
-// DepositERC20AndSwap is a paid mutator transaction binding the contract method 0xb2004a97.
+// DepositERC20AndSwap is a paid mutator transaction binding the contract method 0x4310578b.
 //
-// Solidity: function depositERC20AndSwap(address token_, uint256 amount_, address destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, bool isWrapped_, uint16 referralId_) returns()
-func (_Bridge *BridgeTransactorSession) DepositERC20AndSwap(token_ common.Address, amount_ *big.Int, destinationToken_ common.Address, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, isWrapped_ bool, referralId_ uint16) (*types.Transaction, error) {
+// Solidity: function depositERC20AndSwap(address token_, uint256 amount_, string destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, bool isWrapped_, uint16 referralId_) returns()
+func (_Bridge *BridgeTransactorSession) DepositERC20AndSwap(token_ common.Address, amount_ *big.Int, destinationToken_ string, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, isWrapped_ bool, referralId_ uint16) (*types.Transaction, error) {
 	return _Bridge.Contract.DepositERC20AndSwap(&_Bridge.TransactOpts, token_, amount_, destinationToken_, minDestinationAmount_, swapDeadline_, receiver_, network_, isWrapped_, referralId_)
 }
 
@@ -741,24 +741,24 @@ func (_Bridge *BridgeTransactorSession) DepositNative(receiver_ string, network_
 	return _Bridge.Contract.DepositNative(&_Bridge.TransactOpts, receiver_, network_, referralId_)
 }
 
-// DepositNativeAndSwap is a paid mutator transaction binding the contract method 0x1fb112d4.
+// DepositNativeAndSwap is a paid mutator transaction binding the contract method 0xe7bdb15c.
 //
-// Solidity: function depositNativeAndSwap(address destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, uint16 referralId_) payable returns()
-func (_Bridge *BridgeTransactor) DepositNativeAndSwap(opts *bind.TransactOpts, destinationToken_ common.Address, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, referralId_ uint16) (*types.Transaction, error) {
+// Solidity: function depositNativeAndSwap(string destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, uint16 referralId_) payable returns()
+func (_Bridge *BridgeTransactor) DepositNativeAndSwap(opts *bind.TransactOpts, destinationToken_ string, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, referralId_ uint16) (*types.Transaction, error) {
 	return _Bridge.contract.Transact(opts, "depositNativeAndSwap", destinationToken_, minDestinationAmount_, swapDeadline_, receiver_, network_, referralId_)
 }
 
-// DepositNativeAndSwap is a paid mutator transaction binding the contract method 0x1fb112d4.
+// DepositNativeAndSwap is a paid mutator transaction binding the contract method 0xe7bdb15c.
 //
-// Solidity: function depositNativeAndSwap(address destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, uint16 referralId_) payable returns()
-func (_Bridge *BridgeSession) DepositNativeAndSwap(destinationToken_ common.Address, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, referralId_ uint16) (*types.Transaction, error) {
+// Solidity: function depositNativeAndSwap(string destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, uint16 referralId_) payable returns()
+func (_Bridge *BridgeSession) DepositNativeAndSwap(destinationToken_ string, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, referralId_ uint16) (*types.Transaction, error) {
 	return _Bridge.Contract.DepositNativeAndSwap(&_Bridge.TransactOpts, destinationToken_, minDestinationAmount_, swapDeadline_, receiver_, network_, referralId_)
 }
 
-// DepositNativeAndSwap is a paid mutator transaction binding the contract method 0x1fb112d4.
+// DepositNativeAndSwap is a paid mutator transaction binding the contract method 0xe7bdb15c.
 //
-// Solidity: function depositNativeAndSwap(address destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, uint16 referralId_) payable returns()
-func (_Bridge *BridgeTransactorSession) DepositNativeAndSwap(destinationToken_ common.Address, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, referralId_ uint16) (*types.Transaction, error) {
+// Solidity: function depositNativeAndSwap(string destinationToken_, uint256 minDestinationAmount_, uint256 swapDeadline_, string receiver_, string network_, uint16 referralId_) payable returns()
+func (_Bridge *BridgeTransactorSession) DepositNativeAndSwap(destinationToken_ string, minDestinationAmount_ *big.Int, swapDeadline_ *big.Int, receiver_ string, network_ string, referralId_ uint16) (*types.Transaction, error) {
 	return _Bridge.Contract.DepositNativeAndSwap(&_Bridge.TransactOpts, destinationToken_, minDestinationAmount_, swapDeadline_, receiver_, network_, referralId_)
 }
 
@@ -1468,7 +1468,7 @@ func (it *BridgeBridgedNativeAndSwappedIterator) Close() error {
 // BridgeBridgedNativeAndSwapped represents a BridgedNativeAndSwapped event raised by the Bridge contract.
 type BridgeBridgedNativeAndSwapped struct {
 	Amount               *big.Int
-	DestinationToken     common.Address
+	DestinationToken     string
 	MinDestinationAmount *big.Int
 	SwapDeadline         *big.Int
 	Receiver             string
@@ -1477,9 +1477,9 @@ type BridgeBridgedNativeAndSwapped struct {
 	Raw                  types.Log // Blockchain specific contextual infos
 }
 
-// FilterBridgedNativeAndSwapped is a free log retrieval operation binding the contract event 0x5c6a6862c88a5d274fee103de24c569658c2e12b6d3390be3ebc7becdfe1d425.
+// FilterBridgedNativeAndSwapped is a free log retrieval operation binding the contract event 0xbd9b774a1f4510c791f62926503049cdfd6cfd1624c9a083935312f6aeae9dcf.
 //
-// Solidity: event BridgedNativeAndSwapped(uint256 amount, address destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, uint16 referralId)
+// Solidity: event BridgedNativeAndSwapped(uint256 amount, string destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, uint16 referralId)
 func (_Bridge *BridgeFilterer) FilterBridgedNativeAndSwapped(opts *bind.FilterOpts) (*BridgeBridgedNativeAndSwappedIterator, error) {
 
 	logs, sub, err := _Bridge.contract.FilterLogs(opts, "BridgedNativeAndSwapped")
@@ -1489,9 +1489,9 @@ func (_Bridge *BridgeFilterer) FilterBridgedNativeAndSwapped(opts *bind.FilterOp
 	return &BridgeBridgedNativeAndSwappedIterator{contract: _Bridge.contract, event: "BridgedNativeAndSwapped", logs: logs, sub: sub}, nil
 }
 
-// WatchBridgedNativeAndSwapped is a free log subscription operation binding the contract event 0x5c6a6862c88a5d274fee103de24c569658c2e12b6d3390be3ebc7becdfe1d425.
+// WatchBridgedNativeAndSwapped is a free log subscription operation binding the contract event 0xbd9b774a1f4510c791f62926503049cdfd6cfd1624c9a083935312f6aeae9dcf.
 //
-// Solidity: event BridgedNativeAndSwapped(uint256 amount, address destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, uint16 referralId)
+// Solidity: event BridgedNativeAndSwapped(uint256 amount, string destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, uint16 referralId)
 func (_Bridge *BridgeFilterer) WatchBridgedNativeAndSwapped(opts *bind.WatchOpts, sink chan<- *BridgeBridgedNativeAndSwapped) (event.Subscription, error) {
 
 	logs, sub, err := _Bridge.contract.WatchLogs(opts, "BridgedNativeAndSwapped")
@@ -1526,9 +1526,9 @@ func (_Bridge *BridgeFilterer) WatchBridgedNativeAndSwapped(opts *bind.WatchOpts
 	}), nil
 }
 
-// ParseBridgedNativeAndSwapped is a log parse operation binding the contract event 0x5c6a6862c88a5d274fee103de24c569658c2e12b6d3390be3ebc7becdfe1d425.
+// ParseBridgedNativeAndSwapped is a log parse operation binding the contract event 0xbd9b774a1f4510c791f62926503049cdfd6cfd1624c9a083935312f6aeae9dcf.
 //
-// Solidity: event BridgedNativeAndSwapped(uint256 amount, address destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, uint16 referralId)
+// Solidity: event BridgedNativeAndSwapped(uint256 amount, string destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, uint16 referralId)
 func (_Bridge *BridgeFilterer) ParseBridgedNativeAndSwapped(log types.Log) (*BridgeBridgedNativeAndSwapped, error) {
 	event := new(BridgeBridgedNativeAndSwapped)
 	if err := _Bridge.contract.UnpackLog(event, "BridgedNativeAndSwapped", log); err != nil {
@@ -1888,7 +1888,7 @@ func (it *BridgeDepositedERC20AndSwappedIterator) Close() error {
 type BridgeDepositedERC20AndSwapped struct {
 	Token                common.Address
 	Amount               *big.Int
-	DestinationToken     common.Address
+	DestinationToken     string
 	MinDestinationAmount *big.Int
 	SwapDeadline         *big.Int
 	Receiver             string
@@ -1898,9 +1898,9 @@ type BridgeDepositedERC20AndSwapped struct {
 	Raw                  types.Log // Blockchain specific contextual infos
 }
 
-// FilterDepositedERC20AndSwapped is a free log retrieval operation binding the contract event 0x1d776c4b161f046ac97c01dc1cf9e186ddbde773f97a07c8feb24c7f06d823d5.
+// FilterDepositedERC20AndSwapped is a free log retrieval operation binding the contract event 0x11c2030e768e3b5b27824d0d8b672c67f863c9a58ae85cf87d41363bbb125281.
 //
-// Solidity: event DepositedERC20AndSwapped(address token, uint256 amount, address destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, bool isWrapped, uint16 referralId)
+// Solidity: event DepositedERC20AndSwapped(address token, uint256 amount, string destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, bool isWrapped, uint16 referralId)
 func (_Bridge *BridgeFilterer) FilterDepositedERC20AndSwapped(opts *bind.FilterOpts) (*BridgeDepositedERC20AndSwappedIterator, error) {
 
 	logs, sub, err := _Bridge.contract.FilterLogs(opts, "DepositedERC20AndSwapped")
@@ -1910,9 +1910,9 @@ func (_Bridge *BridgeFilterer) FilterDepositedERC20AndSwapped(opts *bind.FilterO
 	return &BridgeDepositedERC20AndSwappedIterator{contract: _Bridge.contract, event: "DepositedERC20AndSwapped", logs: logs, sub: sub}, nil
 }
 
-// WatchDepositedERC20AndSwapped is a free log subscription operation binding the contract event 0x1d776c4b161f046ac97c01dc1cf9e186ddbde773f97a07c8feb24c7f06d823d5.
+// WatchDepositedERC20AndSwapped is a free log subscription operation binding the contract event 0x11c2030e768e3b5b27824d0d8b672c67f863c9a58ae85cf87d41363bbb125281.
 //
-// Solidity: event DepositedERC20AndSwapped(address token, uint256 amount, address destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, bool isWrapped, uint16 referralId)
+// Solidity: event DepositedERC20AndSwapped(address token, uint256 amount, string destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, bool isWrapped, uint16 referralId)
 func (_Bridge *BridgeFilterer) WatchDepositedERC20AndSwapped(opts *bind.WatchOpts, sink chan<- *BridgeDepositedERC20AndSwapped) (event.Subscription, error) {
 
 	logs, sub, err := _Bridge.contract.WatchLogs(opts, "DepositedERC20AndSwapped")
@@ -1947,9 +1947,9 @@ func (_Bridge *BridgeFilterer) WatchDepositedERC20AndSwapped(opts *bind.WatchOpt
 	}), nil
 }
 
-// ParseDepositedERC20AndSwapped is a log parse operation binding the contract event 0x1d776c4b161f046ac97c01dc1cf9e186ddbde773f97a07c8feb24c7f06d823d5.
+// ParseDepositedERC20AndSwapped is a log parse operation binding the contract event 0x11c2030e768e3b5b27824d0d8b672c67f863c9a58ae85cf87d41363bbb125281.
 //
-// Solidity: event DepositedERC20AndSwapped(address token, uint256 amount, address destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, bool isWrapped, uint16 referralId)
+// Solidity: event DepositedERC20AndSwapped(address token, uint256 amount, string destinationToken, uint256 minDestinationAmount, uint256 swapDeadline, string receiver, string network, bool isWrapped, uint16 referralId)
 func (_Bridge *BridgeFilterer) ParseDepositedERC20AndSwapped(log types.Log) (*BridgeDepositedERC20AndSwapped, error) {
 	event := new(BridgeDepositedERC20AndSwapped)
 	if err := _Bridge.contract.UnpackLog(event, "DepositedERC20AndSwapped", log); err != nil {
@@ -2660,6 +2660,555 @@ func (_Bridge *BridgeFilterer) WatchUpgraded(opts *bind.WatchOpts, sink chan<- *
 func (_Bridge *BridgeFilterer) ParseUpgraded(log types.Log) (*BridgeUpgraded, error) {
 	event := new(BridgeUpgraded)
 	if err := _Bridge.contract.UnpackLog(event, "Upgraded", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BridgeWithdrawnERC1155Iterator is returned from FilterWithdrawnERC1155 and is used to iterate over the raw logs and unpacked data for WithdrawnERC1155 events raised by the Bridge contract.
+type BridgeWithdrawnERC1155Iterator struct {
+	Event *BridgeWithdrawnERC1155 // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BridgeWithdrawnERC1155Iterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BridgeWithdrawnERC1155)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BridgeWithdrawnERC1155)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BridgeWithdrawnERC1155Iterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BridgeWithdrawnERC1155Iterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BridgeWithdrawnERC1155 represents a WithdrawnERC1155 event raised by the Bridge contract.
+type BridgeWithdrawnERC1155 struct {
+	Token     common.Address
+	TokenId   *big.Int
+	Amount    *big.Int
+	Receiver  common.Address
+	TokenURI  string
+	IsWrapped bool
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterWithdrawnERC1155 is a free log retrieval operation binding the contract event 0x605d13472d10382e722662eac29514069901f8f837b7e41d7beac67da87342f3.
+//
+// Solidity: event WithdrawnERC1155(address token, uint256 tokenId, uint256 amount, address receiver, string tokenURI, bool isWrapped)
+func (_Bridge *BridgeFilterer) FilterWithdrawnERC1155(opts *bind.FilterOpts) (*BridgeWithdrawnERC1155Iterator, error) {
+
+	logs, sub, err := _Bridge.contract.FilterLogs(opts, "WithdrawnERC1155")
+	if err != nil {
+		return nil, err
+	}
+	return &BridgeWithdrawnERC1155Iterator{contract: _Bridge.contract, event: "WithdrawnERC1155", logs: logs, sub: sub}, nil
+}
+
+// WatchWithdrawnERC1155 is a free log subscription operation binding the contract event 0x605d13472d10382e722662eac29514069901f8f837b7e41d7beac67da87342f3.
+//
+// Solidity: event WithdrawnERC1155(address token, uint256 tokenId, uint256 amount, address receiver, string tokenURI, bool isWrapped)
+func (_Bridge *BridgeFilterer) WatchWithdrawnERC1155(opts *bind.WatchOpts, sink chan<- *BridgeWithdrawnERC1155) (event.Subscription, error) {
+
+	logs, sub, err := _Bridge.contract.WatchLogs(opts, "WithdrawnERC1155")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BridgeWithdrawnERC1155)
+				if err := _Bridge.contract.UnpackLog(event, "WithdrawnERC1155", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseWithdrawnERC1155 is a log parse operation binding the contract event 0x605d13472d10382e722662eac29514069901f8f837b7e41d7beac67da87342f3.
+//
+// Solidity: event WithdrawnERC1155(address token, uint256 tokenId, uint256 amount, address receiver, string tokenURI, bool isWrapped)
+func (_Bridge *BridgeFilterer) ParseWithdrawnERC1155(log types.Log) (*BridgeWithdrawnERC1155, error) {
+	event := new(BridgeWithdrawnERC1155)
+	if err := _Bridge.contract.UnpackLog(event, "WithdrawnERC1155", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BridgeWithdrawnERC20Iterator is returned from FilterWithdrawnERC20 and is used to iterate over the raw logs and unpacked data for WithdrawnERC20 events raised by the Bridge contract.
+type BridgeWithdrawnERC20Iterator struct {
+	Event *BridgeWithdrawnERC20 // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BridgeWithdrawnERC20Iterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BridgeWithdrawnERC20)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BridgeWithdrawnERC20)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BridgeWithdrawnERC20Iterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BridgeWithdrawnERC20Iterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BridgeWithdrawnERC20 represents a WithdrawnERC20 event raised by the Bridge contract.
+type BridgeWithdrawnERC20 struct {
+	Token     common.Address
+	Amount    *big.Int
+	Receiver  common.Address
+	IsWrapped bool
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterWithdrawnERC20 is a free log retrieval operation binding the contract event 0xc872b0b229e2cd5fd7032daefa79bbf979dac748a63ba99d8552c6d0e32299ec.
+//
+// Solidity: event WithdrawnERC20(address token, uint256 amount, address receiver, bool isWrapped)
+func (_Bridge *BridgeFilterer) FilterWithdrawnERC20(opts *bind.FilterOpts) (*BridgeWithdrawnERC20Iterator, error) {
+
+	logs, sub, err := _Bridge.contract.FilterLogs(opts, "WithdrawnERC20")
+	if err != nil {
+		return nil, err
+	}
+	return &BridgeWithdrawnERC20Iterator{contract: _Bridge.contract, event: "WithdrawnERC20", logs: logs, sub: sub}, nil
+}
+
+// WatchWithdrawnERC20 is a free log subscription operation binding the contract event 0xc872b0b229e2cd5fd7032daefa79bbf979dac748a63ba99d8552c6d0e32299ec.
+//
+// Solidity: event WithdrawnERC20(address token, uint256 amount, address receiver, bool isWrapped)
+func (_Bridge *BridgeFilterer) WatchWithdrawnERC20(opts *bind.WatchOpts, sink chan<- *BridgeWithdrawnERC20) (event.Subscription, error) {
+
+	logs, sub, err := _Bridge.contract.WatchLogs(opts, "WithdrawnERC20")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BridgeWithdrawnERC20)
+				if err := _Bridge.contract.UnpackLog(event, "WithdrawnERC20", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseWithdrawnERC20 is a log parse operation binding the contract event 0xc872b0b229e2cd5fd7032daefa79bbf979dac748a63ba99d8552c6d0e32299ec.
+//
+// Solidity: event WithdrawnERC20(address token, uint256 amount, address receiver, bool isWrapped)
+func (_Bridge *BridgeFilterer) ParseWithdrawnERC20(log types.Log) (*BridgeWithdrawnERC20, error) {
+	event := new(BridgeWithdrawnERC20)
+	if err := _Bridge.contract.UnpackLog(event, "WithdrawnERC20", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BridgeWithdrawnERC721Iterator is returned from FilterWithdrawnERC721 and is used to iterate over the raw logs and unpacked data for WithdrawnERC721 events raised by the Bridge contract.
+type BridgeWithdrawnERC721Iterator struct {
+	Event *BridgeWithdrawnERC721 // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BridgeWithdrawnERC721Iterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BridgeWithdrawnERC721)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BridgeWithdrawnERC721)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BridgeWithdrawnERC721Iterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BridgeWithdrawnERC721Iterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BridgeWithdrawnERC721 represents a WithdrawnERC721 event raised by the Bridge contract.
+type BridgeWithdrawnERC721 struct {
+	Token     common.Address
+	TokenId   *big.Int
+	Receiver  common.Address
+	TokenURI  string
+	IsWrapped bool
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterWithdrawnERC721 is a free log retrieval operation binding the contract event 0x80e3603e2865de4b313cf490fa04546f36b39ce73a11598521bdd9f75cef11cf.
+//
+// Solidity: event WithdrawnERC721(address token, uint256 tokenId, address receiver, string tokenURI, bool isWrapped)
+func (_Bridge *BridgeFilterer) FilterWithdrawnERC721(opts *bind.FilterOpts) (*BridgeWithdrawnERC721Iterator, error) {
+
+	logs, sub, err := _Bridge.contract.FilterLogs(opts, "WithdrawnERC721")
+	if err != nil {
+		return nil, err
+	}
+	return &BridgeWithdrawnERC721Iterator{contract: _Bridge.contract, event: "WithdrawnERC721", logs: logs, sub: sub}, nil
+}
+
+// WatchWithdrawnERC721 is a free log subscription operation binding the contract event 0x80e3603e2865de4b313cf490fa04546f36b39ce73a11598521bdd9f75cef11cf.
+//
+// Solidity: event WithdrawnERC721(address token, uint256 tokenId, address receiver, string tokenURI, bool isWrapped)
+func (_Bridge *BridgeFilterer) WatchWithdrawnERC721(opts *bind.WatchOpts, sink chan<- *BridgeWithdrawnERC721) (event.Subscription, error) {
+
+	logs, sub, err := _Bridge.contract.WatchLogs(opts, "WithdrawnERC721")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BridgeWithdrawnERC721)
+				if err := _Bridge.contract.UnpackLog(event, "WithdrawnERC721", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseWithdrawnERC721 is a log parse operation binding the contract event 0x80e3603e2865de4b313cf490fa04546f36b39ce73a11598521bdd9f75cef11cf.
+//
+// Solidity: event WithdrawnERC721(address token, uint256 tokenId, address receiver, string tokenURI, bool isWrapped)
+func (_Bridge *BridgeFilterer) ParseWithdrawnERC721(log types.Log) (*BridgeWithdrawnERC721, error) {
+	event := new(BridgeWithdrawnERC721)
+	if err := _Bridge.contract.UnpackLog(event, "WithdrawnERC721", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BridgeWithdrawnNativeIterator is returned from FilterWithdrawnNative and is used to iterate over the raw logs and unpacked data for WithdrawnNative events raised by the Bridge contract.
+type BridgeWithdrawnNativeIterator struct {
+	Event *BridgeWithdrawnNative // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BridgeWithdrawnNativeIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BridgeWithdrawnNative)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BridgeWithdrawnNative)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BridgeWithdrawnNativeIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BridgeWithdrawnNativeIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BridgeWithdrawnNative represents a WithdrawnNative event raised by the Bridge contract.
+type BridgeWithdrawnNative struct {
+	Amount   *big.Int
+	Receiver common.Address
+	Raw      types.Log // Blockchain specific contextual infos
+}
+
+// FilterWithdrawnNative is a free log retrieval operation binding the contract event 0x2aaa8f83c299480568ccc5c6b1cdd781d7ef20d477b5891cf957f7e2ff3ab667.
+//
+// Solidity: event WithdrawnNative(uint256 amount, address receiver)
+func (_Bridge *BridgeFilterer) FilterWithdrawnNative(opts *bind.FilterOpts) (*BridgeWithdrawnNativeIterator, error) {
+
+	logs, sub, err := _Bridge.contract.FilterLogs(opts, "WithdrawnNative")
+	if err != nil {
+		return nil, err
+	}
+	return &BridgeWithdrawnNativeIterator{contract: _Bridge.contract, event: "WithdrawnNative", logs: logs, sub: sub}, nil
+}
+
+// WatchWithdrawnNative is a free log subscription operation binding the contract event 0x2aaa8f83c299480568ccc5c6b1cdd781d7ef20d477b5891cf957f7e2ff3ab667.
+//
+// Solidity: event WithdrawnNative(uint256 amount, address receiver)
+func (_Bridge *BridgeFilterer) WatchWithdrawnNative(opts *bind.WatchOpts, sink chan<- *BridgeWithdrawnNative) (event.Subscription, error) {
+
+	logs, sub, err := _Bridge.contract.WatchLogs(opts, "WithdrawnNative")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BridgeWithdrawnNative)
+				if err := _Bridge.contract.UnpackLog(event, "WithdrawnNative", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseWithdrawnNative is a log parse operation binding the contract event 0x2aaa8f83c299480568ccc5c6b1cdd781d7ef20d477b5891cf957f7e2ff3ab667.
+//
+// Solidity: event WithdrawnNative(uint256 amount, address receiver)
+func (_Bridge *BridgeFilterer) ParseWithdrawnNative(log types.Log) (*BridgeWithdrawnNative, error) {
+	event := new(BridgeWithdrawnNative)
+	if err := _Bridge.contract.UnpackLog(event, "WithdrawnNative", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

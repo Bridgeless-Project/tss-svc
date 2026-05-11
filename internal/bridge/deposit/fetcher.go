@@ -14,16 +14,16 @@ import (
 )
 
 type Fetcher struct {
-	core    *connector.Connector
-	clients chain.Repository
-	cfg     config.Config
+	core         *connector.Connector
+	clients      chain.Repository
+	swapSettings config.SwapSettings
 }
 
-func NewFetcher(clients chain.Repository, core *connector.Connector, cfg config.Config) *Fetcher {
+func NewFetcher(clients chain.Repository, core *connector.Connector, swapSettings config.SwapSettings) *Fetcher {
 	return &Fetcher{
-		clients: clients,
-		core:    core,
-		cfg:     cfg,
+		clients:      clients,
+		core:         core,
+		swapSettings: swapSettings,
 	}
 }
 
@@ -77,10 +77,10 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		dstInfo.IsWrapped,
 		ignoreDistribution,
 		route.IsSwap,
-		route.FinalReceiver,
+		&route.FinalReceiver,
 		route.Receiver,
-		route.FinalChainId,
-		route.FinalToken,
+		&route.FinalChainId,
+		&route.FinalToken,
 		strconv.FormatUint(route.WithdrawalTokenId, 10),
 		route.WithdrawalChainId,
 	)
@@ -166,9 +166,7 @@ type SwapInfo struct {
 }
 
 func (p *Fetcher) SwapRoute(srcInfo, dstInfo *bridgetypes.TokenInfo, depositData *db.DepositData) SwapInfo {
-	//If TokenId is not the same, it's a swap operation
-	isSwap := srcInfo.TokenId != dstInfo.TokenId
-
+	isSwap := true
 	info := SwapInfo{
 		IsSwap:            isSwap,
 		Receiver:          depositData.DestinationAddress,
@@ -177,13 +175,13 @@ func (p *Fetcher) SwapRoute(srcInfo, dstInfo *bridgetypes.TokenInfo, depositData
 	}
 
 	if isSwap {
-		info.Receiver = p.cfg.Contract()
-		info.WithdrawalTokenId = p.cfg.TokenId()
-		info.WithdrawalChainId = p.cfg.ChainId()
+		info.Receiver = p.swapSettings.Contract
+		info.WithdrawalTokenId = p.swapSettings.WrappedBridge
+		info.WithdrawalChainId = p.swapSettings.ChainId
 
 		info.FinalReceiver = depositData.DestinationAddress
 		info.FinalChainId = depositData.DestinationChainId
-		info.FinalToken = dstInfo.Address
+		info.FinalToken = depositData.DestinationToken
 	}
 
 	return info

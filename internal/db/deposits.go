@@ -115,12 +115,12 @@ type Deposit struct {
 
 	MerkleProof *string `structs:"merkle_proof" db:"merkle_proof"`
 
-	IsSwap               bool   `structs:"is_swap" db:"is_swap"`
-	MinDestinationAmount string `structs:"min_destination_amount" db:"min_destination_amount"`
-	SwapDeadline         uint64 `structs:"swap_deadline" db:"swap_deadline"`
-	FinalReceiver        string `structs:"final_receiver" db:"final_receiver"`
-	FinalChainId         string `structs:"final_chain_id" db:"final_chain_id"`
-	FinalToken           string `structs:"final_token" db:"final_token"`
+	IsSwap               bool    `structs:"is_swap" db:"is_swap"`
+	MinDestinationAmount string  `structs:"min_destination_amount" db:"min_destination_amount"`
+	SwapDeadline         uint64  `structs:"swap_deadline" db:"swap_deadline"`
+	FinalReceiver        *string `structs:"final_receiver" db:"final_receiver"`
+	FinalChainId         *string `structs:"final_chain_id" db:"final_chain_id"`
+	FinalToken           *string `structs:"final_token" db:"final_token"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
@@ -149,10 +149,10 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 func (d Deposit) ToSwapTransaction() *swaptypes.SwapTransaction {
 	return &swaptypes.SwapTransaction{
 		Tx:            d.ToTransaction(),
-		FinalReceiver: d.FinalReceiver,
+		FinalReceiver: stringOrEmpty(d.FinalReceiver),
 		SwapOutAmount: d.MinDestinationAmount,
-		FinalToken:    d.FinalToken,
-		FinalChainId:  d.FinalChainId,
+		FinalToken:    stringOrEmpty(d.FinalToken),
+		FinalChainId:  stringOrEmpty(d.FinalChainId),
 		SwapDeadline:  d.SwapDeadline,
 	}
 }
@@ -168,9 +168,11 @@ type DepositData struct {
 
 	DestinationAddress string
 	DestinationChainId string
+	DestinationToken   string
 
 	MinDestinationAmount *big.Int
 	SwapDeadline         *big.Int
+	IsSwap               bool
 }
 
 func (d DepositData) ToNewDeposit(
@@ -179,10 +181,10 @@ func (d DepositData) ToNewDeposit(
 	isWrappedToken bool,
 	ignoreDistribution bool,
 	isSwapDeposit bool,
-	finalReceiver string,
+	finalReceiver *string,
 	receiver string,
-	finalChainId string,
-	finalToken string,
+	finalChainId *string,
+	finalToken *string,
 	withdrawalToken string,
 	withdrawalChainId string,
 ) Deposit {

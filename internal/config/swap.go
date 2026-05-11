@@ -7,46 +7,30 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-type Swap interface {
-	Contract() string
-	ChainId() string
-	TokenId() uint64
+type SwapConfigurator interface {
+	SwapSettings() SwapSettings
 }
 
-const (
-	swapKey = "swap"
-)
+const swapKey = "swap_config"
 
-type swapsConfig struct {
-	Contract string `fig:"contract,required"`
-	ChainId  string `fig:"chain_id,required"`
-	TokenId  uint64 `fig:"token_id,required"`
+type SwapSettings struct {
+	Contract      string `fig:"contract_address,required"`
+	ChainId       string `fig:"chain_id,required"`
+	WrappedBridge uint64 `fig:"wrapped_bridge,required"`
 }
 
-type swap struct {
+type swapper struct {
 	getter kv.Getter
 	once   comfig.Once
 }
 
-func NewSwap(getter kv.Getter) Swap {
-	return &swap{getter: getter}
+func NewSwapConfigurator(getter kv.Getter) SwapConfigurator {
+	return &swapper{getter: getter}
 }
 
-func (s *swap) Contract() string {
-	return s.getSwapConfig().Contract
-}
-
-func (s *swap) ChainId() string {
-	return s.getSwapConfig().ChainId
-}
-
-func (s *swap) TokenId() uint64 {
-	return s.getSwapConfig().TokenId
-}
-
-func (s *swap) getSwapConfig() swapsConfig {
+func (s *swapper) SwapSettings() SwapSettings {
 	return s.once.Do(func() any {
-		var cfg swapsConfig
+		var cfg SwapSettings
 		if err := figure.
 			Out(&cfg).
 			With(figure.BaseHooks).
@@ -55,5 +39,5 @@ func (s *swap) getSwapConfig() swapsConfig {
 			panic(errors.Wrap(err, "failed to figure out swap config"))
 		}
 		return cfg
-	}).(swapsConfig)
+	}).(SwapSettings)
 }
