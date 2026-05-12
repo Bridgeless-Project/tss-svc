@@ -1,8 +1,6 @@
 module github.com/Bridgeless-Project/tss-svc
 
-go 1.23.4
-
-toolchain go1.23.10
+go 1.23.10
 
 replace (
 	// tss-lib fix ed25519
@@ -14,12 +12,14 @@ replace (
 	github.com/cosmos/iavl => github.com/cosmos/iavl v0.19.6
 	// bridge cosmos sdk protobuf fix
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+	github.com/lyft/protoc-gen-validate => github.com/envoyproxy/protoc-gen-validate v0.0.13
+	github.com/taurusgroup/multi-party-sig => github.com/MarkCherepovskyi/multi-party-sig v0.0.0-20250821132310-d489e309bba4
+	github.com/tdakkota/asciicheck v0.1.1 => github.com/golangci/asciicheck v0.1.1
 	// bridge cosmos sdk comebft change
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 	github.com/tidwall/btree => github.com/tidwall/btree v1.5.0
 	// deleted library fix that is used in other libraries
 	github.com/tyler-smith/go-bip39 => github.com/distributed-lab/go-bip39 v1.1.0
-	github.com/lyft/protoc-gen-validate => github.com/envoyproxy/protoc-gen-validate v0.0.13
 )
 
 require (
@@ -56,6 +56,7 @@ require (
 	github.com/rubenv/sql-migrate v1.7.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
+	github.com/taurusgroup/multi-party-sig v0.0.0-00010101000000-000000000000
 	github.com/tendermint/tendermint v0.34.28
 	github.com/xssnick/tonutils-go v1.13.0
 	gitlab.com/distributed_lab/ape v1.7.2
@@ -104,6 +105,7 @@ require (
 	github.com/cosmos/ledger-cosmos-go v0.12.2 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20240724233137-53bbb0ceb27a // indirect
 	github.com/crate-crypto/go-kzg-4844 v1.1.0 // indirect
+	github.com/cronokirby/saferith v0.33.0 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/dchest/siphash v1.2.3 // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
@@ -119,6 +121,7 @@ require (
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gcash/bchlog v0.0.0-20180913005452-b4f036f92fa6 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect
@@ -162,6 +165,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kkdai/bstream v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
@@ -217,6 +221,8 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
+	github.com/zeebo/blake3 v0.2.3 // indirect
 	github.com/zondax/hid v0.9.1 // indirect
 	github.com/zondax/ledger-go v0.14.1 // indirect
 	gitlab.com/distributed_lab/figure v2.1.2+incompatible // indirect

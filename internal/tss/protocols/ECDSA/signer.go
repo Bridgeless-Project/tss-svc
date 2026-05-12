@@ -9,6 +9,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
@@ -33,7 +34,7 @@ type SignParty struct {
 
 	logger      *logan.Entry
 	party       tss.Party
-	msgs        chan PartyMsg
+	msgs        chan tss2.PartyMsg
 	broadcaster *broadcast.Broadcaster
 
 	data []byte
@@ -47,7 +48,7 @@ func NewSignParty(self LocalSignParty, sessionId string, logger *logan.Entry) *S
 	return &SignParty{
 		wg:        &sync.WaitGroup{},
 		self:      self,
-		msgs:      make(chan PartyMsg, MsgsCapacity),
+		msgs:      make(chan tss2.PartyMsg, tss2.MsgsCapacity),
 		sessionId: sessionId,
 		logger:    logger,
 	}
@@ -82,8 +83,8 @@ func (p *SignParty) Run(ctx context.Context) {
 		len(p.sortedPartyIds),
 		p.self.Threshold,
 	)
-	out := make(chan tss.Message, OutChannelSize)
-	end := make(chan *common.SignatureData, EndChannelSize)
+	out := make(chan tss.Message, tss2.OutChannelSize)
+	end := make(chan *common.SignatureData, tss2.EndChannelSize)
 
 	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Share, out, end)
 
@@ -103,13 +104,13 @@ func (p *SignParty) Run(ctx context.Context) {
 	p.logger.Info("signing started")
 }
 
-func (p *SignParty) WaitFor() *common.SignatureData {
+func (p *SignParty) WaitFor() *tss2.LocalPartyData {
 	p.wg.Wait()
 	p.ended.Store(true)
 
 	p.logger.Info("signing finished")
 
-	return p.result
+	return tss2.NewLocalPartyData(p.data)
 }
 
 // Receive adds msg to msgs chan
@@ -118,13 +119,14 @@ func (p *SignParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.msgs <- PartyMsg{
+	p.msgs <- tss2.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
 	}
 }
 
+// ( from other parties to me )
 // receiveMsgs receives message from msg chan and updates party`s internal state
 func (p *SignParty) receiveMsgs(ctx context.Context) {
 	defer p.wg.Done()
@@ -152,6 +154,7 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 	}
 }
 
+// (from me to other party)
 func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, end <-chan *common.SignatureData) {
 	defer p.wg.Done()
 

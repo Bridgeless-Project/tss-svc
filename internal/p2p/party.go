@@ -17,11 +17,16 @@ type Party struct {
 	connection *grpc.ClientConn
 	pemCert    []byte
 	identifier *tss.PartyID
+	//identifier map[int]interface{} // it could be tss *tss.PartyID or any other identifier that the protocol needs
 }
 
 func (p *Party) Identifier() *tss.PartyID {
 	return p.identifier
 }
+
+//func (p *Party) Identifier(protocol int) interface{} {
+//	return p.identifier[protocol]
+//}
 
 func (p *Party) Connection() *grpc.ClientConn {
 	return p.connection

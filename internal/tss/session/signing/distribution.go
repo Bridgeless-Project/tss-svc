@@ -11,6 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -133,11 +134,12 @@ func (s *SignaturesDistributor) validateSignatures() error {
 	if s.signatures == nil {
 		return errors.New("no signatures received")
 	}
-	if len(s.signatures.Data) != len(s.sigData) {
+	if len(s.signatures.GetData().([]*common.SignatureData)) != len(s.sigData) {
 		return errors.New("received signatures count does not match expected")
 	}
 
-	for i, signature := range s.signatures.Data {
+	// TODO use some common data
+	for i, signature := range s.signatures.GetData().([]*common.SignatureData) {
 		if !tss.Verify(s.sigPubKey, s.sigData[i], signature) {
 			return errors.New("got invalid signature")
 		}

@@ -157,7 +157,8 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector)
+			// TODO handle the share for FROST
+			sess := configureSigningSession(sessParams, parties, *account, share.(*keygen.LocalPartySaveData), dtb, fetcher, logger, client, connector)
 
 			wg.Add(1)
 			eg.Go(func() error {

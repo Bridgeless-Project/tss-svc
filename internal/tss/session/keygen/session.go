@@ -9,8 +9,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -25,13 +25,9 @@ type Session struct {
 	connectedPartiesCount func() int
 	partiesCount          int
 
-	keygenParty interface {
-		Run(ctx context.Context)
-		WaitFor() *keygen.LocalPartySaveData
-		Receive(sender core.Address, data *p2p.TssData)
-	}
+	keygenParty tss.KeyGenParty
 
-	result *keygen.LocalPartySaveData
+	result *tss.LocalPartyData
 	err    error
 
 	logger *logan.Entry
@@ -43,16 +39,27 @@ func NewSession(
 	params session.Params,
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
+	protocolID int,
 ) *Session {
+
 	sessionId := session.GetKeygenSessionIdentifier(params.Id)
-	return &Session{
-		sessionId:             sessionId,
-		params:                params,
-		wg:                    &sync.WaitGroup{},
-		connectedPartiesCount: connectedPartiesCountFunc,
-		partiesCount:          len(parties),
-		keygenParty:           tss.NewKeygenParty(self, parties, sessionId, logger.WithField("component", "keygen_party")),
-		logger:                logger,
+	switch protocolID {
+	case tss.ProtocolID_ECDSA_KEYGEN:
+		return &Session{
+			sessionId:             sessionId,
+			params:                params,
+			wg:                    &sync.WaitGroup{},
+			connectedPartiesCount: connectedPartiesCountFunc,
+			partiesCount:          len(parties),
+			keygenParty:           tss2.SelectKeyGenByProtocol(tss.ProtocolID_ECDSA_KEYGEN, self, parties, params.Threshold, sessionId, logger.WithField("component", "keygen_party")),
+			logger:                logger,
+		}
+
+	case tss.ProtocolID_FROST_KEYGEN:
+		return &Session{}
+
+	default:
+		return &Session{}
 	}
 }
 
@@ -102,7 +109,7 @@ func (s *Session) run(ctx context.Context) {
 	}
 }
 
-func (s *Session) WaitFor() (*keygen.LocalPartySaveData, error) {
+func (s *Session) WaitFor() (*tss.LocalPartyData, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }

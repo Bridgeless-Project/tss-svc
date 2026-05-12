@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -23,7 +24,8 @@ var pubkeyCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to get TSS share from vault")
 		}
 
-		pubKey := share.ECDSAPub.ToECDSAPubKey()
+		// TODO: make configurable for FROST
+		pubKey := share.(keygen.LocalPartySaveData).ECDSAPub.ToECDSAPubKey()
 		fmt.Println("X coordinate:", pubKey.X)
 		fmt.Println("Y coordinate:", pubKey.Y)
 

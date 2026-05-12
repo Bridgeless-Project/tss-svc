@@ -14,8 +14,8 @@ type Storage interface {
 	GetCoreAccount() (*core.Account, error)
 	SaveCoreAccount(account *core.Account) error
 
-	SaveTssShare(data *keygen.LocalPartySaveData) error
-	GetTssShare() (*keygen.LocalPartySaveData, error)
+	SaveTssShare(data interface{}) error
+	GetTssShare() (interface{}, error)
 
 	SaveLocalPartyTlsCertificate(rawCert, rawKey []byte) error
 	GetLocalPartyTlsCertificate() (*tls.Certificate, error)

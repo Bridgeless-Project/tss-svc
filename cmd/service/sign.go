@@ -15,6 +15,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -84,7 +85,7 @@ var signCmd = &cobra.Command{
 		session := signing.NewDefaultSession(
 			tss.LocalSignParty{
 				Account:   *account,
-				Share:     localSaveData,
+				Share:     localSaveData.(*keygen.LocalPartySaveData),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			signing.DefaultSessionParams{
@@ -126,7 +127,7 @@ var signCmd = &cobra.Command{
 			}
 
 			if verify {
-				if valid := tss.Verify(localSaveData.ECDSAPub.ToECDSAPubKey(), dataToSign, result); !valid {
+				if valid := tss.Verify(localSaveData.(*keygen.LocalPartySaveData).ECDSAPub.ToECDSAPubKey(), dataToSign, result); !valid {
 					return errors.New("signature verification failed")
 				} else {
 					cfg.Log().Info("Signature verification passed")

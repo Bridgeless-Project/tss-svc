@@ -2,90 +2,76 @@ package tss
 
 import (
 	"context"
-	"math/big"
+	"errors"
 	"sync"
 	"sync/atomic"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-type LocalSignParty struct {
-	Account   core.Account
-	Share     *keygen.LocalPartySaveData
-	Threshold int
-}
+type KeygenParty struct {
+	wg    *sync.WaitGroup
+	ended atomic.Bool
 
-type SignParty struct {
-	wg *sync.WaitGroup
-
-	parties        map[core.Address]struct{}
+	broadcaster    *broadcast.Broadcaster
+	party          tss.Party
 	sortedPartyIds tss.SortedPartyIDs
+	parties        map[core.Address]struct{}
+	self           tss2.LocalKeygenParty
 
-	self LocalSignParty
-
-	logger      *logan.Entry
-	party       tss.Party
-	msgs        chan PartyMsg
-	broadcaster *broadcast.Broadcaster
-
-	data []byte
-
-	ended     atomic.Bool
-	result    *common.SignatureData
+	msgs      chan tss2.PartyMsg
+	result    *keygen.LocalPartySaveData
 	sessionId string
+
+	logger *logan.Entry
 }
 
-func NewSignParty(self LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
-	return &SignParty{
-		wg:        &sync.WaitGroup{},
-		self:      self,
-		msgs:      make(chan PartyMsg, MsgsCapacity),
-		sessionId: sessionId,
-		logger:    logger,
-	}
-}
-
-func (p *SignParty) WithParties(parties []p2p.Party) *SignParty {
+func NewKeygenParty(self tss2.LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
-	partyIds[0] = p.self.Account.CosmosAddress().PartyIdentifier()
+	partyIds[0] = self.Address.PartyIdentifier()
 
 	for i, party := range parties {
 		partyMap[party.CoreAddress] = struct{}{}
 		partyIds[i+1] = party.Identifier()
 	}
 
-	p.parties = partyMap
-	p.sortedPartyIds = tss.SortPartyIDs(partyIds)
-	p.broadcaster = broadcast.NewBroadcaster(parties, p.logger.WithField("component", "broadcaster"))
-
-	return p
+	return &KeygenParty{
+		broadcaster:    broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		sortedPartyIds: tss.SortPartyIDs(partyIds),
+		parties:        partyMap,
+		self:           self,
+		msgs:           make(chan tss2.PartyMsg, tss2.MsgsCapacity),
+		logger:         logger,
+		sessionId:      sessionId,
+		wg:             &sync.WaitGroup{},
+	}
 }
 
-func (p *SignParty) WithSigningData(data []byte) *SignParty {
-	p.data = data
-	return p
-}
-
-func (p *SignParty) Run(ctx context.Context) {
+func (p *KeygenParty) Run(ctx context.Context) {
 	params := tss.NewParameters(
 		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
-		p.sortedPartyIds.FindByKey(p.self.Account.CosmosAddress().PartyKey()),
+		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
 		p.self.Threshold,
 	)
-	out := make(chan tss.Message, OutChannelSize)
-	end := make(chan *common.SignatureData, EndChannelSize)
+	out := make(chan tss.Message, tss2.OutChannelSize)
+	end := make(chan *keygen.LocalPartySaveData, tss2.EndChannelSize)
 
-	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Share, out, end)
+	preParams, ok := p.self.PreParams.(keygen.LocalPreParams)
+	if !ok {
+		p.logger.WithError(errors.New("failed to convert types to LocalPreParams")).Error("failed to run keygen")
+		close(end)
+	}
+
+	p.party = keygen.NewLocalParty(params, out, end, preParams)
 
 	p.wg.Add(3)
 
@@ -93,40 +79,38 @@ func (p *SignParty) Run(ctx context.Context) {
 		defer p.wg.Done()
 
 		if err := p.party.Start(); err != nil {
-			p.logger.WithError(err).Error("failed to run signing")
+			p.logger.WithError(err).Error("failed to run keygen")
 			close(end)
 		}
 	}()
 	go p.receiveMsgs(ctx)
 	go p.receiveUpdates(ctx, out, end)
 
-	p.logger.Info("signing started")
+	p.logger.Info("keygen started")
 }
 
-func (p *SignParty) WaitFor() *common.SignatureData {
+func (p *KeygenParty) WaitFor() *tss2.LocalPartyData {
 	p.wg.Wait()
 	p.ended.Store(true)
 
-	p.logger.Info("signing finished")
+	p.logger.Info("keygen finished")
 
-	return p.result
+	return nil
 }
 
-// Receive adds msg to msgs chan
-func (p *SignParty) Receive(sender core.Address, data *p2p.TssData) {
+func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 	if p.ended.Load() {
 		return
 	}
 
-	p.msgs <- PartyMsg{
+	p.msgs <- tss2.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
 	}
 }
 
-// receiveMsgs receives message from msg chan and updates party`s internal state
-func (p *SignParty) receiveMsgs(ctx context.Context) {
+func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 	defer p.wg.Done()
 
 	for {
@@ -150,9 +134,10 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 			}
 		}
 	}
+
 }
 
-func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, end <-chan *common.SignatureData) {
+func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, end <-chan *keygen.LocalPartySaveData) {
 	defer p.wg.Done()
 
 	for {
@@ -183,19 +168,20 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, 
 
 			tssReq, _ := anypb.New(tssData)
 			submitReq := p2p.SubmitRequest{
-				Sender:    p.self.Account.CosmosAddress().String(),
+				Sender:    p.self.Address.String(),
 				SessionId: p.sessionId,
-				Type:      p2p.RequestType_RT_SIGN,
+				Type:      p2p.RequestType_RT_KEYGEN,
 				Data:      tssReq,
 			}
 
-			destination := routing.To
-			if destination == nil || len(destination) > 1 {
+			// https://github.com/bnb-chain/tss/blob/100c015447e557b0608c8c8cbd30730d5dac7fba/client/client.go#L288
+			to := routing.To
+			if to == nil || len(to) > 1 {
 				p.broadcaster.Broadcast(&submitReq)
 				continue
 			}
 
-			dst := core.AddrFromPartyId(destination[0])
+			dst := core.AddrFromPartyId(to[0])
 			if err = p.broadcaster.Send(&submitReq, dst); err != nil {
 				p.logger.WithError(err).Error("failed to send message")
 			}

@@ -13,7 +13,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -74,6 +73,7 @@ var keygenCmd = &cobra.Command{
 			cfg.TssSessionParams(),
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
+			tss.ProtocolID_ECDSA_KEYGEN,
 		)
 
 		sessionManager := p2p.NewSessionManager(session)
@@ -110,7 +110,7 @@ var keygenCmd = &cobra.Command{
 	},
 }
 
-func storeKeygenResult(result *keygen.LocalPartySaveData, storage secrets.Storage) error {
+func storeKeygenResult(result interface{}, storage secrets.Storage) error {
 	raw, err := json.Marshal(result)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal keygen result")
