@@ -57,7 +57,7 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 	switch eventType {
 	case EventV1DepositedNative:
 		eventBody := new(v1.BridgeDepositedNative)
-		if err := p.abis["v1"].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV1].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
@@ -76,7 +76,7 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 		}
 	case EventV2DepositedNative:
 		eventBody := new(v2.BridgeDepositedNative)
-		if err := p.abis["v2"].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV2].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
@@ -95,7 +95,7 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 		}
 	case EventV1DepositedNativeAndSwapped:
 		eventBody := new(v3.BridgeBridgedNativeAndSwapped)
-		if err := p.abis["v3"].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV3].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
@@ -114,7 +114,7 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 		}
 	case EventV1DepositedERC20:
 		eventBody := new(v1.BridgeDepositedERC20)
-		if err := p.abis["v1"].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV1].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
@@ -133,7 +133,7 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 		}
 	case EventV2DepositedERC20:
 		eventBody := new(v2.BridgeDepositedERC20)
-		if err := p.abis["v2"].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV2].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
@@ -152,7 +152,7 @@ func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *t
 		}
 	case EventV1DepositedERC20AndSwapped:
 		eventBody := new(v3.BridgeDepositedERC20AndSwapped)
-		if err := p.abis["v3"].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV3].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{

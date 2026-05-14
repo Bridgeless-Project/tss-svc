@@ -1,5 +1,12 @@
 package evm
 
+import (
+	v1 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v1"
+	v2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v2"
+	v3 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v3"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+)
+
 type EventType string
 
 const (
@@ -40,4 +47,21 @@ var EventToEventName = map[EventType]string{
 	EventV2DepositedERC20:            EventNameDepositedERC20,
 	EventV1DepositedNativeAndSwapped: EventNameDepositedNativeAndSwapped,
 	EventV1DepositedERC20AndSwapped:  EventNameDepositedERC20AndSwapped,
+}
+
+const (
+	ContractVersionV1 string = "contract_v1"
+	ContractVersionV2 string = "contract_v2"
+	ContractVersionV3 string = "contract_v3"
+)
+
+type abiVersion struct {
+	metadata        *bind.MetaData
+	eventNameToType map[string]EventType
+}
+
+var supportedVersions = map[string]abiVersion{
+	ContractVersionV1: {v1.BridgeMetaData, EventNameToEventV1},
+	ContractVersionV2: {v2.BridgeMetaData, EventNameToEventV2},
+	ContractVersionV3: {v3.BridgeMetaData, EventNameToEventV3},
 }

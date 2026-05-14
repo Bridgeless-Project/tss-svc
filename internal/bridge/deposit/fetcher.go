@@ -6,7 +6,7 @@ import (
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/config"
+	"github.com/Bridgeless-Project/tss-svc/internal/config/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -16,10 +16,10 @@ import (
 type Fetcher struct {
 	core         *connector.Connector
 	clients      chain.Repository
-	swapSettings config.SwapSettings
+	swapSettings bridge.SwapSettings
 }
 
-func NewFetcher(clients chain.Repository, core *connector.Connector, swapSettings config.SwapSettings) *Fetcher {
+func NewFetcher(clients chain.Repository, core *connector.Connector, swapSettings bridge.SwapSettings) *Fetcher {
 	return &Fetcher{
 		clients:      clients,
 		core:         core,
@@ -69,21 +69,8 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 
 	ignoreDistribution := dstClient.IsCentralized()
 
-	route := p.SwapRoute(srcInfo, dstInfo, depositData)
-
-	deposit := depositData.ToNewDeposit(
-		withdrawalAmount,
-		commission,
-		dstInfo.IsWrapped,
-		ignoreDistribution,
-		depositData.IsSwap,
-		&route.FinalReceiver,
-		route.Receiver,
-		&route.FinalChainId,
-		&route.FinalToken,
-		strconv.FormatUint(route.WithdrawalTokenId, 10),
-		route.WithdrawalChainId,
-	)
+	depositParams := p.configureDepositParams(depositData, withdrawalAmount, commission, ignoreDistribution, dstInfo)
+	deposit := db.ToNewDeposit(depositParams, *depositData)
 
 	return &deposit, nil
 }
@@ -155,31 +142,34 @@ func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uin
 	return result
 }
 
-type SwapInfo struct {
-	Receiver          string
-	WithdrawalTokenId uint64
-	WithdrawalChainId string
-	FinalReceiver     string
-	FinalChainId      string
-	FinalToken        string
-}
-
-func (p *Fetcher) SwapRoute(srcInfo, dstInfo *bridgetypes.TokenInfo, depositData *db.DepositData) SwapInfo {
-	info := SwapInfo{
-		Receiver:          depositData.DestinationAddress,
-		WithdrawalTokenId: dstInfo.TokenId,
-		WithdrawalChainId: dstInfo.ChainId,
+func (p *Fetcher) configureDepositParams(
+	depositData *db.DepositData,
+	withdrawalAmount *big.Int,
+	commission *big.Int,
+	ignoreDistribution bool,
+	dstInfo *bridgetypes.TokenInfo,
+) db.DepositParams {
+	params := db.DepositParams{
+		WithdrawalAmount:   withdrawalAmount,
+		CommissionAmount:   commission,
+		IsWrappedToken:     dstInfo.IsWrapped,
+		IgnoreDistribution: ignoreDistribution,
+		Receiver:           depositData.DestinationAddress,
+		WithdrawalToken:    strconv.FormatUint(dstInfo.TokenId, 10),
+		WithdrawalChainId:  dstInfo.ChainId,
 	}
 
-	if depositData.IsSwap {
-		info.Receiver = p.swapSettings.Contract
-		info.WithdrawalTokenId = p.swapSettings.WrappedBridge
-		info.WithdrawalChainId = p.swapSettings.ChainId
-
-		info.FinalReceiver = depositData.DestinationAddress
-		info.FinalChainId = depositData.DestinationChainId
-		info.FinalToken = depositData.DestinationToken
+	if !depositData.IsSwap {
+		return params
 	}
 
-	return info
+	params.Receiver = p.swapSettings.Contract
+	params.WithdrawalToken = strconv.FormatUint(p.swapSettings.WrappedBridge, 10)
+	params.WithdrawalChainId = p.swapSettings.ChainId
+
+	params.FinalReceiver = &depositData.DestinationAddress
+	params.FinalChainId = &depositData.DestinationChainId
+	params.FinalToken = &depositData.DestinationToken
+
+	return params
 }

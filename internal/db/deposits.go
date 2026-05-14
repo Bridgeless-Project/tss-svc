@@ -149,10 +149,10 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 func (d Deposit) ToSwapTransaction() *swaptypes.SwapTransaction {
 	return &swaptypes.SwapTransaction{
 		Tx:            d.ToTransaction(),
-		FinalReceiver: stringOrEmpty(d.FinalReceiver),
+		FinalReceiver: *d.FinalReceiver,
 		SwapOutAmount: d.MinDestinationAmount,
-		FinalToken:    stringOrEmpty(d.FinalToken),
-		FinalChainId:  stringOrEmpty(d.FinalChainId),
+		FinalToken:    *d.FinalToken,
+		FinalChainId:  *d.FinalChainId,
 		SwapDeadline:  d.SwapDeadline,
 	}
 }
@@ -175,40 +175,42 @@ type DepositData struct {
 	IsSwap               bool
 }
 
-func (d DepositData) ToNewDeposit(
-	withdrawalAmount,
-	commissionAmount *big.Int,
-	isWrappedToken bool,
-	ignoreDistribution bool,
-	isSwapDeposit bool,
-	finalReceiver *string,
-	receiver string,
-	finalChainId *string,
-	finalToken *string,
-	withdrawalToken string,
-	withdrawalChainId string,
-) Deposit {
+type DepositParams struct {
+	WithdrawalAmount   *big.Int
+	CommissionAmount   *big.Int
+	IsWrappedToken     bool
+	IgnoreDistribution bool
+	IsSwapDeposit      bool
+	FinalReceiver      *string
+	Receiver           string
+	FinalChainId       *string
+	FinalToken         *string
+	WithdrawalToken    string
+	WithdrawalChainId  string
+}
+
+func ToNewDeposit(p DepositParams, d DepositData) Deposit {
 	return Deposit{
 		DepositIdentifier:    d.DepositIdentifier,
 		Depositor:            &d.SourceAddress,
 		DepositAmount:        d.DepositAmount.String(),
 		DepositToken:         d.TokenAddress,
-		Receiver:             receiver,
-		WithdrawalToken:      withdrawalToken,
+		Receiver:             p.Receiver,
+		WithdrawalToken:      p.WithdrawalToken,
 		DepositBlock:         d.Block,
 		WithdrawalStatus:     types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
-		WithdrawalChainId:    withdrawalChainId,
-		WithdrawalAmount:     withdrawalAmount.String(),
-		IsWrappedToken:       isWrappedToken,
-		CommissionAmount:     commissionAmount.String(),
+		WithdrawalChainId:    p.WithdrawalChainId,
+		WithdrawalAmount:     p.WithdrawalAmount.String(),
+		IsWrappedToken:       p.IsWrappedToken,
+		CommissionAmount:     p.CommissionAmount.String(),
 		ReferralId:           d.ReferralId,
-		Distributed:          ignoreDistribution,
-		IsSwap:               isSwapDeposit,
-		FinalReceiver:        finalReceiver,
+		Distributed:          p.IgnoreDistribution,
+		IsSwap:               p.IsSwapDeposit,
+		FinalReceiver:        p.FinalReceiver,
 		MinDestinationAmount: bigIntToStringOrEmpty(d.MinDestinationAmount),
 		SwapDeadline:         bigIntToUint64OrEmpty(d.SwapDeadline),
-		FinalChainId:         finalChainId,
-		FinalToken:           finalToken,
+		FinalChainId:         p.FinalChainId,
+		FinalToken:           p.FinalToken,
 	}
 }
 

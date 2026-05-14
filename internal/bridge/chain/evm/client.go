@@ -6,21 +6,12 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	v1 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v1"
-	v2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v2"
-	v3 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/singleflight"
 )
-
-type abiVersion struct {
-	metadata        *bind.MetaData
-	eventNameToType map[string]EventType
-}
 
 type Client struct {
 	chain           Chain
@@ -32,7 +23,7 @@ type Client struct {
 
 // NewBridgeClient creates a new bridge Client for the given chain.
 func NewBridgeClient(chain Chain) *Client {
-	versions := supportedVersions()
+	versions := supportedVersions
 
 	versionedABIs := make(map[string]abi.ABI)
 	supportedEvents := make(map[string]EventType)
@@ -100,12 +91,4 @@ func (p *Client) IsCentralized() bool {
 
 func (p *Client) IsStandart() bool {
 	return p.chain.Meta.Standart
-}
-
-func supportedVersions() map[string]abiVersion {
-	return map[string]abiVersion{
-		"v1": {v1.BridgeMetaData, EventNameToEventV1},
-		"v2": {v2.BridgeMetaData, EventNameToEventV2},
-		"v3": {v3.BridgeMetaData, EventNameToEventV3},
-	}
 }

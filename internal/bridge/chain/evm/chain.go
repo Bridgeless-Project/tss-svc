@@ -46,12 +46,11 @@ func FromChain(c chain.Chain) Chain {
 		Confirmations: c.Confirmations,
 	}
 
-	if err := figure.Out(&chain.Rpc).FromInterface(c.Rpc).With(figure.EthereumHooks).Please(); err != nil {
-		panic(errors.Wrap(err, "failed to obtain Ethereum clients"))
-	}
-	if err := figure.Out(&chain.RawClient).FromInterface(c.Rpc).With(RawClientHook).Please(); err != nil {
+	if err := figure.Out(&chain.RawClient).FromInterface(c.Rpc).With(rawClientHook).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain raw Ethereum RPC client"))
 	}
+	chain.Rpc = ethclient.NewClient(chain.RawClient)
+
 	if err := figure.Out(&chain.BridgeAddress).FromInterface(c.BridgeAddresses).With(figure.EthereumHooks).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to obtain bridge addresses"))
 	}
@@ -65,7 +64,7 @@ func FromChain(c chain.Chain) Chain {
 	return chain
 }
 
-var RawClientHook = figure.Hooks{
+var rawClientHook = figure.Hooks{
 	"*rpc.Client": func(value interface{}) (reflect.Value, error) {
 		switch v := value.(type) {
 		case string:

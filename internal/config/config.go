@@ -2,6 +2,7 @@ package config
 
 import (
 	chain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/config"
+	"github.com/Bridgeless-Project/tss-svc/internal/config/bridge"
 	connector "github.com/Bridgeless-Project/tss-svc/internal/core/connector/config"
 	subscriber "github.com/Bridgeless-Project/tss-svc/internal/core/subscriber/config"
 	p2p "github.com/Bridgeless-Project/tss-svc/internal/p2p/config"
@@ -22,7 +23,7 @@ type Config interface {
 	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
-	SwapConfigurator
+	bridge.SwapConfigurator
 }
 
 type config struct {
@@ -37,7 +38,7 @@ type config struct {
 	chain.Chainer
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
-	SwapConfigurator
+	bridge.SwapConfigurator
 }
 
 func New(getter kv.Getter) Config {
@@ -54,6 +55,6 @@ func New(getter kv.Getter) Config {
 		Chainer:                   chain.NewChainer(getter),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),
 		SubscriberConfigurator:    subscriber.NewSubscriberConfigurator(getter),
-		SwapConfigurator:          NewSwapConfigurator(getter),
+		SwapConfigurator:          bridge.NewSwapConfigurator(getter),
 	}
 }

@@ -1,4 +1,4 @@
-package config
+package bridge
 
 import (
 	"github.com/pkg/errors"
