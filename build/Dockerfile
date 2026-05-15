@@ -1,4 +1,4 @@
-FROM golang:1.23.4-alpine as buildbase
+FROM golang:1.26.0-alpine as buildbase
 
 RUN apk add git build-base
 
@@ -19,7 +19,7 @@ COPY . .
 RUN go build  -o /usr/local/bin/tss-svc /go/src/github.com/Bridgeless-Project/tss-svc
 
 
-FROM alpine:3.9
+FROM alpine:3.21
 
 COPY --from=buildbase /usr/local/bin/tss-svc /usr/local/bin/tss-svc
 

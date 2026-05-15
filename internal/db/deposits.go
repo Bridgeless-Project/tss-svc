@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
+	swaptypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/swap/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -28,11 +29,11 @@ type DepositsQ interface {
 	GetWithSelector(selector DepositsSelector) (*Deposit, error)
 
 	UpdateWithdrawalDetails(identifier DepositIdentifier, hash *string, signature *string) error
-	UpdateStatus(DepositIdentifier, types.WithdrawalStatus) error
+	UpdateStatus(status types.WithdrawalStatus, identifier ...DepositIdentifier) error
 	UpdateSignedBatch(signed []SignedDeposit) error
 	InsertProcessedDeposit(deposit Deposit) (int64, error)
 
-	UpdateProcessed(data ProcessedDepositData) error
+	UpdateProcessed(data ...ProcessedDepositData) error
 	UpdateSubmittedStatus(identifier DepositIdentifier, submitted bool) error
 	UpdateDistributedStatus(identifier DepositIdentifier, distributed bool) error
 
@@ -69,6 +70,8 @@ type DepositsSelector struct {
 
 	Distributed    bool
 	NotDistributed bool
+
+	Identifiers []DepositIdentifier
 }
 
 func (d DepositIdentifier) String() string {
@@ -109,6 +112,15 @@ type Deposit struct {
 
 	Submitted   bool `structs:"submitted" db:"submitted"`
 	Distributed bool `structs:"distributed" db:"distributed"`
+
+	MerkleProof *string `structs:"merkle_proof" db:"merkle_proof"`
+
+	IsSwap               bool    `structs:"is_swap" db:"is_swap"`
+	MinDestinationAmount string  `structs:"min_destination_amount" db:"min_destination_amount"`
+	SwapDeadline         uint64  `structs:"swap_deadline" db:"swap_deadline"`
+	FinalReceiver        *string `structs:"final_receiver" db:"final_receiver"`
+	FinalChainId         *string `structs:"final_chain_id" db:"final_chain_id"`
+	FinalToken           *string `structs:"final_token" db:"final_token"`
 }
 
 func (d Deposit) ToTransaction() bridgetypes.Transaction {
@@ -130,6 +142,18 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		IsWrapped:         d.IsWrappedToken,
 		ReferralId:        uint32(d.ReferralId),
 		TxData:            stringOrEmpty(d.TxData),
+		MerkleProof:       stringOrEmpty(d.MerkleProof),
+	}
+}
+
+func (d Deposit) ToSwapTransaction() *swaptypes.SwapTransaction {
+	return &swaptypes.SwapTransaction{
+		Tx:            d.ToTransaction(),
+		FinalReceiver: *d.FinalReceiver,
+		SwapOutAmount: d.MinDestinationAmount,
+		FinalToken:    *d.FinalToken,
+		FinalChainId:  *d.FinalChainId,
+		SwapDeadline:  d.SwapDeadline,
 	}
 }
 
@@ -144,30 +168,49 @@ type DepositData struct {
 
 	DestinationAddress string
 	DestinationChainId string
+	DestinationToken   string
+
+	MinDestinationAmount *big.Int
+	SwapDeadline         *big.Int
+	IsSwap               bool
 }
 
-func (d DepositData) ToNewDeposit(
-	withdrawalAmount,
-	commissionAmount *big.Int,
-	dstTokenAddress string,
-	isWrappedToken bool,
-	ignoreDistribution bool,
-) Deposit {
+type DepositParams struct {
+	WithdrawalAmount   *big.Int
+	CommissionAmount   *big.Int
+	IsWrappedToken     bool
+	IgnoreDistribution bool
+	IsSwapDeposit      bool
+	FinalReceiver      *string
+	Receiver           string
+	FinalChainId       *string
+	FinalToken         *string
+	WithdrawalToken    string
+	WithdrawalChainId  string
+}
+
+func ToNewDeposit(p DepositParams, d DepositData) Deposit {
 	return Deposit{
-		DepositIdentifier: d.DepositIdentifier,
-		Depositor:         &d.SourceAddress,
-		DepositAmount:     d.DepositAmount.String(),
-		DepositToken:      d.TokenAddress,
-		Receiver:          d.DestinationAddress,
-		WithdrawalToken:   dstTokenAddress,
-		DepositBlock:      d.Block,
-		WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
-		WithdrawalChainId: d.DestinationChainId,
-		WithdrawalAmount:  withdrawalAmount.String(),
-		IsWrappedToken:    isWrappedToken,
-		CommissionAmount:  commissionAmount.String(),
-		ReferralId:        d.ReferralId,
-		Distributed:       ignoreDistribution,
+		DepositIdentifier:    d.DepositIdentifier,
+		Depositor:            &d.SourceAddress,
+		DepositAmount:        d.DepositAmount.String(),
+		DepositToken:         d.TokenAddress,
+		Receiver:             p.Receiver,
+		WithdrawalToken:      p.WithdrawalToken,
+		DepositBlock:         d.Block,
+		WithdrawalStatus:     types.WithdrawalStatus_WITHDRAWAL_STATUS_PENDING,
+		WithdrawalChainId:    p.WithdrawalChainId,
+		WithdrawalAmount:     p.WithdrawalAmount.String(),
+		IsWrappedToken:       p.IsWrappedToken,
+		CommissionAmount:     p.CommissionAmount.String(),
+		ReferralId:           d.ReferralId,
+		Distributed:          p.IgnoreDistribution,
+		IsSwap:               p.IsSwapDeposit,
+		FinalReceiver:        p.FinalReceiver,
+		MinDestinationAmount: bigIntToStringOrEmpty(d.MinDestinationAmount),
+		SwapDeadline:         bigIntToUint64OrEmpty(d.SwapDeadline),
+		FinalChainId:         p.FinalChainId,
+		FinalToken:           p.FinalToken,
 	}
 }
 
@@ -181,6 +224,8 @@ type ProcessedDepositData struct {
 	Signature *string
 	TxHash    *string
 	TxData    *string
+
+	MerkleProof *string
 }
 
 type SignedDeposit struct {
@@ -194,4 +239,20 @@ func stringOrEmpty(s *string) string {
 	}
 
 	return *s
+}
+
+func bigIntToUint64OrEmpty(b *big.Int) uint64 {
+	if b == nil {
+		return 0
+	}
+
+	return b.Uint64()
+}
+
+func bigIntToStringOrEmpty(s *big.Int) string {
+	if s == nil {
+		return ""
+	}
+
+	return s.String()
 }

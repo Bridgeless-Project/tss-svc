@@ -82,34 +82,50 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 		case <-time.After(cooldown):
 			cooldown = time.Second * 5
 
-			pendingDeposit, err := s.db.GetWithSelector(database.DepositsSelector{
+			pendingDeposits, err := s.db.Select(database.DepositsSelector{
 				Status:       &statusProcessed,
 				NotSubmitted: true,
-				One:          true,
+				Limit:        20,
 			})
 			if err != nil {
-				s.log.WithError(err).Error("failed to get pending submit")
+				s.log.WithError(err).Error("failed to get pending submits")
 				continue
-			} else if pendingDeposit == nil {
-				continue
-			}
-
-			logger := s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash)
-			logger.Info("got deposit to submit")
-
-			err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
-			if err != nil && !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
-				logger.WithError(err).Error("failed to submit deposit, will retry later")
+			} else if len(pendingDeposits) == 0 {
 				continue
 			}
 
-			logger.Info("deposit submitted successfully")
-			if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
-				logger.WithError(err).Error("failed to update deposit as submitted")
+			for _, pendingDeposit := range pendingDeposits {
+				logger := s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash)
+				logger.Info("got deposit to submit")
+
+				if err = s.submitPendingDeposit(ctx, pendingDeposit); err != nil {
+					logger.WithError(err).Error("failed to submit deposit, will retry later")
+					continue
+				}
+
+				logger.Info("deposit submitted successfully")
+				if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
+					logger.WithError(err).Error("failed to update deposit as submitted")
+				}
 			}
 			cooldown = time.Second * 0
 		}
 	}
+}
+
+func (s *SubmitEventSubscriber) submitPendingDeposit(ctx context.Context, pendingDeposit database.Deposit) error {
+	var err error
+
+	if pendingDeposit.IsSwap {
+		err = s.connector.SubmitSwaps(ctx, pendingDeposit.ToSwapTransaction())
+	} else {
+		err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
+	}
+	if err != nil && !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
+		return fmt.Errorf("failed to submit deposit: %w", err)
+	}
+
+	return nil
 }
 
 func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) {

@@ -1,4 +1,4 @@
-package zano
+package standart
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -43,14 +43,14 @@ type Session struct {
 	params session.SigningParams
 	logger *logan.Entry
 
-	client        *zano.Client
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
+	client        *evm.Client
 
-	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
+	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
 	signingParty          *tss.SignParty
-	consensusParty        *consensus.Consensus[withdrawal.ZanoWithdrawalData]
+	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
 }
@@ -84,13 +84,13 @@ func (s *Session) WithDepositFetcher(fetcher *deposit.Fetcher) *Session {
 	return s
 }
 
-func (s *Session) WithCoreConnector(conn *connector.Connector) *Session {
-	s.coreConnector = conn
+func (s *Session) WithClient(client *evm.Client) *Session {
+	s.client = client
 	return s
 }
 
-func (s *Session) WithClient(client *zano.Client) *Session {
-	s.client = client
+func (s *Session) WithCoreConnector(conn *connector.Connector) *Session {
+	s.coreConnector = conn
 	return s
 }
 
@@ -106,10 +106,10 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.mechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.ZanoWithdrawalData](
+	s.mechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.EvmWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewZanoConstructor(s.client),
+		withdrawal.NewEvmConstructor(s.client),
 		s.fetcher,
 	)
 
@@ -125,7 +125,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
-		s.consensusParty = consensus.New[withdrawal.ZanoWithdrawalData](
+		s.consensusParty = consensus.New[withdrawal.EvmWithdrawalData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
@@ -147,7 +147,6 @@ func (s *Session) Run(ctx context.Context) error {
 		s.finalizer = NewFinalizer(
 			s.db,
 			s.coreConnector,
-			s.client,
 			s.logger.WithField("phase", "finalizing"),
 			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
@@ -173,7 +172,7 @@ func (s *Session) Run(ctx context.Context) error {
 	}
 }
 
-func (s *Session) runSession(ctx context.Context) error {
+func (s *Session) runSession(ctx context.Context) (err error) {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
@@ -181,7 +180,7 @@ func (s *Session) runSession(ctx context.Context) error {
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
 	if err != nil {
-		return errors.Wrap(err, "failed to run consensus phase")
+		return errors.Wrap(err, "consensus phase error occurred")
 	}
 	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")

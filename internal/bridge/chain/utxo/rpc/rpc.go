@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
@@ -32,21 +31,17 @@ type Client struct {
 }
 
 func NewClient(settings Settings) (*Client, error) {
-	authFn := func(h http.Header) error {
-		auth := base64.StdEncoding.EncodeToString([]byte(settings.User + ":" + settings.Password))
-		h.Set("Authorization", fmt.Sprintf("Basic %s", auth))
-		return nil
-	}
-
 	// default to http if no scheme is specified
 	if !strings.Contains(settings.Host, "://") {
 		settings.Host = "http://" + settings.Host
 	}
 
-	c, err := rpc.DialOptions(context.Background(), settings.Host, rpc.WithHTTPAuth(authFn))
+	c, err := rpc.DialContext(context.Background(), settings.Host)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to RPC server")
 	}
+	auth := base64.StdEncoding.EncodeToString([]byte(settings.User + ":" + settings.Password))
+	c.SetHeader("Authorization", fmt.Sprintf("Basic %s", auth))
 
 	return &Client{c, settings.Chain}, nil
 }

@@ -49,7 +49,9 @@ type DepositDistributionSession struct {
 	broadcaster  *broadcast.Broadcaster
 	self         core.Address
 
-	msgs chan DistributedDepositMsg
+	msgs       chan DistributedDepositMsg
+	missingIds chan []db.DepositIdentifier
+	jobs       chan db.DepositIdentifier
 }
 
 func NewDepositDistributionSession(
@@ -66,7 +68,9 @@ func NewDepositDistributionSession(
 
 	return &DepositDistributionSession{
 		fetcher:      fetcher,
-		msgs:         make(chan DistributedDepositMsg, 100),
+		msgs:         make(chan DistributedDepositMsg, 1000),
+		missingIds:   make(chan []db.DepositIdentifier, 1000),
+		jobs:         make(chan db.DepositIdentifier, 2000),
 		data:         data,
 		logger:       logger,
 		self:         self,
@@ -142,57 +146,28 @@ func (d *DepositDistributionSession) runDistributor(ctx context.Context) {
 
 func (d *DepositDistributionSession) runAcceptor(ctx context.Context) {
 	d.logger.Info("acceptor started")
+	sem := make(chan struct{}, 20)
+
+	go d.enqueueJobs(ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
 			d.logger.Info("acceptor cancelled")
 			return
-		case msg := <-d.msgs:
-			d.logger.Info(fmt.Sprintf("received deposit from %s", msg.Distributor))
-
-			id := msg.GetIdentifier()
-			deposit, err := d.data.Get(id)
-			if err != nil {
-				d.logger.WithError(err).Error("failed to check if deposit exists")
-				continue
-			} else if deposit != nil {
-				d.logger.Warn("deposit already exists")
-				continue
-			}
-
-			deposit, err = d.fetcher.FetchDeposit(id)
-			if err != nil {
-				if chain.IsPendingDepositError(err) {
-					d.logger.Warn("deposit still pending")
-					continue
-				}
-				if chain.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
-					deposit = &db.Deposit{
-						DepositIdentifier: id,
-						WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
-					}
-					if _, err = d.data.Insert(*deposit); err != nil {
+		case id := <-d.jobs:
+			select {
+			case <-ctx.Done():
+				d.logger.Info("acceptor cancelled")
+				return
+			case sem <- struct{}{}:
+				go func(id db.DepositIdentifier) {
+					if err := d.processDeposit(id); err != nil {
 						d.logger.WithError(err).Error("failed to process deposit")
-						continue
 					}
-					d.logger.Warn("invalid deposit")
-					continue
-				}
-				d.logger.WithError(err).Error("failed to fetch deposit")
-				continue
+					<-sem
+				}(id)
 			}
-			deposit.Distributed = true
-			if _, err = d.data.Insert(*deposit); err != nil {
-				if errors.Is(err, db.ErrAlreadySubmitted) {
-					d.logger.Info("deposit already found in db")
-				} else {
-					d.logger.WithError(err).Error("failed to insert deposit")
-				}
-				continue
-			}
-
-			d.logger.Info("deposit successfully fetched")
 		}
 	}
 }
@@ -231,6 +206,71 @@ func (d *DepositDistributionSession) Receive(request *p2p.SubmitRequest) error {
 	}
 
 	return nil
+}
+
+func (d *DepositDistributionSession) QueueMissing(ctx context.Context, ids []db.DepositIdentifier) {
+	if len(ids) == 0 {
+		return
+	}
+	select {
+	case <-ctx.Done():
+		d.logger.Info("context cancelled before send")
+	case d.missingIds <- ids:
+	}
+}
+
+func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) error {
+	log := d.logger.WithField("tx_hash", id.TxHash).WithField("chain_id", id.ChainId)
+	deposit, err := d.data.Get(id)
+	if err != nil {
+		return errors.Wrap(err, "failed to check if deposit exists")
+	} else if deposit != nil {
+		log.Warnf("deposit already exists")
+		return nil
+	}
+
+	deposit, err = d.fetcher.FetchDeposit(id)
+	if err != nil {
+		if chain.IsPendingDepositError(err) {
+			log.Warn("deposit still pending")
+			return nil
+		}
+		if chain.IsInvalidDepositError(err) || core.IsInvalidDepositError(err) {
+			deposit = &db.Deposit{
+				DepositIdentifier: id,
+				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
+			}
+			if _, err = d.data.Insert(*deposit); err != nil {
+				return errors.Wrap(err, "failed to insert invalid deposit")
+			}
+		}
+		return errors.Wrap(err, "failed to fetch deposit")
+	}
+	deposit.Distributed = true
+	if _, err = d.data.Insert(*deposit); err != nil {
+		if errors.Is(err, db.ErrAlreadySubmitted) {
+			log.Info("deposit already found in db")
+			return nil
+		} else {
+			return errors.Wrap(err, "failed to insert deposit")
+		}
+	}
+	return nil
+}
+
+func (d *DepositDistributionSession) enqueueJobs(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg := <-d.msgs:
+			d.jobs <- msg.GetIdentifier()
+		case ids := <-d.missingIds:
+			for _, id := range ids {
+				d.jobs <- id
+			}
+		}
+	}
 }
 
 // RegisterIdChangeListener is a no-op for DepositDistributionSession
