@@ -46,6 +46,8 @@ const (
 	depositsMinDestinationAmount = "min_destination_amount"
 	depositsSwapDeadline         = "swap_deadline"
 	depositsFinalReceiver        = "final_receiver"
+	depositsFinalChainId         = "final_chain_id"
+	depositsFinalToken           = "final_token"
 )
 
 type depositsQ struct {
@@ -85,6 +87,8 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsMinDestinationAmount: deposit.MinDestinationAmount,
 			depositsSwapDeadline:         deposit.SwapDeadline,
 			depositsFinalReceiver:        deposit.FinalReceiver,
+			depositsFinalChainId:         deposit.FinalChainId,
+			depositsFinalToken:           deposit.FinalToken,
 		}).
 		Suffix("RETURNING id")
 
@@ -359,6 +363,8 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsMinDestinationAmount: deposit.MinDestinationAmount,
 			depositsSwapDeadline:         deposit.SwapDeadline,
 			depositsFinalReceiver:        deposit.FinalReceiver,
+			depositsFinalChainId:         deposit.FinalChainId,
+			depositsFinalToken:           deposit.FinalToken,
 		}).
 		Suffix("RETURNING id")
 
