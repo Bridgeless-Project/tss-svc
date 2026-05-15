@@ -41,6 +41,13 @@ const (
 	depositsTxData      = "tx_data"
 	depositsSubmitted   = "submitted"
 	depositsDistributed = "distributed"
+
+	depositsIsSwap               = "is_swap"
+	depositsMinDestinationAmount = "min_destination_amount"
+	depositsSwapDeadline         = "swap_deadline"
+	depositsFinalReceiver        = "final_receiver"
+	depositsFinalChainId         = "final_chain_id"
+	depositsFinalToken           = "final_token"
 )
 
 type depositsQ struct {
@@ -74,8 +81,14 @@ func (d *depositsQ) Insert(deposit db.Deposit) (int64, error) {
 			depositsCommissionAmount:  deposit.CommissionAmount,
 			depositsReferralId:        deposit.ReferralId,
 
-			depositsSubmitted:   false,
-			depositsDistributed: deposit.Distributed,
+			depositsSubmitted:            false,
+			depositsDistributed:          deposit.Distributed,
+			depositsIsSwap:               deposit.IsSwap,
+			depositsMinDestinationAmount: deposit.MinDestinationAmount,
+			depositsSwapDeadline:         deposit.SwapDeadline,
+			depositsFinalReceiver:        deposit.FinalReceiver,
+			depositsFinalChainId:         deposit.FinalChainId,
+			depositsFinalToken:           deposit.FinalToken,
 		}).
 		Suffix("RETURNING id")
 
@@ -337,15 +350,21 @@ func (d *depositsQ) InsertProcessedDeposit(deposit db.Deposit) (int64, error) {
 			depositsDepositToken: strings.ToLower(deposit.DepositToken),
 			depositsDepositor:    deposit.Depositor,
 			// can be 0x00... in case of native ones
-			depositsWithdrawalToken:   strings.ToLower(deposit.WithdrawalToken),
-			depositsWithdrawalChainId: deposit.WithdrawalChainId,
-			depositsWithdrawalTxHash:  deposit.WithdrawalTxHash,
-			depositsSignature:         deposit.Signature,
-			depositsWithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
-			depositsReferralId:        deposit.ReferralId,
-			depositsTxData:            deposit.TxData,
-			depositsSubmitted:         true,
-			depositsDistributed:       true,
+			depositsWithdrawalToken:      strings.ToLower(deposit.WithdrawalToken),
+			depositsWithdrawalChainId:    deposit.WithdrawalChainId,
+			depositsWithdrawalTxHash:     deposit.WithdrawalTxHash,
+			depositsSignature:            deposit.Signature,
+			depositsWithdrawalStatus:     types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+			depositsReferralId:           deposit.ReferralId,
+			depositsTxData:               deposit.TxData,
+			depositsSubmitted:            true,
+			depositsDistributed:          true,
+			depositsIsSwap:               deposit.IsSwap,
+			depositsMinDestinationAmount: deposit.MinDestinationAmount,
+			depositsSwapDeadline:         deposit.SwapDeadline,
+			depositsFinalReceiver:        deposit.FinalReceiver,
+			depositsFinalChainId:         deposit.FinalChainId,
+			depositsFinalToken:           deposit.FinalToken,
 		}).
 		Suffix("RETURNING id")
 

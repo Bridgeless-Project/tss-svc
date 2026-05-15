@@ -71,6 +71,7 @@ var signCmd = &cobra.Command{
 func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	storage := cfg.SecretsStorage()
 	account, err := storage.GetCoreAccount()
+	swapSettings := cfg.SwapSettings()
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
@@ -101,7 +102,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		return errors.Wrap(err, "failed to create core connector")
 	}
 	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"), connector)
-	fetcher := deposit.NewFetcher(clientsRepo, connector)
+	fetcher := deposit.NewFetcher(clientsRepo, connector, swapSettings)
 
 	p2pServer := p2p.NewServer(
 		cfg.P2pGrpcListener(),
