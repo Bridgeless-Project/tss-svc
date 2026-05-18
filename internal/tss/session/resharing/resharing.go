@@ -29,12 +29,12 @@ import (
 const InitializationGapDuration = time.Minute
 
 type Session struct {
-	params Params
+	newEpochParams Params
 
-	oldParties []p2p.Party
-	oldParams  session.Params
+	oldEpochParties []p2p.Party
+	oldEpochParams  session.Params
 
-	selfOld, selfNew bool
+	oldEpochMember, newEpochMember bool
 
 	secrets        secrets.Storage
 	sessionManager *p2p.SessionManager
@@ -45,9 +45,9 @@ type Session struct {
 }
 
 func NewSession(
-	params Params,
-	oldSet []p2p.Party,
-	oldParams session.Params,
+	newEpochParams Params,
+	oldEpochSet []p2p.Party,
+	oldEpochParams session.Params,
 	secrets secrets.Storage,
 	sessionManager *p2p.SessionManager,
 	core *coreConnector.Connector,
@@ -55,24 +55,24 @@ func NewSession(
 	logger *logan.Entry,
 ) *Session {
 	selfOld, selfNew := true, true
-	if params.NewParticipant {
+	if newEpochParams.NewParticipant {
 		selfOld = false
 	}
-	if len(params.Parties) == 0 {
+	if len(newEpochParams.Parties) == 0 {
 		selfNew = false
 	}
 
 	return &Session{
-		params:         params,
-		oldParties:     oldSet,
-		secrets:        secrets,
-		sessionManager: sessionManager,
-		logger:         logger,
-		core:           core,
-		chains:         chains,
-		oldParams:      oldParams,
-		selfOld:        selfOld,
-		selfNew:        selfNew,
+		newEpochParams:  newEpochParams,
+		oldEpochParties: oldEpochSet,
+		secrets:         secrets,
+		sessionManager:  sessionManager,
+		logger:          logger,
+		core:            core,
+		chains:          chains,
+		oldEpochParams:  oldEpochParams,
+		oldEpochMember:  selfOld,
+		newEpochMember:  selfNew,
 	}
 }
 
@@ -86,22 +86,22 @@ func (s *Session) Run(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get bridge params")
 	}
 
-	state := resharingTypes.InitializeState(s.params.Epoch, s.params.Threshold, s.params.StartTime, bridgeParams.SupportingTime, *account)
+	state := resharingTypes.InitializeState(s.newEpochParams.Epoch, s.newEpochParams.Threshold, s.newEpochParams.StartTime, bridgeParams.SupportingTime, *account)
 
-	keygenRound := NewKeygenHandler(s.params.Parties, s.secrets, s.core, s.sessionManager, s.logger, s.selfOld, s.selfNew)
+	keygenRound := NewKeygenHandler(s.newEpochParams.Parties, s.secrets, s.core, s.sessionManager, s.logger, s.oldEpochMember, s.newEpochMember)
 	keygenManager := resharingTypes.NewHandlerManager(
 		keygenRound, state, s.logger.WithField("component", "resharing_keygen_manager"),
 	)
 
-	if err = keygenManager.Manage(ctx, s.params.StartTime); err != nil {
+	if err = keygenManager.Manage(ctx, s.newEpochParams.StartTime); err != nil {
 		return errors.Wrap(err, "failed to manage keygen round")
 	}
 
-	sessionStartTime := s.params.StartTime.Add(keygenRound.MaxHandleDuration() + InitializationGapDuration)
+	sessionStartTime := s.newEpochParams.StartTime.Add(keygenRound.MaxHandleDuration() + InitializationGapDuration)
 	state.SessionStartTime = sessionStartTime
 
 	// new party does not participate in migration
-	if s.selfNew && !s.selfOld {
+	if s.newEpochMember && !s.oldEpochMember {
 		return errors.Wrap(s.manageWallets(state), "failed to manage wallets for new party")
 	}
 
@@ -110,7 +110,7 @@ func (s *Session) Run(ctx context.Context) error {
 	}
 
 	// old party won't participate further
-	if s.selfOld && !s.selfNew {
+	if s.oldEpochMember && !s.newEpochMember {
 		return nil
 	}
 
@@ -135,7 +135,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 	self := tss.LocalSignParty{
 		Account:   state.Account,
 		Share:     share,
-		Threshold: s.oldParams.Threshold,
+		Threshold: s.oldEpochParams.Threshold,
 	}
 
 	var (
@@ -155,7 +155,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 			manager = resharingTypes.NewHandlerManager(
 				NewUpdateContractHandler(
 					self,
-					s.oldParties,
+					s.oldEpochParties,
 					s.sessionManager,
 					bridgeTypes.ChainType_EVM,
 					evm.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
@@ -174,7 +174,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 			manager = resharingTypes.NewHandlerManager(
 				NewUpdateContractHandler(
 					self,
-					s.oldParties,
+					s.oldEpochParties,
 					s.sessionManager,
 					bridgeTypes.ChainType_SOLANA,
 					solana.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime, client.BridgeId()),
@@ -191,7 +191,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 			manager = resharingTypes.NewHandlerManager(
 				NewUpdateContractHandler(
 					self,
-					s.oldParties,
+					s.oldEpochParties,
 					s.sessionManager,
 					bridgeTypes.ChainType_TON,
 					ton.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
@@ -206,13 +206,13 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 			)
 		case chain.TypeBitcoin:
 			manager = resharingTypes.NewHandlerManager(
-				utxo.NewHandler(self, s.oldParties, ch.(utxoclient.Client), s.sessionManager, s.logger),
+				utxo.NewHandler(self, s.oldEpochParties, ch.(utxoclient.Client), s.sessionManager, s.logger),
 				state,
 				s.logger.WithField("component", fmt.Sprintf("utxo_migration_manager_%s", ch.ChainId())),
 			)
 		case chain.TypeZano:
 			manager = resharingTypes.NewHandlerManager(
-				zano.NewHandler(self, s.oldParties, ch.(*zanoclient.Client), s.sessionManager, s.logger, s.core),
+				zano.NewHandler(self, s.oldEpochParties, ch.(*zanoclient.Client), s.sessionManager, s.logger, s.core),
 				state,
 				s.logger.WithField("component", fmt.Sprintf("zano_migration_manager_%s", ch.ChainId())),
 			)

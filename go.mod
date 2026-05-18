@@ -22,6 +22,7 @@ replace (
 require (
 	github.com/Bridgeless-Project/bridgeless-core/v12 v12.1.8-0.20260311155649-1d75040e532f
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bnb-chain/tss-lib/v2 v2.0.2
 	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2

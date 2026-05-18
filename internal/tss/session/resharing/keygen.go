@@ -2,6 +2,7 @@ package resharing
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
@@ -13,6 +14,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	tssKeygen "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
+	"github.com/avast/retry-go"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -28,7 +30,7 @@ type KeygenHandler struct {
 
 	logger *logan.Entry
 
-	oldParty, newParty bool
+	oldEpochMember, newEpochMember bool
 }
 
 func NewKeygenHandler(
@@ -37,7 +39,7 @@ func NewKeygenHandler(
 	core *coreConnector.Connector,
 	sessionManager *p2p.SessionManager,
 	logger *logan.Entry,
-	oldParty, newParty bool,
+	oldEpochMember, newEpochMember bool,
 ) *KeygenHandler {
 	return &KeygenHandler{
 		parties:        parties,
@@ -45,8 +47,8 @@ func NewKeygenHandler(
 		core:           core,
 		sessionManager: sessionManager,
 		logger:         logger.WithField("component", "resharing_keygen_handler"),
-		oldParty:       oldParty,
-		newParty:       newParty,
+		oldEpochMember: oldEpochMember,
+		newEpochMember: newEpochMember,
 	}
 }
 
@@ -60,9 +62,28 @@ func (r *KeygenHandler) MaxHandleDuration() time.Duration {
 }
 
 func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, error) {
-	pubkey, err := r.core.GetEpochPubKey(state.Epoch)
+	var (
+		pubkey string
+		err    error
+	)
+
+	err = retry.Do(
+		func() error {
+			pubkey, err = r.core.GetEpochPubKey(state.Epoch)
+			if errors.Is(err, core.ErrEpochNotFound) {
+				return nil // pubkey not set yet, not an error
+			}
+
+			return err
+		},
+		retry.Attempts(3),
+		retry.Delay(5*time.Second),
+	)
 	if err != nil {
-		return false, nil
+		return false, errors.Wrap(err, "failed to get epoch pubkey from core")
+	}
+	if pubkey == "" {
+		return false, nil // pubkey not set yet
 	}
 
 	ecdsaPub, err := bridge.DecodePubkey(pubkey)
@@ -72,12 +93,12 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 
 	state.NewPubKey = ecdsaPub
 
-	if r.oldParty && !r.newParty {
+	if r.oldEpochMember && !r.newEpochMember {
 		return true, nil
 	}
 
 	// should load new share from temporary secrets
-	if r.oldParty {
+	if r.oldEpochMember {
 		state.NewShare, err = r.secrets.GetTemporaryTssShare()
 	} else {
 		state.NewShare, err = r.secrets.GetTssShare()
@@ -86,11 +107,19 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 		return false, errors.Wrap(err, "failed to get key share from secrets storage")
 	}
 
+	if !state.NewPubKey.Equal(state.NewShare.ECDSAPub.ToECDSAPubKey()) {
+		return false, errors.New(fmt.Sprintf(
+			"pubkey from core does not match pubkey derived from saved share: %s vs %s",
+			pubkey,
+			bridge.PubkeyPrefixedToString(state.NewShare.ECDSAPub.X(), state.NewShare.ECDSAPub.Y()),
+		))
+	}
+
 	return true, nil
 }
 
 func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State) error {
-	if r.oldParty && !r.newParty {
+	if r.oldEpochMember && !r.newEpochMember {
 		// old party only - wait for confirmation of new pubkey
 		return r.listenForPubkeyConfirmation(ctx, state)
 	}
@@ -132,20 +161,20 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 
 	pubkey := bridge.PubkeyPrefixedToString(result.ECDSAPub.X(), result.ECDSAPub.Y())
 
-	var maxRetries = 3
-	for i := 0; i < maxRetries; i++ {
-		if err = r.core.SetEpochPubKey(state.Epoch, pubkey); err == nil {
-			if err = r.listenForPubkeyConfirmation(ctx, state); err != nil {
-				return errors.Wrap(err, "failed to confirm new pubkey on core")
-			}
-
-			return nil
-		}
-
-		r.logger.WithError(err).Errorf("failed to submit new pubkey to core (attempt %d/%d)", i+1, maxRetries)
+	err = retry.Do(
+		func() error { return r.core.SetEpochPubKey(state.Epoch, pubkey) },
+		retry.Attempts(3),
+		retry.Delay(5*time.Second),
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to submit new pubkey to core")
 	}
 
-	return errors.Wrap(err, "failed to submit new pubkey to core after max retries")
+	if err = r.listenForPubkeyConfirmation(ctx, state); err != nil {
+		return errors.Wrap(err, "failed to confirm new pubkey on core")
+	}
+
+	return nil
 }
 
 func (r *KeygenHandler) listenForPubkeyConfirmation(ctx context.Context, state *resharingTypes.State) error {
@@ -185,13 +214,9 @@ func (r *KeygenHandler) listenForPubkeyConfirmation(ctx context.Context, state *
 func (r *KeygenHandler) saveKeyShare(result *keygen.LocalPartySaveData) error {
 	r.logger.Debug("saving new key share to secrets storage...")
 
-	var err error
-
-	if r.oldParty {
-		err = r.secrets.SaveTemporaryTssShare(result)
-	} else {
-		err = r.secrets.SaveTssShare(result)
+	if r.oldEpochMember {
+		return errors.Wrap(r.secrets.SaveTemporaryTssShare(result), "failed to save temporary key share")
 	}
 
-	return err
+	return errors.Wrap(r.secrets.SaveTssShare(result), "failed to save key share")
 }
