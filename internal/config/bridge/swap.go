@@ -16,7 +16,7 @@ const swapKey = "swap_config"
 type SwapSettings struct {
 	Contract      string `fig:"contract_address,required"`
 	ChainId       string `fig:"chain_id,required"`
-	WrappedBridge uint64 `fig:"wrapped_bridge,required"`
+	WrappedBridge string `fig:"wrapped_bridge,required"`
 }
 
 type swapper struct {

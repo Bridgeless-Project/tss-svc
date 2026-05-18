@@ -57,7 +57,7 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		}
 	}
 
-	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
+	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId, depositData.IsSwap)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
@@ -79,6 +79,7 @@ func (p *Fetcher) GetTokens(
 	srcChainId string,
 	srcTokenAddress string,
 	dstChainId string,
+	isSwap bool,
 ) (
 	srcInfo, dstInfo *bridgetypes.TokenInfo,
 	err error,
@@ -96,6 +97,18 @@ func (p *Fetcher) GetTokens(
 		if info.ChainId == dstChainId {
 			return srcInfo, &info, nil
 		}
+	}
+	if isSwap {
+		dstInfo := &bridgetypes.TokenInfo{
+			IsWrapped:           srcInfo.IsWrapped,
+			Decimals:            srcInfo.Decimals,
+			ChainId:             srcChainId,
+			Address:             srcTokenAddress,
+			TokenId:             srcInfo.TokenId,
+			CommissionRate:      "0",
+			MinWithdrawalAmount: "0",
+		}
+		return srcInfo, dstInfo, nil
 	}
 
 	return nil, nil, core.ErrDestinationTokenInfoNotFound
@@ -164,7 +177,7 @@ func (p *Fetcher) configureDepositParams(
 	}
 
 	params.Receiver = p.swapSettings.Contract
-	params.WithdrawalToken = strconv.FormatUint(p.swapSettings.WrappedBridge, 10)
+	params.WithdrawalToken = p.swapSettings.WrappedBridge
 	params.WithdrawalChainId = p.swapSettings.ChainId
 
 	params.FinalReceiver = &depositData.DestinationAddress

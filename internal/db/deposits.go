@@ -180,7 +180,6 @@ type DepositParams struct {
 	CommissionAmount   *big.Int
 	IsWrappedToken     bool
 	IgnoreDistribution bool
-	IsSwapDeposit      bool
 	FinalReceiver      *string
 	Receiver           string
 	FinalChainId       *string
@@ -205,7 +204,7 @@ func ToNewDeposit(p DepositParams, d DepositData) Deposit {
 		CommissionAmount:     p.CommissionAmount.String(),
 		ReferralId:           d.ReferralId,
 		Distributed:          p.IgnoreDistribution,
-		IsSwap:               p.IsSwapDeposit,
+		IsSwap:               d.IsSwap,
 		FinalReceiver:        p.FinalReceiver,
 		MinDestinationAmount: bigIntToStringOrEmpty(d.MinDestinationAmount),
 		SwapDeadline:         bigIntToUint64OrEmpty(d.SwapDeadline),
