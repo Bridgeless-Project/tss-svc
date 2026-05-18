@@ -1,6 +1,6 @@
 module github.com/Bridgeless-Project/tss-svc
 
-go 1.23.10
+go 1.23.4
 
 replace (
 	// tss-lib fix ed25519
@@ -36,6 +36,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.46.13
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/ethereum/go-ethereum v1.15.5
+	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gagliardetto/binary v0.8.0
 	github.com/gagliardetto/gofuzz v1.2.2
 	github.com/gagliardetto/solana-go v1.12.0
@@ -121,7 +122,6 @@ require (
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gcash/bchlog v0.0.0-20180913005452-b4f036f92fa6 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect

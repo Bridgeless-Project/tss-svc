@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	ProtocolID_ECDSA_KEYGEN = iota
-	ProtocolID_FROST_KEYGEN
+	ProtocolID_ECDSA = iota
+	ProtocolID_FROST
 )
 
 const (

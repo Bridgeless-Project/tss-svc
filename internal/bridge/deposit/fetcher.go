@@ -37,13 +37,13 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(err, "failed to get deposit data")
 	}
 
-	dstClient, err := p.clients.Client(depositData.DestinationChainId)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting destination clients")
-	}
-	if !dstClient.AddressValid(depositData.DestinationAddress) {
-		return nil, errors.Wrap(chain.ErrInvalidReceiverAddress, depositData.DestinationAddress)
-	}
+	//dstClient, err := p.clients.Client(depositData.DestinationChainId)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "error getting destination clients")
+	//}
+	//if !dstClient.AddressValid(depositData.DestinationAddress) {
+	//	return nil, errors.Wrap(chain.ErrInvalidReceiverAddress, depositData.DestinationAddress)
+	//}
 
 	if !bridgetypes.IsDefaultReferralId(uint32(depositData.ReferralId)) {
 		// check if referral id is valid
@@ -53,27 +53,27 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		}
 	}
 
-	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get token info")
-	}
+	//srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "failed to get token info")
+	//}
 
-	withdrawalAmount, commission, err := p.GetWithdrawalAmount(depositData.DepositAmount, srcInfo, dstInfo)
-	if err != nil {
-		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
-	}
+	//withdrawalAmount, commission, err := p.GetWithdrawalAmount(depositData.DepositAmount, srcInfo, dstInfo)
+	//if err != nil {
+	//	return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
+	//}
 
-	ignoreDistribution := dstClient.IsCentralized()
+	//ignoreDistribution := dstClient.IsCentralized()
 
-	deposit := depositData.ToNewDeposit(
-		withdrawalAmount,
-		commission,
-		dstInfo.Address,
-		dstInfo.IsWrapped,
-		ignoreDistribution,
-	)
+	//deposit := depositData.ToNewDeposit(
+	//	withdrawalAmount,
+	//	commission,
+	//	dstInfo.Address,
+	//	dstInfo.IsWrapped,
+	//	ignoreDistribution,
+	//)
 
-	return &deposit, nil
+	return new(db.Deposit), nil
 }
 
 func (p *Fetcher) GetTokens(

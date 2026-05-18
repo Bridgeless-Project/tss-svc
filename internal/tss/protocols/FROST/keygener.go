@@ -2,7 +2,7 @@ package tss
 
 import (
 	"context"
-
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -11,12 +11,11 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
-	bnb "github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
@@ -45,23 +44,31 @@ type KeygenParty struct {
 	sessionId string
 	handler   *protocol.MultiHandler
 
+	msgs   chan tss2.PartyMsg
 	config *keygen.Config
+	err    error
 	logger *logan.Entry
 }
 
-func NewKeygenParty(self tss2.LocalKeygenParty, parties []p2p.Party, threshold int, sessionId string, logger *logan.Entry) *KeygenParty {
+func NewKeygenParty(self tss2.LocalKeygenParty, group curve.Curve, parties []p2p.Party, threshold int, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
-	partyIds := make([]party.ID, len(parties)+1)
-	partyIds[0] = party.ID(self.Address.PartyIdentifier().Id)
+	partyIds := make([]party.ID, 0, len(parties)+1)
+	partyIds = append(partyIds, party.ID(self.Address.String()))
 
-	for i, p := range parties {
+	for _, p := range parties {
 		partyMap[p.CoreAddress] = struct{}{}
-		partyIds[i+1] = party.ID(p.Identifier().Id)
+		partyIds = append(partyIds, party.ID(p.CoreAddress.String()))
 	}
+	participants := party.NewIDSlice(partyIds)
 
 	return &KeygenParty{
-		broadcaster: broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
-		parties:     partyMap,
+		broadcaster:     broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		parties:         partyMap,
+		group:           group,
+		selfID:          party.ID(self.Address.String()),
+		participants:    participants,
+		selfCoreAddress: self.Address,
+		msgs:            make(chan tss2.PartyMsg, tss2.MsgsCapacity),
 
 		threshold: threshold,
 		logger:    logger,
@@ -71,80 +78,85 @@ func NewKeygenParty(self tss2.LocalKeygenParty, parties []p2p.Party, threshold i
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
-
-	p.wg.Add(2)
-
 	h, err := protocol.NewMultiHandler(frost.Keygen(p.group, p.selfID, p.participants, p.threshold), []byte(p.sessionId))
 	if err != nil {
+		p.err = err
+		p.ended.Store(false)
+		p.logger.WithError(err).Error("failed to create frost keygen handler")
 		return
 	}
 	p.handler = h
 
-	out := make(chan bnb.Message, tss2.OutChannelSize)
-
+	p.wg.Add(2)
 	go p.receiveMsgs(ctx)
-	go p.receiveUpdates(ctx, out)
+	go p.receiveUpdates(ctx)
 
 	p.logger.Info("keygen started")
 }
 
 func (p *KeygenParty) WaitFor() *tss.LocalPartyData {
 	p.wg.Wait()
+	if p.err != nil || p.config == nil {
+		p.logger.Error("keygen failed to wait for keygen")
+		return nil
+	}
+
 	p.ended.Store(true)
 
 	p.logger.Info("keygen finished")
 
-	return nil
+	return tss.NewLocalPartyData(p.config)
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
-	//	if p.ended.Load() {
-	//		return
-	//	}
-	//
-	//	p.msgs <- partyMsg{
-	//		Sender:      sender,
-	//		WireMsg:     data.Data,
-	//		IsBroadcast: data.IsBroadcast,
-	//	}
+	if p.ended.Load() {
+		return
+	}
+
+	p.logger.Debug("Receive: received message", sender, data)
+
+	p.msgs <- tss2.PartyMsg{
+		Sender:      sender,
+		WireMsg:     data.Data,
+		IsBroadcast: data.IsBroadcast,
+	}
 }
 
 func (p *KeygenParty) receiveMsgs(ctx context.Context) {
+	defer p.wg.Done()
+
 	for {
 		select {
 
 		case <-ctx.Done():
+			p.logger.Warn("context is done; stopping receiving messages")
 			return
 
-		// outgoing messages
-		case msg, ok := <-p.handler.Listen():
+		case msg, ok := <-p.msgs:
 			if !ok {
-				r, err := p.handler.Result()
-				if err != nil {
-					p.logger.Error("failed to get keygen result")
-					return
-				}
-
-				if r == nil {
-					p.logger.Error("failed to get keygen result")
-					return
-				}
-
-				p.config = r.(*Config)
-
+				p.logger.Warn("channel closed; stopping receiving messages")
+				return
 			}
+			p.logger.Info("received message", msg)
 
-			if _, exists := p.parties[core.Address(msg.From)]; !exists {
-				p.logger.WithField("party", core.Address(msg.From)).Warn("got message from outside party")
+			if _, exists := p.parties[msg.Sender]; !exists {
+				p.logger.WithField("party", core.Address(msg.Sender)).Warn("got message from outside party")
 				continue
 			}
 
-			p.handler.Accept(msg)
+			message := new(protocol.Message)
+			if err := message.UnmarshalBinary(msg.WireMsg); err != nil {
+				p.logger.WithError(err).WithField("party", core.Address(msg.Sender)).Warn("failed to unmarshal message")
+				continue
+			}
+
+			p.logger.Info("received message", message)
+			p.handler.Accept(message)
 		}
 	}
 }
 
-func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message) {
+func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 	defer p.wg.Done()
 
 	for {
@@ -153,17 +165,43 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message
 			p.logger.Warn("context is done; stopping listening to updates")
 			return
 
-		//return
-		case msg := <-out:
-			raw, routing, err := msg.WireBytes()
+		case msg, ok := <-p.handler.Listen():
+			if !ok {
+				r, err := p.handler.Result()
+				if err != nil {
+					p.err = err
+					p.logger.WithError(err).Error("failed to get keygen result")
+					return
+				}
+
+				if r == nil {
+					p.err = errors.New("nil frost keygen result")
+					p.logger.Error("failed to get keygen result")
+					return
+				}
+
+				config, ok := r.(*Config)
+				if !ok {
+					p.err = errors.New("unexpected frost keygen result type")
+					p.logger.WithField("type", r).Error("failed to get keygen result")
+					return
+				}
+				p.config = config
+				p.ended.Store(true)
+				close(p.msgs)
+				return
+			}
+
+			p.logger.Debug("received update", msg)
+			raw, err := msg.MarshalBinary()
 			if err != nil {
-				p.logger.WithError(err).Error("failed to get message wire bytes")
+				p.logger.WithError(err).Error("failed to marshal message")
 				continue
 			}
 
 			tssData := &p2p.TssData{
 				Data:        raw,
-				IsBroadcast: routing.IsBroadcast,
+				IsBroadcast: msg.Broadcast,
 			}
 
 			tssReq, _ := anypb.New(tssData)
@@ -174,14 +212,15 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message
 				Data:      tssReq,
 			}
 
-			// https://github.com/bnb-chain/tss/blob/100c015447e557b0608c8c8cbd30730d5dac7fba/client/client.go#L288
-			to := routing.To
-			if to == nil || len(to) > 1 {
+			p.logger.Debug("sending request", submitReq)
+			to := msg.To
+			if to == "" {
 				p.broadcaster.Broadcast(&submitReq)
 				continue
 			}
 
-			dst := core.AddrFromPartyId(to[0])
+			p.logger.Debug("sending to", to)
+			dst := core.AddrFromString(string(to))
 			if err = p.broadcaster.Send(&submitReq, dst); err != nil {
 				p.logger.WithError(err).Error("failed to send message")
 			}

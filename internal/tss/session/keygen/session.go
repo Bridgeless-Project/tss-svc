@@ -12,6 +12,7 @@ import (
 	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -40,23 +41,32 @@ func NewSession(
 	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 	protocolID int,
+	group curve.Curve,
 ) *Session {
 
 	sessionId := session.GetKeygenSessionIdentifier(params.Id)
 	switch protocolID {
-	case tss.ProtocolID_ECDSA_KEYGEN:
+	case tss.ProtocolID_ECDSA:
 		return &Session{
 			sessionId:             sessionId,
 			params:                params,
 			wg:                    &sync.WaitGroup{},
 			connectedPartiesCount: connectedPartiesCountFunc,
 			partiesCount:          len(parties),
-			keygenParty:           tss2.SelectKeyGenByProtocol(tss.ProtocolID_ECDSA_KEYGEN, self, parties, params.Threshold, sessionId, logger.WithField("component", "keygen_party")),
+			keygenParty:           tss2.SelectKeyGenByProtocol(tss.ProtocolID_ECDSA, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
 			logger:                logger,
 		}
 
-	case tss.ProtocolID_FROST_KEYGEN:
-		return &Session{}
+	case tss.ProtocolID_FROST:
+		return &Session{
+			sessionId:             sessionId,
+			params:                params,
+			wg:                    &sync.WaitGroup{},
+			connectedPartiesCount: connectedPartiesCountFunc,
+			partiesCount:          len(parties),
+			keygenParty:           tss2.SelectKeyGenByProtocol(tss.ProtocolID_FROST, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
+			logger:                logger,
+		}
 
 	default:
 		return &Session{}
@@ -104,9 +114,10 @@ func (s *Session) run(ctx context.Context) {
 
 	if err := boundedCtx.Err(); err != nil {
 		s.err = err
-	} else {
-		s.err = errors.New("keygen session error occurred")
+		return
 	}
+
+	s.err = errors.New("keygen session error occurred")
 }
 
 func (s *Session) WaitFor() (*tss.LocalPartyData, error) {

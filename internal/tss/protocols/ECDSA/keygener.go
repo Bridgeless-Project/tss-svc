@@ -83,6 +83,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 			close(end)
 		}
 	}()
+
 	go p.receiveMsgs(ctx)
 	go p.receiveUpdates(ctx, out, end)
 
@@ -95,7 +96,7 @@ func (p *KeygenParty) WaitFor() *tss2.LocalPartyData {
 
 	p.logger.Info("keygen finished")
 
-	return nil
+	return tss2.NewLocalPartyData(p.result)
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
@@ -181,7 +182,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message
 				continue
 			}
 
-			dst := core.AddrFromPartyId(to[0])
+			dst := core.AddrFromString(to[0].Moniker)
 			if err = p.broadcaster.Send(&submitReq, dst); err != nil {
 				p.logger.WithError(err).Error("failed to send message")
 			}

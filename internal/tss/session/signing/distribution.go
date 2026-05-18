@@ -24,6 +24,7 @@ type SignaturesDistributor struct {
 	self        core.Address
 	sigData     [][]byte
 	sigPubKey   *ecdsa.PublicKey
+	frostPubKey []byte
 
 	broadcaster *broadcast.ReliableBroadcaster[tss.Signatures]
 
@@ -43,12 +44,11 @@ func NewSignaturesDistributor(
 	distributor core.Address,
 	logger *logan.Entry,
 ) *SignaturesDistributor {
-	return &SignaturesDistributor{
+	result := &SignaturesDistributor{
 		wg:          &sync.WaitGroup{},
 		sessionId:   sessionId,
 		distributor: distributor,
 		self:        self.Account.CosmosAddress(),
-		sigPubKey:   self.Share.ECDSAPub.ToECDSAPubKey(),
 
 		broadcaster: broadcast.NewReliable[tss.Signatures](
 			sessionId,
@@ -64,6 +64,21 @@ func NewSignaturesDistributor(
 
 		logger: logger,
 	}
+
+	if self.FrostShare != nil {
+		pubKey, err := tss.FrostPubKey(self.FrostShare)
+		if err != nil {
+			result.err = errors.Wrap(err, "failed to prepare FROST signature verifier")
+		} else {
+			result.frostPubKey = pubKey
+		}
+	} else if self.Share != nil {
+		result.sigPubKey = self.Share.ECDSAPub.ToECDSAPubKey()
+	} else {
+		result.err = errors.New("missing tss share")
+	}
+
+	return result
 }
 
 func (s *SignaturesDistributor) WithSignatures(signatures *tss.Signatures) *SignaturesDistributor {
@@ -131,6 +146,9 @@ func (s *SignaturesDistributor) receive(ctx context.Context) {
 }
 
 func (s *SignaturesDistributor) validateSignatures() error {
+	if s.err != nil {
+		return s.err
+	}
 	if s.signatures == nil {
 		return errors.New("no signatures received")
 	}
@@ -140,12 +158,20 @@ func (s *SignaturesDistributor) validateSignatures() error {
 
 	// TODO use some common data
 	for i, signature := range s.signatures.GetData().([]*common.SignatureData) {
-		if !tss.Verify(s.sigPubKey, s.sigData[i], signature) {
+		if !s.verifySignature(s.sigData[i], signature) {
 			return errors.New("got invalid signature")
 		}
 	}
 
 	return nil
+}
+
+func (s *SignaturesDistributor) verifySignature(data []byte, signature *common.SignatureData) bool {
+	if s.frostPubKey != nil {
+		return tss.VerifyFrost(s.frostPubKey, data, signature)
+	}
+
+	return tss.Verify(s.sigPubKey, data, signature)
 }
 
 func (s *SignaturesDistributor) WaitFor() (*tss.Signatures, error) {

@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -67,6 +68,7 @@ func (m *SessionManager) Receive(request *SubmitRequest) error {
 		return session.Receive(request)
 	}
 
+	fmt.Println("Receive: no session found for id", request.SessionId)
 	return ErrSessionNotFound
 }
 
@@ -92,6 +94,8 @@ func (m *SessionManager) GetSigningSession(chainId string) (TssSession, error) {
 			return session, nil
 		}
 	}
+
+	fmt.Println("no signing session found")
 
 	return nil, ErrSessionNotFound
 }

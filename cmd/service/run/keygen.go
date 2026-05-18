@@ -15,6 +15,7 @@ import (
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -63,6 +64,7 @@ var keygenCmd = &cobra.Command{
 			cfg.Log().WithField("component", "connection_manager"),
 		)
 
+		// TODO make a list of sessions
 		session := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
@@ -73,7 +75,8 @@ var keygenCmd = &cobra.Command{
 			cfg.TssSessionParams(),
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
-			tss.ProtocolID_ECDSA_KEYGEN,
+			tss.ProtocolID_FROST,
+			curve.Secp256k1{}, // TODO implement custom curve for Zcash
 		)
 
 		sessionManager := p2p.NewSessionManager(session)
@@ -111,22 +114,39 @@ var keygenCmd = &cobra.Command{
 }
 
 func storeKeygenResult(result interface{}, storage secrets.Storage) error {
-	raw, err := json.Marshal(result)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal keygen result")
+	if localData, ok := result.(*tss.LocalPartyData); ok {
+		result = localData.GetData()
 	}
 
+	fmt.Println("-----------------result:", result)
+
+	utils.OutputType = "vault"
 	switch utils.OutputType {
 	case "console":
-		fmt.Println(string(raw))
+		fmt.Println("console")
+		raw, err := json.Marshal(result)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal keygen result")
+		}
+		fmt.Println("raw: ", string(raw))
 	case "file":
+		fmt.Println("file")
+		raw, err := json.Marshal(result)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal keygen result")
+		}
 		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
 			return errors.Wrap(err, "failed to write keygen result to file")
 		}
+		fmt.Println("done")
 	case "vault":
-		if err = storage.SaveTssShare(result); err != nil {
+		fmt.Println("vault")
+		if err := storage.SaveTssShare(result); err != nil {
 			return errors.Wrap(err, "failed to save keygen result to vault")
 		}
+		fmt.Println("done")
+	default:
+		fmt.Println("unknown output type:", utils.OutputType)
 	}
 
 	return nil

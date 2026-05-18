@@ -29,12 +29,14 @@ import (
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
 	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
 	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
+	testSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/test"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	frostkeygen "github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 )
@@ -157,8 +159,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			// TODO handle the share for FROST
-			sess := configureSigningSession(sessParams, parties, *account, share.(*keygen.LocalPartySaveData), dtb, fetcher, logger, client, connector)
+			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector)
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -219,13 +220,16 @@ func configureSigningSession(
 	params session.SigningParams,
 	parties []p2p.Party,
 	account core.Account,
-	share *keygen.LocalPartySaveData,
+	share interface{},
 	db db.DepositsQ,
 	fetcher *deposit.Fetcher,
 	logger *logan.Entry,
 	client chain.Client,
 	connector *coreConnector.Connector,
+
 ) (sess p2p.RunnableTssSession) {
+	localParty := newLocalSignParty(account, share, params.Threshold)
+
 	switch client.Type() {
 	case chain.TypeEVM:
 		evmClient := client.(*evm.Client)
@@ -237,11 +241,7 @@ func configureSigningSession(
 			)
 		default:
 			evmSession := evmSigning.NewSession(
-				tss.LocalSignParty{
-					Account:   account,
-					Share:     share,
-					Threshold: params.Threshold,
-				},
+				localParty,
 				parties,
 				params,
 				db,
@@ -254,11 +254,7 @@ func configureSigningSession(
 		}
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(
-			tss.LocalSignParty{
-				Account:   account,
-				Share:     share,
-				Threshold: params.Threshold,
-			},
+			localParty,
 			parties,
 			params,
 			db,
@@ -270,11 +266,7 @@ func configureSigningSession(
 		sess = zanoSession
 	case chain.TypeBitcoin:
 		btcSession := utxoSigning.NewSession(
-			tss.LocalSignParty{
-				Account:   account,
-				Share:     share,
-				Threshold: params.Threshold,
-			},
+			localParty,
 			parties,
 			params,
 			db,
@@ -286,11 +278,7 @@ func configureSigningSession(
 		sess = btcSession
 
 	case chain.TypeTON:
-		tonSession := tonSigning.NewSession(tss.LocalSignParty{
-			Account:   account,
-			Share:     share,
-			Threshold: params.Threshold,
-		},
+		tonSession := tonSigning.NewSession(localParty,
 			parties,
 			params,
 			db,
@@ -303,11 +291,7 @@ func configureSigningSession(
 
 	case chain.TypeSolana:
 		solanaSession := solanaSigning.NewSession(
-			tss.LocalSignParty{
-				Account:   account,
-				Share:     share,
-				Threshold: params.Threshold,
-			},
+			localParty,
 			parties,
 			params,
 			db,
@@ -317,7 +301,41 @@ func configureSigningSession(
 			panic(errors.Wrap(err, "failed to build solana session"))
 		}
 		sess = solanaSession
+	case chain.TypeOther:
+		testSession := testSigning.NewSession(
+			localParty,
+			parties,
+			params,
+			db,
+			logger.WithField("component", "signing_session"))
+		if err := testSession.Build(); err != nil {
+			panic(errors.Wrap(err, "failed to build test session"))
+		}
+		sess = testSession
+
 	}
 
 	return sess
+}
+
+func newLocalSignParty(account core.Account, share interface{}, threshold int) tss.LocalSignParty {
+	localParty := tss.LocalSignParty{
+		Account:   account,
+		Threshold: threshold,
+	}
+
+	switch typedShare := share.(type) {
+	case *keygen.LocalPartySaveData:
+		localParty.Share = typedShare
+	case keygen.LocalPartySaveData:
+		localParty.Share = &typedShare
+	case *frostkeygen.Config:
+		localParty.FrostShare = typedShare
+	case frostkeygen.Config:
+		localParty.FrostShare = &typedShare
+	default:
+		panic(errors.Errorf("unsupported tss share type %T", share))
+	}
+
+	return localParty
 }

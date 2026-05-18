@@ -11,8 +11,6 @@ type KeyGenParty interface {
 	Run(ctx context.Context)
 	WaitFor() *LocalPartyData
 	Receive(sender core.Address, data *p2p.TssData)
-	//receiveMsgs(ctx context.Context)
-	//receiveUpdates(ctx context.Context, out <-chan tss.Message, end <-chan *LocalPartyData)
 }
 
 func NewLocalPartyData(data interface{}) *LocalPartyData {
@@ -23,4 +21,12 @@ func NewLocalPartyData(data interface{}) *LocalPartyData {
 
 type LocalPartyData struct {
 	data interface{}
+}
+
+func (d *LocalPartyData) GetData() interface{} {
+	if d == nil {
+		return nil
+	}
+
+	return d.data
 }

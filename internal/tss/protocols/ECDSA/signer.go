@@ -11,18 +11,11 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 )
-
-type LocalSignParty struct {
-	Account   core.Account
-	Share     *keygen.LocalPartySaveData
-	Threshold int
-}
 
 type SignParty struct {
 	wg *sync.WaitGroup
@@ -30,7 +23,7 @@ type SignParty struct {
 	parties        map[core.Address]struct{}
 	sortedPartyIds tss.SortedPartyIDs
 
-	self LocalSignParty
+	self tss2.LocalSignParty
 
 	logger      *logan.Entry
 	party       tss.Party
@@ -44,7 +37,7 @@ type SignParty struct {
 	sessionId string
 }
 
-func NewSignParty(self LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
+func NewSignParty(self tss2.LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
 	return &SignParty{
 		wg:        &sync.WaitGroup{},
 		self:      self,
@@ -54,7 +47,7 @@ func NewSignParty(self LocalSignParty, sessionId string, logger *logan.Entry) *S
 	}
 }
 
-func (p *SignParty) WithParties(parties []p2p.Party) *SignParty {
+func (p *SignParty) WithParties(parties []p2p.Party) tss2.SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*tss.PartyID, len(parties)+1)
 	partyIds[0] = p.self.Account.CosmosAddress().PartyIdentifier()
@@ -71,7 +64,7 @@ func (p *SignParty) WithParties(parties []p2p.Party) *SignParty {
 	return p
 }
 
-func (p *SignParty) WithSigningData(data []byte) *SignParty {
+func (p *SignParty) WithSigningData(data []byte) tss2.SignParty {
 	p.data = data
 	return p
 }
@@ -104,13 +97,13 @@ func (p *SignParty) Run(ctx context.Context) {
 	p.logger.Info("signing started")
 }
 
-func (p *SignParty) WaitFor() *tss2.LocalPartyData {
+func (p *SignParty) WaitFor() *common.SignatureData {
 	p.wg.Wait()
 	p.ended.Store(true)
 
 	p.logger.Info("signing finished")
 
-	return tss2.NewLocalPartyData(p.data)
+	return p.result
 }
 
 // Receive adds msg to msgs chan
@@ -198,7 +191,7 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, 
 				continue
 			}
 
-			dst := core.AddrFromPartyId(destination[0])
+			dst := core.AddrFromString(destination[0].Moniker)
 			if err = p.broadcaster.Send(&submitReq, dst); err != nil {
 				p.logger.WithError(err).Error("failed to send message")
 			}

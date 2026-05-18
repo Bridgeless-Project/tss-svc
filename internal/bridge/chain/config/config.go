@@ -6,6 +6,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/solana"
+	testchain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/test"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/ton"
 	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
 	utxo "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
@@ -50,6 +51,8 @@ func (c *chainer) Clients() []chain.Client {
 				clients[i] = ton.NewBridgeClient(ton.FromChain(ch))
 			case chain.TypeSolana:
 				clients[i] = solana.NewBridgeClient(solana.FromChain(ch))
+			case chain.TypeOther:
+				clients[i] = testchain.NewBridgeClient(testchain.FromChain(ch))
 			default:
 				panic(errors.Errorf("unsupported chain type: %s", ch.Type))
 			}

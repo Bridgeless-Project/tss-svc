@@ -19,7 +19,7 @@ func DetermineLeader(sessionId string, partyIds tss.SortedPartyIDs) core.Address
 	generator := DeterministicRandSource(sessionId)
 	proposerIdx := int(generator.Uint64() % uint64(partyIds.Len()))
 
-	return core.AddrFromPartyId(partyIds[proposerIdx])
+	return core.AddrFromString(partyIds[proposerIdx].Moniker)
 }
 
 func SortAllParties(parties []p2p.Party, self core.Address) tss.SortedPartyIDs {
