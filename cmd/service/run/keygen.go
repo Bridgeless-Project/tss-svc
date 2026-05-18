@@ -64,8 +64,7 @@ var keygenCmd = &cobra.Command{
 			cfg.Log().WithField("component", "connection_manager"),
 		)
 
-		// TODO make a list of sessions
-		session := keygenSession.NewSession(
+		frostSeession := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
 				Address:   account.CosmosAddress(),
@@ -76,10 +75,23 @@ var keygenCmd = &cobra.Command{
 			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 			tss.ProtocolID_FROST,
-			curve.Secp256k1{}, // TODO implement custom curve for Zcash
+			curve.Secp256k1{}, // TODO implement custom curve for ZCash
 		)
 
-		sessionManager := p2p.NewSessionManager(session)
+		ecdsaSeession := keygenSession.NewSession(
+			tss.LocalKeygenParty{
+				PreParams: *preParams,
+				Address:   account.CosmosAddress(),
+				Threshold: cfg.TssSessionParams().Threshold,
+			},
+			parties,
+			cfg.TssSessionParams(),
+			connectionManager.GetReadyCount,
+			cfg.Log().WithField("component", "keygen_session"),
+			tss.ProtocolID_ECDSA,
+			curve.Secp256k1{},
+		)
+		sessionManager := p2p.NewSessionManager(frostSeession, ecdsaSeession)
 
 		errGroup.Go(func() error {
 			server := p2p.NewServer(
@@ -96,10 +108,26 @@ var keygenCmd = &cobra.Command{
 		errGroup.Go(func() error {
 			defer cancel()
 
-			if err := session.Run(ctx); err != nil {
+			if err := frostSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
 			}
-			result, err := session.WaitFor()
+			result, err := frostSeession.WaitFor()
+			if err != nil {
+				return errors.Wrap(err, "failed to obtain keygen session result")
+			}
+
+			cfg.Log().Info("keygen session successfully completed")
+
+			return storeKeygenResult(result, storage)
+		})
+
+		errGroup.Go(func() error {
+			defer cancel()
+
+			if err := ecdsaSeession.Run(ctx); err != nil {
+				return errors.Wrap(err, "failed to run keygen session")
+			}
+			result, err := ecdsaSeession.WaitFor()
 			if err != nil {
 				return errors.Wrap(err, "failed to obtain keygen session result")
 			}
@@ -118,19 +146,14 @@ func storeKeygenResult(result interface{}, storage secrets.Storage) error {
 		result = localData.GetData()
 	}
 
-	fmt.Println("-----------------result:", result)
-
-	utils.OutputType = "vault"
 	switch utils.OutputType {
 	case "console":
-		fmt.Println("console")
 		raw, err := json.Marshal(result)
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal keygen result")
 		}
 		fmt.Println("raw: ", string(raw))
 	case "file":
-		fmt.Println("file")
 		raw, err := json.Marshal(result)
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal keygen result")
@@ -138,16 +161,15 @@ func storeKeygenResult(result interface{}, storage secrets.Storage) error {
 		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
 			return errors.Wrap(err, "failed to write keygen result to file")
 		}
-		fmt.Println("done")
 	case "vault":
-		fmt.Println("vault")
 		if err := storage.SaveTssShare(result); err != nil {
 			return errors.Wrap(err, "failed to save keygen result to vault")
 		}
-		fmt.Println("done")
 	default:
 		fmt.Println("unknown output type:", utils.OutputType)
 	}
+
+	fmt.Println("done")
 
 	return nil
 }
