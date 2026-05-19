@@ -1,12 +1,13 @@
-package zano
+package merklized
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -17,6 +18,7 @@ import (
 	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
@@ -44,16 +46,17 @@ type Session struct {
 	params session.SigningParams
 	logger *logan.Entry
 
-	client        *zano.Client
 	coreConnector *connector.Connector
 	fetcher       *deposit.Fetcher
+	client        *evm.Client
 
-	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
+	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
 	signingParty          tss.SignParty
-	consensusParty        *consensus.Consensus[withdrawal.ZanoWithdrawalData]
+	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
+	depositDistributor    *distributor.DepositDistributionSession
 }
 
 func NewSession(
@@ -85,13 +88,18 @@ func (s *Session) WithDepositFetcher(fetcher *deposit.Fetcher) *Session {
 	return s
 }
 
+func (s *Session) WithClient(client *evm.Client) *Session {
+	s.client = client
+	return s
+}
+
 func (s *Session) WithCoreConnector(conn *connector.Connector) *Session {
 	s.coreConnector = conn
 	return s
 }
 
-func (s *Session) WithClient(client *zano.Client) *Session {
-	s.client = client
+func (s *Session) WithDistributor(d *distributor.DepositDistributionSession) *Session {
+	s.depositDistributor = d
 	return s
 }
 
@@ -106,11 +114,14 @@ func (s *Session) Build() error {
 	if s.coreConnector == nil {
 		return errors.New("core connector is not set")
 	}
+	if s.depositDistributor == nil {
+		return errors.New("deposit distributor is not set")
+	}
 
-	s.mechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.ZanoWithdrawalData](
+	s.mechanism = signingConsensus.NewBatchDepositConsensusMechanism[withdrawal.EvmWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewZanoConstructor(s.client),
+		withdrawal.NewEvmConstructor(s.client),
 		s.fetcher,
 	)
 
@@ -126,7 +137,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
-		s.consensusParty = consensus.New[withdrawal.ZanoWithdrawalData](
+		s.consensusParty = consensus.New[withdrawal.EvmWithdrawalData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
@@ -137,6 +148,7 @@ func (s *Session) Run(ctx context.Context) error {
 			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
+
 		s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.signaturesDistributor = signing.NewSignaturesDistributor(
 			s.Id(),
@@ -148,7 +160,6 @@ func (s *Session) Run(ctx context.Context) error {
 		s.finalizer = NewFinalizer(
 			s.db,
 			s.coreConnector,
-			s.client,
 			s.logger.WithField("phase", "finalizing"),
 			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
@@ -174,7 +185,7 @@ func (s *Session) Run(ctx context.Context) error {
 	}
 }
 
-func (s *Session) runSession(ctx context.Context) error {
+func (s *Session) runSession(ctx context.Context) (err error) {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
@@ -182,20 +193,35 @@ func (s *Session) runSession(ctx context.Context) error {
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
 	if err != nil {
-		return errors.Wrap(err, "failed to run consensus phase")
+		if missingErr, ok := stderrors.AsType[*signingConsensus.ErrMissingDeposits](err); ok {
+			s.logger.WithField("count", len(missingErr.MissingIDs)).
+				Info("missing deposits in proposal, pushing to internal queue")
+			s.depositDistributor.QueueMissing(ctx, missingErr.MissingIDs)
+		}
+		return errors.Wrap(err, "consensus phase error occurred")
 	}
 	if result.SigData == nil {
 		s.logger.Info("no data to sign in the current session")
 		return nil
 	}
 
-	if err = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING, result.SigData.DepositIdentifiers()[0]); err != nil {
-		return errors.Wrap(err, "failed to update deposit status")
+	identifiers := make([]db.DepositIdentifier, len(result.SigData.ProposalData.DepositIds))
+	for i, pbId := range result.SigData.ProposalData.DepositIds {
+		identifiers[i] = db.DepositIdentifier{
+			ChainId: pbId.ChainId,
+			TxHash:  pbId.TxHash,
+			TxNonce: pbId.TxNonce,
+		}
 	}
+
+	if err = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING, identifiers...); err != nil {
+		return errors.Wrap(err, "failed to update deposit status in batch")
+	}
+
 	defer func() {
 		// compensating status update in case of error
 		if err != nil {
-			_ = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED, result.SigData.DepositIdentifiers()[0])
+			_ = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED, identifiers...)
 		}
 	}()
 

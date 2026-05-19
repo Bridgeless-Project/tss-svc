@@ -26,8 +26,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
-	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm"
 	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
+	evmMerklized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/merklized"
+	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/standart"
 	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
 	testSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/test"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
@@ -72,6 +73,7 @@ var signCmd = &cobra.Command{
 func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	storage := cfg.SecretsStorage()
 	account, err := storage.GetCoreAccount()
+	swapSettings := cfg.SwapSettings()
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
@@ -102,7 +104,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		return errors.Wrap(err, "failed to create core connector")
 	}
 	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"), connector)
-	fetcher := deposit.NewFetcher(clientsRepo, connector)
+	fetcher := deposit.NewFetcher(clientsRepo, connector, swapSettings)
 
 	p2pServer := p2p.NewServer(
 		cfg.P2pGrpcListener(),
@@ -136,6 +138,14 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		}
 	}
 
+	depositAcceptorSession := distributor.NewDepositDistributionSession(
+		account.CosmosAddress(),
+		parties,
+		fetcher,
+		dtb,
+		logger.WithField("component", "deposit_distribution_session"),
+	)
+
 	sessionsWg := new(sync.WaitGroup)
 	for _, client := range clients {
 		sessionsWg.Add(1)
@@ -159,7 +169,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector)
+			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector, depositAcceptorSession)
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -178,13 +188,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	eg.Go(func() error {
 		defer wg.Done()
 
-		depositAcceptorSession := distributor.NewDepositDistributionSession(
-			account.CosmosAddress(),
-			parties,
-			fetcher,
-			dtb,
-			logger.WithField("component", "deposit_distribution_session"),
-		)
 		sessionManager.Add(depositAcceptorSession)
 		depositAcceptorSession.Run(ctx)
 
@@ -227,6 +230,7 @@ func configureSigningSession(
 	client chain.Client,
 	connector *coreConnector.Connector,
 
+	distributor *distributor.DepositDistributionSession,
 ) (sess p2p.RunnableTssSession) {
 	localParty := newLocalSignParty(account, share, params.Threshold)
 
@@ -239,7 +243,8 @@ func configureSigningSession(
 				evmClient, db,
 				logger.WithField("component", "centralized_signing_session"),
 			)
-		default:
+
+		case evmClient.IsStandart():
 			evmSession := evmSigning.NewSession(
 				localParty,
 				parties,
@@ -250,7 +255,20 @@ func configureSigningSession(
 			if err := evmSession.Build(); err != nil {
 				panic(errors.Wrap(err, "failed to build evm session"))
 			}
+
 			sess = evmSession
+		default:
+			evmMerklizedSession := evmMerklized.NewSession(
+				localParty,
+				parties,
+				params,
+				db,
+				logger.WithField("component", "signing_session"),
+			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector).WithDistributor(distributor)
+			if err := evmMerklizedSession.Build(); err != nil {
+				panic(errors.Wrap(err, "failed to build evm session"))
+			}
+			sess = evmMerklizedSession
 		}
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(

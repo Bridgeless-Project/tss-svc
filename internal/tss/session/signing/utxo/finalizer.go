@@ -94,7 +94,7 @@ func (f *Finalizer) finalize(_ context.Context) {
 	encodedTx := utils.EncodeTransaction(tx)
 
 	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: f.withdrawalData.DepositIdentifier(),
+		Identifier: f.withdrawalData.DepositIdentifiers()[0],
 		TxData:     &encodedTx,
 		TxHash:     &withdrawalTxHash,
 	}); err != nil {
