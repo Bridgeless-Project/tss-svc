@@ -26,11 +26,11 @@ func (c *Client) Type() chain.Type {
 	return chain.TypeOther
 }
 
-func (c *Client) AddressValid(addr string) bool {
+func (c *Client) AddressValid(_ string) bool {
 	return true
 }
 
-func (c *Client) TransactionHashValid(hash string) bool {
+func (c *Client) TransactionHashValid(_ string) bool {
 	return true
 }
 

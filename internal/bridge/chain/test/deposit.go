@@ -10,6 +10,9 @@ func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 	data := new(db.DepositData)
 	data.TxHash = id.TxHash
 	data.DepositIdentifier = id
+	data.ChainId = ""
+	data.DestinationAddress = "test address"
+	data.DestinationChainId = "2" // test chain id
 
 	return data, nil
 }
@@ -20,7 +23,7 @@ type DepositDecoder struct {
 	bridgeAddress address.Address
 }
 
-func NewDepositDecoder(bridgeAddress address.Address, isTestnet bool) *DepositDecoder {
+func NewDepositDecoder(bridgeAddress address.Address, _ bool) *DepositDecoder {
 	return &DepositDecoder{
 		bridgeAddress: bridgeAddress,
 	}

@@ -121,6 +121,7 @@ func (s *Session) run(ctx context.Context) {
 }
 
 func (s *Session) WaitFor() (*tss.LocalPartyData, error) {
+	fmt.Println("waiting for keygen session.....")
 	s.wg.Wait()
 	return s.result, s.err
 }

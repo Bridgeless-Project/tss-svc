@@ -2,7 +2,9 @@ package tss
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -78,6 +80,8 @@ func NewKeygenParty(self tss2.LocalKeygenParty, group curve.Curve, parties []p2p
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
+
+	fmt.Println("RUN FROST KEYGEN")
 	h, err := protocol.NewMultiHandler(frost.Keygen(p.group, p.selfID, p.participants, p.threshold), []byte(p.sessionId))
 	if err != nil {
 		p.err = err
@@ -95,6 +99,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 }
 
 func (p *KeygenParty) WaitFor() *tss.LocalPartyData {
+	fmt.Println("WAIT FOR FROST KEYGEN")
 	p.wg.Wait()
 	if p.err != nil || p.config == nil {
 		p.logger.Error("keygen failed to wait for keygen")
@@ -166,6 +171,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 			return
 
 		case msg, ok := <-p.handler.Listen():
+			fmt.Println("Message to broadcast", msg)
 			if !ok {
 				r, err := p.handler.Result()
 				if err != nil {
@@ -187,6 +193,12 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 					return
 				}
 				p.config = config
+
+				bytes, err := p.config.PublicKey.MarshalBinary()
+				if err != nil {
+					return
+				}
+				fmt.Println("\t\t\t\tp.config.PublicKey()\n:", hex.EncodeToString(bytes))
 				p.ended.Store(true)
 				close(p.msgs)
 				return

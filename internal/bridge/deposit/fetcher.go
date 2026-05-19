@@ -28,6 +28,7 @@ func NewFetcher(clients chain.Repository, core *connector.Connector, swapSetting
 }
 
 func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, error) {
+
 	sourceClient, err := p.clients.Client(identifier.ChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting source clients")
