@@ -72,7 +72,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 		msgs:            make(chan tss.PartyMsg, tss.MsgsCapacity),
 
 		threshold: threshold,
-		logger:    logger,
+		logger:    logger.WithField("protocol", "frost"),
 		sessionId: sessionId,
 		wg:        &sync.WaitGroup{},
 	}
@@ -98,7 +98,6 @@ func (p *KeygenParty) Run(ctx context.Context) {
 }
 
 func (p *KeygenParty) WaitFor() *tss.LocalPartyData {
-	fmt.Println("WAIT FOR FROST KEYGEN")
 	p.wg.Wait()
 	if p.err != nil || p.config == nil {
 		p.logger.Error("keygen failed to wait for keygen")
@@ -117,7 +116,7 @@ func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.logger.Debug("Receive: received message", sender, data)
+	p.logger.Debug("received message", sender, data)
 
 	p.msgs <- tss.PartyMsg{
 		Sender:      sender,
@@ -144,13 +143,13 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 			p.logger.Info("received message", msg)
 
 			if _, exists := p.parties[msg.Sender]; !exists {
-				p.logger.WithField("party", core.Address(msg.Sender)).Warn("got message from outside party")
+				p.logger.WithField("party", msg.Sender).Warn("got message from outside party")
 				continue
 			}
 
 			message := new(protocol.Message)
 			if err := message.UnmarshalBinary(msg.WireMsg); err != nil {
-				p.logger.WithError(err).WithField("party", core.Address(msg.Sender)).Warn("failed to unmarshal message")
+				p.logger.WithError(err).WithField("party", msg.Sender).Warn("failed to unmarshal message")
 				continue
 			}
 

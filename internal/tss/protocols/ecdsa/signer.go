@@ -43,7 +43,7 @@ func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry
 		self:      self,
 		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
 		sessionId: sessionId,
-		logger:    logger,
+		logger:    logger.WithField("protocol", "ecdsa"),
 	}
 }
 

@@ -49,7 +49,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, parties []p2p.Party, sessionId st
 		parties:        partyMap,
 		self:           self,
 		msgs:           make(chan tss.PartyMsg, tss.MsgsCapacity),
-		logger:         logger,
+		logger:         logger.WithField("protocol", "ecdsa"),
 		sessionId:      sessionId,
 		wg:             &sync.WaitGroup{},
 	}
@@ -146,15 +146,16 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message
 		case <-ctx.Done():
 			p.logger.Warn("context is done; stopping listening to updates")
 			return
-		case result, ok := <-end:
-			close(p.msgs)
-			p.result = result
 
+		case result, ok := <-end:
 			if !ok {
 				p.logger.Error("tss party result channel is closed")
 			}
 
+			close(p.msgs)
+			p.result = result
 			return
+
 		case msg := <-out:
 			raw, routing, err := msg.WireBytes()
 			if err != nil {

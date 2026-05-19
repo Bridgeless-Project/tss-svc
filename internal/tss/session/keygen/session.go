@@ -43,33 +43,48 @@ func NewSession(
 	protocolID int,
 	group curve.Curve,
 ) *Session {
-
 	sessionId := session.GetKeygenSessionIdentifier(params.Id)
 	switch protocolID {
 	case tss.ProtocolID_ECDSA:
 		return &Session{
 			sessionId:             sessionId,
 			params:                params,
-			wg:                    &sync.WaitGroup{},
+			wg:                    new(sync.WaitGroup),
 			connectedPartiesCount: connectedPartiesCountFunc,
 			partiesCount:          len(parties),
-			keygenParty:           tssProtocols.SelectKeyGenByProtocol(tss.ProtocolID_ECDSA, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
-			logger:                logger,
+			keygenParty: tssProtocols.SelectKeyGenByProtocol(
+				tss.ProtocolID_ECDSA,
+				self,
+				parties,
+				params.Threshold,
+				sessionId,
+				group,
+				logger.WithField("component", "keygen_party"),
+			),
+			logger: logger,
 		}
 
 	case tss.ProtocolID_FROST:
 		return &Session{
 			sessionId:             sessionId,
 			params:                params,
-			wg:                    &sync.WaitGroup{},
+			wg:                    new(sync.WaitGroup),
 			connectedPartiesCount: connectedPartiesCountFunc,
 			partiesCount:          len(parties),
-			keygenParty:           tssProtocols.SelectKeyGenByProtocol(tss.ProtocolID_FROST, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
-			logger:                logger,
+			keygenParty: tssProtocols.SelectKeyGenByProtocol(
+				tss.ProtocolID_FROST,
+				self,
+				parties,
+				params.Threshold,
+				sessionId,
+				group,
+				logger.WithField("component", "keygen_party"),
+			),
+			logger: logger,
 		}
 
 	default:
-		return &Session{}
+		return new(Session)
 	}
 }
 
@@ -121,7 +136,6 @@ func (s *Session) run(ctx context.Context) {
 }
 
 func (s *Session) WaitFor() (*tss.LocalPartyData, error) {
-	fmt.Println("waiting for keygen session.....")
 	s.wg.Wait()
 	return s.result, s.err
 }

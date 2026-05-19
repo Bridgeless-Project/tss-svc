@@ -14,6 +14,4 @@ const (
 	BoundaryFinalize              = 7 * time.Second
 
 	BoundaryBitcoinSignRoundDelay = 500 * time.Millisecond
-
-	BoundaryFrostConsensus = BoundaryProposalAcceptance + 25*time.Second
 )

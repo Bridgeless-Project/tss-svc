@@ -52,7 +52,7 @@ func NewSignParty(self tss.LocalSignParty, sessionId string, group curve.Curve, 
 		self:      self,
 		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
 		sessionId: sessionId,
-		logger:    logger,
+		logger:    logger.WithField("protocol", "frost"),
 		group:     group,
 	}
 }

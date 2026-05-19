@@ -41,7 +41,7 @@ var keygenCmd = &cobra.Command{
 
 		storage := cfg.SecretsStorage()
 
-		// TODO use the protocol id
+		// TODO do we need the preparams for frost?
 		preParams, err := storage.GetKeygenPreParams()
 		if err != nil {
 			return errors.Wrap(err, "failed to get keygen pre-parameters")
@@ -80,20 +80,20 @@ var keygenCmd = &cobra.Command{
 			curve.Secp256k1{}, // TODO implement custom curve for ZCash
 		)
 
-		//ecdsaSeession := keygenSession.NewSession(
-		//	tss.LocalKeygenParty{
-		//		PreParams: *preParams,
-		//		Address:   account.CosmosAddress(),
-		//		Threshold: cfg.TssSessionParams().Threshold,
-		//	},
-		//	parties,
-		//	cfg.TssSessionParams(),
-		//	connectionManager.GetReadyCount,
-		//	cfg.Log().WithField("component", "keygen_session"),
-		//	tss.ProtocolID_ECDSA,
-		//	curve.Secp256k1{},
-		//)
-		sessionManager := p2p.NewSessionManager(frostSeession)
+		ecdsaSeession := keygenSession.NewSession(
+			tss.LocalKeygenParty{
+				PreParams: *preParams,
+				Address:   account.CosmosAddress(),
+				Threshold: cfg.TssSessionParams().Threshold,
+			},
+			parties,
+			cfg.TssSessionParams(),
+			connectionManager.GetReadyCount,
+			cfg.Log().WithField("component", "keygen_session"),
+			tss.ProtocolID_ECDSA,
+			curve.Secp256k1{},
+		)
+		sessionManager := p2p.NewSessionManager(frostSeession, ecdsaSeession)
 
 		errGroup.Go(func() error {
 			server := p2p.NewServer(
@@ -108,8 +108,6 @@ var keygenCmd = &cobra.Command{
 		})
 
 		errGroup.Go(func() error {
-			defer cancel()
-
 			if err := frostSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
 			}
@@ -118,37 +116,34 @@ var keygenCmd = &cobra.Command{
 				return errors.Wrap(err, "failed to obtain frost keygen session result")
 			}
 
-			cfg.Log().Info("keygen session successfully completed")
+			cfg.Log().Info("frost keygen session successfully completed")
 
-			return storeKeygenResult(result, storage)
+			return storeKeygenResult(result, storage, tss.ProtocolID_FROST)
 		})
 
-		//	errGroup.Go(func() error {
-		//		defer cancel()
-		//
-		//		if err := ecdsaSeession.Run(ctx); err != nil {
-		//			return errors.Wrap(err, "failed to run keygen session")
-		//		}
-		//		result, err := ecdsaSeession.WaitFor()
-		//		if err != nil {
-		//			return errors.Wrap(err, "failed to obtain ecdsa keygen session result")
-		//		}
-		//
-		//		cfg.Log().Info("keygen session successfully completed")
-		//
-		//		return storeKeygenResult(result, storage)
-		//	})
+		errGroup.Go(func() error {
+			if err := ecdsaSeession.Run(ctx); err != nil {
+				return errors.Wrap(err, "failed to run keygen session")
+			}
+			result, err := ecdsaSeession.WaitFor()
+			if err != nil {
+				return errors.Wrap(err, "failed to obtain ecdsa keygen session result")
+			}
+
+			cfg.Log().Info("ecdsa keygen session successfully completed")
+
+			return storeKeygenResult(result, storage, tss.ProtocolID_ECDSA)
+		})
 
 		return errGroup.Wait()
 	},
 }
 
-func storeKeygenResult(result interface{}, storage secrets.Storage) error {
+func storeKeygenResult(result interface{}, storage secrets.Storage, protocol int) error {
 	if localData, ok := result.(*tss.LocalPartyData); ok {
 		result = localData.GetData()
 	}
 
-	utils.OutputType = "vault"
 	switch utils.OutputType {
 	case "console":
 		raw, err := json.Marshal(result)
@@ -174,7 +169,7 @@ func storeKeygenResult(result interface{}, storage secrets.Storage) error {
 		fmt.Println("unknown output type:", utils.OutputType)
 	}
 
-	fmt.Println("done")
+	fmt.Println("done: protocol ", protocol)
 
 	return nil
 }
