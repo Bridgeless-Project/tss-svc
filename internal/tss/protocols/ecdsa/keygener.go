@@ -9,9 +9,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
-	"github.com/bnb-chain/tss-lib/v2/tss"
+	bnb "github.com/bnb-chain/tss-lib/v2/tss"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -21,21 +21,21 @@ type KeygenParty struct {
 	ended atomic.Bool
 
 	broadcaster    *broadcast.Broadcaster
-	party          tss.Party
-	sortedPartyIds tss.SortedPartyIDs
+	party          bnb.Party
+	sortedPartyIds bnb.SortedPartyIDs
 	parties        map[core.Address]struct{}
-	self           tss2.LocalKeygenParty
+	self           tss.LocalKeygenParty
 
-	msgs      chan tss2.PartyMsg
+	msgs      chan tss.PartyMsg
 	result    *keygen.LocalPartySaveData
 	sessionId string
 
 	logger *logan.Entry
 }
 
-func NewKeygenParty(self tss2.LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
+func NewKeygenParty(self tss.LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
-	partyIds := make([]*tss.PartyID, len(parties)+1)
+	partyIds := make([]*bnb.PartyID, len(parties)+1)
 	partyIds[0] = self.Address.PartyIdentifier()
 
 	for i, party := range parties {
@@ -45,10 +45,10 @@ func NewKeygenParty(self tss2.LocalKeygenParty, parties []p2p.Party, sessionId s
 
 	return &KeygenParty{
 		broadcaster:    broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
-		sortedPartyIds: tss.SortPartyIDs(partyIds),
+		sortedPartyIds: bnb.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		self:           self,
-		msgs:           make(chan tss2.PartyMsg, tss2.MsgsCapacity),
+		msgs:           make(chan tss.PartyMsg, tss.MsgsCapacity),
 		logger:         logger,
 		sessionId:      sessionId,
 		wg:             &sync.WaitGroup{},
@@ -56,14 +56,14 @@ func NewKeygenParty(self tss2.LocalKeygenParty, parties []p2p.Party, sessionId s
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
-	params := tss.NewParameters(
-		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
+	params := bnb.NewParameters(
+		bnb.S256(), bnb.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
 		p.self.Threshold,
 	)
-	out := make(chan tss.Message, tss2.OutChannelSize)
-	end := make(chan *keygen.LocalPartySaveData, tss2.EndChannelSize)
+	out := make(chan bnb.Message, tss.OutChannelSize)
+	end := make(chan *keygen.LocalPartySaveData, tss.EndChannelSize)
 
 	preParams, ok := p.self.PreParams.(keygen.LocalPreParams)
 	if !ok {
@@ -90,13 +90,13 @@ func (p *KeygenParty) Run(ctx context.Context) {
 	p.logger.Info("keygen started")
 }
 
-func (p *KeygenParty) WaitFor() *tss2.LocalPartyData {
+func (p *KeygenParty) WaitFor() *tss.LocalPartyData {
 	p.wg.Wait()
 	p.ended.Store(true)
 
 	p.logger.Info("keygen finished")
 
-	return tss2.NewLocalPartyData(p.result)
+	return tss.NewLocalPartyData(p.result)
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
@@ -104,7 +104,7 @@ func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.msgs <- tss2.PartyMsg{
+	p.msgs <- tss.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
@@ -138,7 +138,7 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 
 }
 
-func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, end <-chan *keygen.LocalPartySaveData) {
+func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message, end <-chan *keygen.LocalPartySaveData) {
 	defer p.wg.Done()
 
 	for {

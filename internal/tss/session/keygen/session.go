@@ -9,7 +9,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/pkg/errors"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -53,7 +53,7 @@ func NewSession(
 			wg:                    &sync.WaitGroup{},
 			connectedPartiesCount: connectedPartiesCountFunc,
 			partiesCount:          len(parties),
-			keygenParty:           tss2.SelectKeyGenByProtocol(tss.ProtocolID_ECDSA, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
+			keygenParty:           tssProtocols.SelectKeyGenByProtocol(tss.ProtocolID_ECDSA, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
 			logger:                logger,
 		}
 
@@ -64,7 +64,7 @@ func NewSession(
 			wg:                    &sync.WaitGroup{},
 			connectedPartiesCount: connectedPartiesCountFunc,
 			partiesCount:          len(parties),
-			keygenParty:           tss2.SelectKeyGenByProtocol(tss.ProtocolID_FROST, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
+			keygenParty:           tssProtocols.SelectKeyGenByProtocol(tss.ProtocolID_FROST, self, parties, params.Threshold, sessionId, group, logger.WithField("component", "keygen_party")),
 			logger:                logger,
 		}
 

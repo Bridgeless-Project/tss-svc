@@ -169,7 +169,7 @@ func (s *Session) prepareRound() {
 }
 
 func (s *Session) runSession(ctx context.Context) error {
-	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
+	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryFrostConsensus)
 	defer consCtxCancel()
 
 	s.consensusParty.Run(consensusCtx)

@@ -12,7 +12,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -46,13 +45,13 @@ type KeygenParty struct {
 	sessionId string
 	handler   *protocol.MultiHandler
 
-	msgs   chan tss2.PartyMsg
+	msgs   chan tss.PartyMsg
 	config *keygen.Config
 	err    error
 	logger *logan.Entry
 }
 
-func NewKeygenParty(self tss2.LocalKeygenParty, group curve.Curve, parties []p2p.Party, threshold int, sessionId string, logger *logan.Entry) *KeygenParty {
+func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.Party, threshold int, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]party.ID, 0, len(parties)+1)
 	partyIds = append(partyIds, party.ID(self.Address.String()))
@@ -70,7 +69,7 @@ func NewKeygenParty(self tss2.LocalKeygenParty, group curve.Curve, parties []p2p
 		selfID:          party.ID(self.Address.String()),
 		participants:    participants,
 		selfCoreAddress: self.Address,
-		msgs:            make(chan tss2.PartyMsg, tss2.MsgsCapacity),
+		msgs:            make(chan tss.PartyMsg, tss.MsgsCapacity),
 
 		threshold: threshold,
 		logger:    logger,
@@ -120,7 +119,7 @@ func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 
 	p.logger.Debug("Receive: received message", sender, data)
 
-	p.msgs <- tss2.PartyMsg{
+	p.msgs <- tss.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,

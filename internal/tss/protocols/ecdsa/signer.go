@@ -9,10 +9,10 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
-	"github.com/bnb-chain/tss-lib/v2/tss"
+	bnb "github.com/bnb-chain/tss-lib/v2/tss"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -21,13 +21,13 @@ type SignParty struct {
 	wg *sync.WaitGroup
 
 	parties        map[core.Address]struct{}
-	sortedPartyIds tss.SortedPartyIDs
+	sortedPartyIds bnb.SortedPartyIDs
 
-	self tss2.LocalSignParty
+	self tss.LocalSignParty
 
 	logger      *logan.Entry
-	party       tss.Party
-	msgs        chan tss2.PartyMsg
+	party       bnb.Party
+	msgs        chan tss.PartyMsg
 	broadcaster *broadcast.Broadcaster
 
 	data []byte
@@ -37,19 +37,19 @@ type SignParty struct {
 	sessionId string
 }
 
-func NewSignParty(self tss2.LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
+func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
 	return &SignParty{
 		wg:        &sync.WaitGroup{},
 		self:      self,
-		msgs:      make(chan tss2.PartyMsg, tss2.MsgsCapacity),
+		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
 		sessionId: sessionId,
 		logger:    logger,
 	}
 }
 
-func (p *SignParty) WithParties(parties []p2p.Party) tss2.SignParty {
+func (p *SignParty) WithParties(parties []p2p.Party) tss.SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
-	partyIds := make([]*tss.PartyID, len(parties)+1)
+	partyIds := make([]*bnb.PartyID, len(parties)+1)
 	partyIds[0] = p.self.Account.CosmosAddress().PartyIdentifier()
 
 	for i, party := range parties {
@@ -58,26 +58,26 @@ func (p *SignParty) WithParties(parties []p2p.Party) tss2.SignParty {
 	}
 
 	p.parties = partyMap
-	p.sortedPartyIds = tss.SortPartyIDs(partyIds)
+	p.sortedPartyIds = bnb.SortPartyIDs(partyIds)
 	p.broadcaster = broadcast.NewBroadcaster(parties, p.logger.WithField("component", "broadcaster"))
 
 	return p
 }
 
-func (p *SignParty) WithSigningData(data []byte) tss2.SignParty {
+func (p *SignParty) WithSigningData(data []byte) tss.SignParty {
 	p.data = data
 	return p
 }
 
 func (p *SignParty) Run(ctx context.Context) {
-	params := tss.NewParameters(
-		tss.S256(), tss.NewPeerContext(p.sortedPartyIds),
+	params := bnb.NewParameters(
+		bnb.S256(), bnb.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Account.CosmosAddress().PartyKey()),
 		len(p.sortedPartyIds),
 		p.self.Threshold,
 	)
-	out := make(chan tss.Message, tss2.OutChannelSize)
-	end := make(chan *common.SignatureData, tss2.EndChannelSize)
+	out := make(chan bnb.Message, tss.OutChannelSize)
+	end := make(chan *common.SignatureData, tss.EndChannelSize)
 
 	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Share, out, end)
 
@@ -112,7 +112,7 @@ func (p *SignParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.msgs <- tss2.PartyMsg{
+	p.msgs <- tss.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
@@ -148,7 +148,7 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 }
 
 // (from me to other party)
-func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan tss.Message, end <-chan *common.SignatureData) {
+func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message, end <-chan *common.SignatureData) {
 	defer p.wg.Done()
 
 	for {

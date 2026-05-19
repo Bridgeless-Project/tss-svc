@@ -11,7 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
+// TODO remove unused log after tests
 type SignParty struct {
 	wg    *sync.WaitGroup
 	ended atomic.Bool
@@ -31,32 +32,32 @@ type SignParty struct {
 	parties     map[core.Address]struct{}
 	signers     []party.ID
 
-	self tss2.LocalSignParty
+	self tss.LocalSignParty
 
 	group curve.Curve
 
 	sessionId string
 	handler   *protocol.MultiHandler
 
-	msgs   chan tss2.PartyMsg
+	msgs   chan tss.PartyMsg
 	data   []byte
 	result *common.SignatureData
 	err    error
 	logger *logan.Entry
 }
 
-func NewSignParty(self tss2.LocalSignParty, sessionId string, group curve.Curve, logger *logan.Entry) *SignParty {
+func NewSignParty(self tss.LocalSignParty, sessionId string, group curve.Curve, logger *logan.Entry) *SignParty {
 	return &SignParty{
 		wg:        &sync.WaitGroup{},
 		self:      self,
-		msgs:      make(chan tss2.PartyMsg, tss2.MsgsCapacity),
+		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
 		sessionId: sessionId,
 		logger:    logger,
 		group:     group,
 	}
 }
 
-func (p *SignParty) WithParties(parties []p2p.Party) tss2.SignParty {
+func (p *SignParty) WithParties(parties []p2p.Party) tss.SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	signers := make([]party.ID, 0, len(parties)+1)
 	signers = append(signers, party.ID(p.self.Account.CosmosAddress().String()))
@@ -73,7 +74,7 @@ func (p *SignParty) WithParties(parties []p2p.Party) tss2.SignParty {
 	return p
 }
 
-func (p *SignParty) WithSigningData(data []byte) tss2.SignParty {
+func (p *SignParty) WithSigningData(data []byte) tss.SignParty {
 	p.data = data
 	return p
 }
@@ -123,7 +124,7 @@ func (p *SignParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.msgs <- tss2.PartyMsg{
+	p.msgs <- tss.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
