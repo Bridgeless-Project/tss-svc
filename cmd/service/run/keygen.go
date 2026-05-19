@@ -107,6 +107,7 @@ var keygenCmd = &cobra.Command{
 			return server.Run(ctx)
 		})
 
+		// TODO: cancel context after keygen
 		errGroup.Go(func() error {
 			if err := frostSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
