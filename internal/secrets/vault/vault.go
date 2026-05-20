@@ -7,7 +7,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	client "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"

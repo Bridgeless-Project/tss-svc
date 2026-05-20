@@ -13,7 +13,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"

@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 )
 
 type ContractOperation interface {

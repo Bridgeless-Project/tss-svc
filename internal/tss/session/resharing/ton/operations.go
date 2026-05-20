@@ -7,8 +7,8 @@ import (
 	"time"
 
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
-	tsscommon "github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/bnb-chain/tss-lib/v2/tss"
+	tsscommon "github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/xssnick/tonutils-go/tvm/cell"

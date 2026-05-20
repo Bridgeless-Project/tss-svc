@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 )
 
 type Storage interface {

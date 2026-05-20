@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/bnb-chain/tss-lib/v3/tss"
 	"google.golang.org/grpc"
 )
 
