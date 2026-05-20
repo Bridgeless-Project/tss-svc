@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -41,26 +40,19 @@ type Client struct {
 	chain  types.Chain
 }
 
-func dialRPC(settings Settings) (*rpc.Client, error) {
-	authFn := func(h http.Header) error {
-		auth := base64.StdEncoding.EncodeToString([]byte(settings.User + ":" + settings.Password))
-		h.Set("Authorization", fmt.Sprintf("Basic %s", auth))
-		return nil
-	}
-
+func NewClient(settings Settings) (*Client, error) {
 	// default to http if no scheme is specified
 	if !strings.Contains(settings.Host, "://") {
 		settings.Host = "http://" + settings.Host
 	}
 
-	return rpc.DialOptions(context.Background(), settings.Host, rpc.WithHTTPAuth(authFn))
-}
-
-func NewClient(settings Settings) (*Client, error) {
-	c, err := dialRPC(settings)
+	c, err := rpc.DialContext(context.Background(), settings.Host)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to RPC server")
 	}
+
+	auth := base64.StdEncoding.EncodeToString([]byte(settings.User + ":" + settings.Password))
+	c.SetHeader("Authorization", fmt.Sprintf("Basic %s", auth))
 
 	return &Client{
 		c:        c,
@@ -313,8 +305,8 @@ type ImportDescriptorsRequest struct {
 }
 
 type ImportDescriptorsResponse struct {
-	Success bool      `json:"success"`
-	Error   *RPCError `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   *Error `json:"error,omitempty"`
 }
 
 func (c *Client) getDescriptorInfo(descriptor string) (*btcjson.GetDescriptorInfoResult, error) {
@@ -338,7 +330,7 @@ func extractRpcError(err error) error {
 
 	// parse the JSON response
 	var response struct {
-		Error RPCError `json:"error"`
+		Error Error `json:"error"`
 	}
 	if jsonErr := json.Unmarshal([]byte(parts[1]), &response); jsonErr != nil {
 		return err
@@ -348,7 +340,7 @@ func extractRpcError(err error) error {
 	return btcjson.NewRPCError(response.Error.Code, response.Error.Message)
 }
 
-type RPCError struct {
+type Error struct {
 	Code    btcjson.RPCErrorCode `json:"code"`
 	Message string               `json:"message"`
 }

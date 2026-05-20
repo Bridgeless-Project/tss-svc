@@ -18,6 +18,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
+	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/bnb-chain/tss-lib/v2/common"
 	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
@@ -106,7 +107,7 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.mechanism = signing.NewConsensusMechanism[withdrawal.TonWithdrawalData](
+	s.mechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.TonWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewTonConstructor(s.client),
@@ -187,13 +188,13 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 		return nil
 	}
 
-	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
+	if err = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING, result.SigData.DepositIdentifiers()[0]); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
 	defer func() {
 		// compensating status update in case of error
 		if err != nil {
-			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
+			_ = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED, result.SigData.DepositIdentifiers()[0])
 		}
 	}()
 

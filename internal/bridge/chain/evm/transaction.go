@@ -68,7 +68,7 @@ type txExtraInfo struct {
 // getTxByHash is a replacement for ethclient.Client.TransactionByHash that returns the transaction's sender address.
 func (p *Client) getTxByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, from *common.Address, err error) {
 	var raw *rpcTx
-	err = p.chain.Rpc.Client().CallContext(ctx, &raw, "eth_getTransactionByHash", hash)
+	err = p.chain.RawClient.CallContext(ctx, &raw, "eth_getTransactionByHash", hash)
 	if err != nil {
 		return nil, false, nil, err
 	} else if raw == nil {

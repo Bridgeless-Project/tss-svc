@@ -1,13 +1,14 @@
-package evm
+package merklized
 
 import (
 	"context"
+	"encoding/json"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -66,14 +67,37 @@ func (ef *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (ef *Finalizer) finalize(_ context.Context) {
-	signature := evm.ConvertSignature(ef.signature)
-	if err := ef.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: ef.withdrawalData.DepositIdentifier(),
-		Signature:  &signature,
-	}); err != nil {
-		ef.errChan <- errors.Wrap(err, "failed to update signature")
+	signature := convertToEthSignature(ef.signature)
+
+	processedData := make([]database.ProcessedDepositData, 0, len(ef.withdrawalData.ProposalData.DepositIds))
+
+	for i, pbDepositId := range ef.withdrawalData.ProposalData.DepositIds {
+		merkleProof := ef.withdrawalData.ProposalData.MerkleProofs[i].Hashes
+		merkleProofBytes, _ := json.Marshal(merkleProof)
+		merkleProofStr := string(merkleProofBytes)
+
+		processedData = append(processedData, database.ProcessedDepositData{
+			Identifier: database.DepositIdentifier{
+				ChainId: pbDepositId.ChainId,
+				TxHash:  pbDepositId.TxHash,
+				TxNonce: pbDepositId.TxNonce,
+			},
+			Signature:   &signature,
+			MerkleProof: &merkleProofStr,
+		})
+	}
+
+	if err := ef.db.UpdateProcessed(processedData...); err != nil {
+		ef.errChan <- errors.Wrap(err, "failed to update signatures in batch")
 		return
 	}
 
 	ef.errChan <- nil
+}
+
+func convertToEthSignature(sig *common.SignatureData) string {
+	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+	rawSig[64] += 27
+
+	return hexutil.Encode(rawSig)
 }
