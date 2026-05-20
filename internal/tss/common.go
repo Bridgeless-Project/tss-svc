@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	tsscommon "github.com/bnb-chain/tss-lib/v3/common"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -15,6 +15,11 @@ const (
 	EndChannelSize = 1
 	MsgsCapacity   = 100
 )
+
+func init() {
+	// timing side-channel protection
+	tsscommon.EnableConstantTimeOps()
+}
 
 type partyMsg struct {
 	Sender      core.Address
@@ -28,7 +33,7 @@ func MaxMaliciousParties(partiesCount, threshold int) int {
 }
 
 type Signatures struct {
-	Data []*common.SignatureData
+	Data []*tsscommon.SignatureData
 }
 
 func (s Signatures) HashString() string {
