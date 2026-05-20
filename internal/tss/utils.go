@@ -40,5 +40,10 @@ func VerifyFrost(pubKey []byte, inputData []byte, signature *common.SignatureDat
 		return false
 	}
 
-	return taproot.PublicKey(pubKey).Verify(taproot.Signature(signature.Signature), inputData)
+	// TODO: do not use taproot for ZCash
+	if len(signature.Signature) != taproot.SignatureLen {
+		return false
+	}
+
+	return taproot.PublicKey(pubKey).Verify(signature.Signature, inputData)
 }

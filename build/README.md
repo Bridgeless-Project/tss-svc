@@ -18,3 +18,6 @@ make docker-up
 ```
 
 It will update the config files for TSS nodes with new starting times and run the configured `docker-compose` setup.
+
+## Test Secrets
+The certificates, private keys, and seeded Vault shares under `build/configs` and `build/scripts` are local Docker fixtures only. Do not reuse them for testnet, staging, or production deployments.

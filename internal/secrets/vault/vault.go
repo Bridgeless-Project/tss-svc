@@ -38,7 +38,12 @@ const (
 )
 
 type Storage struct {
-	client *client.KVv2
+	client kvStore
+}
+
+type kvStore interface {
+	Get(ctx context.Context, secretPath string) (*client.KVSecret, error)
+	Put(ctx context.Context, secretPath string, data map[string]interface{}, opts ...client.KVOption) (*client.KVSecret, error)
 }
 
 func NewStorage(client *client.KVv2) secrets.Storage {
@@ -62,6 +67,10 @@ func (s *Storage) load(path string) (map[string]interface{}, error) {
 func (s *Storage) loadOptional(path string) (map[string]interface{}, bool, error) {
 	kvData, err := s.client.Get(context.Background(), path)
 	if err != nil {
+		if errors.Is(err, client.ErrSecretNotFound) {
+			return nil, false, nil
+		}
+
 		return nil, false, errors.Wrap(err, "failed to load data")
 	}
 	if kvData == nil {
@@ -199,6 +208,17 @@ func (s *Storage) GetTssShares() (*secrets.TssShares, error) {
 		result.Share, err = decodeECDSAShare(ecdsaData)
 		if err != nil {
 			return nil, err
+		}
+	} else {
+		legacyData, legacyOK, err := s.loadOptional(legacyKeyTssShare)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load legacy ecdsa share data")
+		}
+		if legacyOK {
+			result.Share, err = decodeECDSAShare(legacyData)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

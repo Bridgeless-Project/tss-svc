@@ -2,9 +2,7 @@ package tss
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -46,6 +44,7 @@ type KeygenParty struct {
 	handler   *protocol.MultiHandler
 
 	msgs   chan tss.PartyMsg
+	once   sync.Once
 	config *keygen.Config
 	err    error
 	logger *logan.Entry
@@ -79,12 +78,10 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
-
-	fmt.Println("RUN FROST KEYGEN")
 	h, err := protocol.NewMultiHandler(frost.Keygen(p.group, p.selfID, p.participants, p.threshold), []byte(p.sessionId))
 	if err != nil {
 		p.err = err
-		p.ended.Store(false)
+		p.finish()
 		p.logger.WithError(err).Error("failed to create frost keygen handler")
 		return
 	}
@@ -123,6 +120,7 @@ func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
 	}
+
 }
 
 func (p *KeygenParty) receiveMsgs(ctx context.Context) {
@@ -160,7 +158,10 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 }
 
 func (p *KeygenParty) receiveUpdates(ctx context.Context) {
-	defer p.wg.Done()
+	defer func() {
+		p.finish()
+		p.wg.Done()
+	}()
 
 	for {
 		select {
@@ -169,7 +170,6 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 			return
 
 		case msg, ok := <-p.handler.Listen():
-			fmt.Println("Message to broadcast", msg)
 			if !ok {
 				r, err := p.handler.Result()
 				if err != nil {
@@ -191,14 +191,6 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 					return
 				}
 				p.config = config
-
-				bytes, err := p.config.PublicKey.MarshalBinary()
-				if err != nil {
-					return
-				}
-				fmt.Println("\t\t\t\tp.config.PublicKey()\n:", hex.EncodeToString(bytes))
-				p.ended.Store(true)
-				close(p.msgs)
 				return
 			}
 
@@ -236,4 +228,11 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (p *KeygenParty) finish() {
+	p.once.Do(func() {
+		p.ended.Store(true)
+		close(p.msgs)
+	})
 }

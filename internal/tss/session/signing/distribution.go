@@ -69,15 +69,18 @@ func NewSignaturesDistributor(
 		pubKey, err := tss.FrostPubKey(self.FrostShare)
 		if err != nil {
 			result.err = errors.Wrap(err, "failed to prepare FROST signature verifier")
-		} else {
-			result.frostPubKey = pubKey
 		}
-	} else if self.Share != nil {
-		result.sigPubKey = self.Share.ECDSAPub.ToECDSAPubKey()
-	} else {
-		result.err = errors.New("missing tss share")
+		result.frostPubKey = pubKey
+
+		return result
 	}
 
+	if self.Share != nil {
+		result.sigPubKey = self.Share.ECDSAPub.ToECDSAPubKey()
+		return result
+	}
+
+	result.err = errors.New("missing tss share")
 	return result
 }
 

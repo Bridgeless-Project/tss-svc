@@ -82,10 +82,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get tss shares")
 	}
-	share, _, err := preferredShare(shares)
-	if err != nil {
-		return errors.Wrap(err, "failed to get share")
-	}
 
 	cert, err := storage.GetLocalPartyTlsCertificate()
 	if err != nil {
@@ -175,7 +171,10 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector, depositAcceptorSession)
+			sess, err := configureSigningSession(sessParams, parties, *account, shares, dtb, fetcher, logger, client, connector, depositAcceptorSession)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed to configure signing session for chain %s", client.ChainId()))
+			}
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -229,7 +228,7 @@ func configureSigningSession(
 	params session.SigningParams,
 	parties []p2p.Party,
 	account core.Account,
-	share interface{},
+	shares *secrets.TssShares,
 	db db.DepositsQ,
 	fetcher *deposit.Fetcher,
 	logger *logan.Entry,
@@ -237,19 +236,29 @@ func configureSigningSession(
 	connector *coreConnector.Connector,
 
 	distributor *distributor.DepositDistributionSession,
-) (sess p2p.RunnableTssSession) {
+) (p2p.RunnableTssSession, error) {
+	switch client.Type() {
+	case chain.TypeEVM:
+		evmClient := client.(*evm.Client)
+		switch {
+		case evmClient.IsCentralized():
+			return evmCentralized.NewSession(
+				evmClient, db,
+				logger.WithField("component", "centralized_signing_session"),
+			), nil
+		}
+	}
+
+	share, _, err := selectShareForChain(shares, client.Type())
+	if err != nil {
+		return nil, err
+	}
 	localParty := newLocalSignParty(account, share, params.Threshold)
 
 	switch client.Type() {
 	case chain.TypeEVM:
 		evmClient := client.(*evm.Client)
 		switch {
-		case evmClient.IsCentralized():
-			sess = evmCentralized.NewSession(
-				evmClient, db,
-				logger.WithField("component", "centralized_signing_session"),
-			)
-
 		case evmClient.IsStandart():
 			evmSession := evmSigning.NewSession(
 				localParty,
@@ -259,10 +268,10 @@ func configureSigningSession(
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
 			if err := evmSession.Build(); err != nil {
-				panic(errors.Wrap(err, "failed to build evm session"))
+				return nil, errors.Wrap(err, "failed to build evm session")
 			}
 
-			sess = evmSession
+			return evmSession, nil
 		default:
 			evmMerklizedSession := evmMerklized.NewSession(
 				localParty,
@@ -272,9 +281,10 @@ func configureSigningSession(
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector).WithDistributor(distributor)
 			if err := evmMerklizedSession.Build(); err != nil {
-				panic(errors.Wrap(err, "failed to build evm session"))
+				return nil, errors.Wrap(err, "failed to build evm session")
 			}
-			sess = evmMerklizedSession
+
+			return evmMerklizedSession, nil
 		}
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(
@@ -285,9 +295,10 @@ func configureSigningSession(
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*zano.Client)).WithCoreConnector(connector)
 		if err := zanoSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build zano session"))
+			return nil, errors.Wrap(err, "failed to build zano session")
 		}
-		sess = zanoSession
+
+		return zanoSession, nil
 	case chain.TypeBitcoin:
 		btcSession := utxoSigning.NewSession(
 			localParty,
@@ -297,10 +308,10 @@ func configureSigningSession(
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(utxoclient.Client)).WithCoreConnector(connector)
 		if err := btcSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build bitcoin session"))
+			return nil, errors.Wrap(err, "failed to build bitcoin session")
 		}
-		sess = btcSession
 
+		return btcSession, nil
 	case chain.TypeTON:
 		tonSession := tonSigning.NewSession(localParty,
 			parties,
@@ -309,10 +320,10 @@ func configureSigningSession(
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*ton.Client)).WithCoreConnector(connector)
 		if err := tonSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build TON session"))
+			return nil, errors.Wrap(err, "failed to build TON session")
 		}
-		sess = tonSession
 
+		return tonSession, nil
 	case chain.TypeSolana:
 		solanaSession := solanaSigning.NewSession(
 			localParty,
@@ -322,9 +333,10 @@ func configureSigningSession(
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*solana.Client)).WithCoreConnector(connector)
 		if err := solanaSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build solana session"))
+			return nil, errors.Wrap(err, "failed to build solana session")
 		}
-		sess = solanaSession
+
+		return solanaSession, nil
 	case chain.TypeOther:
 		testSession := testSigning.NewSession(
 			localParty,
@@ -333,13 +345,13 @@ func configureSigningSession(
 			db,
 			logger.WithField("component", "signing_session"))
 		if err := testSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build test session"))
+			return nil, errors.Wrap(err, "failed to build test session")
 		}
-		sess = testSession
 
+		return testSession, nil
+	default:
+		return nil, errors.Errorf("unsupported chain type: %s", client.Type())
 	}
-
-	return sess
 }
 
 func newLocalSignParty(account core.Account, share interface{}, threshold int) tss.LocalSignParty {
@@ -364,13 +376,22 @@ func newLocalSignParty(account core.Account, share interface{}, threshold int) t
 	return localParty
 }
 
-func preferredShare(shares *secrets.TssShares) (interface{}, int, error) {
+func selectShareForChain(shares *secrets.TssShares, chainType chain.Type) (interface{}, int, error) {
 	if shares == nil {
 		return nil, -1, errors.New("shares are nil")
 	}
-	if shares.Share != nil {
-		return shares.Share, tss.ProtocolID_ECDSA, nil
+
+	if chainType == chain.TypeOther {
+		if shares.FrostShare == nil {
+			return nil, -1, errors.New("FROST share is required for test signing")
+		}
+
+		return shares.FrostShare, tss.ProtocolID_FROST, nil
 	}
 
-	return shares.FrostShare, tss.ProtocolID_FROST, nil
+	if shares.Share == nil {
+		return nil, -1, errors.Errorf("ECDSA share is required for %s signing", chainType)
+	}
+
+	return shares.Share, tss.ProtocolID_ECDSA, nil
 }

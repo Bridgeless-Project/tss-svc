@@ -58,9 +58,9 @@ var keygenCmd = &cobra.Command{
 		}
 		parties := cfg.Parties()
 
-		errGroup := new(errgroup.Group)
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
+		errGroup, ctx := errgroup.WithContext(ctx)
 
 		connectionManager := p2p.NewConnectionManager(
 			parties,
@@ -109,7 +109,7 @@ var keygenCmd = &cobra.Command{
 			return server.Run(ctx)
 		})
 
-		endChan := make(chan interface{}, 1)
+		endChan := make(chan struct{}, KeygensCount)
 		errGroup.Go(func() error {
 			defer func() { endChan <- struct{}{} }()
 
@@ -123,7 +123,7 @@ var keygenCmd = &cobra.Command{
 
 			cfg.Log().Info("frost keygen session successfully completed")
 
-			return storeKeygenResult(result, storage, tss.ProtocolID_FROST)
+			return errors.Wrap(storeKeygenResult(result, storage, tss.ProtocolID_FROST), "failed  to store FROST shares")
 		})
 
 		errGroup.Go(func() error {
@@ -139,7 +139,7 @@ var keygenCmd = &cobra.Command{
 
 			cfg.Log().Info("ecdsa keygen session successfully completed")
 
-			return storeKeygenResult(result, storage, tss.ProtocolID_ECDSA)
+			return errors.Wrap(storeKeygenResult(result, storage, tss.ProtocolID_ECDSA), "failed to store ECDSA shares")
 		})
 
 		errGroup.Go(func() error {
@@ -162,9 +162,12 @@ var keygenCmd = &cobra.Command{
 	},
 }
 
-func storeKeygenResult(result interface{}, storage secrets.Storage, protocol int) error {
+func storeKeygenResult(result interface{}, storage secrets.Storage, _ int) error {
 	if localData, ok := result.(*tss.LocalPartyData); ok {
 		result = localData.GetData()
+	}
+	if result == nil {
+		return errors.New("keygen result is nil")
 	}
 
 	switch utils.OutputType {
@@ -175,7 +178,6 @@ func storeKeygenResult(result interface{}, storage secrets.Storage, protocol int
 		}
 		fmt.Println("raw: ", string(raw))
 	case "file":
-		fmt.Println("file")
 		raw, err := json.Marshal(result)
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal keygen result")
@@ -184,15 +186,12 @@ func storeKeygenResult(result interface{}, storage secrets.Storage, protocol int
 			return errors.Wrap(err, "failed to write keygen result to file")
 		}
 	case "vault":
-		fmt.Println("saving keygen result to vault...")
 		if err := storage.SaveTssShare(result); err != nil {
 			return errors.Wrap(err, "failed to save keygen result to vault")
 		}
 	default:
-		fmt.Println("unknown output type:", utils.OutputType)
+		return errors.Errorf("unknown output type: %s", utils.OutputType)
 	}
-
-	fmt.Println("done: protocol ", protocol)
 
 	return nil
 }

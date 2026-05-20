@@ -2,9 +2,7 @@ package tss
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -40,6 +38,7 @@ type SignParty struct {
 	handler   *protocol.MultiHandler
 
 	msgs   chan tss.PartyMsg
+	once   sync.Once
 	data   []byte
 	result *common.SignatureData
 	err    error
@@ -84,7 +83,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	config, err := toTaprootConfig(p.self.FrostShare)
 	if err != nil {
 		p.err = err
-		p.ended.Store(true)
+		p.finish()
 		p.logger.WithError(err).Error("failed to prepare frost signing config")
 		return
 	}
@@ -92,7 +91,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	h, err := protocol.NewMultiHandler(frost.SignTaproot(config, p.signers, p.data), []byte(p.sessionId))
 	if err != nil {
 		p.err = err
-		p.ended.Store(true)
+		p.finish()
 		p.logger.WithError(err).Error("failed to create frost signing handler")
 		return
 	}
@@ -107,7 +106,7 @@ func (p *SignParty) Run(ctx context.Context) {
 
 func (p *SignParty) WaitFor() *common.SignatureData {
 	p.wg.Wait()
-	p.ended.Store(true)
+	p.finish()
 
 	p.logger.Info("frost signing finished")
 
@@ -161,7 +160,7 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 }
 
 func (p *SignParty) receiveUpdates(ctx context.Context) {
-	defer p.wg.Done()
+	defer func() { p.wg.Done(); p.finish() }()
 
 	for {
 		select {
@@ -169,7 +168,6 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 			p.logger.Warn("context is done; stopping listening to frost updates")
 			return
 		case msg, ok := <-p.handler.Listen():
-			fmt.Println("got frost update", msg)
 			if !ok {
 				result, err := p.handler.Result()
 				if err != nil {
@@ -186,9 +184,6 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 				}
 
 				p.result = frostSignatureData(signature, p.data)
-				fmt.Println("got frost signing result", hex.EncodeToString(p.result.Signature))
-				p.ended.Store(true)
-				close(p.msgs)
 				return
 			}
 
@@ -222,6 +217,13 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (p *SignParty) finish() {
+	p.once.Do(func() {
+		p.ended.Store(true)
+		close(p.msgs)
+	})
 }
 
 func toTaprootConfig(config *keygen.Config) (*keygen.TaprootConfig, error) {
