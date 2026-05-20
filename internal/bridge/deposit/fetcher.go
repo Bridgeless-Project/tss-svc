@@ -57,7 +57,12 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		}
 	}
 
-	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
+	targetChainId := depositData.DestinationChainId
+	if depositData.IsSwap {
+		targetChainId = p.swapSettings.ChainId
+	}
+
+	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, targetChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
@@ -164,7 +169,7 @@ func (p *Fetcher) configureDepositParams(
 	}
 
 	params.Receiver = p.swapSettings.Contract
-	params.WithdrawalToken = strconv.FormatUint(p.swapSettings.WrappedBridge, 10)
+	params.WithdrawalToken = p.swapSettings.WrappedBridge
 	params.WithdrawalChainId = p.swapSettings.ChainId
 
 	params.FinalReceiver = &depositData.DestinationAddress
