@@ -71,7 +71,7 @@ function init_tss {
                         "protocol": "frost",
                         "value": "pmJJRHgtYnJpZGdlMWRrdHUwM2p5dXhkbnh4dHgyazcycnd2OHh5dXo1cXF4YTd1azZlaVRocmVzaG9sZAFsUHJpdmF0ZVNoYXJlWCC9N/9lka71zG3jZl8soWXc/uceDkNbh8xV88Wg8fnu9GlQdWJsaWNLZXlYIQJIOAfR6XMiLu6n22Ud3I+IuBrudJ7oyYfOimZXIe0GXWhDaGFpbktlefZyVmVyaWZpY2F0aW9uU2hhcmVzWPejeC1icmlkZ2Uxc2Nsa3NyOHZudmx6aDRoOTc3OHV2YXI1M2U5cjI1ZGZqMnhrZXlYIQJf/ddneZq9RHqLvZR8QaAmRbmYvN9skrJPmJJlfX0JN3gtYnJpZGdlMTVwNmN4ZDNhOTJydGNreTBsOHdmNmhsOTk5eXM1dm10ZzZ4MmFzWCEDjHMFEXxz1/nEFhklKzx40ciZaH7ASbRi08xEDxUE92Z4LWJyaWRnZTFka3R1MDNqeXV4ZG54eHR4Mms3MnJ3djh4eXV6NXFxeGE3dWs2ZVghAjD93D5Pe43c92+2btNoSDTxasbdHTei9etQc43a8s4c"
                       }}' \
-      $VAULT_ADDR/v1/tss1/data/tss_share
+      $VAULT_ADDR/v1/tss1/data/tss_shares/frost
 
   curl \
       --header "X-Vault-Token: $VAULT_TOKEN" \
@@ -104,7 +104,7 @@ function init_tss {
                         "protocol": "frost",
                         "value": "pmJJRHgtYnJpZGdlMTVwNmN4ZDNhOTJydGNreTBsOHdmNmhsOTk5eXM1dm10ZzZ4MmFzaVRocmVzaG9sZAFsUHJpdmF0ZVNoYXJlWCA4TnOVbEL2cdy+KOAckc4q1dm0srztRvAk6G4NV5sqcmlQdWJsaWNLZXlYIQJIOAfR6XMiLu6n22Ud3I+IuBrudJ7oyYfOimZXIe0GXWhDaGFpbktlefZyVmVyaWZpY2F0aW9uU2hhcmVzWPejeC1icmlkZ2UxNXA2Y3hkM2E5MnJ0Y2t5MGw4d2Y2aGw5OTl5czV2bXRnNngyYXNYIQOMcwURfHPX+cQWGSUrPHjRyJlofsBJtGLTzEQPFQT3ZngtYnJpZGdlMWRrdHUwM2p5dXhkbnh4dHgyazcycnd2OHh5dXo1cXF4YTd1azZlWCECMP3cPk97jdz3b7Zu02hINPFqxt0dN6L161Bzjdryzhx4LWJyaWRnZTFzY2xrc3I4dm52bHpoNGg5Nzc4dXZhcjUzZTlyMjVkZmoyeGtleVghAl/912d5mr1Eeou9lHxBoCZFuZi832ySsk+YkmV9fQk3"
                       }}' \
-      $VAULT_ADDR/v1/tss2/data/tss_share
+      $VAULT_ADDR/v1/tss2/data/tss_shares/frost
   curl \
       --header "X-Vault-Token: $VAULT_TOKEN" \
       --header "Content-Type: application/json" \
@@ -134,7 +134,7 @@ function init_tss {
                         "protocol": "frost",
                         "value": "pmJJRHgtYnJpZGdlMXNjbGtzcjh2bnZsemg0aDk3Nzh1dmFyNTNlOXIyNWRmajJ4a2V5aVRocmVzaG9sZAFsUHJpdmF0ZVNoYXJlWCDb4kzk2E+kYnQY3zWvixpowouQBeOhXOxbDwl0bLtomWlQdWJsaWNLZXlYIQJIOAfR6XMiLu6n22Ud3I+IuBrudJ7oyYfOimZXIe0GXWhDaGFpbktlefZyVmVyaWZpY2F0aW9uU2hhcmVzWPejeC1icmlkZ2UxZGt0dTAzanl1eGRueHh0eDJrNzJyd3Y4eHl1ejVxcXhhN3VrNmVYIQIw/dw+T3uN3Pdvtm7TaEg08WrG3R03ovXrUHON2vLOHHgtYnJpZGdlMXNjbGtzcjh2bnZsemg0aDk3Nzh1dmFyNTNlOXIyNWRmajJ4a2V5WCECX/3XZ3mavUR6i72UfEGgJkW5mLzfbJKyT5iSZX19CTd4LWJyaWRnZTE1cDZjeGQzYTkycnRja3kwbDh3ZjZobDk5OXlzNXZtdGc2eDJhc1ghA4xzBRF8c9f5xBYZJSs8eNHImWh+wEm0YtPMRA8VBPdm"
                       }}' \
-      $VAULT_ADDR/v1/tss3/data/tss_share
+      $VAULT_ADDR/v1/tss3/data/tss_shares/frost
   curl \
       --header "X-Vault-Token: $VAULT_TOKEN" \
       --header "Content-Type: application/json" \

@@ -65,8 +65,8 @@ func GetSessionId(sessionIdentifier string) int64 {
 	return id
 }
 
-func GetKeygenSessionIdentifier(sessionId int64) string {
-	return fmt.Sprintf("%s_%d", KeygenSessionPrefix, sessionId)
+func GetKeygenSessionIdentifier(sessionId int64, protocol int) string {
+	return fmt.Sprintf("%s_%d_%d", KeygenSessionPrefix, sessionId, protocol)
 }
 
 func GetReshareSessionIdentifier(sessionId int64) string {

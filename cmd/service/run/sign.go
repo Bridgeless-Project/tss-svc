@@ -23,6 +23,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	pg "github.com/Bridgeless-Project/tss-svc/internal/db/postgres"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
@@ -77,10 +78,15 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
-	share, err := storage.GetTssShare()
+	shares, err := storage.GetTssShares()
 	if err != nil {
-		return errors.Wrap(err, "failed to get tss share")
+		return errors.Wrap(err, "failed to get tss shares")
 	}
+	share, _, err := preferredShare(shares)
+	if err != nil {
+		return errors.Wrap(err, "failed to get share")
+	}
+
 	cert, err := storage.GetLocalPartyTlsCertificate()
 	if err != nil {
 		return errors.Wrap(err, "failed to get local party tls certificate")
@@ -356,4 +362,15 @@ func newLocalSignParty(account core.Account, share interface{}, threshold int) t
 	}
 
 	return localParty
+}
+
+func preferredShare(shares *secrets.TssShares) (interface{}, int, error) {
+	if shares == nil {
+		return nil, -1, errors.New("shares are nil")
+	}
+	if shares.Share != nil {
+		return shares.Share, tss.ProtocolID_ECDSA, nil
+	}
+
+	return shares.FrostShare, tss.ProtocolID_FROST, nil
 }

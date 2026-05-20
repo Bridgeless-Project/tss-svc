@@ -1,12 +1,15 @@
 package get
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 )
 
 var pubkeyCmd = &cobra.Command{
@@ -19,15 +22,23 @@ var pubkeyCmd = &cobra.Command{
 		}
 
 		storage := config.SecretsStorage()
-		share, err := storage.GetTssShare()
+		share, protocol, err := storage.GetTssShare()
 		if err != nil {
 			return errors.Wrap(err, "failed to get TSS share from vault")
 		}
 
-		// TODO: make configurable for FROST
-		pubKey := share.(keygen.LocalPartySaveData).ECDSAPub.ToECDSAPubKey()
-		fmt.Println("X coordinate:", pubKey.X)
-		fmt.Println("Y coordinate:", pubKey.Y)
+		switch protocol {
+		case tss.ProtocolID_ECDSA:
+			pubKey := share.(keygen.LocalPartySaveData).ECDSAPub.ToECDSAPubKey()
+			fmt.Println("X coordinate:", pubKey.X)
+			fmt.Println("Y coordinate:", pubKey.Y)
+		case tss.ProtocolID_FROST:
+			pubKey, err := share.(frost.Config).PublicKey.MarshalBinary()
+			if err != nil {
+				return errors.Wrap(err, "failed to decode pub key")
+			}
+			fmt.Println("PubKey :", hex.EncodeToString(pubKey))
+		}
 
 		return nil
 	},

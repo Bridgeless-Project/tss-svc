@@ -51,7 +51,7 @@ var reshareUtxoCmd = &cobra.Command{
 		}
 
 		storage := cfg.SecretsStorage()
-		share, err := storage.GetTssShare()
+		share, _, err := storage.GetTssShare()
 		if err != nil {
 			return errors.Wrap(err, "failed to get tss share")
 		}

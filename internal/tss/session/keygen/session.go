@@ -43,7 +43,7 @@ func NewSession(
 	protocolID int,
 	group curve.Curve,
 ) *Session {
-	sessionId := session.GetKeygenSessionIdentifier(params.Id)
+	sessionId := session.GetKeygenSessionIdentifier(params.Id, protocolID)
 	switch protocolID {
 	case tss.ProtocolID_ECDSA:
 		return &Session{

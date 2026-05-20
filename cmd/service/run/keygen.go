@@ -23,6 +23,8 @@ func init() {
 	utils.RegisterOutputFlags(keygenCmd)
 }
 
+const KeygensCount = 2
+
 var keygenCmd = &cobra.Command{
 	Use:   "keygen",
 	Short: "Generates a new keypair using TSS",
@@ -107,8 +109,10 @@ var keygenCmd = &cobra.Command{
 			return server.Run(ctx)
 		})
 
-		// TODO: cancel context after keygen
+		endChan := make(chan interface{}, 1)
 		errGroup.Go(func() error {
+			defer func() { endChan <- struct{}{} }()
+
 			if err := frostSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
 			}
@@ -123,6 +127,8 @@ var keygenCmd = &cobra.Command{
 		})
 
 		errGroup.Go(func() error {
+			defer func() { endChan <- struct{}{} }()
+
 			if err := ecdsaSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
 			}
@@ -134,6 +140,22 @@ var keygenCmd = &cobra.Command{
 			cfg.Log().Info("ecdsa keygen session successfully completed")
 
 			return storeKeygenResult(result, storage, tss.ProtocolID_ECDSA)
+		})
+
+		errGroup.Go(func() error {
+			keygenCount := 0
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-endChan:
+					keygenCount++
+					if keygenCount == KeygensCount {
+						cancel()
+						return nil
+					}
+				}
+			}
 		})
 
 		return errGroup.Wait()
