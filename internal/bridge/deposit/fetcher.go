@@ -109,7 +109,7 @@ func (p *Fetcher) GetTokens(
 func (p *Fetcher) GetWithdrawalAmount(depositAmount *big.Int, srcInfo, dstInfo *bridgetypes.TokenInfo) (*big.Int, *big.Int, error) {
 	withdrawalAmount := transformAmount(depositAmount, srcInfo.Decimals, dstInfo.Decimals)
 
-	commissionAmount, err := bridgetypes.GetCommissionAmount(withdrawalAmount, dstInfo.CommissionRate)
+	commissionAmount, err := bridgetypes.ComputeCommissionAmount(withdrawalAmount, dstInfo.CommissionRate)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get commission amount")
 	}

@@ -1,7 +1,9 @@
 package client
 
 import (
+	"crypto/ecdsa"
 	"math/big"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -17,6 +19,8 @@ import (
 
 type Client interface {
 	chain.Client
+
+	InitializeWallet(pk *ecdsa.PublicKey, epoch uint32, syncTime time.Time) error
 
 	UnspentCount() (int, error)
 	LockOutputs(tx *wire.MsgTx) error
@@ -91,4 +95,8 @@ func (c *client) HealthCheck() error {
 
 func (c *client) IsCentralized() bool {
 	return false
+}
+
+func (c *client) InitializeWallet(pk *ecdsa.PublicKey, epoch uint32, syncTime time.Time) error {
+	return c.chain.Rpc.Node.InitializeWallet(pk, epoch, syncTime)
 }

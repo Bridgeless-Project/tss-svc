@@ -48,8 +48,9 @@ func IsInvalidDepositError(err error) bool {
 type Client interface {
 	Type() Type
 	ChainId() string
-	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 	IsCentralized() bool
+
+	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 
 	AddressValid(addr string) bool
 	TransactionHashValid(hash string) bool

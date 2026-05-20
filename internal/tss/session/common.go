@@ -69,11 +69,11 @@ func GetKeygenSessionIdentifier(sessionId int64) string {
 	return fmt.Sprintf("%s_%d", KeygenSessionPrefix, sessionId)
 }
 
-func GetReshareSessionIdentifier(sessionId int64) string {
-	return fmt.Sprintf("%s_%d", ReshareSessionPrefix, sessionId)
+func GetReshareSessionIdentifier(chainId string, sessionId int64) string {
+	return fmt.Sprintf("%s_%s_%d", ReshareSessionPrefix, chainId, sessionId)
 }
 
-func GetDefaultSigningSessionIdentifier(sessionId string) string {
+func GetSigningSessionIdentifier(sessionId string) string {
 	return fmt.Sprintf("%s_%s", SignSessionPrefix, sessionId)
 }
 
