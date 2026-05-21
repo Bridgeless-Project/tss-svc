@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

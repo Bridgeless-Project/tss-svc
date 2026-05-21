@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	tsscommon "github.com/bnb-chain/tss-lib/v3/common"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -21,6 +21,11 @@ const (
 	MsgsCapacity   = 100
 )
 
+func init() {
+	// timing side-channel protection
+	tsscommon.EnableConstantTimeOps()
+}
+
 type LocalKeygenParty struct {
 	PreParams interface{}
 	Address   core.Address
@@ -34,7 +39,7 @@ type PartyMsg struct {
 }
 
 type Signatures struct {
-	Data []*common.SignatureData
+	Data []*tsscommon.SignatureData
 }
 
 func (s Signatures) HashString() string {

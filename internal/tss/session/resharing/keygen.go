@@ -15,7 +15,7 @@ import (
 	tssKeygen "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
 	"github.com/avast/retry-go"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

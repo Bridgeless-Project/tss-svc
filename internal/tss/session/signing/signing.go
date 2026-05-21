@@ -10,7 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"

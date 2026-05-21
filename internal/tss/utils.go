@@ -4,11 +4,11 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
-	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/pkg/errors"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 	frostkeygen "github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
+	"github.com/bnb-chain/tss-lib/v3/common"
 )
 
 func Verify(pk *ecdsa.PublicKey, inputData []byte, signature *common.SignatureData) bool {
