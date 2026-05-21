@@ -24,12 +24,11 @@ import (
 	"google.golang.org/grpc"
 )
 
-const gasLimit = 3_000_000
-
 type Settings struct {
 	ChainId     string `fig:"chain_id,required"`
 	Denom       string `fig:"denom,required"`
 	MinGasPrice uint64 `fig:"min_gas_price,required"`
+	GasLimit    uint64 `fig:"gas_limit,required"`
 }
 
 type Connector struct {
@@ -113,9 +112,9 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 		return nil
 	}
 
-	feeAmount := gasLimit * c.settings.MinGasPrice
+	feeAmount := c.settings.GasLimit * c.settings.MinGasPrice
 
-	tx, err := c.buildTx(gasLimit, feeAmount, msgs...)
+	tx, err := c.buildTx(c.settings.GasLimit, feeAmount, msgs...)
 	if err != nil {
 		return errors.Wrap(err, "failed to build transaction")
 	}
