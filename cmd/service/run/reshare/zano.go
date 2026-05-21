@@ -12,7 +12,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	zanoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/zano"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -39,9 +38,13 @@ var reshareZanoCmd = &cobra.Command{
 		}
 
 		storage := cfg.SecretsStorage()
-		share, _, err := storage.GetTssShare()
+		share, protocolID, err := storage.GetTssShare()
 		if err != nil {
 			return errors.Wrap(err, "failed to get tss share")
+		}
+		ecdsaShare, err := tss.ECDSAShareFromProtocol(share, protocolID)
+		if err != nil {
+			return errors.Wrap(err, "failed to get ECDSA TSS share")
 		}
 		account, err := storage.GetCoreAccount()
 		if err != nil {
@@ -67,7 +70,7 @@ var reshareZanoCmd = &cobra.Command{
 		session := zanoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
-				Share:     share.(*keygen.LocalPartySaveData),
+				Share:     ecdsaShare,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			client,

@@ -150,6 +150,10 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 				p.logger.WithError(err).WithField("party", msg.Sender).Warn("failed to unmarshal message")
 				continue
 			}
+			if err := validateMessageEnvelope(msg.Sender, p.selfID, msg, message); err != nil {
+				p.logger.WithError(err).WithField("party", msg.Sender).Warn("rejected invalid frost message envelope")
+				continue
+			}
 
 			p.logger.Info("received message", message)
 			p.handler.Accept(message)

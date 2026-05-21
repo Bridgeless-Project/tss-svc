@@ -103,9 +103,15 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 	} else {
 
 		// TODO: rewrite for frost
-		var share interface{}
-		share, _, err = r.secrets.GetTssShare()
-		state.NewShare = share.(*keygen.LocalPartySaveData)
+		var (
+			share      interface{}
+			protocolID int
+		)
+
+		share, protocolID, err = r.secrets.GetTssShare()
+		if err == nil {
+			state.NewShare, err = tss.ECDSAShareFromProtocol(share, protocolID)
+		}
 	}
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get key share from secrets storage")

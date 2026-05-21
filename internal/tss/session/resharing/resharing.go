@@ -21,7 +21,6 @@ import (
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/zano"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
@@ -128,15 +127,19 @@ func (s *Session) Run(ctx context.Context) error {
 
 // TODO: integrate FROST
 func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State) error {
-	share, _, err := s.secrets.GetTssShare()
+	share, protocolID, err := s.secrets.GetTssShare()
 	if err != nil {
 		return errors.Wrap(err, "failed to get TSS share")
 	}
-	state.OldShare = share.(*keygen.LocalPartySaveData)
+	ecdsaShare, err := tss.ECDSAShareFromProtocol(share, protocolID)
+	if err != nil {
+		return errors.Wrap(err, "failed to get ECDSA TSS share")
+	}
+	state.OldShare = ecdsaShare
 
 	self := tss.LocalSignParty{
 		Account:   state.Account,
-		Share:     share.(*keygen.LocalPartySaveData),
+		Share:     ecdsaShare,
 		Threshold: s.oldEpochParams.Threshold,
 	}
 

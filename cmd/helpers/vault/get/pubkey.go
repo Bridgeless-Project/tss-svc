@@ -6,10 +6,8 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 )
 
 var pubkeyCmd = &cobra.Command{
@@ -29,15 +27,25 @@ var pubkeyCmd = &cobra.Command{
 
 		switch protocol {
 		case tss.ProtocolID_ECDSA:
-			pubKey := share.(keygen.LocalPartySaveData).ECDSAPub.ToECDSAPubKey()
+			ecdsaShare, err := tss.ECDSAShare(share)
+			if err != nil {
+				return errors.Wrap(err, "failed to decode ECDSA share")
+			}
+			pubKey := ecdsaShare.ECDSAPub.ToECDSAPubKey()
 			fmt.Println("X coordinate:", pubKey.X)
 			fmt.Println("Y coordinate:", pubKey.Y)
 		case tss.ProtocolID_FROST:
-			pubKey, err := share.(frost.Config).PublicKey.MarshalBinary()
+			frostShare, err := tss.FrostShare(share)
+			if err != nil {
+				return errors.Wrap(err, "failed to decode FROST share")
+			}
+			pubKey, err := frostShare.PublicKey.MarshalBinary()
 			if err != nil {
 				return errors.Wrap(err, "failed to decode pub key")
 			}
 			fmt.Println("PubKey :", hex.EncodeToString(pubKey))
+		default:
+			return errors.Errorf("unsupported TSS protocol: %d", protocol)
 		}
 
 		return nil

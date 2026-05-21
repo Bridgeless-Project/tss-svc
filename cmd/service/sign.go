@@ -12,11 +12,12 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	"github.com/bnb-chain/tss-lib/v3/common"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -28,10 +29,19 @@ func init() {
 	registerSignCmdFlags(signCmd)
 }
 
-var verify bool
+const (
+	signProtocolECDSA = "ecdsa"
+	signProtocolFROST = "frost"
+)
+
+var (
+	verify       bool
+	signProtocol string
+)
 
 func registerSignCmdFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&verify, "verify", true, "Whether to additionally verify the signature")
+	cmd.Flags().StringVar(&signProtocol, "protocol", signProtocolECDSA, "TSS protocol to use for signing: ecdsa or frost")
 }
 
 var signCmd = &cobra.Command{
@@ -42,7 +52,7 @@ var signCmd = &cobra.Command{
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")
 		}
-		return nil
+		return validateSignProtocol(signProtocol)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := utils.ConfigFromFlags(cmd)
@@ -65,9 +75,9 @@ var signCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
 		}
-		localSaveData, _, err := storage.GetTssShare()
+		shares, err := storage.GetTssShares()
 		if err != nil {
-			return errors.Wrap(err, "failed to get local share")
+			return errors.Wrap(err, "failed to get local shares")
 		}
 		cert, err := storage.GetLocalPartyTlsCertificate()
 		if err != nil {
@@ -79,12 +89,13 @@ var signCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
+		localParty, err := localSignPartyForProtocol(*account, shares, cfg.TssSessionParams().Threshold, signProtocol)
+		if err != nil {
+			return err
+		}
+
 		session := signing.NewSession(
-			tss.LocalSignParty{
-				Account:   *account,
-				Share:     localSaveData.(*keygen.LocalPartySaveData),
-				Threshold: cfg.TssSessionParams().Threshold,
-			},
+			localParty,
 			signing.SessionParams{
 				Params:      cfg.TssSessionParams(),
 				SigningData: dataToSign,
@@ -130,17 +141,74 @@ var signCmd = &cobra.Command{
 			}
 
 			if verify {
-				if valid := tss.Verify(localSaveData.(keygen.LocalPartySaveData).ECDSAPub.ToECDSAPubKey(), dataToSign, result); !valid {
+				if valid := verifySigningResult(localParty, signProtocol, dataToSign, result); !valid {
 					return errors.New("signature verification failed")
-				} else {
-					cfg.Log().Info("Signature verification passed")
 				}
+				cfg.Log().Info("Signature verification passed")
+
 			}
 
 			return nil
 		})
 		return errGroup.Wait()
 	},
+}
+
+func validateSignProtocol(protocol string) error {
+	switch protocol {
+	case signProtocolECDSA, signProtocolFROST:
+		return nil
+	default:
+		return errors.Errorf("unsupported signing protocol: %s", protocol)
+	}
+}
+
+func localSignPartyForProtocol(account core.Account, shares *secrets.TssShares, threshold int, protocol string) (tss.LocalSignParty, error) {
+	if shares == nil {
+		return tss.LocalSignParty{}, errors.New("missing TSS shares")
+	}
+
+	localParty := tss.LocalSignParty{
+		Account:   account,
+		Threshold: threshold,
+	}
+
+	switch protocol {
+	case signProtocolECDSA:
+		share, err := tss.ECDSAShare(shares.Share)
+		if err != nil {
+			return tss.LocalSignParty{}, errors.Wrap(err, "ECDSA share is required")
+		}
+		localParty.Share = share
+	case signProtocolFROST:
+		share, err := tss.FrostShare(shares.FrostShare)
+		if err != nil {
+			return tss.LocalSignParty{}, errors.Wrap(err, "FROST share is required")
+		}
+		localParty.FrostShare = share
+	default:
+		return tss.LocalSignParty{}, errors.Errorf("unsupported signing protocol: %s", protocol)
+	}
+
+	return localParty, nil
+}
+
+func verifySigningResult(localParty tss.LocalSignParty, protocol string, data []byte, result *common.SignatureData) bool {
+	switch protocol {
+	case signProtocolECDSA:
+		if localParty.Share == nil {
+			return false
+		}
+		return tss.Verify(localParty.Share.ECDSAPub.ToECDSAPubKey(), data, result)
+	case signProtocolFROST:
+		pubKey, err := tss.FrostPubKey(localParty.FrostShare)
+		if err != nil {
+			return false
+		}
+		return tss.VerifyFrost(pubKey, data, result)
+	default:
+		return false
+	}
 }
 
 func saveSigningResult(result *common.SignatureData) error {

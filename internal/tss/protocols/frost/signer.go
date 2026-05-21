@@ -153,6 +153,10 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 				p.logger.WithError(err).WithField("party", msg.Sender).Warn("failed to unmarshal frost message")
 				continue
 			}
+			if err := validateMessageEnvelope(msg.Sender, party.ID(p.self.Account.CosmosAddress().String()), msg, message); err != nil {
+				p.logger.WithError(err).WithField("party", msg.Sender).Warn("rejected invalid frost message envelope")
+				continue
+			}
 
 			p.handler.Accept(message)
 		}

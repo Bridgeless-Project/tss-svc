@@ -15,7 +15,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	utxoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -51,9 +50,13 @@ var reshareUtxoCmd = &cobra.Command{
 		}
 
 		storage := cfg.SecretsStorage()
-		share, _, err := storage.GetTssShare()
+		share, protocolID, err := storage.GetTssShare()
 		if err != nil {
 			return errors.Wrap(err, "failed to get tss share")
+		}
+		ecdsaShare, err := tss.ECDSAShareFromProtocol(share, protocolID)
+		if err != nil {
+			return errors.Wrap(err, "failed to get ECDSA TSS share")
 		}
 		account, err := storage.GetCoreAccount()
 		if err != nil {
@@ -86,7 +89,7 @@ var reshareUtxoCmd = &cobra.Command{
 		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
-				Share:     share.(*keygen.LocalPartySaveData),
+				Share:     ecdsaShare,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			cli,

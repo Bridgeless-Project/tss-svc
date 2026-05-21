@@ -13,7 +13,6 @@ import (
 	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -50,7 +49,7 @@ func NewSession(
 		params:    params,
 		wg:        &sync.WaitGroup{},
 		logger:    logger,
-		signingParty: tssProtocols.SelectSignByProtocol(tss.ProtocolID_FROST, curve.Secp256k1{}, self, sessionId, logger).
+		signingParty: tssProtocols.SelectSignByShare(self, sessionId, logger).
 			WithSigningData(params.SigningData).
 			WithParties(parties),
 	}
