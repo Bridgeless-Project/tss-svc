@@ -90,7 +90,6 @@ var keygenCmd = &cobra.Command{
 			},
 			parties,
 			cfg.TssSessionParams(),
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 			tss.ProtocolID_ECDSA,
 			curve.Secp256k1{},

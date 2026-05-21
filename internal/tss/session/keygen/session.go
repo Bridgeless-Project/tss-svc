@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
@@ -38,7 +37,6 @@ func NewSession(
 	self tss.LocalKeygenParty,
 	parties []p2p.Party,
 	params session.Params,
-	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 	protocolID int,
 	group curve.Curve,
@@ -89,23 +87,6 @@ func NewSession(
 }
 
 func (s *Session) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.StartTime)
-	if runDelay <= 0 {
-		return errors.New("target time is in the past")
-	}
-
-	s.logger.Info(fmt.Sprintf("keygen session will start in %s", runDelay))
-
-	select {
-	case <-ctx.Done():
-		s.logger.Info("keygen session cancelled")
-		return nil
-	case <-time.After(runDelay):
-		if s.connectedPartiesCount() != s.partiesCount {
-			return errors.New("cannot start keygen session: not all parties connected")
-		}
-	}
-
 	s.logger.Info("keygen session started")
 
 	s.wg.Add(1)

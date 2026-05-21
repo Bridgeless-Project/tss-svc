@@ -50,7 +50,7 @@ func ConfigurePartiesCertPool(parties []Party) (*x509.CertPool, *AuthorizedParti
 			return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to parse certificate for party %q", party.CoreAddress))
 		}
 
-		if err := authorizedParties.Add(cert, party.CoreAddress); err != nil {
+		if err = authorizedParties.Add(cert, party.CoreAddress); err != nil {
 			return nil, nil, errors.Wrap(err, fmt.Sprintf("failed to add party %q to authorized parties", party.CoreAddress))
 		}
 	}

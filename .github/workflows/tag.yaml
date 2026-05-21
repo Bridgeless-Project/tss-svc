@@ -23,21 +23,23 @@ jobs:
       - name: Log in to registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
 
-      - name: Cache layers
-        uses: actions/cache@v3
-        with:
-          path: "${{ github.workspace }}/.skaffold/cache"
-          key: skaffold-${{ hashFiles('**/cache') }}
-          restore-keys: |
-            skaffold-
+      - name: Build and Push Image
+        env:
+          IMAGE: ${{ env.GITHUB_REPOSITORY }}:${{ github.sha }}
+          CACHE_REPO: ${{ env.GITHUB_REPOSITORY }}/cache
+        run: |
+          buildah build \
+            -f build/Dockerfile \
+            --layers \
+            --cache-from $CACHE_REPO \
+            -t $IMAGE \
+            --build-arg CI_ACCESS_TOKEN=$CI_ACCESS_TOKEN \
+            .
 
-      - name: Run Skaffold pipeline as command
-        uses: hiberbee/github-action-skaffold@latest
-        id: build
-        with:
-          filename: build/skaffold.yaml
-          command: build --tag ${{ github.ref_name }}
-          repository: ghcr.io/${{ github.repository_owner }}
+      - name: Push Image
+        env:
+          IMAGE: ${{ env.GITHUB_REPOSITORY }}:${{ github.sha }}
+        run: buildah push $IMAGE
 
       - uses: shrink/actions-docker-extract@v3
         id: extract

@@ -213,3 +213,10 @@ type GetWalletInfoResponse struct {
 	Address string `json:"address"`
 	// TODO: add more fields if needed
 }
+
+type GetAssetInfoRequest struct {
+	AssetId string `json:"asset_id"`
+}
+type GetAssetInfoResponse struct {
+	AssetDescriptor AssetDescriptor `json:"asset_descriptor"`
+}

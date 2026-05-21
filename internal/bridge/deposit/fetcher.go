@@ -63,7 +63,12 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		}
 	}
 
-	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
+	targetChainId := depositData.DestinationChainId
+	if depositData.IsSwap {
+		targetChainId = p.swapSettings.ChainId
+	}
+
+	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, targetChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
@@ -110,7 +115,7 @@ func (p *Fetcher) GetTokens(
 func (p *Fetcher) GetWithdrawalAmount(depositAmount *big.Int, srcInfo, dstInfo *bridgetypes.TokenInfo) (*big.Int, *big.Int, error) {
 	withdrawalAmount := transformAmount(depositAmount, srcInfo.Decimals, dstInfo.Decimals)
 
-	commissionAmount, err := bridgetypes.GetCommissionAmount(withdrawalAmount, dstInfo.CommissionRate)
+	commissionAmount, err := bridgetypes.ComputeCommissionAmount(withdrawalAmount, dstInfo.CommissionRate)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get commission amount")
 	}
@@ -170,7 +175,7 @@ func (p *Fetcher) configureDepositParams(
 	}
 
 	params.Receiver = p.swapSettings.Contract
-	params.WithdrawalToken = strconv.FormatUint(p.swapSettings.WrappedBridge, 10)
+	params.WithdrawalToken = p.swapSettings.WrappedBridge
 	params.WithdrawalChainId = p.swapSettings.ChainId
 
 	params.FinalReceiver = &depositData.DestinationAddress

@@ -1,0 +1,159 @@
+package utxo
+
+import (
+	"context"
+	"time"
+
+	utxoclient "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
+	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
+	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
+	"github.com/pkg/errors"
+	"gitlab.com/distributed_lab/logan/v3"
+)
+
+var _ resharingTypes.Handler = &Handler{}
+
+type Handler struct {
+	client         utxoclient.Client
+	sessionManager *p2p.SessionManager
+	parties        []p2p.Party
+	self           tss.LocalSignParty
+	logger         *logan.Entry
+
+	maxInputsCountPerSession  uint
+	maxOutputsCountPerSession uint
+
+	unspentCount  uint
+	sessionsCount uint
+}
+
+func NewHandler(
+	self tss.LocalSignParty,
+	parties []p2p.Party,
+	client utxoclient.Client,
+	sessionManager *p2p.SessionManager,
+	logger *logan.Entry,
+) *Handler {
+	handler := &Handler{
+		client:         client,
+		sessionManager: sessionManager,
+		parties:        parties,
+		self:           self,
+		logger:         logger,
+
+		maxInputsCountPerSession:  utxoutils.DefaultResharingParams.SetParams[0].MaxInputsCount,
+		maxOutputsCountPerSession: utxoutils.DefaultResharingParams.SetParams[0].OutsCount,
+	}
+
+	if err := handler.init(); err != nil {
+		panic(errors.Wrap(err, "failed to initialize utxo resharing handler"))
+	}
+
+	return handler
+}
+
+func (h *Handler) init() error {
+	unspent, err := h.client.ListUnspent()
+	if err != nil {
+		return errors.Wrap(err, "failed to list unspent outputs")
+	}
+
+	h.unspentCount = uint(len(unspent))
+	if h.unspentCount == 0 {
+		return nil
+	}
+
+	sessionsCount := (h.unspentCount + h.maxInputsCountPerSession - 1) / h.maxInputsCountPerSession // rounding up
+
+	h.sessionsCount = sessionsCount
+
+	return nil
+}
+
+func (h *Handler) RecoverStateIfProcessed(state *resharingTypes.State) (bool, error) {
+	if h.sessionsCount == 0 {
+		// no unspent outputs, so no resharing needed, state is considered processed
+		state.AddBridgeAddress(h.client.ChainId(), h.client.UtxoHelper().P2pkhAddress(state.NewPubKey))
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (h *Handler) MaxHandleDuration() time.Duration {
+	// assuming maximum possible duration without checking the unspent count in the last session
+	return time.Duration(h.sessionsCount) * MaxSessionDuration(h.maxInputsCountPerSession)
+}
+
+func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error {
+	var (
+		inputsLeft      = h.unspentCount
+		resharingParams = utxoutils.DefaultResharingParams
+		targetAddr      = h.client.UtxoHelper().P2pkhAddress(state.NewPubKey)
+	)
+
+	nextStartTime := state.SessionStartTime
+	for idx := range h.sessionsCount {
+		h.logger.Infof("starting resharing session [%v/%v]", idx+1, h.sessionsCount)
+
+		if idx == h.sessionsCount-1 {
+			// last session might have fewer inputs than maxUnspentPerSession,
+			// so we need to proportionally calculate outs count based on inputs left and max inputs count
+			outsCount := (inputsLeft*h.maxOutputsCountPerSession + h.maxInputsCountPerSession - 1) / h.maxInputsCountPerSession // rounding up
+			resharingParams.SetParams[0].OutsCount = outsCount
+		}
+
+		sessParams := SessionParams{
+			SessionParams: session.Params{
+				Id:        int64(idx + 1),
+				Threshold: h.self.Threshold,
+			},
+			TargetAddr:        targetAddr,
+			ConsolidateParams: resharingParams,
+		}
+
+		session := NewSession(
+			h.self,
+			h.client,
+			sessParams,
+			h.parties,
+			h.logger.WithField("component", "utxo_resharing_handler").WithField("session_id", idx+1),
+		)
+		h.sessionManager.Add(session)
+		<-time.After(time.Second) // slight delay to ensure session is registered before first message arrives
+
+		nextStartTime = nextStartTime.Add(MaxSessionDuration(h.maxInputsCountPerSession) + time.Second)
+		if err := session.Run(ctx); err != nil {
+			return errors.Wrapf(err, "failed to run resharing session %d", idx+1)
+		}
+		_, err := session.WaitFor()
+		if err != nil {
+			return errors.Wrapf(err, "resharing session %d failed", idx+1)
+		}
+
+		h.logger.Infof("finished resharing session [%v/%v]", idx+1, h.sessionsCount)
+
+		if idx == h.sessionsCount-1 {
+			break
+		} else {
+			inputsLeft -= h.maxInputsCountPerSession
+		}
+
+		h.logger.Infof("next session will start in %s", time.Until(nextStartTime))
+
+		// some parties won't participate in resharing, so we wait until start time to ensure synchronization
+		select {
+		case <-ctx.Done():
+			return errors.New("context cancelled before resharing session end")
+		case <-time.After(time.Until(nextStartTime)):
+			break
+		}
+	}
+
+	state.AddBridgeAddress(h.client.ChainId(), targetAddr)
+
+	return nil
+}

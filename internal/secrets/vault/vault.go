@@ -35,6 +35,10 @@ const (
 
 	protocolFrost = "frost"
 	encodingCBOR  = "cbor-base64"
+
+	keyTssShare     = "tss_share"
+	keyTssShareTemp = "tss_share_temp"
+	keyTlsCert      = "tls_cert"
 )
 
 type Storage struct {
@@ -133,6 +137,24 @@ func (s *Storage) SaveTssShare(data interface{}) error {
 	return errors.Errorf("unsupported tss share type %T", data)
 }
 
+func (s *Storage) SaveTemporaryTssShare(data *keygen.LocalPartySaveData) error {
+	return s.saveTssShare(keyTssShareTemp, data)
+}
+
+
+
+// TODO: use for frost
+func (s *Storage) saveTssShare(key string, data *keygen.LocalPartySaveData) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal share data")
+	}
+
+	return s.store(key, map[string]interface{}{
+		valueKey: string(raw),
+	})
+}
+
 func (s *Storage) saveECDSAShare(data *keygen.LocalPartySaveData) error {
 	raw, err := json.Marshal(data)
 	if err != nil {
@@ -182,6 +204,7 @@ func (s *Storage) SaveCoreAccount(account *core.Account) error {
 	})
 }
 
+// TODO: test with resharing
 func (s *Storage) GetTssShare() (interface{}, int, error) {
 	shares, err := s.GetTssShares()
 	if err != nil {
@@ -273,6 +296,10 @@ func decodeFrostShare(kvData map[string]interface{}) (*frostTss.Config, error) {
 	}
 
 	return data, nil
+}
+
+func (s *Storage) GetTemporaryTssShare() (*keygen.LocalPartySaveData, error) {
+	return s.getTssShare(keyTssShareTemp)
 }
 
 func (s *Storage) GetLocalPartyTlsCertificate() (*tls.Certificate, error) {

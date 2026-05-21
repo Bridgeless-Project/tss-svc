@@ -9,7 +9,7 @@ const (
 
 	BoundaryConsensus             = BoundaryProposalAcceptance + 10*time.Second
 	BoundaryProposalAcceptance    = 5 * time.Second
-	BoundarySign                  = 25 * time.Second
+	BoundarySign                  = 13 * time.Second
 	BoundarySignatureDistribution = 5 * time.Second
 	BoundaryFinalize              = 7 * time.Second
 

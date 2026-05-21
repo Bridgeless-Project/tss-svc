@@ -24,6 +24,10 @@ type Storage interface {
 	GetTssShare() (interface{}, int, error)
 	GetTssShares() (*TssShares, error)
 
+	// TODO: implement the FROST key gen
+	SaveTemporaryTssShare(data *keygen.LocalPartySaveData) error
+	GetTemporaryTssShare() (*keygen.LocalPartySaveData, error)
+
 	SaveLocalPartyTlsCertificate(rawCert, rawKey []byte) error
 	GetLocalPartyTlsCertificate() (*tls.Certificate, error)
 }

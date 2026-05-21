@@ -15,4 +15,5 @@ const (
 	// node methods
 	NodeMethodDecryptTxDetails = "decrypt_tx_details"
 	NodeMethodGetHeight        = "getheight"
+	NodeMethodGetAssetInfo     = "get_asset_info"
 )
