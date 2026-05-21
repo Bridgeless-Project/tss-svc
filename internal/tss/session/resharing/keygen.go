@@ -101,7 +101,11 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 	if r.oldEpochMember {
 		state.NewShare, err = r.secrets.GetTemporaryTssShare()
 	} else {
-		state.NewShare, err = r.secrets.GetTssShare()
+
+		// TODO: rewrite for frost
+		var share interface{}
+		share, _, err = r.secrets.GetTssShare()
+		state.NewShare = share.(*keygen.LocalPartySaveData)
 	}
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get key share from secrets storage")
@@ -142,6 +146,8 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 		r.parties,
 		session.Params{Id: int64(state.Epoch)},
 		r.logger,
+		tss.ProtocolID_ECDSA,
+		nil, // don't need to set the curve for ECDSA
 	)
 	r.sessionManager.Add(keygenSession)
 	<-time.After(1 * time.Second) // slight delay to ensure session is registered before first message arrives
@@ -154,12 +160,12 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 		return errors.Wrap(err, "failed to produce key share")
 	}
 
-	state.NewShare = result
-	if err = r.saveKeyShare(result); err != nil {
+	state.NewShare = result.GetData().(*keygen.LocalPartySaveData)
+	if err = r.saveKeyShare(state.NewShare); err != nil {
 		return errors.Wrap(err, "failed to save key share")
 	}
 
-	pubkey := bridge.PubkeyPrefixedToString(result.ECDSAPub.X(), result.ECDSAPub.Y())
+	pubkey := bridge.PubkeyPrefixedToString(state.NewShare.ECDSAPub.X(), state.NewShare.ECDSAPub.Y())
 
 	err = retry.Do(
 		func() error { return r.core.SetEpochPubKey(state.Epoch, pubkey) },
@@ -215,8 +221,8 @@ func (r *KeygenHandler) saveKeyShare(result *keygen.LocalPartySaveData) error {
 	r.logger.Debug("saving new key share to secrets storage...")
 
 	if r.oldEpochMember {
-		return errors.Wrap(r.secrets.SaveTemporaryTssShare(result), "failed to save temporary key share")
+		return errors.Wrap(r.secrets.SaveTssShare(secrets.TssShareKeyTemporary, result), "failed to save temporary key share")
 	}
 
-	return errors.Wrap(r.secrets.SaveTssShare(result), "failed to save key share")
+	return errors.Wrap(r.secrets.SaveTssShare(secrets.TssShareKeyECDSA, result), "failed to save key share")
 }

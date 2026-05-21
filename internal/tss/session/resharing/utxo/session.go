@@ -70,8 +70,13 @@ func NewSession(
 
 		parties: parties,
 
-		client:       client,
-		signingParty: tssProtocols.SelectSignByShare(self, session.GetReshareSessionIdentifier(params.SessionParams.Id), logger.WithField("phase", "signing")),
+		client: client,
+		signingParty: tssProtocols.SelectSignByShare(
+			self,
+			session.GetReshareSessionIdentifier(client.ChainId(),
+				params.SessionParams.Id),
+			logger.WithField("phase", "signing"),
+		),
 		consensusParty: consensus.New[SigningData](
 			consensus.LocalConsensusParty{
 				SessionId: sessionId,

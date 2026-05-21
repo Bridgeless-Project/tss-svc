@@ -13,6 +13,14 @@ type TssShares struct {
 	FrostShare *frostkeygen.Config
 }
 
+type TssShareKey string
+
+const (
+	TssShareKeyECDSA     TssShareKey = "tss_shares/ecdsa"
+	TssShareKeyFROST     TssShareKey = "tss_shares/frost"
+	TssShareKeyTemporary TssShareKey = "tss_share_temp"
+)
+
 type Storage interface {
 	GetKeygenPreParams() (*keygen.LocalPreParams, error)
 	SaveKeygenPreParams(params *keygen.LocalPreParams) error
@@ -20,12 +28,11 @@ type Storage interface {
 	GetCoreAccount() (*core.Account, error)
 	SaveCoreAccount(account *core.Account) error
 
-	SaveTssShare(data interface{}) error
+	SaveTssShare(key TssShareKey, data interface{}) error
 	GetTssShare() (interface{}, int, error)
 	GetTssShares() (*TssShares, error)
 
 	// TODO: implement the FROST key gen
-	SaveTemporaryTssShare(data *keygen.LocalPartySaveData) error
 	GetTemporaryTssShare() (*keygen.LocalPartySaveData, error)
 
 	SaveLocalPartyTlsCertificate(rawCert, rawKey []byte) error

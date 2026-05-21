@@ -21,6 +21,7 @@ import (
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/zano"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
@@ -125,16 +126,17 @@ func (s *Session) Run(ctx context.Context) error {
 	return nil
 }
 
+// TODO: integrate FROST
 func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State) error {
-	share, err := s.secrets.GetTssShare()
+	share, _, err := s.secrets.GetTssShare()
 	if err != nil {
 		return errors.Wrap(err, "failed to get TSS share")
 	}
-	state.OldShare = share
+	state.OldShare = share.(*keygen.LocalPartySaveData)
 
 	self := tss.LocalSignParty{
 		Account:   state.Account,
-		Share:     share,
+		Share:     share.(*keygen.LocalPartySaveData),
 		Threshold: s.oldEpochParams.Threshold,
 	}
 
@@ -273,10 +275,10 @@ func (s *Session) manageWallets(state *resharingTypes.State) error {
 
 func (s *Session) manageShares(state *resharingTypes.State) error {
 	s.logger.Info("managing TSS shares...")
-	if err := s.secrets.SaveTssShare(state.NewShare); err != nil {
+	if err := s.secrets.SaveTssShare(secrets.TssShareKeyECDSA, state.NewShare); err != nil {
 		return errors.Wrap(err, "failed to save new TSS share")
 	}
-	if err := s.secrets.SaveTemporaryTssShare(state.OldShare); err != nil {
+	if err := s.secrets.SaveTssShare(secrets.TssShareKeyTemporary, state.OldShare); err != nil {
 		return errors.Wrap(err, "failed to save old TSS share")
 	}
 	s.logger.Info("successfully managed TSS shares")

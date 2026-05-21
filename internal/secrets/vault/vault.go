@@ -26,8 +26,8 @@ const (
 	keyPreParams      = "keygen_preparams"
 	keyAccount        = "core_account"
 	legacyKeyTssShare = "tss_share"
-	keyTssShareECDSA  = "tss_shares/ecdsa"
-	keyTssShareFROST  = "tss_shares/frost"
+	keyTssShareECDSA  = string(secrets.TssShareKeyECDSA)
+	keyTssShareFROST  = string(secrets.TssShareKeyFROST)
 
 	keyTlsCert  = "tls_cert"
 	tlsCertData = "cert_data"
@@ -36,9 +36,7 @@ const (
 	protocolFrost = "frost"
 	encodingCBOR  = "cbor-base64"
 
-	keyTssShare     = "tss_share"
-	keyTssShareTemp = "tss_share_temp"
-	keyTlsCert      = "tls_cert"
+	keyTssShareTemp = string(secrets.TssShareKeyTemporary)
 )
 
 type Storage struct {
@@ -122,29 +120,26 @@ func (s *Storage) SaveKeygenPreParams(params *keygen.LocalPreParams) error {
 	})
 }
 
-func (s *Storage) SaveTssShare(data interface{}) error {
+func (s *Storage) SaveTssShare(key secrets.TssShareKey, data interface{}) error {
+	return s.saveTssShare(string(key), data)
+}
+
+func (s *Storage) saveTssShare(key string, data interface{}) error {
 	switch share := data.(type) {
 	case *frostTss.Config:
-		return s.saveFrostShare(share)
+		return s.saveFrostShare(key, share)
 	case frostTss.Config:
-		return s.saveFrostShare(&share)
+		return s.saveFrostShare(key, &share)
 	case *keygen.LocalPartySaveData:
-		return s.saveECDSAShare(share)
+		return s.saveECDSAShare(key, share)
 	case keygen.LocalPartySaveData:
-		return s.saveECDSAShare(&share)
+		return s.saveECDSAShare(key, &share)
 	}
 
 	return errors.Errorf("unsupported tss share type %T", data)
 }
 
-func (s *Storage) SaveTemporaryTssShare(data *keygen.LocalPartySaveData) error {
-	return s.saveTssShare(keyTssShareTemp, data)
-}
-
-
-
-// TODO: use for frost
-func (s *Storage) saveTssShare(key string, data *keygen.LocalPartySaveData) error {
+func (s *Storage) saveECDSAShare(key string, data *keygen.LocalPartySaveData) error {
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal share data")
@@ -155,24 +150,13 @@ func (s *Storage) saveTssShare(key string, data *keygen.LocalPartySaveData) erro
 	})
 }
 
-func (s *Storage) saveECDSAShare(data *keygen.LocalPartySaveData) error {
-	raw, err := json.Marshal(data)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal share data")
-	}
-
-	return s.store(keyTssShareECDSA, map[string]interface{}{
-		valueKey: string(raw),
-	})
-}
-
-func (s *Storage) saveFrostShare(data *frostTss.Config) error {
+func (s *Storage) saveFrostShare(key string, data *frostTss.Config) error {
 	raw, err := cbor.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal frost share data")
 	}
 
-	return s.store(keyTssShareFROST, map[string]interface{}{
+	return s.store(key, map[string]interface{}{
 		protocolKey: protocolFrost,
 		encodingKey: encodingCBOR,
 		valueKey:    base64.StdEncoding.EncodeToString(raw),
@@ -299,7 +283,12 @@ func decodeFrostShare(kvData map[string]interface{}) (*frostTss.Config, error) {
 }
 
 func (s *Storage) GetTemporaryTssShare() (*keygen.LocalPartySaveData, error) {
-	return s.getTssShare(keyTssShareTemp)
+	kvData, err := s.load(keyTssShareTemp)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load temporary share data")
+	}
+
+	return decodeECDSAShare(kvData)
 }
 
 func (s *Storage) GetLocalPartyTlsCertificate() (*tls.Certificate, error) {

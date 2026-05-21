@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	vaultapi "github.com/hashicorp/vault/api"
 )
@@ -61,6 +62,39 @@ func TestGetTssSharesPrefersNewECDSAOverLegacy(t *testing.T) {
 	}
 	if len(shares.Share.Ks) != 1 || shares.Share.Ks[0].Cmp(big.NewInt(2)) != 0 {
 		t.Fatalf("expected new share to take precedence")
+	}
+}
+
+func TestSaveTssShareUsesProvidedKey(t *testing.T) {
+	store := map[string]map[string]interface{}{}
+	storage := newTestStorage(t, store)
+
+	if err := storage.SaveTssShare(secrets.TssShareKeyTemporary, &keygen.LocalPartySaveData{Ks: []*big.Int{big.NewInt(7)}}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if _, ok := store[keyTssShareTemp]; !ok {
+		t.Fatalf("expected share saved under temporary key")
+	}
+	if _, ok := store[keyTssShareECDSA]; ok {
+		t.Fatalf("did not expect temporary share saved under primary ecdsa key")
+	}
+}
+
+func TestGetTemporaryTssShare(t *testing.T) {
+	storage := newTestStorage(t, map[string]map[string]interface{}{
+		keyTssShareTemp: encodedECDSAShareWithThreshold(t, 3),
+	})
+
+	share, err := storage.GetTemporaryTssShare()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if share == nil {
+		t.Fatal("expected temporary share")
+	}
+	if len(share.Ks) != 1 || share.Ks[0].Cmp(big.NewInt(3)) != 0 {
+		t.Fatalf("unexpected temporary share")
 	}
 }
 

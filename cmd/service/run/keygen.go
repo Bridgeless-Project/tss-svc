@@ -62,12 +62,6 @@ var keygenCmd = &cobra.Command{
 		defer cancel()
 		errGroup, ctx := errgroup.WithContext(ctx)
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_KEYGEN,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		frostSeession := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: preParams,
@@ -76,7 +70,6 @@ var keygenCmd = &cobra.Command{
 			},
 			parties,
 			cfg.TssSessionParams(),
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 			tss.ProtocolID_FROST,
 			curve.Secp256k1{}, // TODO implement custom curve for ZCash
@@ -161,7 +154,7 @@ var keygenCmd = &cobra.Command{
 	},
 }
 
-func storeKeygenResult(result interface{}, storage secrets.Storage, _ int) error {
+func storeKeygenResult(result interface{}, storage secrets.Storage, protocolID int) error {
 	if localData, ok := result.(*tss.LocalPartyData); ok {
 		result = localData.GetData()
 	}
@@ -185,7 +178,11 @@ func storeKeygenResult(result interface{}, storage secrets.Storage, _ int) error
 			return errors.Wrap(err, "failed to write keygen result to file")
 		}
 	case "vault":
-		if err := storage.SaveTssShare(result); err != nil {
+		key, err := tssShareKeyForProtocol(protocolID)
+		if err != nil {
+			return err
+		}
+		if err = storage.SaveTssShare(key, result); err != nil {
 			return errors.Wrap(err, "failed to save keygen result to vault")
 		}
 	default:
@@ -193,4 +190,15 @@ func storeKeygenResult(result interface{}, storage secrets.Storage, _ int) error
 	}
 
 	return nil
+}
+
+func tssShareKeyForProtocol(protocolID int) (secrets.TssShareKey, error) {
+	switch protocolID {
+	case tss.ProtocolID_ECDSA:
+		return secrets.TssShareKeyECDSA, nil
+	case tss.ProtocolID_FROST:
+		return secrets.TssShareKeyFROST, nil
+	default:
+		return "", errors.Errorf("unknown protocol id: %d", protocolID)
+	}
 }

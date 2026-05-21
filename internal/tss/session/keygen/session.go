@@ -45,11 +45,10 @@ func NewSession(
 	switch protocolID {
 	case tss.ProtocolID_ECDSA:
 		return &Session{
-			sessionId:             sessionId,
-			params:                params,
-			wg:                    new(sync.WaitGroup),
-			connectedPartiesCount: connectedPartiesCountFunc,
-			partiesCount:          len(parties),
+			sessionId:    sessionId,
+			params:       params,
+			wg:           new(sync.WaitGroup),
+			partiesCount: len(parties),
 			keygenParty: tssProtocols.SelectKeyGenByProtocol(
 				tss.ProtocolID_ECDSA,
 				self,
@@ -64,11 +63,10 @@ func NewSession(
 
 	case tss.ProtocolID_FROST:
 		return &Session{
-			sessionId:             sessionId,
-			params:                params,
-			wg:                    new(sync.WaitGroup),
-			connectedPartiesCount: connectedPartiesCountFunc,
-			partiesCount:          len(parties),
+			sessionId:    sessionId,
+			params:       params,
+			wg:           new(sync.WaitGroup),
+			partiesCount: len(parties),
 			keygenParty: tssProtocols.SelectKeyGenByProtocol(
 				tss.ProtocolID_FROST,
 				self,
