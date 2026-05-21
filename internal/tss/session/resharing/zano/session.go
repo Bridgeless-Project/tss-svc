@@ -10,6 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/pkg/errors"
@@ -36,7 +37,7 @@ type Session struct {
 	parties []p2p.Party
 
 	client         *zano.Client
-	signingParty   *tss.SignParty
+	signingParty   tss.SignParty
 	consensusParty *consensus.Consensus[SigningData]
 	finalizer      *Finalizer
 
@@ -66,7 +67,7 @@ func NewSession(
 		parties: parties,
 
 		client:       client,
-		signingParty: tss.NewSignParty(self, sessId, logger.WithField("phase", "signing")),
+		signingParty: tssProtocols.SelectSignByShare(self, sessId, logger.WithField("phase", "signing")),
 		consensusParty: consensus.New[SigningData](
 			consensus.LocalConsensusParty{
 				SessionId: sessId,

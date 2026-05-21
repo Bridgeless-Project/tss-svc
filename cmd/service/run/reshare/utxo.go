@@ -15,6 +15,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	utxoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -50,7 +51,7 @@ var reshareUtxoCmd = &cobra.Command{
 		}
 
 		storage := cfg.SecretsStorage()
-		share, err := storage.GetTssShare()
+		share, _, err := storage.GetTssShare()
 		if err != nil {
 			return errors.Wrap(err, "failed to get tss share")
 		}
@@ -85,7 +86,7 @@ var reshareUtxoCmd = &cobra.Command{
 		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
-				Share:     share,
+				Share:     share.(*keygen.LocalPartySaveData),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			cli,

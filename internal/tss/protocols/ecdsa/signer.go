@@ -1,0 +1,200 @@
+package tss
+
+import (
+	"context"
+	"math/big"
+	"sync"
+	"sync/atomic"
+
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/signing"
+	bnb "github.com/bnb-chain/tss-lib/v3/tss"
+	"gitlab.com/distributed_lab/logan/v3"
+	"google.golang.org/protobuf/types/known/anypb"
+)
+
+type SignParty struct {
+	wg *sync.WaitGroup
+
+	parties        map[core.Address]struct{}
+	sortedPartyIds bnb.SortedPartyIDs
+
+	self tss.LocalSignParty
+
+	logger      *logan.Entry
+	party       bnb.Party
+	msgs        chan tss.PartyMsg
+	broadcaster *broadcast.Broadcaster
+
+	data []byte
+
+	ended     atomic.Bool
+	result    *common.SignatureData
+	sessionId string
+}
+
+func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
+	return &SignParty{
+		wg:        &sync.WaitGroup{},
+		self:      self,
+		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
+		sessionId: sessionId,
+		logger:    logger.WithField("protocol", "ecdsa"),
+	}
+}
+
+func (p *SignParty) WithParties(parties []p2p.Party) tss.SignParty {
+	partyMap := make(map[core.Address]struct{}, len(parties))
+	partyIds := make([]*bnb.PartyID, len(parties)+1)
+	partyIds[0] = p.self.Account.CosmosAddress().PartyIdentifier()
+
+	for i, party := range parties {
+		partyMap[party.CoreAddress] = struct{}{}
+		partyIds[i+1] = party.Identifier()
+	}
+
+	p.parties = partyMap
+	p.sortedPartyIds = bnb.SortPartyIDs(partyIds)
+	p.broadcaster = broadcast.NewBroadcaster(parties, p.logger.WithField("component", "broadcaster"))
+
+	return p
+}
+
+func (p *SignParty) WithSigningData(data []byte) tss.SignParty {
+	p.data = data
+	return p
+}
+
+func (p *SignParty) Run(ctx context.Context) {
+	params := bnb.NewParameters(
+		bnb.S256(), bnb.NewPeerContext(p.sortedPartyIds),
+		p.sortedPartyIds.FindByKey(p.self.Account.CosmosAddress().PartyKey()),
+		len(p.sortedPartyIds),
+		p.self.Threshold,
+	)
+	out := make(chan bnb.Message, tss.OutChannelSize)
+	end := make(chan *common.SignatureData, tss.EndChannelSize)
+
+	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Share, out, end)
+
+	p.wg.Add(3)
+
+	go func() {
+		defer p.wg.Done()
+
+		if err := p.party.Start(); err != nil {
+			p.logger.WithError(err).Error("failed to run signing")
+			close(end)
+		}
+	}()
+	go p.receiveMsgs(ctx)
+	go p.receiveUpdates(ctx, out, end)
+
+	p.logger.Info("signing started")
+}
+
+func (p *SignParty) WaitFor() *common.SignatureData {
+	p.wg.Wait()
+	p.ended.Store(true)
+
+	p.logger.Info("signing finished")
+
+	return p.result
+}
+
+// Receive adds msg to msgs chan
+func (p *SignParty) Receive(sender core.Address, data *p2p.TssData) {
+	if p.ended.Load() {
+		return
+	}
+
+	p.msgs <- tss.PartyMsg{
+		Sender:      sender,
+		WireMsg:     data.Data,
+		IsBroadcast: data.IsBroadcast,
+	}
+}
+
+// ( from other parties to me )
+// receiveMsgs receives message from msg chan and updates party`s internal state
+func (p *SignParty) receiveMsgs(ctx context.Context) {
+	defer p.wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			p.logger.Warn("context is done; stopping receiving messages")
+			return
+		case msg, ok := <-p.msgs:
+			if !ok {
+				return
+			}
+
+			if _, exists := p.parties[msg.Sender]; !exists {
+				p.logger.WithField("party", msg.Sender).Warn("got message from outside party")
+				continue
+			}
+
+			_, err := p.party.UpdateFromBytes(msg.WireMsg, p.sortedPartyIds.FindByKey(msg.Sender.PartyKey()), msg.IsBroadcast)
+			if err != nil {
+				p.logger.WithError(err).Error("failed to update party state")
+			}
+		}
+	}
+}
+
+// (from me to other party)
+func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message, end <-chan *common.SignatureData) {
+	defer p.wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			p.logger.Warn("context is done; stopping listening to updates")
+			return
+		case result, ok := <-end:
+			close(p.msgs)
+			p.result = result
+
+			if !ok {
+				p.logger.Error("tss party result channel is closed")
+			}
+
+			return
+		case msg := <-out:
+			raw, routing, err := msg.WireBytes()
+			if err != nil {
+				p.logger.WithError(err).Error("failed to get message wire bytes")
+				continue
+			}
+
+			tssData := &p2p.TssData{
+				Data:        raw,
+				IsBroadcast: routing.IsBroadcast,
+			}
+
+			tssReq, _ := anypb.New(tssData)
+			submitReq := p2p.SubmitRequest{
+				Sender:    p.self.Account.CosmosAddress().String(),
+				SessionId: p.sessionId,
+				Type:      p2p.RequestType_RT_SIGN,
+				Data:      tssReq,
+			}
+
+			destination := routing.To
+			if destination == nil || len(destination) > 1 {
+				p.broadcaster.Broadcast(&submitReq)
+				continue
+			}
+
+			dst := core.AddrFromString(destination[0].Moniker)
+			if err = p.broadcaster.Send(&submitReq, dst); err != nil {
+				p.logger.WithError(err).Error("failed to send message")
+			}
+		}
+	}
+}

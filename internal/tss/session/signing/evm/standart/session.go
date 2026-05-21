@@ -14,6 +14,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
@@ -49,7 +50,7 @@ type Session struct {
 
 	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
-	signingParty          *tss.SignParty
+	signingParty          tss.SignParty
 	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
@@ -136,7 +137,7 @@ func (s *Session) Run(ctx context.Context) error {
 			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.signaturesDistributor = signing.NewSignaturesDistributor(
 			s.Id(),
 			s.parties,

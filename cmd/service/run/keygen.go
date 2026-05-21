@@ -13,15 +13,17 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"golang.org/x/sync/errgroup"
 )
 
 func init() {
 	utils.RegisterOutputFlags(keygenCmd)
 }
+
+const KeygensCount = 2
 
 var keygenCmd = &cobra.Command{
 	Use:   "keygen",
@@ -40,6 +42,8 @@ var keygenCmd = &cobra.Command{
 		}
 
 		storage := cfg.SecretsStorage()
+
+		// TODO do we need the preparams for frost?
 		preParams, err := storage.GetKeygenPreParams()
 		if err != nil {
 			return errors.Wrap(err, "failed to get keygen pre-parameters")
@@ -54,11 +58,24 @@ var keygenCmd = &cobra.Command{
 		}
 		parties := cfg.Parties()
 
-		errGroup := new(errgroup.Group)
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
+		errGroup, ctx := errgroup.WithContext(ctx)
 
-		session := keygenSession.NewSession(
+		frostSeession := keygenSession.NewSession(
+			tss.LocalKeygenParty{
+				PreParams: preParams,
+				Address:   account.CosmosAddress(),
+				Threshold: cfg.TssSessionParams().Threshold,
+			},
+			parties,
+			cfg.TssSessionParams(),
+			cfg.Log().WithField("component", "keygen_session"),
+			tss.ProtocolID_FROST,
+			curve.Secp256k1{}, // TODO implement custom curve for ZCash
+		)
+
+		ecdsaSeession := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
 				Address:   account.CosmosAddress(),
@@ -67,9 +84,10 @@ var keygenCmd = &cobra.Command{
 			parties,
 			cfg.TssSessionParams(),
 			cfg.Log().WithField("component", "keygen_session"),
+			tss.ProtocolID_ECDSA,
+			curve.Secp256k1{},
 		)
-
-		sessionManager := p2p.NewSessionManager(session)
+		sessionManager := p2p.NewSessionManager(frostSeession, ecdsaSeession)
 
 		errGroup.Go(func() error {
 			server := p2p.NewServer(
@@ -83,44 +101,104 @@ var keygenCmd = &cobra.Command{
 			return server.Run(ctx)
 		})
 
+		endChan := make(chan struct{}, KeygensCount)
 		errGroup.Go(func() error {
-			defer cancel()
+			defer func() { endChan <- struct{}{} }()
 
-			if err := session.Run(ctx); err != nil {
+			if err := frostSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
 			}
-			result, err := session.WaitFor()
+			result, err := frostSeession.WaitFor()
 			if err != nil {
-				return errors.Wrap(err, "failed to obtain keygen session result")
+				return errors.Wrap(err, "failed to obtain frost keygen session result")
 			}
 
-			cfg.Log().Info("keygen session successfully completed")
+			cfg.Log().Info("frost keygen session successfully completed")
 
-			return storeKeygenResult(result, storage)
+			return errors.Wrap(storeKeygenResult(result, storage, tss.ProtocolID_FROST), "failed  to store FROST shares")
+		})
+
+		errGroup.Go(func() error {
+			defer func() { endChan <- struct{}{} }()
+
+			if err := ecdsaSeession.Run(ctx); err != nil {
+				return errors.Wrap(err, "failed to run keygen session")
+			}
+			result, err := ecdsaSeession.WaitFor()
+			if err != nil {
+				return errors.Wrap(err, "failed to obtain ecdsa keygen session result")
+			}
+
+			cfg.Log().Info("ecdsa keygen session successfully completed")
+
+			return errors.Wrap(storeKeygenResult(result, storage, tss.ProtocolID_ECDSA), "failed to store ECDSA shares")
+		})
+
+		errGroup.Go(func() error {
+			keygenCount := 0
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-endChan:
+					keygenCount++
+					if keygenCount == KeygensCount {
+						cancel()
+						return nil
+					}
+				}
+			}
 		})
 
 		return errGroup.Wait()
 	},
 }
 
-func storeKeygenResult(result *keygen.LocalPartySaveData, storage secrets.Storage) error {
-	raw, err := json.Marshal(result)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal keygen result")
+func storeKeygenResult(result interface{}, storage secrets.Storage, protocolID int) error {
+	if localData, ok := result.(*tss.LocalPartyData); ok {
+		result = localData.GetData()
+	}
+	if result == nil {
+		return errors.New("keygen result is nil")
 	}
 
 	switch utils.OutputType {
 	case "console":
-		fmt.Println(string(raw))
+		raw, err := json.Marshal(result)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal keygen result")
+		}
+		fmt.Println("raw: ", string(raw))
 	case "file":
+		raw, err := json.Marshal(result)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal keygen result")
+		}
 		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
 			return errors.Wrap(err, "failed to write keygen result to file")
 		}
 	case "vault":
-		if err = storage.SaveTssShare(result); err != nil {
+		key, err := tssShareKeyForProtocol(protocolID)
+		if err != nil {
+			return err
+		}
+		if err = storage.SaveTssShare(key, result); err != nil {
 			return errors.Wrap(err, "failed to save keygen result to vault")
 		}
+	default:
+		return errors.Errorf("unknown output type: %s", utils.OutputType)
 	}
 
 	return nil
+}
+
+func tssShareKeyForProtocol(protocolID int) (secrets.TssShareKey, error) {
+	switch protocolID {
+	case tss.ProtocolID_ECDSA:
+		return secrets.TssShareKeyECDSA, nil
+	case tss.ProtocolID_FROST:
+		return secrets.TssShareKeyFROST, nil
+	default:
+		return "", errors.Errorf("unknown protocol id: %d", protocolID)
+	}
 }

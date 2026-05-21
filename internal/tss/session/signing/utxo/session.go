@@ -14,6 +14,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	resharingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
@@ -60,7 +61,7 @@ type Session struct {
 	signFinalizer          *Finalizer
 	consolidationFinalizer *resharingConsensus.Finalizer
 
-	signingParty *tss.SignParty
+	signingParty tss.SignParty
 }
 
 func NewSession(
@@ -142,7 +143,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.signConsParty = consensus.New[withdrawal.UtxoWithdrawalData](
 			consensus.LocalConsensusParty{
@@ -286,7 +287,7 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 			}
 
 			s.mu.Lock()
-			s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 			s.mu.Unlock()
 
 			select {
@@ -383,7 +384,7 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 			}
 
 			s.mu.Lock()
-			s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 			s.mu.Unlock()
 
 			select {

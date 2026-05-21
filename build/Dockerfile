@@ -16,7 +16,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build  -o /usr/local/bin/tss-svc /go/src/github.com/Bridgeless-Project/tss-svc
+RUN go build -o /usr/local/bin/tss-svc /go/src/github.com/Bridgeless-Project/tss-svc
 
 
 FROM alpine:3.21

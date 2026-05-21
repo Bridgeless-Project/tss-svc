@@ -11,6 +11,11 @@ import (
 )
 
 const (
+	ProtocolID_ECDSA = iota
+	ProtocolID_FROST
+)
+
+const (
 	OutChannelSize = 1000
 	EndChannelSize = 1
 	MsgsCapacity   = 100
@@ -21,15 +26,16 @@ func init() {
 	tsscommon.EnableConstantTimeOps()
 }
 
-type partyMsg struct {
+type LocalKeygenParty struct {
+	PreParams interface{}
+	Address   core.Address
+	Threshold int
+}
+
+type PartyMsg struct {
 	Sender      core.Address
 	WireMsg     []byte
 	IsBroadcast bool
-}
-
-func MaxMaliciousParties(partiesCount, threshold int) int {
-	// T+1 parties are required to function
-	return partiesCount - (threshold + 1)
 }
 
 type Signatures struct {
@@ -53,4 +59,13 @@ func (s Signatures) HashString() string {
 	}
 
 	return fmt.Sprintf("%x", sha256.Sum256(buff.Bytes()))
+}
+
+func (s Signatures) GetData() interface{} {
+	return s.Data
+}
+
+func MaxMaliciousParties(partiesCount, threshold int) int {
+	// T+1 parties are required to function
+	return partiesCount - (threshold + 1)
 }

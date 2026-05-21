@@ -11,6 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/bnb-chain/tss-lib/v3/common"
@@ -36,7 +37,7 @@ type Session struct {
 	parties []p2p.Party
 
 	client             client.Client
-	signingParty       *tss.SignParty
+	signingParty       tss.SignParty
 	consensusParty     *consensus.Consensus[SigningData]
 	consensusMechanism *ConsensusMechanism
 	finalizer          *Finalizer
@@ -69,8 +70,13 @@ func NewSession(
 
 		parties: parties,
 
-		client:       client,
-		signingParty: tss.NewSignParty(self, sessionId, logger.WithField("phase", "signing")),
+		client: client,
+		signingParty: tssProtocols.SelectSignByShare(
+			self,
+			session.GetReshareSessionIdentifier(client.ChainId(),
+				params.SessionParams.Id),
+			logger.WithField("phase", "signing"),
+		),
 		consensusParty: consensus.New[SigningData](
 			consensus.LocalConsensusParty{
 				SessionId: sessionId,
@@ -155,7 +161,7 @@ func (s *Session) run(ctx context.Context) {
 		}
 
 		s.mu.Lock()
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.mu.Unlock()
 
 		select {

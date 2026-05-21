@@ -6,6 +6,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,7 @@ var tssShareCmd = &cobra.Command{
 		}
 
 		storage := config.SecretsStorage()
-		if err := storage.SaveTssShare(share); err != nil {
+		if err := storage.SaveTssShare(secrets.TssShareKeyECDSA, share); err != nil {
 			return errors.Wrap(err, "failed to save TSS share to vault")
 		}
 

@@ -92,6 +92,6 @@ func (m *SessionManager) GetSigningSession(chainId string) (TssSession, error) {
 			return session, nil
 		}
 	}
-
+	
 	return nil, ErrSessionNotFound
 }

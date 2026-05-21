@@ -5,7 +5,7 @@ YAML_FILES=("./configs/tss1.local.yaml" "./configs/tss2.local.yaml" "./configs/t
 if [[ "$OSTYPE" == "darwin"* ]]; then
     NEW_TIME=$(date -u -v+15S +"%Y-%m-%d %H:%M:%S")
 else
-    NEW_TIME=$(date -u -d "+15 seconds" +"%Y-%m-%d %H:%M:%S")
+    NEW_TIME=$(date -u -d "+80 seconds" +"%Y-%m-%d %H:%M:%S")
 fi
 
 echo "Updating start_time to: $NEW_TIME"

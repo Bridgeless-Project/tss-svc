@@ -54,8 +54,8 @@ func (a Address) PartyKey() *big.Int {
 	return new(big.Int).SetBytes(a.Bytes())
 }
 
-func AddrFromPartyId(id *tss.PartyID) Address {
-	return Address(id.GetMoniker())
+func AddrFromString(addr string) Address {
+	return Address(addr)
 }
 
 var AddressHook = figure.Hooks{

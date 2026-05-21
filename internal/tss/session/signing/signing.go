@@ -8,10 +8,12 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -27,11 +29,10 @@ type Session struct {
 	logger *logan.Entry
 	wg     *sync.WaitGroup
 
-	signingParty interface {
-		Run(ctx context.Context)
-		WaitFor() *common.SignatureData
-		Receive(sender core.Address, data *p2p.TssData)
-	}
+	connectedPartiesCount func() int
+	partiesCount          int
+
+	signingParty tss.SignParty
 
 	result *common.SignatureData
 	err    error
@@ -49,7 +50,7 @@ func NewSession(
 		params:    params,
 		wg:        &sync.WaitGroup{},
 		logger:    logger,
-		signingParty: tss.NewSignParty(self, sessionId, logger).
+		signingParty: tssProtocols.SelectSignByProtocol(tss.ProtocolID_FROST, curve.Secp256k1{}, self, sessionId, logger).
 			WithSigningData(params.SigningData).
 			WithParties(parties),
 	}
