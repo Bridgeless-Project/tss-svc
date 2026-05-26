@@ -25,6 +25,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
@@ -78,7 +79,9 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
-	shares, err := storage.GetTssShares()
+
+	share := tss2.NewEcdsaShare()
+	err = storage.LoadTssShare(share)
 	if err != nil {
 		return errors.Wrap(err, "failed to get tss shares")
 	}
@@ -171,7 +174,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess, err := configureSigningSession(sessParams, parties, *account, shares, dtb, fetcher, logger, client, connector, depositAcceptorSession)
+			sess, err := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector, depositAcceptorSession)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("failed to configure signing session for chain %s", client.ChainId()))
 			}

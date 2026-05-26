@@ -9,13 +9,12 @@ import (
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
-func SelectKeyGenByProtocol(protocol int, self tss.LocalKeygenParty, parties []p2p.Party, threshold int, sessionId string, group curve.Curve, logger *logan.Entry) tss.KeyGenParty {
-	switch protocol {
-	case tss.ProtocolID_ECDSA:
+func SelectKeyGenByProtocol(self tss.LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) tss.KeyGenParty {
+	switch self.PreParams.Protocol() {
+	case "ecdsa":
 		return bnb.NewKeygenParty(self, parties, sessionId, logger)
-	case tss.ProtocolID_FROST:
-		return frost.NewKeygenParty(self, group, parties, threshold, sessionId, logger)
-
+	case "frost":
+		return frost.NewKeygenParty(self, parties, sessionId, logger)
 	}
 
 	return nil

@@ -7,7 +7,7 @@ import (
 
 	bridgeTypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 )
 
 type State struct {
@@ -20,8 +20,8 @@ type State struct {
 	Threshold uint
 
 	Account  core.Account
-	OldShare *keygen.LocalPartySaveData
-	NewShare *keygen.LocalPartySaveData
+	OldShare tss.Share
+	NewShare tss.Share
 
 	Signatures         []bridgeTypes.EpochChainSignatures
 	NewBridgeAddresses map[string]string // chainId -> addr

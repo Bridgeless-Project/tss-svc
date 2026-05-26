@@ -127,19 +127,14 @@ func (s *Session) Run(ctx context.Context) error {
 
 // TODO: integrate FROST
 func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State) error {
-	share, protocolID, err := s.secrets.GetTssShare()
+	err := s.secrets.LoadTssShare(state.OldShare)
 	if err != nil {
 		return errors.Wrap(err, "failed to get TSS share")
 	}
-	ecdsaShare, err := tss.ECDSAShareFromProtocol(share, protocolID)
-	if err != nil {
-		return errors.Wrap(err, "failed to get ECDSA TSS share")
-	}
-	state.OldShare = ecdsaShare
 
 	self := tss.LocalSignParty{
 		Account:   state.Account,
-		Share:     ecdsaShare,
+		Share:     state.OldShare.MustEcdsaShare(),
 		Threshold: s.oldEpochParams.Threshold,
 	}
 
@@ -278,10 +273,20 @@ func (s *Session) manageWallets(state *resharingTypes.State) error {
 
 func (s *Session) manageShares(state *resharingTypes.State) error {
 	s.logger.Info("managing TSS shares...")
-	if err := s.secrets.SaveTssShare(secrets.TssShareKeyECDSA, state.NewShare); err != nil {
+	newShareBytes, err := state.NewShare.Marshal()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal share")
+	}
+
+	oldShareBytes, err := state.OldShare.Marshal()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal share")
+	}
+
+	if err = s.secrets.SaveTssShare(secrets.TssShareKeyECDSA, newShareBytes); err != nil {
 		return errors.Wrap(err, "failed to save new TSS share")
 	}
-	if err := s.secrets.SaveTssShare(secrets.TssShareKeyTemporary, state.OldShare); err != nil {
+	if err = s.secrets.SaveTssShare(secrets.TssShareKeyTemporary, oldShareBytes); err != nil {
 		return errors.Wrap(err, "failed to save old TSS share")
 	}
 	s.logger.Info("successfully managed TSS shares")

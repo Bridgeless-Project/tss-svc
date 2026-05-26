@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -115,7 +114,7 @@ var keygenCmd = &cobra.Command{
 
 			cfg.Log().Info("frost keygen session successfully completed")
 
-			return errors.Wrap(storeKeygenResult(result, storage, tss.ProtocolID_FROST), "failed  to store FROST shares")
+			return errors.Wrap(storeKeygenResult(result, storage), "failed  to store FROST shares")
 		})
 
 		errGroup.Go(func() error {
@@ -131,7 +130,7 @@ var keygenCmd = &cobra.Command{
 
 			cfg.Log().Info("ecdsa keygen session successfully completed")
 
-			return errors.Wrap(storeKeygenResult(result, storage, tss.ProtocolID_ECDSA), "failed to store ECDSA shares")
+			return errors.Wrap(storeKeygenResult(result, storage), "failed to store ECDSA shares")
 		})
 
 		errGroup.Go(func() error {
@@ -154,23 +153,16 @@ var keygenCmd = &cobra.Command{
 	},
 }
 
-func storeKeygenResult(result interface{}, storage secrets.Storage, protocolID int) error {
-	if localData, ok := result.(*tss.LocalPartyData); ok {
-		result = localData.GetData()
-	}
-	if result == nil {
-		return errors.New("keygen result is nil")
-	}
-
+func storeKeygenResult(result tss.Share, storage secrets.Storage) error {
 	switch utils.OutputType {
 	case "console":
-		raw, err := json.Marshal(result)
+		raw, err := result.Marshal()
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal keygen result")
 		}
 		fmt.Println("raw: ", string(raw))
 	case "file":
-		raw, err := json.Marshal(result)
+		raw, err := result.Marshal()
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal keygen result")
 		}
@@ -178,11 +170,12 @@ func storeKeygenResult(result interface{}, storage secrets.Storage, protocolID i
 			return errors.Wrap(err, "failed to write keygen result to file")
 		}
 	case "vault":
-		key, err := tssShareKeyForProtocol(protocolID)
+		bytes, err := result.Marshal()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to marshal keygen result")
 		}
-		if err = storage.SaveTssShare(key, result); err != nil {
+
+		if err = storage.SaveTssShare(secrets.TssShareKey(result.GetVaultPath()), bytes); err != nil {
 			return errors.Wrap(err, "failed to save keygen result to vault")
 		}
 	default:
@@ -190,15 +183,4 @@ func storeKeygenResult(result interface{}, storage secrets.Storage, protocolID i
 	}
 
 	return nil
-}
-
-func tssShareKeyForProtocol(protocolID int) (secrets.TssShareKey, error) {
-	switch protocolID {
-	case tss.ProtocolID_ECDSA:
-		return secrets.TssShareKeyECDSA, nil
-	case tss.ProtocolID_FROST:
-		return secrets.TssShareKeyFROST, nil
-	default:
-		return "", errors.Errorf("unknown protocol id: %d", protocolID)
-	}
 }

@@ -2,7 +2,6 @@ package tss
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -11,7 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
-	bnb "github.com/bnb-chain/tss-lib/v3/tss"
+	ecdsaTss "github.com/bnb-chain/tss-lib/v3/tss"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -21,13 +20,13 @@ type KeygenParty struct {
 	ended atomic.Bool
 
 	broadcaster    *broadcast.Broadcaster
-	party          bnb.Party
-	sortedPartyIds bnb.SortedPartyIDs
+	party          ecdsaTss.Party
+	sortedPartyIds ecdsaTss.SortedPartyIDs
 	parties        map[core.Address]struct{}
 	self           tss.LocalKeygenParty
 
 	msgs      chan tss.PartyMsg
-	result    *keygen.LocalPartySaveData
+	result    *EcdsaShare
 	sessionId string
 
 	logger *logan.Entry
@@ -35,7 +34,7 @@ type KeygenParty struct {
 
 func NewKeygenParty(self tss.LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
-	partyIds := make([]*bnb.PartyID, len(parties)+1)
+	partyIds := make([]*ecdsaTss.PartyID, len(parties)+1)
 	partyIds[0] = self.Address.PartyIdentifier()
 
 	for i, party := range parties {
@@ -45,33 +44,33 @@ func NewKeygenParty(self tss.LocalKeygenParty, parties []p2p.Party, sessionId st
 
 	return &KeygenParty{
 		broadcaster:    broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
-		sortedPartyIds: bnb.SortPartyIDs(partyIds),
+		sortedPartyIds: ecdsaTss.SortPartyIDs(partyIds),
 		parties:        partyMap,
 		self:           self,
 		msgs:           make(chan tss.PartyMsg, tss.MsgsCapacity),
 		logger:         logger.WithField("protocol", "ecdsa"),
 		sessionId:      sessionId,
-		wg:             &sync.WaitGroup{},
+		wg:             new(sync.WaitGroup),
 	}
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
-	params := bnb.NewParameters(
-		bnb.S256(), bnb.NewPeerContext(p.sortedPartyIds),
+	params := ecdsaTss.NewParameters(
+		ecdsaTss.S256(), ecdsaTss.NewPeerContext(p.sortedPartyIds),
 		p.sortedPartyIds.FindByKey(p.self.Address.PartyKey()),
 		len(p.sortedPartyIds),
 		p.self.Threshold,
 	)
-	out := make(chan bnb.Message, tss.OutChannelSize)
+	out := make(chan ecdsaTss.Message, tss.OutChannelSize)
 	end := make(chan *keygen.LocalPartySaveData, tss.EndChannelSize)
 
-	preParams, ok := p.self.PreParams.(keygen.LocalPreParams)
-	if !ok {
-		p.logger.WithError(errors.New("failed to convert types to LocalPreParams")).Error("failed to run keygen")
-		close(end)
-	}
+	//preParams, ok := p.self.PreParams
+	//if !ok {
+	//	p.logger.WithError(errors.New("failed to convert types to LocalPreParams")).Error("failed to run keygen")
+	//	close(end)
+	//}
 
-	p.party = keygen.NewLocalParty(params, out, end, preParams)
+	p.party = keygen.NewLocalParty(params, out, end, p.self.PreParams.MustEcdsaPreParams())
 
 	p.wg.Add(3)
 
@@ -90,13 +89,13 @@ func (p *KeygenParty) Run(ctx context.Context) {
 	p.logger.Info("keygen started")
 }
 
-func (p *KeygenParty) WaitFor() *tss.LocalPartyData {
+func (p *KeygenParty) WaitFor() tss.Share {
 	p.wg.Wait()
 	p.ended.Store(true)
 
 	p.logger.Info("keygen finished")
 
-	return tss.NewLocalPartyData(p.result)
+	return p.result
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
@@ -138,8 +137,11 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 
 }
 
-func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message, end <-chan *keygen.LocalPartySaveData) {
-	defer p.wg.Done()
+func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan ecdsaTss.Message, end <-chan *keygen.LocalPartySaveData) {
+	defer func() {
+		close(p.msgs)
+		p.wg.Done()
+	}()
 
 	for {
 		select {
@@ -153,7 +155,11 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message
 			}
 
 			close(p.msgs)
-			p.result = result
+
+			err := p.result.SetData(result)
+			if err != nil {
+				p.logger.WithError(err).Error("failed to get message wire bytes")
+			}
 			return
 
 		case msg := <-out:

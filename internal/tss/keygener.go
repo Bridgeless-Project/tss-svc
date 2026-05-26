@@ -9,24 +9,6 @@ import (
 
 type KeyGenParty interface {
 	Run(ctx context.Context)
-	WaitFor() *LocalPartyData
+	WaitFor() Share
 	Receive(sender core.Address, data *p2p.TssData)
-}
-
-func NewLocalPartyData(data interface{}) *LocalPartyData {
-	return &LocalPartyData{
-		data: data,
-	}
-}
-
-type LocalPartyData struct {
-	data interface{}
-}
-
-func (d *LocalPartyData) GetData() interface{} {
-	if d == nil {
-		return nil
-	}
-
-	return d.data
 }

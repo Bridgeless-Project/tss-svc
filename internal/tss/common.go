@@ -11,11 +11,6 @@ import (
 )
 
 const (
-	ProtocolID_ECDSA = iota
-	ProtocolID_FROST
-)
-
-const (
 	OutChannelSize = 1000
 	EndChannelSize = 1
 	MsgsCapacity   = 100
@@ -27,7 +22,7 @@ func init() {
 }
 
 type LocalKeygenParty struct {
-	PreParams interface{}
+	PreParams PreParams
 	Address   core.Address
 	Threshold int
 }

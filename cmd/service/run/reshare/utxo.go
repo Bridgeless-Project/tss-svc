@@ -14,6 +14,7 @@ import (
 	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	utxoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
@@ -49,15 +50,13 @@ var reshareUtxoCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to get config from flags")
 		}
 
+		share := tss2.NewEcdsaShare()
 		storage := cfg.SecretsStorage()
-		share, protocolID, err := storage.GetTssShare()
+		err = storage.LoadTssShare(share)
 		if err != nil {
 			return errors.Wrap(err, "failed to get tss share")
 		}
-		ecdsaShare, err := tss.ECDSAShareFromProtocol(share, protocolID)
-		if err != nil {
-			return errors.Wrap(err, "failed to get ECDSA TSS share")
-		}
+
 		account, err := storage.GetCoreAccount()
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
@@ -89,7 +88,7 @@ var reshareUtxoCmd = &cobra.Command{
 		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
-				Share:     ecdsaShare,
+				Share:     share.MustEcdsaShare(),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			cli,

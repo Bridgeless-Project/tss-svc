@@ -27,7 +27,7 @@ type Session struct {
 
 	keygenParty tss.KeyGenParty
 
-	result *tss.LocalPartyData
+	result tss.Share
 	err    error
 
 	logger *logan.Entry
@@ -38,19 +38,18 @@ func NewSession(
 	parties []p2p.Party,
 	params session.Params,
 	logger *logan.Entry,
-	protocolID int,
 	group curve.Curve,
 ) *Session {
-	sessionId := session.GetKeygenSessionIdentifier(params.Id, protocolID)
-	switch protocolID {
-	case tss.ProtocolID_ECDSA:
+
+	sessionId := session.GetKeygenSessionIdentifier(params.Id, string(self.PreParams.Protocol()))
+	switch self.PreParams.Protocol(); {
+	case "ecdsa":
 		return &Session{
 			sessionId:    sessionId,
 			params:       params,
 			wg:           new(sync.WaitGroup),
 			partiesCount: len(parties),
 			keygenParty: tssProtocols.SelectKeyGenByProtocol(
-				tss.ProtocolID_ECDSA,
 				self,
 				parties,
 				params.Threshold,
@@ -61,14 +60,13 @@ func NewSession(
 			logger: logger,
 		}
 
-	case tss.ProtocolID_FROST:
+	case "frost":
 		return &Session{
 			sessionId:    sessionId,
 			params:       params,
 			wg:           new(sync.WaitGroup),
 			partiesCount: len(parties),
 			keygenParty: tssProtocols.SelectKeyGenByProtocol(
-				tss.ProtocolID_FROST,
 				self,
 				parties,
 				params.Threshold,
@@ -114,7 +112,7 @@ func (s *Session) run(ctx context.Context) {
 	s.err = errors.New("keygen session error occurred")
 }
 
-func (s *Session) WaitFor() (*tss.LocalPartyData, error) {
+func (s *Session) WaitFor() (tss.Share, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }

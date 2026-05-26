@@ -45,14 +45,14 @@ type SignParty struct {
 	logger *logan.Entry
 }
 
-func NewSignParty(self tss.LocalSignParty, sessionId string, group curve.Curve, logger *logan.Entry) *SignParty {
+func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
 	return &SignParty{
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 		self:      self,
 		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
 		sessionId: sessionId,
 		logger:    logger.WithField("protocol", "frost"),
-		group:     group,
+		group:     self.Share.Group(),
 	}
 }
 
@@ -80,7 +80,7 @@ func (p *SignParty) WithSigningData(data []byte) tss.SignParty {
 
 func (p *SignParty) Run(ctx context.Context) {
 	//  TODO add custom curve here
-	config, err := toTaprootConfig(p.self.FrostShare)
+	config, err := toTaprootConfig(p.self.Share.MustFrostShare())
 	if err != nil {
 		p.err = err
 		p.finish()

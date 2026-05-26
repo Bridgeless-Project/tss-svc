@@ -11,6 +11,7 @@ import (
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -38,14 +39,16 @@ var reshareMigrationCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
 		}
-		oldKeyShare, err := secrets.GetTemporaryTssShare()
-		if err != nil {
+
+		//TODO add frost support
+		oldKeyShare := tss2.NewEcdsaShare()
+		if secrets.GetTemporaryTssShare(oldKeyShare) != nil {
 			return errors.Wrap(err, "failed to get old key share")
 		}
 
 		self := tss.LocalSignParty{
 			Account:   *account,
-			Share:     oldKeyShare,
+			Share:     oldKeyShare.MustEcdsaShare(),
 			Threshold: int(params.Threshold),
 		}
 

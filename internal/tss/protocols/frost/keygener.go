@@ -17,14 +17,6 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
-	"github.com/taurusgroup/multi-party-sig/protocols/frost/sign"
-)
-
-type (
-	Config        = keygen.Config
-	TaprootConfig = keygen.TaprootConfig
-	Signature     = sign.Signature
 )
 
 type KeygenParty struct {
@@ -45,11 +37,12 @@ type KeygenParty struct {
 
 	msgs   chan tss.PartyMsg
 	once   sync.Once
-	config *keygen.Config
+	config *FrostShare
 	err    error
 	logger *logan.Entry
 }
 
+// TODO: remove the group and threshold here
 func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.Party, threshold int, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]party.ID, 0, len(parties)+1)
@@ -73,7 +66,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 		threshold: threshold,
 		logger:    logger.WithField("protocol", "frost"),
 		sessionId: sessionId,
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 	}
 }
 
@@ -94,7 +87,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 	p.logger.Info("keygen started")
 }
 
-func (p *KeygenParty) WaitFor() *tss.LocalPartyData {
+func (p *KeygenParty) WaitFor() tss.Share {
 	p.wg.Wait()
 	if p.err != nil || p.config == nil {
 		p.logger.Error("keygen failed to wait for keygen")
@@ -105,7 +98,7 @@ func (p *KeygenParty) WaitFor() *tss.LocalPartyData {
 
 	p.logger.Info("keygen finished")
 
-	return tss.NewLocalPartyData(p.config)
+	return p.config
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
@@ -188,13 +181,19 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 					return
 				}
 
-				config, ok := r.(*Config)
+				config, ok := r.(*frost.Config)
 				if !ok {
 					p.err = errors.New("unexpected frost keygen result type")
 					p.logger.WithField("type", r).Error("failed to get keygen result")
 					return
 				}
-				p.config = config
+				err = p.config.SetData(config)
+				if err != nil {
+					p.err = err
+					p.logger.WithError(err).Error("failed to set keygen result")
+					return
+				}
+
 				return
 			}
 
@@ -218,7 +217,6 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 				Data:      tssReq,
 			}
 
-			p.logger.Debug("sending request", submitReq)
 			to := msg.To
 			if to == "" {
 				p.broadcaster.Broadcast(&submitReq)

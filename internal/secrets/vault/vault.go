@@ -3,40 +3,28 @@ package vault
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	frostTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
 	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/fxamacker/cbor/v2"
 	client "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 )
 
 const (
-	valueKey          = "value"
-	protocolKey       = "protocol"
-	encodingKey       = "encoding"
 	keyPreParams      = "keygen_preparams"
 	keyAccount        = "core_account"
 	legacyKeyTssShare = "tss_share"
-	keyTssShareECDSA  = string(secrets.TssShareKeyECDSA)
-	keyTssShareFROST  = string(secrets.TssShareKeyFROST)
 
-	keyTlsCert  = "tls_cert"
-	tlsCertData = "cert_data"
-	tlsKeyData  = "key_data"
+	valueVaultKey = "value"
 
-	protocolFrost = "frost"
-	encodingCBOR  = "cbor-base64"
-
-	keyTssShareTemp = string(secrets.TssShareKeyTemporary)
+	tempShareKey = "temp"
+	keyTlsCert   = "tls_cert"
+	tlsCertData  = "cert_data"
+	tlsKeyData   = "key_data"
 )
 
 type Storage struct {
@@ -66,22 +54,6 @@ func (s *Storage) load(path string) (map[string]interface{}, error) {
 	return kvData.Data, nil
 }
 
-func (s *Storage) loadOptional(path string) (map[string]interface{}, bool, error) {
-	kvData, err := s.client.Get(context.Background(), path)
-	if err != nil {
-		if errors.Is(err, client.ErrSecretNotFound) {
-			return nil, false, nil
-		}
-
-		return nil, false, errors.Wrap(err, "failed to load data")
-	}
-	if kvData == nil {
-		return nil, false, nil
-	}
-
-	return kvData.Data, true, nil
-}
-
 func (s *Storage) store(path string, value map[string]interface{}) error {
 	if _, err := s.client.Put(context.Background(), path, value); err != nil {
 		return errors.Wrap(err, "failed to save data")
@@ -96,7 +68,7 @@ func (s *Storage) GetKeygenPreParams() (*keygen.LocalPreParams, error) {
 		return nil, errors.Wrap(err, "failed to load preparams")
 	}
 
-	val, ok := data[valueKey].(string)
+	val, ok := data[valueVaultKey].(string)
 	if !ok {
 		return nil, errors.New("preparams value not found")
 	}
@@ -115,51 +87,12 @@ func (s *Storage) SaveKeygenPreParams(params *keygen.LocalPreParams) error {
 		return errors.Wrap(err, "failed to marshal preparams")
 	}
 
-	return s.store(keyPreParams, map[string]interface{}{
-		valueKey: string(raw),
-	})
+	return s.SaveTssShare(keyPreParams, raw)
 }
 
-func (s *Storage) SaveTssShare(key secrets.TssShareKey, data interface{}) error {
-	return s.saveTssShare(string(key), data)
-}
-
-func (s *Storage) saveTssShare(key string, data interface{}) error {
-	switch share := data.(type) {
-	case *frostTss.Config:
-		return s.saveFrostShare(key, share)
-	case frostTss.Config:
-		return s.saveFrostShare(key, &share)
-	case *keygen.LocalPartySaveData:
-		return s.saveECDSAShare(key, share)
-	case keygen.LocalPartySaveData:
-		return s.saveECDSAShare(key, &share)
-	}
-
-	return errors.Errorf("unsupported tss share type %T", data)
-}
-
-func (s *Storage) saveECDSAShare(key string, data *keygen.LocalPartySaveData) error {
-	raw, err := json.Marshal(data)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal share data")
-	}
-
-	return s.store(key, map[string]interface{}{
-		valueKey: string(raw),
-	})
-}
-
-func (s *Storage) saveFrostShare(key string, data *frostTss.Config) error {
-	raw, err := cbor.Marshal(data)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal frost share data")
-	}
-
-	return s.store(key, map[string]interface{}{
-		protocolKey: protocolFrost,
-		encodingKey: encodingCBOR,
-		valueKey:    base64.StdEncoding.EncodeToString(raw),
+func (s *Storage) SaveTssShare(key secrets.TssShareKey, bytes []byte) error {
+	return s.store(string(key), map[string]interface{}{
+		valueVaultKey: bytes,
 	})
 }
 
@@ -169,7 +102,7 @@ func (s *Storage) GetCoreAccount() (*core.Account, error) {
 		return nil, errors.Wrap(err, "failed to load account")
 	}
 
-	val, ok := kvData[valueKey].(string)
+	val, ok := kvData[valueVaultKey].(string)
 	if !ok {
 		return nil, errors.New("account value not found")
 	}
@@ -184,111 +117,31 @@ func (s *Storage) GetCoreAccount() (*core.Account, error) {
 
 func (s *Storage) SaveCoreAccount(account *core.Account) error {
 	return s.store(keyAccount, map[string]interface{}{
-		valueKey: hexutil.Encode(account.PrivateKey().Bytes()),
+		valueVaultKey: hexutil.Encode(account.PrivateKey().Bytes()),
 	})
 }
 
 // TODO: test with resharing
-func (s *Storage) GetTssShare() (interface{}, int, error) {
-	shares, err := s.GetTssShares()
+func (s *Storage) LoadTssShare(share tss.Share) error {
+	data, err := s.load(share.GetVaultPath())
 	if err != nil {
-		return nil, -1, err
-	}
-	if shares.Share != nil {
-		return shares.Share, tss.ProtocolID_ECDSA, nil
-	}
-	if shares.FrostShare != nil {
-		return shares.FrostShare, tss.ProtocolID_FROST, nil
+		return errors.Wrap(err, "failed to load ecdsa share data")
 	}
 
-	return nil, -1, errors.New("tss share not found")
+	if err = share.SetVaultData(data); err != nil {
+		return errors.Wrap(err, "failed to set ecdsa share data")
+	}
+
+	return nil
 }
 
-func (s *Storage) GetTssShares() (*secrets.TssShares, error) {
-	result := new(secrets.TssShares)
-
-	ecdsaData, ok, err := s.loadOptional(keyTssShareECDSA)
+func (s *Storage) GetTemporaryTssShare(share tss.Share) error {
+	kvData, err := s.load(tempShareKey + "/" + share.GetVaultPath())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load ecdsa share data")
-	}
-	if ok {
-		result.Share, err = decodeECDSAShare(ecdsaData)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		legacyData, legacyOK, err := s.loadOptional(legacyKeyTssShare)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to load legacy ecdsa share data")
-		}
-		if legacyOK {
-			result.Share, err = decodeECDSAShare(legacyData)
-			if err != nil {
-				return nil, err
-			}
-		}
+		return errors.Wrap(err, "failed to load temporary share data")
 	}
 
-	frostData, ok, err := s.loadOptional(keyTssShareFROST)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load frost share data")
-	}
-	if ok {
-		result.FrostShare, err = decodeFrostShare(frostData)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if result.Share == nil && result.FrostShare == nil {
-		return nil, errors.New("no shares found")
-	}
-
-	return result, nil
-}
-
-func decodeECDSAShare(kvData map[string]interface{}) (*keygen.LocalPartySaveData, error) {
-	val, ok := kvData[valueKey].(string)
-	if !ok {
-		return nil, errors.New("share data not found")
-	}
-	data := new(keygen.LocalPartySaveData)
-	if err := json.Unmarshal([]byte(val), data); err != nil {
-		return nil, errors.Wrap(err, "failed to decode share data")
-	}
-
-	return data, nil
-}
-
-func decodeFrostShare(kvData map[string]interface{}) (*frostTss.Config, error) {
-	val, ok := kvData[valueKey].(string)
-	if !ok {
-		return nil, errors.New("share data not found")
-	}
-	if kvData[encodingKey] != encodingCBOR {
-		return nil, errors.New("unsupported frost share encoding")
-	}
-
-	raw, err := base64.StdEncoding.DecodeString(val)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode frost share data")
-	}
-
-	data := frost.EmptyConfig(curve.Secp256k1{})
-	if err = cbor.Unmarshal(raw, data); err != nil {
-		return nil, errors.Wrap(err, "failed to decode frost share data")
-	}
-
-	return data, nil
-}
-
-func (s *Storage) GetTemporaryTssShare() (*keygen.LocalPartySaveData, error) {
-	kvData, err := s.load(keyTssShareTemp)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load temporary share data")
-	}
-
-	return decodeECDSAShare(kvData)
+	return share.SetVaultData(kvData)
 }
 
 func (s *Storage) GetLocalPartyTlsCertificate() (*tls.Certificate, error) {

@@ -79,7 +79,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	out := make(chan bnb.Message, tss.OutChannelSize)
 	end := make(chan *common.SignatureData, tss.EndChannelSize)
 
-	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Share, out, end)
+	p.party = signing.NewLocalParty(new(big.Int).SetBytes(p.data), params, *p.self.Share.MustEcdsaShare(), out, end)
 
 	p.wg.Add(3)
 

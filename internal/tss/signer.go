@@ -6,15 +6,12 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/bnb-chain/tss-lib/v3/common"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
-	frostkeygen "github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 )
 
 type LocalSignParty struct {
-	Account    core.Account
-	Share      *keygen.LocalPartySaveData
-	FrostShare *frostkeygen.Config
-	Threshold  int
+	Account   core.Account
+	Share     Share
+	Threshold int
 }
 
 type SignParty interface {
