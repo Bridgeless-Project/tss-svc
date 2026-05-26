@@ -11,6 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	tssKeygen "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
@@ -127,8 +128,8 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 		return r.listenForPubkeyConfirmation(ctx, state)
 	}
 
-	preparams, err := r.secrets.GetKeygenPreParams()
-	if err != nil {
+	preparams := ecdsaTss.NewEcdsaPreParams()
+	if err := r.secrets.GetKeygenPreParams(preparams); err != nil {
 		return errors.Wrap(err, "failed to get preparams")
 	}
 	account, err := r.secrets.GetCoreAccount()
@@ -138,14 +139,13 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 
 	keygenSession := tssKeygen.NewSession(
 		tss.LocalKeygenParty{
-			PreParams: *preparams,
+			PreParams: preparams,
 			Address:   account.CosmosAddress(),
 			Threshold: int(state.Threshold),
 		},
 		r.parties,
 		session.Params{Id: int64(state.Epoch)},
 		r.logger,
-		tss.ProtocolID_ECDSA,
 		nil, // don't need to set the curve for ECDSA
 	)
 	r.sessionManager.Add(keygenSession)
@@ -230,8 +230,11 @@ func (r *KeygenHandler) saveKeyShare(result tss.Share) error {
 	}
 
 	if r.oldEpochMember {
-		return errors.Wrap(r.secrets.SaveTssShare(secrets.TssShareKeyTemporary, bytes), "failed to save temporary key share")
+		return errors.Wrap(r.secrets.SaveTssShare(
+			secrets.TssShareKeyTemporary+secrets.TssShareKey(result.GetVaultPath()),
+			bytes,
+		), "failed to save temporary key share")
 	}
 
-	return errors.Wrap(r.secrets.SaveTssShare(secrets.TssShareKeyECDSA, bytes), "failed to save key share")
+	return errors.Wrap(r.secrets.SaveTssShare(secrets.TssShareKey(result.GetVaultPath()), bytes), "failed to save key share")
 }

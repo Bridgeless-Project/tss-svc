@@ -42,47 +42,39 @@ func NewSession(
 ) *Session {
 
 	sessionId := session.GetKeygenSessionIdentifier(params.Id, string(self.PreParams.Protocol()))
-	switch self.PreParams.Protocol(); {
-	case "ecdsa":
-		return &Session{
-			sessionId:    sessionId,
-			params:       params,
-			wg:           new(sync.WaitGroup),
-			partiesCount: len(parties),
-			keygenParty: tssProtocols.SelectKeyGenByProtocol(
-				self,
-				parties,
-				params.Threshold,
-				sessionId,
-				group,
-				logger.WithField("component", "keygen_party"),
-			),
-			logger: logger,
-		}
+	keygenParty := tssProtocols.SelectKeyGenByProtocol(
+		self.PreParams.Protocol(),
+		self,
+		parties,
+		params.Threshold,
+		sessionId,
+		group,
+		logger.WithField("component", "keygen_party"),
+	)
 
-	case "frost":
-		return &Session{
-			sessionId:    sessionId,
-			params:       params,
-			wg:           new(sync.WaitGroup),
-			partiesCount: len(parties),
-			keygenParty: tssProtocols.SelectKeyGenByProtocol(
-				self,
-				parties,
-				params.Threshold,
-				sessionId,
-				group,
-				logger.WithField("component", "keygen_party"),
-			),
-			logger: logger,
-		}
-
-	default:
-		return new(Session)
+	s := &Session{
+		sessionId:    sessionId,
+		params:       params,
+		wg:           new(sync.WaitGroup),
+		partiesCount: len(parties),
+		keygenParty:  keygenParty,
+		logger:       logger,
 	}
+	if keygenParty == nil {
+		s.err = errors.Errorf("unsupported keygen protocol %q", self.PreParams.Protocol())
+	}
+
+	return s
 }
 
 func (s *Session) Run(ctx context.Context) error {
+	if s.err != nil {
+		return s.err
+	}
+	if s.keygenParty == nil {
+		return errors.New("keygen party is not configured")
+	}
+
 	s.logger.Info("keygen session started")
 
 	s.wg.Add(1)

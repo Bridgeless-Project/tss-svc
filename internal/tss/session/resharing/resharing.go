@@ -283,10 +283,13 @@ func (s *Session) manageShares(state *resharingTypes.State) error {
 		return errors.Wrap(err, "failed to marshal share")
 	}
 
-	if err = s.secrets.SaveTssShare(secrets.TssShareKeyECDSA, newShareBytes); err != nil {
+	if err = s.secrets.SaveTssShare(secrets.TssShareKey(state.NewShare.GetVaultPath()), newShareBytes); err != nil {
 		return errors.Wrap(err, "failed to save new TSS share")
 	}
-	if err = s.secrets.SaveTssShare(secrets.TssShareKeyTemporary, oldShareBytes); err != nil {
+	if err = s.secrets.SaveTssShare(
+		secrets.TssShareKeyTemporary+secrets.TssShareKey(state.NewShare.GetVaultPath()),
+		oldShareBytes,
+	); err != nil {
 		return errors.Wrap(err, "failed to save old TSS share")
 	}
 	s.logger.Info("successfully managed TSS shares")

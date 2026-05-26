@@ -17,11 +17,13 @@ type TssShares struct {
 
 type TssShareKey string
 
-type Storage interface {
+const (
+	TssShareKeyTemporary TssShareKey = "temp/tss_shares/"
+)
 
-	// TODO: make frost friendly
-	GetKeygenPreParams() (*keygen.LocalPreParams, error)
-	SaveKeygenPreParams(params *keygen.LocalPreParams) error
+type Storage interface {
+	GetKeygenPreParams(params tss.PreParams) error
+	SaveKeygenPreParams(params tss.PreParams) error
 
 	GetCoreAccount() (*core.Account, error)
 	SaveCoreAccount(account *core.Account) error

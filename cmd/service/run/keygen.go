@@ -11,6 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -42,9 +43,8 @@ var keygenCmd = &cobra.Command{
 
 		storage := cfg.SecretsStorage()
 
-		// TODO do we need the preparams for frost?
-		preParams, err := storage.GetKeygenPreParams()
-		if err != nil {
+		preParams := ecdsaTss.NewEcdsaPreParams()
+		if err := storage.GetKeygenPreParams(preParams); err != nil {
 			return errors.Wrap(err, "failed to get keygen pre-parameters")
 		}
 		account, err := storage.GetCoreAccount()
@@ -70,20 +70,18 @@ var keygenCmd = &cobra.Command{
 			parties,
 			cfg.TssSessionParams(),
 			cfg.Log().WithField("component", "keygen_session"),
-			tss.ProtocolID_FROST,
 			curve.Secp256k1{}, // TODO implement custom curve for ZCash
 		)
 
 		ecdsaSeession := keygenSession.NewSession(
 			tss.LocalKeygenParty{
-				PreParams: *preParams,
+				PreParams: preParams,
 				Address:   account.CosmosAddress(),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			parties,
 			cfg.TssSessionParams(),
 			cfg.Log().WithField("component", "keygen_session"),
-			tss.ProtocolID_ECDSA,
 			curve.Secp256k1{},
 		)
 		sessionManager := p2p.NewSessionManager(frostSeession, ecdsaSeession)

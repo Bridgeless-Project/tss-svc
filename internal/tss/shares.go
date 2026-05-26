@@ -8,6 +8,11 @@ import (
 
 type ProtocolType string
 
+const (
+	ProtocolID_ECDSA ProtocolType = "ecdsa"
+	ProtocolID_FROST ProtocolType = "frost"
+)
+
 type Share interface {
 	Protocol() ProtocolType
 	MustEcdsaShare() *ecdsa.LocalPartySaveData
@@ -30,7 +35,7 @@ type Share interface {
 type PreParams interface {
 	Protocol() ProtocolType
 	MustEcdsaPreParams() ecdsa.LocalPreParams
-	MustFrostPreParams() frost.Config
+	MustFrostPreParams() *frost.Config
 	SetData(data any) error
 
 	Marshal() ([]byte, error)

@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
-	tss "github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
+	rootTss "github.com/Bridgeless-Project/tss-svc/internal/tss"
+	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -19,9 +21,9 @@ func init() {
 }
 
 var preparamsCmd = &cobra.Command{
-	Use:   "preparams",
+	Use:   "preparams [protocol]",
 	Short: "Generates pre-parameters for the TSS protocol",
-	Args:  cobra.NoArgs,
+	Args:  cobra.ExactArgs(1),
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")
@@ -30,23 +32,39 @@ var preparamsCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Generating pre-parameters...")
+		switch rootTss.ProtocolType(args[0]) {
+		case rootTss.ProtocolID_ECDSA:
+			fmt.Println("Generating ECDSA pre-parameters...")
 
-		params, err := tss.GeneratePreParams(defaultGenerationDeadline)
-		if err != nil {
-			return errors.Wrap(err, "failed to generate pre-parameters")
+			params, err := keygen.GeneratePreParams(defaultGenerationDeadline)
+			if err != nil {
+				return errors.Wrap(err, "failed to generate pre-parameters")
+			}
+			if !params.ValidateWithProof() {
+				return errors.New("generated pre-parameters are invalid, please try again")
+			}
+
+			fmt.Println("ECDSA pre-parameters generated successfully")
+
+			pr := ecdsaTss.NewEcdsaPreParams()
+			err = pr.SetData(params)
+			if err != nil {
+				return errors.Wrap(err, "failed to set preparams")
+			}
+
+			return storePreParams(cmd, pr)
+		case rootTss.ProtocolID_FROST:
+
+			// TODO: add preparams here
+			fmt.Println("FROST keygen does not require pre-parameters")
+			return nil
+		default:
+			return errors.Errorf("unsupported TSS protocol: %s", args[0])
 		}
-		if !params.ValidateWithProof() {
-			return errors.New("generated pre-parameters are invalid, please try again")
-		}
-
-		fmt.Println("Pre-parameters generated successfully")
-
-		return storePreParams(cmd, params)
 	},
 }
 
-func storePreParams(cmd *cobra.Command, params *tss.LocalPreParams) error {
+func storePreParams(cmd *cobra.Command, params rootTss.PreParams) error {
 	raw, err := json.Marshal(params)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal pre-parameters")
@@ -66,7 +84,7 @@ func storePreParams(cmd *cobra.Command, params *tss.LocalPreParams) error {
 		}
 
 		storage := config.SecretsStorage()
-		if err := storage.SaveKeygenPreParams(params); err != nil {
+		if err = storage.SaveKeygenPreParams(params); err != nil {
 			return errors.Wrap(err, "failed to save pre-parameters to vault")
 		}
 	}

@@ -2,7 +2,6 @@ package signing
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -23,8 +22,7 @@ type SignaturesDistributor struct {
 	distributor core.Address
 	self        core.Address
 	sigData     [][]byte
-	sigPubKey   *ecdsa.PublicKey
-	frostPubKey []byte
+	pubKey      []byte
 
 	broadcaster *broadcast.ReliableBroadcaster[tss.Signatures]
 
@@ -62,25 +60,10 @@ func NewSignaturesDistributor(
 		initSigChan:     make(chan broadcast.ReliableBroadcastMsg[tss.Signatures], 1),
 		initSigAccepted: atomic.Bool{},
 
+		pubKey: self.Share.PubKey(), // TODO: validate this stage
 		logger: logger,
 	}
 
-	if self.FrostShare != nil {
-		pubKey, err := tss.FrostPubKey(self.FrostShare)
-		if err != nil {
-			result.err = errors.Wrap(err, "failed to prepare FROST signature verifier")
-		}
-		result.frostPubKey = pubKey
-
-		return result
-	}
-
-	if self.Share != nil {
-		result.sigPubKey = self.Share.ECDSAPub.ToECDSAPubKey()
-		return result
-	}
-
-	result.err = errors.New("missing tss share")
 	return result
 }
 
@@ -169,12 +152,9 @@ func (s *SignaturesDistributor) validateSignatures() error {
 	return nil
 }
 
+// TODO: it's not a TSS signature
 func (s *SignaturesDistributor) verifySignature(data []byte, signature *common.SignatureData) bool {
-	if s.frostPubKey != nil {
-		return tss.VerifyFrost(s.frostPubKey, data, signature)
-	}
-
-	return tss.Verify(s.sigPubKey, data, signature)
+	return tss.Verify(s.pubKey, data, signature)
 }
 
 func (s *SignaturesDistributor) WaitFor() (*tss.Signatures, error) {

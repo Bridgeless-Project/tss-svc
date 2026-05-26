@@ -3,12 +3,10 @@ package vault
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	client "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
@@ -62,32 +60,26 @@ func (s *Storage) store(path string, value map[string]interface{}) error {
 	return nil
 }
 
-func (s *Storage) GetKeygenPreParams() (*keygen.LocalPreParams, error) {
-	data, err := s.load(keyPreParams)
+func (s *Storage) GetKeygenPreParams(params tss.PreParams) error {
+	data, err := s.load(params.GetVaultPath())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load preparams")
+		return errors.Wrap(err, "failed to load preparams")
 	}
 
-	val, ok := data[valueVaultKey].(string)
-	if !ok {
-		return nil, errors.New("preparams value not found")
+	if err = params.SetVaultData(data); err != nil {
+		return errors.Wrap(err, "failed to set preparams data")
 	}
 
-	params := new(keygen.LocalPreParams)
-	if err = json.Unmarshal([]byte(val), params); err != nil {
-		return nil, errors.Wrap(err, "failed to decode preparams")
-	}
-
-	return params, nil
+	return nil
 }
 
-func (s *Storage) SaveKeygenPreParams(params *keygen.LocalPreParams) error {
-	raw, err := json.Marshal(params)
+func (s *Storage) SaveKeygenPreParams(params tss.PreParams) error {
+	raw, err := params.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal preparams")
 	}
 
-	return s.SaveTssShare(keyPreParams, raw)
+	return s.SaveTssShare(secrets.TssShareKey(params.GetVaultPath()), raw)
 }
 
 func (s *Storage) SaveTssShare(key secrets.TssShareKey, bytes []byte) error {
