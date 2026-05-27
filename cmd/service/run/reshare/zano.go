@@ -70,7 +70,7 @@ var reshareZanoCmd = &cobra.Command{
 		session := zanoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
-				Share:     share.MustEcdsaShare(),
+				Share:     share,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			client,

@@ -10,7 +10,6 @@ import (
 )
 
 func SelectKeyGenByProtocol(
-	protocol tss.ProtocolType,
 	self tss.LocalKeygenParty,
 	parties []p2p.Party,
 	threshold int,
@@ -18,7 +17,7 @@ func SelectKeyGenByProtocol(
 	group curve.Curve,
 	logger *logan.Entry,
 ) tss.KeyGenParty {
-	switch protocol {
+	switch self.PreParams.Protocol() {
 	case tss.ProtocolID_ECDSA:
 		return bnb.NewKeygenParty(self, parties, sessionId, logger)
 	case tss.ProtocolID_FROST:

@@ -149,7 +149,7 @@ func (s *Session) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 
-		s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.signaturesDistributor = signing.NewSignaturesDistributor(
 			s.Id(),
 			s.parties,

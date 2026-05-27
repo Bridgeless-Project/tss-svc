@@ -5,6 +5,7 @@ import (
 	ecdsa "github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -64,8 +65,13 @@ func (f *FrostShare) Unmarshal(data []byte) error {
 	return nil
 }
 
+// TODO: do not use taproot for ZCash
 func (f *FrostShare) Verify(signature, data []byte) (bool, error) {
-	return false, nil
+	if len(signature) != taproot.SignatureLen && signature == nil {
+		return false, errors.New("signature is invalid")
+	}
+
+	return taproot.PublicKey(f.PubKey()).Verify(signature, data), nil
 }
 
 func (f *FrostShare) PubKey() []byte {

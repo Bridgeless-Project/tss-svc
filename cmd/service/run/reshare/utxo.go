@@ -88,7 +88,7 @@ var reshareUtxoCmd = &cobra.Command{
 		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
-				Share:     share.MustEcdsaShare(),
+				Share:     share,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
 			cli,

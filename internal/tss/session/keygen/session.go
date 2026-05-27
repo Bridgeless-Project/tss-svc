@@ -40,10 +40,8 @@ func NewSession(
 	logger *logan.Entry,
 	group curve.Curve,
 ) *Session {
-
 	sessionId := session.GetKeygenSessionIdentifier(params.Id, string(self.PreParams.Protocol()))
 	keygenParty := tssProtocols.SelectKeyGenByProtocol(
-		self.PreParams.Protocol(),
 		self,
 		parties,
 		params.Threshold,

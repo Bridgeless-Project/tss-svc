@@ -71,7 +71,7 @@ func NewSession(
 		parties: parties,
 
 		client: client,
-		signingParty: tssProtocols.SelectSignByShare(
+		signingParty: tssProtocols.SelectSignByProtocol(
 			self,
 			session.GetReshareSessionIdentifier(client.ChainId(),
 				params.SessionParams.Id),
@@ -90,7 +90,7 @@ func NewSession(
 		),
 		consensusMechanism: consensusMechanism,
 		finalizer: NewFinalizer(
-			client, self.Share.ECDSAPub.ToECDSAPubKey(),
+			client, self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 			logger.WithField("phase", "finalization"),
 			self.Account.CosmosAddress() == leader,
 		),
@@ -161,7 +161,7 @@ func (s *Session) run(ctx context.Context) {
 		}
 
 		s.mu.Lock()
-		s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.mu.Unlock()
 
 		select {

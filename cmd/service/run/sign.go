@@ -17,13 +17,11 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/config"
-	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/core/subscriber"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	pg "github.com/Bridgeless-Project/tss-svc/internal/db/postgres"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
-	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
@@ -36,10 +34,8 @@ import (
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	frostkeygen "github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 )
@@ -174,7 +170,21 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess, err := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector, depositAcceptorSession)
+			sess, err := configureSigningSession(
+				sessParams,
+				parties,
+				tss.LocalSignParty{
+					Account:   *account,
+					Threshold: sessParams.Threshold,
+					Share:     share,
+				},
+				dtb,
+				fetcher,
+				logger,
+				client,
+				connector,
+				depositAcceptorSession,
+			)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("failed to configure signing session for chain %s", client.ChainId()))
 			}
@@ -230,8 +240,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 func configureSigningSession(
 	params session.SigningParams,
 	parties []p2p.Party,
-	account core.Account,
-	shares *secrets.TssShares,
+	localParty tss.LocalSignParty,
 	db db.DepositsQ,
 	fetcher *deposit.Fetcher,
 	logger *logan.Entry,
@@ -252,16 +261,15 @@ func configureSigningSession(
 		}
 	}
 
-	share, _, err := selectShareForChain(shares, client.Type())
-	if err != nil {
-		return nil, err
-	}
-	localParty := newLocalSignParty(account, share, params.Threshold)
-
 	switch client.Type() {
 	case chain.TypeEVM:
 		evmClient := client.(*evm.Client)
 		switch {
+		case evmClient.IsCentralized():
+			return evmCentralized.NewSession(
+				evmClient, db,
+				logger.WithField("component", "centralized_signing_session"),
+			), nil
 		case evmClient.IsStandart():
 			evmSession := evmSigning.NewSession(
 				localParty,
@@ -355,46 +363,4 @@ func configureSigningSession(
 	default:
 		return nil, errors.Errorf("unsupported chain type: %s", client.Type())
 	}
-}
-
-func newLocalSignParty(account core.Account, share interface{}, threshold int) tss.LocalSignParty {
-	localParty := tss.LocalSignParty{
-		Account:   account,
-		Threshold: threshold,
-	}
-
-	switch typedShare := share.(type) {
-	case *keygen.LocalPartySaveData:
-		localParty.Share = typedShare
-	case keygen.LocalPartySaveData:
-		localParty.Share = &typedShare
-	case *frostkeygen.Config:
-		localParty.FrostShare = typedShare
-	case frostkeygen.Config:
-		localParty.FrostShare = &typedShare
-	default:
-		panic(errors.Errorf("unsupported tss share type %T", share))
-	}
-
-	return localParty
-}
-
-func selectShareForChain(shares *secrets.TssShares, chainType chain.Type) (interface{}, int, error) {
-	if shares == nil {
-		return nil, -1, errors.New("shares are nil")
-	}
-
-	if chainType == chain.TypeOther {
-		if shares.FrostShare == nil {
-			return nil, -1, errors.New("FROST share is required for test signing")
-		}
-
-		return shares.FrostShare, tss.ProtocolID_FROST, nil
-	}
-
-	if shares.Share == nil {
-		return nil, -1, errors.Errorf("ECDSA share is required for %s signing", chainType)
-	}
-
-	return shares.Share, tss.ProtocolID_ECDSA, nil
 }

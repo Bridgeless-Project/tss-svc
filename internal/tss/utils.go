@@ -4,11 +4,10 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/pkg/errors"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 	frostkeygen "github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
-	"github.com/bnb-chain/tss-lib/v3/common"
 )
 
 func Verify(pk *ecdsa.PublicKey, inputData []byte, signature *common.SignatureData) bool {
@@ -33,17 +32,4 @@ func FrostPubKey(share *frostkeygen.Config) ([]byte, error) {
 	}
 
 	return publicKey.XBytes(), nil
-}
-
-func VerifyFrost(pubKey []byte, inputData []byte, signature *common.SignatureData) bool {
-	if len(pubKey) == 0 || signature == nil {
-		return false
-	}
-
-	// TODO: do not use taproot for ZCash
-	if len(signature.Signature) != taproot.SignatureLen {
-		return false
-	}
-
-	return taproot.PublicKey(pubKey).Verify(signature.Signature, inputData)
 }

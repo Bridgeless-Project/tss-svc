@@ -134,7 +134,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 
 	self := tss.LocalSignParty{
 		Account:   state.Account,
-		Share:     state.OldShare.MustEcdsaShare(),
+		Share:     state.OldShare,
 		Threshold: s.oldEpochParams.Threshold,
 	}
 
@@ -160,7 +160,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 					bridgeTypes.ChainType_EVM,
 					evm.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
 					evm.NewRemoveSignerOperation(
-						self.Share.ECDSAPub.ToECDSAPubKey(),
+						self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 						state.GlobalStartTime,
 						state.EpochSupportDuration,
 					),
@@ -179,7 +179,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 					bridgeTypes.ChainType_SOLANA,
 					solana.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime, client.BridgeId()),
 					solana.NewRemoveSignerOperation(
-						self.Share.ECDSAPub.ToECDSAPubKey(),
+						self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 						state.GlobalStartTime,
 						state.EpochSupportDuration,
 						client.BridgeId()),
@@ -196,7 +196,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 					bridgeTypes.ChainType_TON,
 					ton.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
 					ton.NewRemoveSignerOperation(
-						self.Share.ECDSAPub.ToECDSAPubKey(),
+						self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 						state.GlobalStartTime,
 						state.EpochSupportDuration,
 					),

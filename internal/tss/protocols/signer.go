@@ -10,9 +10,9 @@ import (
 func SelectSignByProtocol(self tss.LocalSignParty, sessionId string, logger *logan.Entry) tss.SignParty {
 
 	switch self.Share.Protocol() {
-	case "frost":
+	case tss.ProtocolID_FROST:
 		return frost.NewSignParty(self, sessionId, logger)
-	case "ecdsa":
+	case tss.ProtocolID_ECDSA:
 		return bnb.NewSignParty(self, sessionId, logger)
 	}
 

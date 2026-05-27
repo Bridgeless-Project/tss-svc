@@ -48,7 +48,7 @@ var reshareMigrationCmd = &cobra.Command{
 
 		self := tss.LocalSignParty{
 			Account:   *account,
-			Share:     oldKeyShare.MustEcdsaShare(),
+			Share:     oldKeyShare,
 			Threshold: int(params.Threshold),
 		}
 

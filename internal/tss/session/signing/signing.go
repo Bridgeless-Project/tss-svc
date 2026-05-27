@@ -47,9 +47,9 @@ func NewSession(
 	return &Session{
 		sessionId: sessionId,
 		params:    params,
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 		logger:    logger,
-		signingParty: tssProtocols.SelectSignByShare(self, sessionId, logger).
+		signingParty: tssProtocols.SelectSignByProtocol(self, sessionId, logger).
 			WithSigningData(params.SigningData).
 			WithParties(parties),
 	}

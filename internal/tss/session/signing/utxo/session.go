@@ -120,13 +120,13 @@ func (s *Session) Build() error {
 	s.signConsMechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.UtxoWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewUtxoConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
+		withdrawal.NewUtxoConstructor(s.client, s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey()),
 		s.fetcher,
 	)
 
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
-		s.client.UtxoHelper().P2pkhAddress(s.self.Share.ECDSAPub.ToECDSAPubKey()),
+		s.client.UtxoHelper().P2pkhAddress(s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey()),
 		s.client.ConsolidationParams(),
 	)
 
@@ -143,7 +143,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
-		s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.signConsParty = consensus.New[withdrawal.UtxoWithdrawalData](
 			consensus.LocalConsensusParty{
@@ -158,7 +158,7 @@ func (s *Session) Run(ctx context.Context) error {
 		)
 		s.signFinalizer = NewFinalizer(
 			s.db, s.coreConnector, s.client,
-			s.self.Share.ECDSAPub.ToECDSAPubKey(),
+			s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "finalizing"),
 			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
@@ -175,7 +175,7 @@ func (s *Session) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.consolidationFinalizer = resharingConsensus.NewFinalizer(
-			s.client, s.self.Share.ECDSAPub.ToECDSAPubKey(),
+			s.client, s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "finalizing"),
 			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
@@ -287,7 +287,7 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 			}
 
 			s.mu.Lock()
-			s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 			s.mu.Unlock()
 
 			select {
@@ -384,7 +384,7 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 			}
 
 			s.mu.Lock()
-			s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 			s.mu.Unlock()
 
 			select {

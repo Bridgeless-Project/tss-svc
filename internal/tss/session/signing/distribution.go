@@ -2,6 +2,7 @@ package signing
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -10,7 +11,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -20,9 +20,9 @@ type SignaturesDistributor struct {
 
 	sessionId   string
 	distributor core.Address
-	self        core.Address
+	self        tss.LocalSignParty // store the whole self struct instead of address only
 	sigData     [][]byte
-	pubKey      []byte
+	sigPubKey   ecdsa.PublicKey
 
 	broadcaster *broadcast.ReliableBroadcaster[tss.Signatures]
 
@@ -42,11 +42,11 @@ func NewSignaturesDistributor(
 	distributor core.Address,
 	logger *logan.Entry,
 ) *SignaturesDistributor {
-	result := &SignaturesDistributor{
+	return &SignaturesDistributor{
 		wg:          &sync.WaitGroup{},
 		sessionId:   sessionId,
 		distributor: distributor,
-		self:        self.Account.CosmosAddress(),
+		self:        self,
 
 		broadcaster: broadcast.NewReliable[tss.Signatures](
 			sessionId,
@@ -60,11 +60,8 @@ func NewSignaturesDistributor(
 		initSigChan:     make(chan broadcast.ReliableBroadcastMsg[tss.Signatures], 1),
 		initSigAccepted: atomic.Bool{},
 
-		pubKey: self.Share.PubKey(), // TODO: validate this stage
 		logger: logger,
 	}
-
-	return result
 }
 
 func (s *SignaturesDistributor) WithSignatures(signatures *tss.Signatures) *SignaturesDistributor {
@@ -80,7 +77,7 @@ func (s *SignaturesDistributor) WithSigData(sigData [][]byte) *SignaturesDistrib
 func (s *SignaturesDistributor) Run(ctx context.Context) {
 	s.wg.Add(1)
 
-	if s.self == s.distributor {
+	if s.self.Account.CosmosAddress() == s.distributor {
 		go s.distribute()
 	} else {
 		go s.receive(ctx)
@@ -132,29 +129,25 @@ func (s *SignaturesDistributor) receive(ctx context.Context) {
 }
 
 func (s *SignaturesDistributor) validateSignatures() error {
-	if s.err != nil {
-		return s.err
-	}
 	if s.signatures == nil {
 		return errors.New("no signatures received")
 	}
-	if len(s.signatures.GetData().([]*common.SignatureData)) != len(s.sigData) {
+	if len(s.signatures.Data) != len(s.sigData) {
 		return errors.New("received signatures count does not match expected")
 	}
 
-	// TODO use some common data
-	for i, signature := range s.signatures.GetData().([]*common.SignatureData) {
-		if !s.verifySignature(s.sigData[i], signature) {
-			return errors.New("got invalid signature")
+	// verify signature with appropriate share: frost or ecdsa
+	for i, signature := range s.signatures.Data {
+		ok, err := s.self.Share.Verify(signature.Signature, s.sigData[i])
+		if err != nil {
+			return errors.Wrap(err, "failed to verify signature")
+		}
+		if !ok {
+			return errors.New("invalid signature")
 		}
 	}
 
 	return nil
-}
-
-// TODO: it's not a TSS signature
-func (s *SignaturesDistributor) verifySignature(data []byte, signature *common.SignatureData) bool {
-	return tss.Verify(s.pubKey, data, signature)
 }
 
 func (s *SignaturesDistributor) WaitFor() (*tss.Signatures, error) {

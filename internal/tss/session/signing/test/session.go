@@ -102,13 +102,13 @@ func NewSession(
 }
 
 func (s *Session) Build() error {
-	if s.self.FrostShare == nil {
-		return errors.New("test signing session requires FROST share")
-	}
-
-	if _, err := tss.FrostPubKey(s.self.FrostShare); err != nil {
-		return errors.Wrap(err, "invalid FROST share")
-	}
+	//if s.self.FrostShare == nil {
+	//	return errors.New("test signing session requires FROST share")
+	//}
+	//
+	//if _, err := tss.FrostPubKey(s.self.FrostShare); err != nil {
+	//	return errors.Wrap(err, "invalid FROST share")
+	//}
 
 	return nil
 }
@@ -158,7 +158,7 @@ func (s *Session) prepareRound() {
 		mockConsensusMechanism{},
 		s.logger.WithField("phase", "consensus"),
 	)
-	s.signingParty = tssProtocols.SelectSignByShare(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+	s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 	s.signaturesDistributor = signing.NewSignaturesDistributor(
 		s.Id(),
 		s.parties,
@@ -227,12 +227,13 @@ func (s *Session) printResult(data MockSigningData, signatures *tss.Signatures) 
 		return errors.New("missing mock signing result")
 	}
 
-	pubKey, err := tss.FrostPubKey(s.self.FrostShare)
+	signature := signatures.Data[0]
+
+	ok, err := s.self.Share.Verify(signature.Signature, data.Hash)
 	if err != nil {
-		return errors.Wrap(err, "failed to get FROST public key")
+		return err
 	}
 
-	signature := signatures.Data[0]
 	output := struct {
 		Protocol  string `json:"protocol"`
 		Curve     string `json:"curve"`
@@ -246,9 +247,8 @@ func (s *Session) printResult(data MockSigningData, signatures *tss.Signatures) 
 		Curve:     "secp256k1",
 		Message:   data.Message,
 		Hash:      hexutil.Encode(data.Hash),
-		PubKey:    hexutil.Encode(pubKey),
 		Signature: hexutil.Encode(signature.Signature),
-		Verified:  tss.VerifyFrost(pubKey, data.Hash, signature),
+		Verified:  ok,
 	}
 
 	if !output.Verified {
