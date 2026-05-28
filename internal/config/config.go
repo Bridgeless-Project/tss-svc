@@ -1,8 +1,9 @@
 package config
 
 import (
+	api "github.com/Bridgeless-Project/tss-svc/api/config"
 	chain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/config"
-	"github.com/Bridgeless-Project/tss-svc/internal/config/bridge"
+	bridge "github.com/Bridgeless-Project/tss-svc/internal/bridge/config"
 	connector "github.com/Bridgeless-Project/tss-svc/internal/core/connector/config"
 	subscriber "github.com/Bridgeless-Project/tss-svc/internal/core/subscriber/config"
 	p2p "github.com/Bridgeless-Project/tss-svc/internal/p2p/config"
@@ -18,7 +19,7 @@ type Config interface {
 	comfig.Logger
 	pgdb.Databaser
 	vault.Secreter
-	Listenerer
+	api.Listenerer
 	p2p.PartiesConfigurator
 	tss.SessionParamsConfigurator
 	chain.Chainer
@@ -34,7 +35,7 @@ type config struct {
 	comfig.Logger
 	pgdb.Databaser
 	vault.Secreter
-	Listenerer
+	api.Listenerer
 	p2p.PartiesConfigurator
 	tss.SessionParamsConfigurator
 	chain.Chainer
@@ -52,7 +53,7 @@ func New(getter kv.Getter) Config {
 		Secreter:                  secreter,
 		Logger:                    comfig.NewLogger(getter, comfig.LoggerOpts{}),
 		Databaser:                 pgdb.NewDatabaser(getter),
-		Listenerer:                NewListenerer(getter),
+		Listenerer:                api.NewListenerer(getter),
 		PartiesConfigurator:       p2p.NewPartiesConfigurator(getter, secreter.SecretsStorage()),
 		ParamsConfigurator:        resharing.NewParamsConfigurator(getter, secreter.SecretsStorage()),
 		SessionParamsConfigurator: tss.NewSessionParamsConfigurator(getter),
