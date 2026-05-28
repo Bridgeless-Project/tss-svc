@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
@@ -15,6 +16,7 @@ import (
 
 type Client struct {
 	Chain
+	share tss.Share
 	*DepositDecoder
 }
 
@@ -36,13 +38,21 @@ func NewBridgeClient(chain Chain) *Client {
 	depositDecoder := NewDepositDecoder(*chain.BridgeContractAddress, chain.RPC.IsTestnet)
 
 	return &Client{
-		chain,
-		depositDecoder,
+		Chain:          chain,
+		DepositDecoder: depositDecoder,
 	}
 }
 
 func (c *Client) ChainId() string {
 	return c.Id
+}
+
+func (c *Client) Share() tss.Share {
+	return c.share
+}
+
+func (c *Client) SetShare(share tss.Share) {
+	c.share = share
 }
 
 func (c *Client) Type() chain.Type {

@@ -11,6 +11,7 @@ import (
 	utxochain "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/chain"
 	utxo "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
@@ -26,11 +27,13 @@ type chainer struct {
 	chainsOnce  comfig.Once
 	clientsOnce comfig.Once
 	getter      kv.Getter
+	secrets     secrets.Storage
 }
 
-func NewChainer(getter kv.Getter) Chainer {
+func NewChainer(getter kv.Getter, secrets secrets.Storage) Chainer {
 	return &chainer{
-		getter: getter,
+		getter:  getter,
+		secrets: secrets,
 	}
 }
 
@@ -56,6 +59,16 @@ func (c *chainer) Clients() []chain.Client {
 			default:
 				panic(errors.Errorf("unsupported chain type: %s", ch.Type))
 			}
+
+			// set up shares
+			share, err := ch.Share()
+			if err != nil {
+				panic(errors.Wrapf(err, "failed to create TSS share for chain %s", ch.Id))
+			}
+			if err = c.secrets.LoadTssShare(share); err != nil {
+				panic(errors.Wrapf(err, "failed to load TSS share for chain %s", ch.Id))
+			}
+			clients[i].SetShare(share)
 		}
 
 		return clients

@@ -2,10 +2,12 @@ package test
 
 import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 )
 
 type Client struct {
 	Chain
+	share tss.Share
 	*DepositDecoder
 }
 
@@ -13,13 +15,21 @@ type Client struct {
 func NewBridgeClient(chain Chain) *Client {
 
 	return &Client{
-		chain,
-		nil,
+		Chain:          chain,
+		DepositDecoder: nil,
 	}
 }
 
 func (c *Client) ChainId() string {
 	return c.Id
+}
+
+func (c *Client) Share() tss.Share {
+	return c.share
+}
+
+func (c *Client) SetShare(share tss.Share) {
+	c.share = share
 }
 
 func (c *Client) Type() chain.Type {

@@ -12,6 +12,8 @@ import (
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
+const keyShare = "tss_shares/ecdsa"
+
 type EcdsaShare struct {
 	data         *ecdsa.LocalPartySaveData
 	protocolType tss.ProtocolType
@@ -53,8 +55,9 @@ func (e *EcdsaShare) Marshal() ([]byte, error) {
 }
 
 func (e *EcdsaShare) Unmarshal(data []byte) error {
+	e.data = new(ecdsa.LocalPartySaveData)
 	if err := cbor.Unmarshal(data, e.data); err != nil {
-		return errors.Wrap(err, "failed to decode frost share data")
+		return errors.Wrap(err, "failed to decode ecdsa share data")
 	}
 
 	return nil
@@ -84,7 +87,7 @@ func (e *EcdsaShare) SetVaultData(kvData map[string]interface{}) error {
 }
 
 func (e *EcdsaShare) GetVaultPath() string {
-	return ""
+	return keyShare
 }
 
 func (e *EcdsaShare) Group() curve.Curve {

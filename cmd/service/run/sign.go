@@ -23,7 +23,6 @@ import (
 	pg "github.com/Bridgeless-Project/tss-svc/internal/db/postgres"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
@@ -74,12 +73,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	swapSettings := cfg.SwapSettings()
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
-	}
-
-	share := tss2.NewEcdsaShare()
-	err = storage.LoadTssShare(share)
-	if err != nil {
-		return errors.Wrap(err, "failed to get tss shares")
 	}
 
 	cert, err := storage.GetLocalPartyTlsCertificate()
@@ -176,7 +169,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				tss.LocalSignParty{
 					Account:   *account,
 					Threshold: sessParams.Threshold,
-					Share:     share,
+					Share:     client.Share(),
 				},
 				dtb,
 				fetcher,
@@ -249,6 +242,10 @@ func configureSigningSession(
 
 	distributor *distributor.DepositDistributionSession,
 ) (p2p.RunnableTssSession, error) {
+	if !client.IsCentralized() && localParty.Share == nil {
+		return nil, errors.Errorf("TSS share is not configured for chain %s", client.ChainId())
+	}
+
 	switch client.Type() {
 	case chain.TypeEVM:
 		evmClient := client.(*evm.Client)

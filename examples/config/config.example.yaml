@@ -39,6 +39,7 @@ chains:
       # Chain ID, must match the Bridge Core chain ID
     - id: "evm1"
       type: "evm"
+      protocol: "ecdsa"
       # Node RPC endpoint
       rpc: "your_rpc_endpoint_here"
       # Bridge contract address
@@ -48,6 +49,7 @@ chains:
     # Zano chain configuration
     - id: "zano1"
       type: zano
+      protocol: "ecdsa"
       confirmations: 1
       # bridge asset receiver(s)
       bridge_addresses:
@@ -60,9 +62,29 @@ chains:
     # Bitcoin chain configuration
     - id: "btc1"
       type: bitcoin
+      protocol: "frost"
       bridge_addresses:
         - "tb1pugjwudq39gxnpwwm8xelhaulg3m5arzrw69rwy3rz5trptas63ysga329g"
         - "tb1q5pt47kfu77fyl5szk33n5wv2ttf75ka20aqv9f"
+      confirmations: 1
+      # Bitcoin network: mainnet or testnet
+      network: testnet
+      rpc:
+        # Bitcoin wallet RPC endpoint
+        wallet:
+          host: "your_rpc_endpoint_here"
+          user: "bitcoin"
+          pass: "bitcoin"
+        # Bitcoin node RPC endpoint
+        node:
+          host: "your_rpc_endpoint_here"
+          user: "bitcoin"
+          pass: "bitcoin"
+    - id: "btc2"
+      type: bitcoin
+      protocol: "ecdsa"
+      bridge_addresses:
+        - "tb1pugjwudq39gxnpwwm8xelhaulg3m5arzrw69rwy3rz5trptas63ysga329g"
       confirmations: 1
       # Bitcoin network: mainnet or testnet
       network: testnet

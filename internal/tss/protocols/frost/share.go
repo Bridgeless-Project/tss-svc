@@ -10,15 +10,11 @@ import (
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
+const keyShare = "tss_shares/frost"
+
 type FrostShare struct {
 	data         *frost.Config
 	protocolType tss.ProtocolType
-	group        curve.Curve
-}
-
-type ECDSAShare struct {
-	data         *ecdsa.LocalPartySaveData
-	protocolType string
 	group        curve.Curve
 }
 
@@ -94,7 +90,7 @@ func (f *FrostShare) SetVaultData(kvData map[string]interface{}) error {
 }
 
 func (f *FrostShare) GetVaultPath() string {
-	return "" // TODO: fix it
+	return keyShare
 }
 
 func (f *FrostShare) Group() curve.Curve {
