@@ -34,7 +34,7 @@ type PartyMsg struct {
 }
 
 type Signatures struct {
-	Data []*tsscommon.SignatureData
+	Data []*tsscommon.SignatureData // TODO use interface
 }
 
 func (s Signatures) HashString() string {

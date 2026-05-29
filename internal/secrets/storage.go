@@ -5,15 +5,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
-
-	frostkeygen "github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 )
-
-type TssShares struct {
-	Share      *keygen.LocalPartySaveData
-	FrostShare *frostkeygen.Config
-}
 
 type TssShareKey string
 

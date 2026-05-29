@@ -35,11 +35,11 @@ type KeygenParty struct {
 func NewKeygenParty(self tss.LocalKeygenParty, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]*ecdsaTss.PartyID, len(parties)+1)
-	partyIds[0] = self.Address.PartyIdentifier()
+	partyIds[0] = tss.ToECDSAPartyID(self.Address.PartyIdentifier())
 
 	for i, party := range parties {
 		partyMap[party.CoreAddress] = struct{}{}
-		partyIds[i+1] = party.Identifier()
+		partyIds[i+1] = tss.ToECDSAPartyID(party.Identifier())
 	}
 
 	return &KeygenParty{

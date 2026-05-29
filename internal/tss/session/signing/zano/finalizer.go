@@ -15,7 +15,7 @@ import (
 
 type Finalizer struct {
 	withdrawalData *withdrawal.ZanoWithdrawalData
-	signature      *common.SignatureData
+	signature      *common.SignatureData // TODO use the interface
 
 	db   database.DepositsQ
 	core *coreConnector.Connector

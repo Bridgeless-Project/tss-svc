@@ -46,11 +46,11 @@ type KeygenParty struct {
 func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.Party, threshold int, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]party.ID, 0, len(parties)+1)
-	partyIds = append(partyIds, party.ID(self.Address.String()))
+	partyIds = append(partyIds, tss.ToFROSTPartyId(self.Address.PartyIdentifier()))
 
 	for _, p := range parties {
 		partyMap[p.CoreAddress] = struct{}{}
-		partyIds = append(partyIds, party.ID(p.CoreAddress.String()))
+		partyIds = append(partyIds, tss.ToFROSTPartyId(p.CoreAddress.PartyIdentifier()))
 	}
 	participants := party.NewIDSlice(partyIds)
 
@@ -58,7 +58,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 		broadcaster:     broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		parties:         partyMap,
 		group:           group,
-		selfID:          party.ID(self.Address.String()),
+		selfID:          party.ID(self.Address),
 		participants:    participants,
 		selfCoreAddress: self.Address,
 		msgs:            make(chan tss.PartyMsg, tss.MsgsCapacity),

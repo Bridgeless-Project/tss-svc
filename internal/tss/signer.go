@@ -18,6 +18,6 @@ type SignParty interface {
 	WithParties(parties []p2p.Party) SignParty
 	WithSigningData(data []byte) SignParty
 	Run(ctx context.Context)
-	WaitFor() *common.SignatureData
+	WaitFor() *common.SignatureData // TODO: use interfaces
 	Receive(sender core.Address, data *p2p.TssData)
 }

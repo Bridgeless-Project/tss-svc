@@ -1,35 +1,21 @@
 package tss
 
 import (
-	"crypto/ecdsa"
-	"math/big"
+	"fmt"
 
-	"github.com/bnb-chain/tss-lib/v3/common"
-	"github.com/pkg/errors"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	frostkeygen "github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
+	"github.com/Bridgeless-Project/tss-svc/internal/core"
+	"github.com/bnb-chain/tss-lib/v3/tss"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
 
-func Verify(pk *ecdsa.PublicKey, inputData []byte, signature *common.SignatureData) bool {
-	if pk == nil || signature == nil {
-		return false
-	}
-
-	data := big.NewInt(0).SetBytes(inputData)
-	r, s := new(big.Int).SetBytes(signature.R), new(big.Int).SetBytes(signature.S)
-
-	return ecdsa.Verify(pk, data.Bytes(), r, s)
+func ToECDSAPartyID(id core.Identifier) *tss.PartyID {
+	return tss.NewPartyID(
+		id.Name,
+		id.Moniker,
+		id.Pubkey,
+	)
 }
 
-func FrostPubKey(share *frostkeygen.Config) ([]byte, error) {
-	if share == nil {
-		return nil, errors.New("nil FROST share")
-	}
-
-	publicKey, ok := share.PublicKey.(*curve.Secp256k1Point)
-	if !ok {
-		return nil, errors.New("FROST public key is not secp256k1")
-	}
-
-	return publicKey.XBytes(), nil
+func ToFROSTPartyId(id core.Identifier) party.ID {
+	return party.ID(fmt.Sprintf("%s_%s_%s", id.Name, id.Moniker, id.Pubkey.String()))
 }

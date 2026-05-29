@@ -59,11 +59,11 @@ func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry
 func (p *SignParty) WithParties(parties []p2p.Party) tss.SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	signers := make([]party.ID, 0, len(parties)+1)
-	signers = append(signers, party.ID(p.self.Account.CosmosAddress().String()))
+	signers = append(signers, tss.ToFROSTPartyId(p.self.Account.CosmosAddress().PartyIdentifier()))
 
 	for _, p2pParty := range parties {
 		partyMap[p2pParty.CoreAddress] = struct{}{}
-		signers = append(signers, party.ID(p2pParty.CoreAddress.String()))
+		signers = append(signers, tss.ToFROSTPartyId(p2pParty.CoreAddress.PartyIdentifier()))
 	}
 
 	p.parties = partyMap
