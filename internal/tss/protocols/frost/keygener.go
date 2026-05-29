@@ -62,6 +62,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 		participants:    participants,
 		selfCoreAddress: self.Address,
 		msgs:            make(chan tss.PartyMsg, tss.MsgsCapacity),
+		config:          NewFrostShare(),
 
 		threshold: threshold,
 		logger:    logger.WithField("protocol", "frost"),

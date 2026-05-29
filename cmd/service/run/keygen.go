@@ -12,6 +12,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
+	frostTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -63,7 +64,7 @@ var keygenCmd = &cobra.Command{
 
 		frostSeession := keygenSession.NewSession(
 			tss.LocalKeygenParty{
-				PreParams: preParams,
+				PreParams: frostTss.NewFrostPreParams(),
 				Address:   account.CosmosAddress(),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},

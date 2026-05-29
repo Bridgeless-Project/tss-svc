@@ -34,13 +34,14 @@ var pubkeyCmd = &cobra.Command{
 			fmt.Println("pubkey:", share.PubKey())
 		case "frost":
 			share := frostTss.NewFrostShare()
+			err := storage.LoadTssShare(share)
 			if err != nil {
-				return errors.Wrap(err, "failed to decode FROST share")
+				return errors.Wrap(err, "failed to get TSS share from vault")
 			}
 
 			fmt.Println("PubKey :", share.PubKey())
 		default:
-			return errors.Errorf("unsupported TSS protocol: %d", args[0])
+			return errors.Errorf("unsupported TSS protocol: %s", args[0])
 		}
 
 		return nil

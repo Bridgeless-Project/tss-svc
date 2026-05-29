@@ -51,7 +51,7 @@ func (f *FrostShare) Marshal() ([]byte, error) {
 }
 
 func (f *FrostShare) Unmarshal(data []byte) error {
-	config := frost.EmptyConfig(f.group)
+	config := frost.EmptyConfig(f.Group())
 	if err := cbor.Unmarshal(data, config); err != nil {
 		return errors.Wrap(err, "failed to decode frost share data")
 	}
@@ -63,15 +63,29 @@ func (f *FrostShare) Unmarshal(data []byte) error {
 
 // TODO: do not use taproot for ZCash
 func (f *FrostShare) Verify(signature, data []byte) (bool, error) {
-	if len(signature) != taproot.SignatureLen && signature == nil {
+	if len(signature) != taproot.SignatureLen {
 		return false, errors.New("signature is invalid")
 	}
 
-	return taproot.PublicKey(f.PubKey()).Verify(signature, data), nil
+	pubKey := f.PubKey()
+	if len(pubKey) == 0 {
+		return false, errors.New("public key is not set")
+	}
+
+	return taproot.PublicKey(pubKey).Verify(signature, data), nil
 }
 
 func (f *FrostShare) PubKey() []byte {
-	return nil
+	if f.data == nil {
+		return nil
+	}
+
+	publicKey, ok := f.data.PublicKey.(*curve.Secp256k1Point)
+	if !ok {
+		return nil
+	}
+
+	return append([]byte(nil), publicKey.XBytes()...)
 }
 
 func (f *FrostShare) SetVaultData(kvData map[string]interface{}) error {

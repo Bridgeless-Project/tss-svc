@@ -48,6 +48,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, parties []p2p.Party, sessionId st
 		parties:        partyMap,
 		self:           self,
 		msgs:           make(chan tss.PartyMsg, tss.MsgsCapacity),
+		result:         NewEcdsaShare(),
 		logger:         logger.WithField("protocol", "ecdsa"),
 		sessionId:      sessionId,
 		wg:             new(sync.WaitGroup),
