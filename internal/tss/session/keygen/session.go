@@ -44,7 +44,6 @@ func NewSession(
 	keygenParty := tssProtocols.SelectKeyGenByProtocol(
 		self,
 		parties,
-		params.Threshold,
 		sessionId,
 		group,
 		logger.WithField("component", "keygen_party"),

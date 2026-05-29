@@ -62,7 +62,7 @@ func NewSession(
 		sessionId: sessId,
 		self:      self,
 		params:    params,
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 
 		parties: parties,
 

@@ -43,7 +43,7 @@ func NewSignaturesDistributor(
 	logger *logan.Entry,
 ) *SignaturesDistributor {
 	return &SignaturesDistributor{
-		wg:          &sync.WaitGroup{},
+		wg:          new(sync.WaitGroup),
 		sessionId:   sessionId,
 		distributor: distributor,
 		self:        self,

@@ -94,7 +94,7 @@ func (f *FrostShare) SetVaultData(kvData map[string]interface{}) error {
 		return errors.New("share data not found")
 	}
 
-	data := frost.EmptyConfig(curve.Secp256k1{})
+	data := frost.EmptyConfig(f.Group())
 	if err := cbor.Unmarshal([]byte(val), data); err != nil {
 		return errors.Wrap(err, "failed to decode frost share data")
 	}
@@ -118,6 +118,7 @@ func (f *FrostShare) WithGroup(g curve.Curve) *FrostShare {
 	f.group = g
 	return f
 }
+
 func (f *FrostShare) PreParams() tss.PreParams {
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 )
 
+// it will be implemented later
 type FrostPreParams struct{}
 
 func NewFrostPreParams() *FrostPreParams {
@@ -24,7 +25,7 @@ func (f *FrostPreParams) MustFrostPreParams() *frost.Config {
 	return nil
 }
 
-func (f *FrostPreParams) SetData(data any) error {
+func (f *FrostPreParams) SetData(_ any) error {
 	return nil
 }
 

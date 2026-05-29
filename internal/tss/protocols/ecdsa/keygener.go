@@ -65,12 +65,6 @@ func (p *KeygenParty) Run(ctx context.Context) {
 	out := make(chan ecdsaTss.Message, tss.OutChannelSize)
 	end := make(chan *keygen.LocalPartySaveData, tss.EndChannelSize)
 
-	//preParams, ok := p.self.PreParams
-	//if !ok {
-	//	p.logger.WithError(errors.New("failed to convert types to LocalPreParams")).Error("failed to run keygen")
-	//	close(end)
-	//}
-
 	p.party = keygen.NewLocalParty(params, out, end, p.self.PreParams.MustEcdsaPreParams())
 
 	p.wg.Add(3)

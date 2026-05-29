@@ -23,27 +23,26 @@ type KeygenParty struct {
 	wg    *sync.WaitGroup
 	ended atomic.Bool
 
-	broadcaster  *broadcast.Broadcaster
-	parties      map[core.Address]struct{}
-	group        curve.Curve
-	selfID       party.ID
-	participants []party.ID
-	threshold    int
+	broadcaster *broadcast.Broadcaster
+	parties     map[core.Address]struct{}
+	group       curve.Curve
 
-	selfCoreAddress core.Address
+	self         tss.LocalKeygenParty
+	participants []party.ID
 
 	sessionId string
 	handler   *protocol.MultiHandler
 
 	msgs   chan tss.PartyMsg
 	once   sync.Once
-	config *FrostShare
+	result *FrostShare
+
 	err    error
 	logger *logan.Entry
 }
 
 // TODO: remove the group and threshold here
-func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.Party, threshold int, sessionId string, logger *logan.Entry) *KeygenParty {
+func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]party.ID, 0, len(parties)+1)
 	partyIds = append(partyIds, tss.ToFROSTPartyId(self.Address.PartyIdentifier()))
@@ -55,16 +54,14 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 	participants := party.NewIDSlice(partyIds)
 
 	return &KeygenParty{
-		broadcaster:     broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
-		parties:         partyMap,
-		group:           group,
-		selfID:          party.ID(self.Address),
-		participants:    participants,
-		selfCoreAddress: self.Address,
-		msgs:            make(chan tss.PartyMsg, tss.MsgsCapacity),
-		config:          NewFrostShare(),
+		self:         self,
+		broadcaster:  broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
+		parties:      partyMap,
+		group:        group,
+		participants: participants,
+		msgs:         make(chan tss.PartyMsg, tss.MsgsCapacity),
+		result:       NewFrostShare(),
 
-		threshold: threshold,
 		logger:    logger.WithField("protocol", "frost"),
 		sessionId: sessionId,
 		wg:        new(sync.WaitGroup),
@@ -72,7 +69,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
-	h, err := protocol.NewMultiHandler(frost.Keygen(p.group, p.selfID, p.participants, p.threshold), []byte(p.sessionId))
+	h, err := protocol.NewMultiHandler(frost.Keygen(p.group, tss.ToFROSTPartyId(p.self.Address.PartyIdentifier()), p.participants, p.self.Threshold), []byte(p.sessionId))
 	if err != nil {
 		p.err = err
 		p.finish()
@@ -90,7 +87,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 
 func (p *KeygenParty) WaitFor() tss.Share {
 	p.wg.Wait()
-	if p.err != nil || p.config == nil {
+	if p.err != nil || p.result == nil {
 		p.logger.Error("keygen failed to wait for keygen")
 		return nil
 	}
@@ -99,7 +96,7 @@ func (p *KeygenParty) WaitFor() tss.Share {
 
 	p.logger.Info("keygen finished")
 
-	return p.config
+	return p.result
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
@@ -144,7 +141,7 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 				p.logger.WithError(err).WithField("party", msg.Sender).Warn("failed to unmarshal message")
 				continue
 			}
-			if err := validateMessageEnvelope(msg.Sender, p.selfID, msg, message); err != nil {
+			if err := validateMessageEnvelope(msg.Sender, tss.ToFROSTPartyId(p.self.Address.PartyIdentifier()), msg, message); err != nil {
 				p.logger.WithError(err).WithField("party", msg.Sender).Warn("rejected invalid frost message envelope")
 				continue
 			}
@@ -188,7 +185,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 					p.logger.WithField("type", r).Error("failed to get keygen result")
 					return
 				}
-				err = p.config.SetData(config)
+				err = p.result.SetData(config)
 				if err != nil {
 					p.err = err
 					p.logger.WithError(err).Error("failed to set keygen result")
@@ -212,7 +209,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 
 			tssReq, _ := anypb.New(tssData)
 			submitReq := p2p.SubmitRequest{
-				Sender:    p.selfCoreAddress.String(),
+				Sender:    p.self.Address.String(),
 				SessionId: p.sessionId,
 				Type:      p2p.RequestType_RT_KEYGEN,
 				Data:      tssReq,

@@ -39,7 +39,7 @@ type SignParty struct {
 
 func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry) *SignParty {
 	return &SignParty{
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 		self:      self,
 		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
 		sessionId: sessionId,

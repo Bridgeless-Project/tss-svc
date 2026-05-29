@@ -66,7 +66,7 @@ func NewSession(
 		self:      self,
 		params:    params,
 		mu:        &sync.RWMutex{},
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 
 		parties: parties,
 
