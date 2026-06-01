@@ -56,7 +56,7 @@ func New(getter kv.Getter) Config {
 		PartiesConfigurator:       p2p.NewPartiesConfigurator(getter, secreter.SecretsStorage()),
 		ParamsConfigurator:        resharing.NewParamsConfigurator(getter, secreter.SecretsStorage()),
 		SessionParamsConfigurator: tss.NewSessionParamsConfigurator(getter),
-		Chainer:                   chain.NewChainer(getter),
+		Chainer:                   chain.NewChainer(getter, secreter.SecretsStorage()),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),
 		SubscriberConfigurator:    subscriber.NewSubscriberConfigurator(getter),
 		SwapConfigurator:          bridge.NewSwapConfigurator(getter),

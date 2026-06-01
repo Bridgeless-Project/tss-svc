@@ -5,6 +5,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	zanoTypes "github.com/Bridgeless-Project/tss-svc/pkg/zano/types"
 	"github.com/pkg/errors"
 )
@@ -13,10 +14,19 @@ var addressPattern = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{97}$`)
 
 type Client struct {
 	chain Chain
+	share tss.Share
 }
 
 func (p *Client) ChainId() string {
 	return p.chain.Id
+}
+
+func (p *Client) Share() tss.Share {
+	return p.share
+}
+
+func (p *Client) SetShare(share tss.Share) {
+	p.share = share
 }
 
 func (p *Client) Type() chain.Type {
@@ -32,7 +42,7 @@ func (p *Client) TransactionHashValid(hash string) bool {
 }
 
 func NewBridgeClient(chain Chain) *Client {
-	return &Client{chain}
+	return &Client{chain: chain}
 }
 
 func (p *Client) HealthCheck() error {

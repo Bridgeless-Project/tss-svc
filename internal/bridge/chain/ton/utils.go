@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
@@ -14,8 +14,8 @@ import (
 	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
-func СonvertToTonSignature(sig *common.SignatureData) string {
-	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+func СonvertToTonSignature(sig tss.SignatureData) string {
+	rawSig := append(sig.GetSignature(), sig.GetSignatureRecovery()...)
 
 	return hexutil.Encode(rawSig)
 }

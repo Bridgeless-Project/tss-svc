@@ -4,7 +4,7 @@ import (
 	"crypto/elliptic"
 	"math/big"
 
-	tssCommon "github.com/bnb-chain/tss-lib/v3/common"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -20,8 +20,8 @@ func PubkeyToAddress(x, y *big.Int) common.Address {
 	return common.BytesToAddress(hash[12:])
 }
 
-func ConvertSignature(sig *tssCommon.SignatureData) string {
-	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+func ConvertSignature(sig tss2.SignatureData) string {
+	rawSig := append(sig.GetSignature(), sig.GetSignatureRecovery()...)
 	rawSig[64] += 27
 
 	return hexutil.Encode(rawSig)

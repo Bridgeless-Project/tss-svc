@@ -13,9 +13,11 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
+	tss3 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -27,16 +29,24 @@ func init() {
 	registerSignCmdFlags(signCmd)
 }
 
-var verify bool
+const (
+	signProtocolECDSA = "ecdsa"
+	signProtocolFROST = "frost"
+)
+
+var (
+	verify       bool
+	signProtocol string
+)
 
 func registerSignCmdFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&verify, "verify", true, "Whether to additionally verify the signature")
 }
 
 var signCmd = &cobra.Command{
-	Use:   "sign [data-hex]",
+	Use:   "sign [data-hex] [protocol]",
 	Short: "Signs the given hex-decoded data using TSS",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if !utils.OutputValid() {
 			return errors.New("invalid output type")
@@ -64,10 +74,20 @@ var signCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")
 		}
-		localSaveData, err := storage.GetTssShare()
-		if err != nil {
-			return errors.Wrap(err, "failed to get local share")
+
+		var share tss.Share
+		switch signProtocol {
+		case signProtocolECDSA:
+			share = tss2.NewEcdsaShare()
+		case signProtocolFROST:
+			share = tss3.NewFrostShare()
 		}
+
+		err = storage.LoadTssShare(share)
+		if err != nil {
+			return errors.Wrap(err, "failed to get local shares")
+		}
+
 		cert, err := storage.GetLocalPartyTlsCertificate()
 		if err != nil {
 			return errors.Wrap(err, "failed to get local party TLS certificate")
@@ -78,12 +98,10 @@ var signCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
+		localParty := tss.LocalSignParty{Account: *account, Share: share, Threshold: cfg.TssSessionParams().Threshold}
+
 		session := signing.NewSession(
-			tss.LocalSignParty{
-				Account:   *account,
-				Share:     localSaveData,
-				Threshold: cfg.TssSessionParams().Threshold,
-			},
+			localParty,
 			signing.SessionParams{
 				Params:      cfg.TssSessionParams(),
 				SigningData: dataToSign,
@@ -129,11 +147,15 @@ var signCmd = &cobra.Command{
 			}
 
 			if verify {
-				if valid := tss.Verify(localSaveData.ECDSAPub.ToECDSAPubKey(), dataToSign, result); !valid {
-					return errors.New("signature verification failed")
-				} else {
-					cfg.Log().Info("Signature verification passed")
+				ok, err := share.Verify(result.GetSignature(), dataToSign)
+				if err != nil {
+					return errors.Wrap(err, "failed to verify signature")
 				}
+				if !ok {
+					return errors.New("failed to verify signature")
+				}
+				cfg.Log().Info("Signature verification passed")
+
 			}
 
 			return nil
@@ -142,8 +164,17 @@ var signCmd = &cobra.Command{
 	},
 }
 
-func saveSigningResult(result *common.SignatureData) error {
-	signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
+func validateSignProtocol(protocol string) error {
+	switch protocol {
+	case signProtocolECDSA, signProtocolFROST:
+		return nil
+	default:
+		return errors.Errorf("unsupported signing protocol: %s", protocol)
+	}
+}
+
+func saveSigningResult(result tss.SignatureData) error {
+	signature := hexutil.Encode(append(result.GetSignature(), result.GetSignatureRecovery()...))
 
 	switch utils.OutputType {
 	case "console":

@@ -4,6 +4,9 @@ import (
 	"math/big"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
+	frostTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
 	"github.com/pkg/errors"
 )
 
@@ -49,6 +52,8 @@ type Client interface {
 	Type() Type
 	ChainId() string
 	IsCentralized() bool
+	Share() tss.Share
+	SetShare(tss.Share)
 
 	GetDepositData(id db.DepositIdentifier) (*db.DepositData, error)
 
@@ -71,8 +76,20 @@ type Chain struct {
 	Confirmations   uint64 `fig:"confirmations,required"`
 	Rpc             any    `fig:"rpc,required"`
 	BridgeAddresses any    `fig:"bridge_addresses,required"`
+	Protocol        string `fig:"protocol,required"` // frost or ecdsa
 
 	Meta any `fig:"meta"`
+}
+
+func (c Chain) Share() (tss.Share, error) {
+	switch c.Protocol {
+	case string(tss.ProtocolID_FROST):
+		return frostTss.NewFrostShare(), nil
+	case string(tss.ProtocolID_ECDSA):
+		return ecdsaTss.NewEcdsaShare(), nil
+	}
+
+	return nil, errors.Errorf("unsupported TSS protocol: %s", c.Protocol)
 }
 
 type Type string

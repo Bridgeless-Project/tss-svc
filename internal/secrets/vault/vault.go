@@ -3,29 +3,33 @@ package vault
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	client "github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 )
 
 const (
-	valueKey        = "value"
-	keyPreParams    = "keygen_preparams"
-	keyAccount      = "core_account"
-	keyTssShare     = "tss_share"
-	keyTssShareTemp = "tss_share_temp"
-	keyTlsCert      = "tls_cert"
-	tlsCertData     = "cert_data"
-	tlsKeyData      = "key_data"
+	keyAccount = "core_account"
+
+	valueVaultKey = "value"
+
+	tempShareKey = "temp"
+	keyTlsCert   = "tls_cert"
+	tlsCertData  = "cert_data"
+	tlsKeyData   = "key_data"
 )
 
 type Storage struct {
-	client *client.KVv2
+	client kvStore
+}
+
+type kvStore interface {
+	Get(ctx context.Context, secretPath string) (*client.KVSecret, error)
+	Put(ctx context.Context, secretPath string, data map[string]interface{}, opts ...client.KVOption) (*client.KVSecret, error)
 }
 
 func NewStorage(client *client.KVv2) secrets.Storage {
@@ -54,52 +58,31 @@ func (s *Storage) store(path string, value map[string]interface{}) error {
 	return nil
 }
 
-func (s *Storage) GetKeygenPreParams() (*keygen.LocalPreParams, error) {
-	data, err := s.load(keyPreParams)
+func (s *Storage) GetKeygenPreParams(params tss.PreParams) error {
+	data, err := s.load(params.GetVaultPath())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load preparams")
+		return errors.Wrap(err, "failed to load preparams")
 	}
 
-	val, ok := data[valueKey].(string)
-	if !ok {
-		return nil, errors.New("preparams value not found")
+	if err = params.SetVaultData(data); err != nil {
+		return errors.Wrap(err, "failed to set preparams data")
 	}
 
-	params := new(keygen.LocalPreParams)
-	if err = json.Unmarshal([]byte(val), params); err != nil {
-		return nil, errors.Wrap(err, "failed to decode preparams")
-	}
-
-	return params, nil
+	return nil
 }
 
-func (s *Storage) SaveKeygenPreParams(params *keygen.LocalPreParams) error {
-	raw, err := json.Marshal(params)
+func (s *Storage) SaveKeygenPreParams(params tss.PreParams) error {
+	raw, err := params.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal preparams")
 	}
 
-	return s.store(keyPreParams, map[string]interface{}{
-		valueKey: string(raw),
-	})
+	return s.SaveTssShare(secrets.TssShareKey(params.GetVaultPath()), raw)
 }
 
-func (s *Storage) SaveTssShare(data *keygen.LocalPartySaveData) error {
-	return s.saveTssShare(keyTssShare, data)
-}
-
-func (s *Storage) SaveTemporaryTssShare(data *keygen.LocalPartySaveData) error {
-	return s.saveTssShare(keyTssShareTemp, data)
-}
-
-func (s *Storage) saveTssShare(key string, data *keygen.LocalPartySaveData) error {
-	raw, err := json.Marshal(data)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal share data")
-	}
-
-	return s.store(key, map[string]interface{}{
-		valueKey: string(raw),
+func (s *Storage) SaveTssShare(key secrets.TssShareKey, bytes []byte) error {
+	return s.store(string(key), map[string]interface{}{
+		valueVaultKey: bytes,
 	})
 }
 
@@ -109,7 +92,7 @@ func (s *Storage) GetCoreAccount() (*core.Account, error) {
 		return nil, errors.Wrap(err, "failed to load account")
 	}
 
-	val, ok := kvData[valueKey].(string)
+	val, ok := kvData[valueVaultKey].(string)
 	if !ok {
 		return nil, errors.New("account value not found")
 	}
@@ -124,33 +107,30 @@ func (s *Storage) GetCoreAccount() (*core.Account, error) {
 
 func (s *Storage) SaveCoreAccount(account *core.Account) error {
 	return s.store(keyAccount, map[string]interface{}{
-		valueKey: hexutil.Encode(account.PrivateKey().Bytes()),
+		valueVaultKey: hexutil.Encode(account.PrivateKey().Bytes()),
 	})
 }
 
-func (s *Storage) GetTssShare() (*keygen.LocalPartySaveData, error) {
-	return s.getTssShare(keyTssShare)
+func (s *Storage) LoadTssShare(share tss.Share) error {
+	data, err := s.load(share.GetVaultPath())
+	if err != nil {
+		return errors.Wrap(err, "failed to load ecdsa share data")
+	}
+
+	if err = share.SetVaultData(data); err != nil {
+		return errors.Wrap(err, "failed to set ecdsa share data")
+	}
+
+	return nil
 }
 
-func (s *Storage) GetTemporaryTssShare() (*keygen.LocalPartySaveData, error) {
-	return s.getTssShare(keyTssShareTemp)
-}
+func (s *Storage) GetTemporaryTssShare(share tss.Share) error {
+	kvData, err := s.load(tempShareKey + "/" + share.GetVaultPath())
+	if err != nil {
+		return errors.Wrap(err, "failed to load temporary share data")
+	}
 
-func (s *Storage) getTssShare(key string) (*keygen.LocalPartySaveData, error) {
-	kvData, err := s.load(key)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load share data")
-	}
-	val, ok := kvData[valueKey].(string)
-	if !ok {
-		return nil, errors.New("share data not found")
-	}
-	data := new(keygen.LocalPartySaveData)
-	err = json.Unmarshal([]byte(val), data)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode share data")
-	}
-	return data, nil
+	return share.SetVaultData(kvData)
 }
 
 func (s *Storage) GetLocalPartyTlsCertificate() (*tls.Certificate, error) {

@@ -14,13 +14,13 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	resharingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -60,7 +60,7 @@ type Session struct {
 	signFinalizer          *Finalizer
 	consolidationFinalizer *resharingConsensus.Finalizer
 
-	signingParty *tss.SignParty
+	signingParty tss.SignParty
 }
 
 func NewSession(
@@ -119,13 +119,13 @@ func (s *Session) Build() error {
 	s.signConsMechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.UtxoWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewUtxoConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
+		withdrawal.NewUtxoConstructor(s.client, s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey()),
 		s.fetcher,
 	)
 
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
-		s.client.UtxoHelper().P2pkhAddress(s.self.Share.ECDSAPub.ToECDSAPubKey()),
+		s.client.UtxoHelper().P2pkhAddress(s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey()),
 		s.client.ConsolidationParams(),
 	)
 
@@ -142,7 +142,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.signConsParty = consensus.New[withdrawal.UtxoWithdrawalData](
 			consensus.LocalConsensusParty{
@@ -157,7 +157,7 @@ func (s *Session) Run(ctx context.Context) error {
 		)
 		s.signFinalizer = NewFinalizer(
 			s.db, s.coreConnector, s.client,
-			s.self.Share.ECDSAPub.ToECDSAPubKey(),
+			s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "finalizing"),
 			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
@@ -174,7 +174,7 @@ func (s *Session) Run(ctx context.Context) error {
 			s.logger.WithField("phase", "consensus"),
 		)
 		s.consolidationFinalizer = resharingConsensus.NewFinalizer(
-			s.client, s.self.Share.ECDSAPub.ToECDSAPubKey(),
+			s.client, s.self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 			s.logger.WithField("phase", "finalizing"),
 			s.self.Account.CosmosAddress() == s.sessionLeader,
 		)
@@ -265,7 +265,7 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 	if result.Signers != nil {
 		s.logger.Infof("got %d inputs to sign", signRounds)
 		// signing phase
-		sigs := make([]*common.SignatureData, 0, signRounds)
+		sigs := make([]tss.SignatureData, 0, signRounds)
 		for idx := range signRounds {
 			currentSigData := result.SigData.ProposalData.SigData[idx]
 
@@ -286,7 +286,7 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 			}
 
 			s.mu.Lock()
-			s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 			s.mu.Unlock()
 
 			select {
@@ -362,7 +362,7 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 	if result.Signers != nil {
 		s.logger.Infof("got %d inputs to sign", signRounds)
 		// signing phase
-		sigs := make([]*common.SignatureData, 0, signRounds)
+		sigs := make([]tss.SignatureData, 0, signRounds)
 		for idx := range signRounds {
 			currentSigData := result.SigData.ProposalData.SigData[idx]
 
@@ -383,7 +383,7 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 			}
 
 			s.mu.Lock()
-			s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+			s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 			s.mu.Unlock()
 
 			select {

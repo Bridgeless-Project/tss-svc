@@ -6,7 +6,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -14,7 +14,7 @@ import (
 
 type Finalizer struct {
 	withdrawalData *withdrawal.SolanaWithdrawalData
-	signature      *common.SignatureData
+	signature      tss.SignatureData
 
 	db   database.DepositsQ
 	core *coreConnector.Connector
@@ -45,7 +45,7 @@ func (f *Finalizer) WithData(withdrawalData *withdrawal.SolanaWithdrawalData) *F
 	return f
 }
 
-func (f *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
+func (f *Finalizer) WithSignature(sig tss.SignatureData) *Finalizer {
 	f.signature = sig
 	return f
 }
@@ -78,7 +78,7 @@ func (f *Finalizer) finalize(_ context.Context) {
 	f.errChan <- nil
 }
 
-func convertToSolanaSignature(sig *common.SignatureData) string {
-	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+func convertToSolanaSignature(sig tss.SignatureData) string {
+	rawSig := append(sig.GetSignature(), sig.GetSignatureRecovery()...)
 	return hexutil.Encode(rawSig)
 }

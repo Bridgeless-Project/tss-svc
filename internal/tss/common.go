@@ -7,7 +7,6 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	tsscommon "github.com/bnb-chain/tss-lib/v3/common"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -21,19 +20,29 @@ func init() {
 	tsscommon.EnableConstantTimeOps()
 }
 
-type partyMsg struct {
+type LocalKeygenParty struct {
+	PreParams PreParams
+	Address   core.Address
+	Threshold int
+}
+
+type PartyMsg struct {
 	Sender      core.Address
 	WireMsg     []byte
 	IsBroadcast bool
 }
 
-func MaxMaliciousParties(partiesCount, threshold int) int {
-	// T+1 parties are required to function
-	return partiesCount - (threshold + 1)
+type SignatureData interface {
+	SetSignature(signature any) error
+	GetSignature() []byte
+	GetSignatureRecovery() []byte
+	GetR() []byte
+	GetS() []byte
+	GetM() []byte
 }
 
 type Signatures struct {
-	Data []*tsscommon.SignatureData
+	Data []SignatureData
 }
 
 func (s Signatures) HashString() string {
@@ -48,9 +57,17 @@ func (s Signatures) HashString() string {
 			continue
 		}
 
-		data, _ := proto.MarshalOptions{Deterministic: true}.Marshal(sig)
-		buff.Write(data)
+		buff.Write(sig.GetSignature())
 	}
 
 	return fmt.Sprintf("%x", sha256.Sum256(buff.Bytes()))
+}
+
+func (s Signatures) SetSignature(data SignatureData) {
+	s.Data = append(s.Data, data)
+}
+
+func MaxMaliciousParties(partiesCount, threshold int) int {
+	// T+1 parties are required to function
+	return partiesCount - (threshold + 1)
 }

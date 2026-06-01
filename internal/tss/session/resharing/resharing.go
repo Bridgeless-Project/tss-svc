@@ -126,15 +126,14 @@ func (s *Session) Run(ctx context.Context) error {
 }
 
 func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State) error {
-	share, err := s.secrets.GetTssShare()
+	err := s.secrets.LoadTssShare(state.OldShare)
 	if err != nil {
 		return errors.Wrap(err, "failed to get TSS share")
 	}
-	state.OldShare = share
 
 	self := tss.LocalSignParty{
 		Account:   state.Account,
-		Share:     share,
+		Share:     state.OldShare,
 		Threshold: s.oldEpochParams.Threshold,
 	}
 
@@ -160,7 +159,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 					bridgeTypes.ChainType_EVM,
 					evm.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
 					evm.NewRemoveSignerOperation(
-						self.Share.ECDSAPub.ToECDSAPubKey(),
+						self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 						state.GlobalStartTime,
 						state.EpochSupportDuration,
 					),
@@ -179,7 +178,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 					bridgeTypes.ChainType_SOLANA,
 					solana.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime, client.BridgeId()),
 					solana.NewRemoveSignerOperation(
-						self.Share.ECDSAPub.ToECDSAPubKey(),
+						self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 						state.GlobalStartTime,
 						state.EpochSupportDuration,
 						client.BridgeId()),
@@ -196,7 +195,7 @@ func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State)
 					bridgeTypes.ChainType_TON,
 					ton.NewAddSignerOperation(state.NewPubKey, state.GlobalStartTime),
 					ton.NewRemoveSignerOperation(
-						self.Share.ECDSAPub.ToECDSAPubKey(),
+						self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 						state.GlobalStartTime,
 						state.EpochSupportDuration,
 					),
@@ -273,10 +272,23 @@ func (s *Session) manageWallets(state *resharingTypes.State) error {
 
 func (s *Session) manageShares(state *resharingTypes.State) error {
 	s.logger.Info("managing TSS shares...")
-	if err := s.secrets.SaveTssShare(state.NewShare); err != nil {
+	newShareBytes, err := state.NewShare.Marshal()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal share")
+	}
+
+	oldShareBytes, err := state.OldShare.Marshal()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal share")
+	}
+
+	if err = s.secrets.SaveTssShare(secrets.TssShareKey(state.NewShare.GetVaultPath()), newShareBytes); err != nil {
 		return errors.Wrap(err, "failed to save new TSS share")
 	}
-	if err := s.secrets.SaveTemporaryTssShare(state.OldShare); err != nil {
+	if err = s.secrets.SaveTssShare(
+		secrets.TssShareKeyTemporary+secrets.TssShareKey(state.NewShare.GetVaultPath()),
+		oldShareBytes,
+	); err != nil {
 		return errors.Wrap(err, "failed to save old TSS share")
 	}
 	s.logger.Info("successfully managed TSS shares")

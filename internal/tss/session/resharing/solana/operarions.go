@@ -7,8 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
-	tsscommon "github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -46,8 +46,8 @@ func (u UpdateSignerOperation) Nonce() uint64 {
 	return u.nonce.Uint64()
 }
 
-func (u UpdateSignerOperation) ConvertSignature(sig *tsscommon.SignatureData) string {
-	return hexutil.Encode(append(sig.Signature, sig.SignatureRecovery...))
+func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) string {
+	return hexutil.Encode(append(sig.GetSignature(), sig.GetSignatureRecovery()...))
 }
 
 func (u UpdateSignerOperation) CalculateHash() []byte {

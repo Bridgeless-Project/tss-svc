@@ -1,16 +1,16 @@
 package zano
 
 import (
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
-func EncodeSignature(signature *common.SignatureData) string {
+func EncodeSignature(signature tss.SignatureData) string {
 	if signature == nil {
 		return ""
 	}
 
-	rawSig := append(signature.Signature, signature.SignatureRecovery...)
+	rawSig := append(signature.GetSignature(), signature.GetSignatureRecovery()...)
 	encoded := hexutil.Encode(rawSig)
 
 	// stripping redundant hex-prefix and recovery byte (two hex-characters)

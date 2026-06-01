@@ -6,6 +6,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -15,6 +16,7 @@ import (
 
 type Client struct {
 	chain           Chain
+	share           tss.Share
 	abis            map[string]abi.ABI
 	supportedEvents map[string]EventType
 
@@ -55,6 +57,14 @@ func NewBridgeClient(chain Chain) *Client {
 
 func (p *Client) ChainId() string {
 	return p.chain.Id
+}
+
+func (p *Client) Share() tss.Share {
+	return p.share
+}
+
+func (p *Client) SetShare(share tss.Share) {
+	p.share = share
 }
 
 func (p *Client) Type() chain.Type {

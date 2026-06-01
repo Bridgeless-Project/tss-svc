@@ -14,12 +14,12 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -49,7 +49,7 @@ type Session struct {
 
 	mechanism consensus.Mechanism[withdrawal.ZanoWithdrawalData]
 
-	signingParty          *tss.SignParty
+	signingParty          tss.SignParty
 	consensusParty        *consensus.Consensus[withdrawal.ZanoWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
@@ -136,7 +136,7 @@ func (s *Session) Run(ctx context.Context) error {
 			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.signaturesDistributor = signing.NewSignaturesDistributor(
 			s.Id(),
 			s.parties,
@@ -217,9 +217,8 @@ func (s *Session) runSession(ctx context.Context) error {
 			return errors.New("signing phase error occurred")
 		}
 
-		signatures = &tss.Signatures{
-			Data: []*common.SignatureData{signature},
-		}
+		signatures = new(tss.Signatures)
+		signatures.SetSignature(signature)
 
 		// signature distribution phase should be started not later than
 		// a second after the signing phase

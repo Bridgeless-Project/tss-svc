@@ -8,7 +8,7 @@ import (
 
 	utxohelper "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	btctxauthor "github.com/btcsuite/btcwallet/wallet/txauthor"
@@ -145,7 +145,7 @@ func (b *helper) P2pkhAddress(pk *ecdsa.PublicKey) string {
 	return addr.String()
 }
 
-func (b *helper) InjectSignatures(tx *btcwire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error {
+func (b *helper) InjectSignatures(tx *btcwire.MsgTx, signatures []tss.SignatureData, pk *ecdsa.PublicKey) error {
 	if len(signatures) != len(tx.TxIn) {
 		return errors.New("signatures count does not match inputs count")
 	}

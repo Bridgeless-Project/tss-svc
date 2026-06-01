@@ -11,9 +11,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -36,7 +36,7 @@ type Session struct {
 	parties []p2p.Party
 
 	client             client.Client
-	signingParty       *tss.SignParty
+	signingParty       tss.SignParty
 	consensusParty     *consensus.Consensus[SigningData]
 	consensusMechanism *ConsensusMechanism
 	finalizer          *Finalizer
@@ -65,12 +65,17 @@ func NewSession(
 		self:      self,
 		params:    params,
 		mu:        &sync.RWMutex{},
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 
 		parties: parties,
 
-		client:       client,
-		signingParty: tss.NewSignParty(self, sessionId, logger.WithField("phase", "signing")),
+		client: client,
+		signingParty: tssProtocols.SelectSignByProtocol(
+			self,
+			session.GetReshareSessionIdentifier(client.ChainId(),
+				params.SessionParams.Id),
+			logger.WithField("phase", "signing"),
+		),
 		consensusParty: consensus.New[SigningData](
 			consensus.LocalConsensusParty{
 				SessionId: sessionId,
@@ -84,7 +89,7 @@ func NewSession(
 		),
 		consensusMechanism: consensusMechanism,
 		finalizer: NewFinalizer(
-			client, self.Share.ECDSAPub.ToECDSAPubKey(),
+			client, self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 			logger.WithField("phase", "finalization"),
 			self.Account.CosmosAddress() == leader,
 		),
@@ -132,7 +137,7 @@ func (s *Session) run(ctx context.Context) {
 	s.logger.Infof("got %d inputs to sign", signRounds)
 
 	// signing phase
-	signatures := make([]*common.SignatureData, 0, signRounds)
+	signatures := make([]tss.SignatureData, 0, signRounds)
 	for idx := range signRounds {
 		currentSigData := result.SigData.ProposalData.SigData[idx]
 
@@ -155,7 +160,7 @@ func (s *Session) run(ctx context.Context) {
 		}
 
 		s.mu.Lock()
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.mu.Unlock()
 
 		select {

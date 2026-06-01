@@ -3,7 +3,7 @@ package helper
 import (
 	"crypto/ecdsa"
 
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
@@ -30,6 +30,6 @@ type UtxoHelper interface {
 	EstimateFee(tx *wire.MsgTx, feeRate btcutil.Amount) btcutil.Amount
 	ArrangeOutputs(unspent []btcjson.ListUnspentResult) []btcjson.ListUnspentResult
 
-	InjectSignatures(tx *wire.MsgTx, signatures []*common.SignatureData, pk *ecdsa.PublicKey) error
+	InjectSignatures(tx *wire.MsgTx, signatures []tss.SignatureData, pk *ecdsa.PublicKey) error
 	TxHash(tx *wire.MsgTx) string
 }

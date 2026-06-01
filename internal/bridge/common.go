@@ -46,6 +46,7 @@ func PubkeyCompressedToString(x, y *big.Int) string {
 	return hexutil.Encode(crypto.CompressPubkey(key))
 }
 
+// TODO: use share interface
 func DecodePubkey(pubkeyStr string) (*ecdsa.PublicKey, error) {
 	pubkeyBytes, err := hexutil.Decode(pubkeyStr)
 	if err != nil {

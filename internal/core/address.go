@@ -5,11 +5,16 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )
+
+type Identifier struct {
+	Name    string
+	Moniker string
+	Pubkey  *big.Int
+}
 
 type Address string
 
@@ -42,20 +47,21 @@ func (a Address) Bytes() []byte {
 	return data
 }
 
-func (a Address) PartyIdentifier() *tss.PartyID {
-	return tss.NewPartyID(
-		a.String(),
-		a.String(),
-		a.PartyKey(),
-	)
+func (a Address) PartyIdentifier() Identifier {
+	return Identifier{
+		Name:    a.String(),
+		Moniker: a.String(),
+		Pubkey:  a.PartyKey(),
+	}
+
 }
 
 func (a Address) PartyKey() *big.Int {
 	return new(big.Int).SetBytes(a.Bytes())
 }
 
-func AddrFromPartyId(id *tss.PartyID) Address {
-	return Address(id.GetMoniker())
+func AddrFromString(addr string) Address {
+	return Address(addr)
 }
 
 var AddressHook = figure.Hooks{

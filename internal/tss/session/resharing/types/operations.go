@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 )
 
 type ContractOperation interface {
@@ -14,7 +14,7 @@ type ContractOperation interface {
 	Nonce() uint64
 
 	CalculateHash() []byte
-	ConvertSignature(sig *common.SignatureData) string
+	ConvertSignature(sig tss.SignatureData) string
 }
 
 func OperationRemoveSignerStartTime(startTime time.Time, epochSupport time.Duration) time.Time {

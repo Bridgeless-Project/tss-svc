@@ -17,7 +17,8 @@ Next secrets should be set in the Vault key-value storage under the `MOUNT_PATH`
   - `cosmos_account` - Cosmos SDK account private key (in hex format).
 - for signing mode:
   - all the secrets from the keygen mode
-  - `tss_share` - TSS key share for the local party threshold signature signing
+  - `tss_shares/ecdsa` - BNB ECDSA TSS key share for the local party threshold signature signing
+  - `tss_shares/frost` - FROST TSS key share for the local party threshold signature signing
 
 ## Examples
 TODO: Add examples

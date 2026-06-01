@@ -7,7 +7,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -15,7 +15,7 @@ import (
 
 type Finalizer struct {
 	withdrawalData *withdrawal.EvmWithdrawalData
-	signature      *common.SignatureData
+	signature      tss.SignatureData
 
 	db   database.DepositsQ
 	core *coreConnector.Connector
@@ -46,7 +46,7 @@ func (ef *Finalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *Fin
 	return ef
 }
 
-func (ef *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
+func (ef *Finalizer) WithSignature(sig tss.SignatureData) *Finalizer {
 	ef.signature = sig
 	return ef
 }
@@ -95,8 +95,8 @@ func (ef *Finalizer) finalize(_ context.Context) {
 	ef.errChan <- nil
 }
 
-func convertToEthSignature(sig *common.SignatureData) string {
-	rawSig := append(sig.Signature, sig.SignatureRecovery...)
+func convertToEthSignature(sig tss.SignatureData) string {
+	rawSig := append(sig.GetSignature(), sig.GetSignatureRecovery()...)
 	rawSig[64] += 27
 
 	return hexutil.Encode(rawSig)

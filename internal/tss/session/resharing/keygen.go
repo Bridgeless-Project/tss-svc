@@ -11,11 +11,11 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	tssKeygen "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
 	"github.com/avast/retry-go"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -31,6 +31,8 @@ type KeygenHandler struct {
 	logger *logan.Entry
 
 	oldEpochMember, newEpochMember bool
+
+	protocolType string
 }
 
 func NewKeygenHandler(
@@ -99,19 +101,21 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 
 	// should load new share from temporary secrets
 	if r.oldEpochMember {
-		state.NewShare, err = r.secrets.GetTemporaryTssShare()
+		err = r.secrets.GetTemporaryTssShare(state.NewShare)
 	} else {
-		state.NewShare, err = r.secrets.GetTssShare()
+		err = r.secrets.LoadTssShare(state.NewShare)
 	}
+
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get key share from secrets storage")
 	}
 
-	if !state.NewPubKey.Equal(state.NewShare.ECDSAPub.ToECDSAPubKey()) {
+	// TODO: check it
+	if !state.NewPubKey.Equal(state.NewShare.PubKey()) {
 		return false, errors.New(fmt.Sprintf(
 			"pubkey from core does not match pubkey derived from saved share: %s vs %s",
 			pubkey,
-			bridge.PubkeyPrefixedToString(state.NewShare.ECDSAPub.X(), state.NewShare.ECDSAPub.Y()),
+			state.NewShare.PubKey(),
 		))
 	}
 
@@ -124,8 +128,8 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 		return r.listenForPubkeyConfirmation(ctx, state)
 	}
 
-	preparams, err := r.secrets.GetKeygenPreParams()
-	if err != nil {
+	preparams := ecdsaTss.NewEcdsaPreParams()
+	if err := r.secrets.GetKeygenPreParams(preparams); err != nil {
 		return errors.Wrap(err, "failed to get preparams")
 	}
 	account, err := r.secrets.GetCoreAccount()
@@ -135,13 +139,14 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 
 	keygenSession := tssKeygen.NewSession(
 		tss.LocalKeygenParty{
-			PreParams: *preparams,
+			PreParams: preparams,
 			Address:   account.CosmosAddress(),
 			Threshold: int(state.Threshold),
 		},
 		r.parties,
 		session.Params{Id: int64(state.Epoch)},
 		r.logger,
+		nil, // don't need to set the curve for ECDSA
 	)
 	r.sessionManager.Add(keygenSession)
 	<-time.After(1 * time.Second) // slight delay to ensure session is registered before first message arrives
@@ -149,20 +154,25 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 	if err = keygenSession.Run(ctx); err != nil {
 		return errors.Wrap(err, "failed to start keygen session")
 	}
-	result, err := keygenSession.WaitFor()
+	state.NewShare, err = keygenSession.WaitFor()
 	if err != nil {
 		return errors.Wrap(err, "failed to produce key share")
 	}
 
-	state.NewShare = result
-	if err = r.saveKeyShare(result); err != nil {
+	if err = r.saveKeyShare(state.NewShare); err != nil {
 		return errors.Wrap(err, "failed to save key share")
 	}
 
-	pubkey := bridge.PubkeyPrefixedToString(result.ECDSAPub.X(), result.ECDSAPub.Y())
-
 	err = retry.Do(
-		func() error { return r.core.SetEpochPubKey(state.Epoch, pubkey) },
+		func() error {
+			return r.core.SetEpochPubKey(
+				state.Epoch,
+				bridge.PubkeyPrefixedToString(
+					state.NewPubKey.X,
+					state.NewPubKey.Y,
+				),
+			)
+		},
 		retry.Attempts(3),
 		retry.Delay(5*time.Second),
 	)
@@ -211,12 +221,20 @@ func (r *KeygenHandler) listenForPubkeyConfirmation(ctx context.Context, state *
 	}
 }
 
-func (r *KeygenHandler) saveKeyShare(result *keygen.LocalPartySaveData) error {
+func (r *KeygenHandler) saveKeyShare(result tss.Share) error {
 	r.logger.Debug("saving new key share to secrets storage...")
 
-	if r.oldEpochMember {
-		return errors.Wrap(r.secrets.SaveTemporaryTssShare(result), "failed to save temporary key share")
+	bytes, err := result.Marshal()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal new key share")
 	}
 
-	return errors.Wrap(r.secrets.SaveTssShare(result), "failed to save key share")
+	if r.oldEpochMember {
+		return errors.Wrap(r.secrets.SaveTssShare(
+			secrets.TssShareKeyTemporary+secrets.TssShareKey(result.GetVaultPath()),
+			bytes,
+		), "failed to save temporary key share")
+	}
+
+	return errors.Wrap(r.secrets.SaveTssShare(secrets.TssShareKey(result.GetVaultPath()), bytes), "failed to save key share")
 }

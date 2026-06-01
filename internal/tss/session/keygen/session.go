@@ -8,9 +8,10 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -21,13 +22,12 @@ type Session struct {
 	params    session.Params
 	wg        *sync.WaitGroup
 
-	keygenParty interface {
-		Run(ctx context.Context)
-		WaitFor() *keygen.LocalPartySaveData
-		Receive(sender core.Address, data *p2p.TssData)
-	}
+	connectedPartiesCount func() int
+	partiesCount          int
 
-	result *keygen.LocalPartySaveData
+	keygenParty tss.KeyGenParty
+
+	result tss.Share
 	err    error
 
 	logger *logan.Entry
@@ -38,18 +38,40 @@ func NewSession(
 	parties []p2p.Party,
 	params session.Params,
 	logger *logan.Entry,
+	group curve.Curve,
 ) *Session {
-	sessionId := session.GetKeygenSessionIdentifier(params.Id)
-	return &Session{
-		sessionId:   sessionId,
-		params:      params,
-		wg:          &sync.WaitGroup{},
-		keygenParty: tss.NewKeygenParty(self, parties, sessionId, logger.WithField("component", "keygen_party")),
-		logger:      logger,
+	sessionId := session.GetKeygenSessionIdentifier(params.Id, string(self.PreParams.Protocol()))
+	keygenParty := tssProtocols.SelectKeyGenByProtocol(
+		self,
+		parties,
+		sessionId,
+		group,
+		logger.WithField("component", "keygen_party"),
+	)
+
+	s := &Session{
+		sessionId:    sessionId,
+		params:       params,
+		wg:           new(sync.WaitGroup),
+		partiesCount: len(parties),
+		keygenParty:  keygenParty,
+		logger:       logger,
 	}
+	if keygenParty == nil {
+		s.err = errors.Errorf("unsupported keygen protocol %q", self.PreParams.Protocol())
+	}
+
+	return s
 }
 
 func (s *Session) Run(ctx context.Context) error {
+	if s.err != nil {
+		return s.err
+	}
+	if s.keygenParty == nil {
+		return errors.New("keygen party is not configured")
+	}
+
 	s.logger.Info("keygen session started")
 
 	s.wg.Add(1)
@@ -73,12 +95,13 @@ func (s *Session) run(ctx context.Context) {
 
 	if err := boundedCtx.Err(); err != nil {
 		s.err = err
-	} else {
-		s.err = errors.New("keygen session error occurred")
+		return
 	}
+
+	s.err = errors.New("keygen session error occurred")
 }
 
-func (s *Session) WaitFor() (*keygen.LocalPartySaveData, error) {
+func (s *Session) WaitFor() (tss.Share, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }

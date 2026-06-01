@@ -17,7 +17,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/config"
-	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/core/subscriber"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -30,10 +29,10 @@ import (
 	evmMerklized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/merklized"
 	evmSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/standart"
 	solanaSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/solana"
+	testSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/test"
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
-	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -75,10 +74,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
-	share, err := storage.GetTssShare()
-	if err != nil {
-		return errors.Wrap(err, "failed to get tss share")
-	}
+
 	cert, err := storage.GetLocalPartyTlsCertificate()
 	if err != nil {
 		return errors.Wrap(err, "failed to get local party tls certificate")
@@ -167,7 +163,24 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 				}
 			}
 
-			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector, depositAcceptorSession)
+			sess, err := configureSigningSession(
+				sessParams,
+				parties,
+				tss.LocalSignParty{
+					Account:   *account,
+					Threshold: sessParams.Threshold,
+					Share:     client.Share(),
+				},
+				dtb,
+				fetcher,
+				logger,
+				client,
+				connector,
+				depositAcceptorSession,
+			)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed to configure signing session for chain %s", client.ChainId()))
+			}
 
 			wg.Add(1)
 			eg.Go(func() error {
@@ -220,125 +233,131 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 func configureSigningSession(
 	params session.SigningParams,
 	parties []p2p.Party,
-	account core.Account,
-	share *keygen.LocalPartySaveData,
+	localParty tss.LocalSignParty,
 	db db.DepositsQ,
 	fetcher *deposit.Fetcher,
 	logger *logan.Entry,
 	client chain.Client,
 	connector *coreConnector.Connector,
+
 	distributor *distributor.DepositDistributionSession,
-) (sess p2p.RunnableTssSession) {
+) (p2p.RunnableTssSession, error) {
+	if !client.IsCentralized() && localParty.Share == nil {
+		return nil, errors.Errorf("TSS share is not configured for chain %s", client.ChainId())
+	}
+
 	switch client.Type() {
 	case chain.TypeEVM:
 		evmClient := client.(*evm.Client)
 		switch {
 		case evmClient.IsCentralized():
-			sess = evmCentralized.NewSession(
+			return evmCentralized.NewSession(
 				evmClient, db,
 				logger.WithField("component", "centralized_signing_session"),
-			)
+			), nil
+		}
+	}
 
+	switch client.Type() {
+	case chain.TypeEVM:
+		evmClient := client.(*evm.Client)
+		switch {
+		case evmClient.IsCentralized():
+			return evmCentralized.NewSession(
+				evmClient, db,
+				logger.WithField("component", "centralized_signing_session"),
+			), nil
 		case evmClient.IsStandart():
 			evmSession := evmSigning.NewSession(
-				tss.LocalSignParty{
-					Account:   account,
-					Share:     share,
-					Threshold: params.Threshold,
-				},
+				localParty,
 				parties,
 				params,
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector)
 			if err := evmSession.Build(); err != nil {
-				panic(errors.Wrap(err, "failed to build evm session"))
+				return nil, errors.Wrap(err, "failed to build evm session")
 			}
 
-			sess = evmSession
+			return evmSession, nil
 		default:
 			evmMerklizedSession := evmMerklized.NewSession(
-				tss.LocalSignParty{
-					Account:   account,
-					Share:     share,
-					Threshold: params.Threshold,
-				},
+				localParty,
 				parties,
 				params,
 				db,
 				logger.WithField("component", "signing_session"),
 			).WithDepositFetcher(fetcher).WithClient(client.(*evm.Client)).WithCoreConnector(connector).WithDistributor(distributor)
 			if err := evmMerklizedSession.Build(); err != nil {
-				panic(errors.Wrap(err, "failed to build evm session"))
+				return nil, errors.Wrap(err, "failed to build evm session")
 			}
-			sess = evmMerklizedSession
+
+			return evmMerklizedSession, nil
 		}
 	case chain.TypeZano:
 		zanoSession := zanoSigning.NewSession(
-			tss.LocalSignParty{
-				Account:   account,
-				Share:     share,
-				Threshold: params.Threshold,
-			},
+			localParty,
 			parties,
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*zano.Client)).WithCoreConnector(connector)
 		if err := zanoSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build zano session"))
+			return nil, errors.Wrap(err, "failed to build zano session")
 		}
-		sess = zanoSession
+
+		return zanoSession, nil
 	case chain.TypeBitcoin:
 		btcSession := utxoSigning.NewSession(
-			tss.LocalSignParty{
-				Account:   account,
-				Share:     share,
-				Threshold: params.Threshold,
-			},
+			localParty,
 			parties,
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(utxoclient.Client)).WithCoreConnector(connector)
 		if err := btcSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build bitcoin session"))
+			return nil, errors.Wrap(err, "failed to build bitcoin session")
 		}
-		sess = btcSession
 
+		return btcSession, nil
 	case chain.TypeTON:
-		tonSession := tonSigning.NewSession(tss.LocalSignParty{
-			Account:   account,
-			Share:     share,
-			Threshold: params.Threshold,
-		},
+		tonSession := tonSigning.NewSession(localParty,
 			parties,
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*ton.Client)).WithCoreConnector(connector)
 		if err := tonSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build TON session"))
+			return nil, errors.Wrap(err, "failed to build TON session")
 		}
-		sess = tonSession
 
+		return tonSession, nil
 	case chain.TypeSolana:
 		solanaSession := solanaSigning.NewSession(
-			tss.LocalSignParty{
-				Account:   account,
-				Share:     share,
-				Threshold: params.Threshold,
-			},
+			localParty,
 			parties,
 			params,
 			db,
 			logger.WithField("component", "signing_session"),
 		).WithDepositFetcher(fetcher).WithClient(client.(*solana.Client)).WithCoreConnector(connector)
 		if err := solanaSession.Build(); err != nil {
-			panic(errors.Wrap(err, "failed to build solana session"))
+			return nil, errors.Wrap(err, "failed to build solana session")
 		}
-		sess = solanaSession
-	}
 
-	return sess
+		return solanaSession, nil
+	case chain.TypeOther:
+		testSession := testSigning.NewSession(
+			localParty,
+			parties,
+			params,
+			db,
+			logger.WithField("component", "signing_session"))
+		if err := testSession.Build(); err != nil {
+			return nil, errors.Wrap(err, "failed to build test session")
+		}
+
+		return testSession, nil
+	default:
+		return nil, errors.Errorf("unsupported chain type: %s", client.Type())
+	}
 }

@@ -14,12 +14,13 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -49,7 +50,7 @@ type Session struct {
 
 	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
 
-	signingParty          *tss.SignParty
+	signingParty          tss.SignParty
 	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
@@ -136,7 +137,7 @@ func (s *Session) Run(ctx context.Context) error {
 			s.mechanism,
 			s.logger.WithField("phase", "consensus"),
 		)
-		s.signingParty = tss.NewSignParty(s.self, s.Id(), s.logger.WithField("phase", "signing"))
+		s.signingParty = tssProtocols.SelectSignByProtocol(s.self, s.Id(), s.logger.WithField("phase", "signing"))
 		s.signaturesDistributor = signing.NewSignaturesDistributor(
 			s.Id(),
 			s.parties,
@@ -216,9 +217,16 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 			return errors.New("signing phase error occurred")
 		}
 
-		signatures = &tss.Signatures{
-			Data: []*common.SignatureData{signature},
+		convertedSig := new(tss2.EcdsaSignature)
+		err = convertedSig.SetSignature(signature.GetSignature())
+		if err != nil {
+			return errors.Wrap(err, "failed to set signature")
 		}
+
+		signaturesArray := make([]tss2.EcdsaSignature, 1)
+		signaturesArray = append(signaturesArray, *convertedSig)
+		signatures = new(tss.Signatures)
+		signatures.SetSignature(signature)
 
 		// signature distribution phase should be started not later than
 		// a second after the signing phase

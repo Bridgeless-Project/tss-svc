@@ -20,9 +20,9 @@ type SignaturesDistributor struct {
 
 	sessionId   string
 	distributor core.Address
-	self        core.Address
+	self        tss.LocalSignParty // store the whole self struct instead of address only
 	sigData     [][]byte
-	sigPubKey   *ecdsa.PublicKey
+	sigPubKey   ecdsa.PublicKey
 
 	broadcaster *broadcast.ReliableBroadcaster[tss.Signatures]
 
@@ -43,11 +43,10 @@ func NewSignaturesDistributor(
 	logger *logan.Entry,
 ) *SignaturesDistributor {
 	return &SignaturesDistributor{
-		wg:          &sync.WaitGroup{},
+		wg:          new(sync.WaitGroup),
 		sessionId:   sessionId,
 		distributor: distributor,
-		self:        self.Account.CosmosAddress(),
-		sigPubKey:   self.Share.ECDSAPub.ToECDSAPubKey(),
+		self:        self,
 
 		broadcaster: broadcast.NewReliable[tss.Signatures](
 			sessionId,
@@ -78,7 +77,7 @@ func (s *SignaturesDistributor) WithSigData(sigData [][]byte) *SignaturesDistrib
 func (s *SignaturesDistributor) Run(ctx context.Context) {
 	s.wg.Add(1)
 
-	if s.self == s.distributor {
+	if s.self.Account.CosmosAddress() == s.distributor {
 		go s.distribute()
 	} else {
 		go s.receive(ctx)
@@ -137,9 +136,14 @@ func (s *SignaturesDistributor) validateSignatures() error {
 		return errors.New("received signatures count does not match expected")
 	}
 
+	// verify signature with appropriate share: frost or ecdsa
 	for i, signature := range s.signatures.Data {
-		if !tss.Verify(s.sigPubKey, s.sigData[i], signature) {
-			return errors.New("got invalid signature")
+		ok, err := s.self.Share.Verify(signature.GetSignature(), s.sigData[i])
+		if err != nil {
+			return errors.Wrap(err, "failed to verify signature")
+		}
+		if !ok {
+			return errors.New("invalid signature")
 		}
 	}
 

@@ -77,7 +77,7 @@ func New[T SigningData](
 
 		logger: logger.WithField("session_id", party.SessionId),
 
-		wg:   &sync.WaitGroup{},
+		wg:   new(sync.WaitGroup),
 		msgs: make(chan consensusMsg, msgsCapacity),
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/factory"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
@@ -34,6 +35,7 @@ type Client interface {
 
 type client struct {
 	chain          utxochain.Chain
+	share          tss.Share
 	depositDecoder *DepositDecoder
 	helper         helper.UtxoHelper
 }
@@ -53,6 +55,14 @@ func (c *client) UtxoHelper() helper.UtxoHelper {
 
 func (c *client) ChainId() string {
 	return c.chain.Id
+}
+
+func (c *client) Share() tss.Share {
+	return c.share
+}
+
+func (c *client) SetShare(share tss.Share) {
+	c.share = share
 }
 
 func (c *client) Type() chain.Type {

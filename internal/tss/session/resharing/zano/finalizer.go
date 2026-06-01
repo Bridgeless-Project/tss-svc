@@ -5,13 +5,13 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Finalizer struct {
 	data      *SigningData
-	signature *common.SignatureData
+	signature tss.SignatureData
 
 	client *zano.Client
 
@@ -36,7 +36,7 @@ func (f *Finalizer) WithData(data *SigningData) *Finalizer {
 	return f
 }
 
-func (f *Finalizer) WithSignature(signature *common.SignatureData) *Finalizer {
+func (f *Finalizer) WithSignature(signature tss.SignatureData) *Finalizer {
 	f.signature = signature
 	return f
 }

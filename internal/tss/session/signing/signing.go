@@ -8,8 +8,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -27,13 +27,12 @@ type Session struct {
 	logger *logan.Entry
 	wg     *sync.WaitGroup
 
-	signingParty interface {
-		Run(ctx context.Context)
-		WaitFor() *common.SignatureData
-		Receive(sender core.Address, data *p2p.TssData)
-	}
+	connectedPartiesCount func() int
+	partiesCount          int
 
-	result *common.SignatureData
+	signingParty tss.SignParty
+
+	result tss.SignatureData
 	err    error
 }
 
@@ -47,9 +46,9 @@ func NewSession(
 	return &Session{
 		sessionId: sessionId,
 		params:    params,
-		wg:        &sync.WaitGroup{},
+		wg:        new(sync.WaitGroup),
 		logger:    logger,
-		signingParty: tss.NewSignParty(self, sessionId, logger).
+		signingParty: tssProtocols.SelectSignByProtocol(self, sessionId, logger).
 			WithSigningData(params.SigningData).
 			WithParties(parties),
 	}
@@ -83,7 +82,7 @@ func (s *Session) run(ctx context.Context) {
 	}
 }
 
-func (s *Session) WaitFor() (*common.SignatureData, error) {
+func (s *Session) WaitFor() (tss.SignatureData, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }

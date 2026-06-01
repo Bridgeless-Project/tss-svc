@@ -11,6 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	zanoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/zano"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -38,10 +39,13 @@ var reshareZanoCmd = &cobra.Command{
 		}
 
 		storage := cfg.SecretsStorage()
-		share, err := storage.GetTssShare()
+
+		share := tss2.NewEcdsaShare()
+		err = storage.LoadTssShare(share)
 		if err != nil {
-			return errors.Wrap(err, "failed to get tss share")
+			return errors.Wrap(err, "failed to load tss share")
 		}
+
 		account, err := storage.GetCoreAccount()
 		if err != nil {
 			return errors.Wrap(err, "failed to get core account")

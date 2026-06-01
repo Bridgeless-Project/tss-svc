@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v3/tss"
 	"google.golang.org/grpc"
 )
 
@@ -16,10 +15,10 @@ type Party struct {
 
 	connection *grpc.ClientConn
 	pemCert    []byte
-	identifier *tss.PartyID
+	identifier core.Identifier
 }
 
-func (p *Party) Identifier() *tss.PartyID {
+func (p *Party) Identifier() core.Identifier {
 	return p.identifier
 }
 
