@@ -18,7 +18,6 @@ import (
 	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	tss3 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -148,8 +147,7 @@ var signCmd = &cobra.Command{
 			}
 
 			if verify {
-
-				ok, err := share.Verify(result.Signature, dataToSign)
+				ok, err := share.Verify(result.GetSignature(), dataToSign)
 				if err != nil {
 					return errors.Wrap(err, "failed to verify signature")
 				}
@@ -175,8 +173,8 @@ func validateSignProtocol(protocol string) error {
 	}
 }
 
-func saveSigningResult(result *common.SignatureData) error {
-	signature := hexutil.Encode(append(result.Signature, result.SignatureRecovery...))
+func saveSigningResult(result tss.SignatureData) error {
+	signature := hexutil.Encode(append(result.GetSignature(), result.GetSignatureRecovery()...))
 
 	switch utils.OutputType {
 	case "console":

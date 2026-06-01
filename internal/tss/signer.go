@@ -5,19 +5,19 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
-	"github.com/bnb-chain/tss-lib/v3/common"
 )
 
 type LocalSignParty struct {
-	Account   core.Account
-	Share     Share
-	Threshold int
+	Account       core.Account
+	Share         Share
+	Threshold     int
+	SignatureData SignatureData // TODO: maybe remove
 }
 
 type SignParty interface {
 	WithParties(parties []p2p.Party) SignParty
 	WithSigningData(data []byte) SignParty
 	Run(ctx context.Context)
-	WaitFor() *common.SignatureData // TODO: use interfaces
+	WaitFor() SignatureData
 	Receive(sender core.Address, data *p2p.TssData)
 }

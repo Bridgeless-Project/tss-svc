@@ -134,7 +134,6 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 
 func (p *KeygenParty) receiveUpdates(ctx context.Context, out <-chan ecdsaTss.Message, end <-chan *keygen.LocalPartySaveData) {
 	defer func() {
-		close(p.msgs)
 		p.wg.Done()
 	}()
 

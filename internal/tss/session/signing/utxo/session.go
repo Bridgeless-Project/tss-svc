@@ -21,7 +21,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -266,7 +265,7 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 	if result.Signers != nil {
 		s.logger.Infof("got %d inputs to sign", signRounds)
 		// signing phase
-		sigs := make([]*common.SignatureData, 0, signRounds)
+		sigs := make([]tss.SignatureData, 0, signRounds)
 		for idx := range signRounds {
 			currentSigData := result.SigData.ProposalData.SigData[idx]
 
@@ -363,7 +362,7 @@ func (s *Session) runConsolidationSession(ctx context.Context) error {
 	if result.Signers != nil {
 		s.logger.Infof("got %d inputs to sign", signRounds)
 		// signing phase
-		sigs := make([]*common.SignatureData, 0, signRounds)
+		sigs := make([]tss.SignatureData, 0, signRounds)
 		for idx := range signRounds {
 			currentSigData := result.SigData.ProposalData.SigData[idx]
 

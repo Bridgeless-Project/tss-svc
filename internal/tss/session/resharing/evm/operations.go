@@ -7,8 +7,8 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/operations"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
-	tsscommon "github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -39,7 +39,7 @@ func (u UpdateSignerOperation) Nonce() uint64 {
 	return u.nonce.Uint64()
 }
 
-func (u UpdateSignerOperation) ConvertSignature(sig *tsscommon.SignatureData) string {
+func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) string {
 	return evm.ConvertSignature(sig)
 }
 

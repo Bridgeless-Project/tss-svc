@@ -33,7 +33,7 @@ type SignParty struct {
 	data []byte
 
 	ended     atomic.Bool
-	result    *common.SignatureData
+	result    tss.SignatureData
 	sessionId string
 }
 
@@ -97,7 +97,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	p.logger.Info("signing started")
 }
 
-func (p *SignParty) WaitFor() *common.SignatureData {
+func (p *SignParty) WaitFor() tss.SignatureData {
 	p.wg.Wait()
 	p.ended.Store(true)
 
@@ -158,10 +158,14 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message, 
 			return
 		case result, ok := <-end:
 			close(p.msgs)
-			p.result = result
 
+			err := p.result.SetSignature(result)
+			if err != nil {
+				p.logger.WithError(err).Error("failed to update signature")
+			}
+			
 			if !ok {
-				p.logger.Error("tss party result channel is closed")
+				p.logger.Error("failed to decode the signature")
 			}
 
 			return

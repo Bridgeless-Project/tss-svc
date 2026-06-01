@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	keyPreParams      = "keygen_preparams"
-	keyAccount        = "core_account"
-	legacyKeyTssShare = "tss_share"
+	keyAccount = "core_account"
 
 	valueVaultKey = "value"
 
@@ -113,7 +111,6 @@ func (s *Storage) SaveCoreAccount(account *core.Account) error {
 	})
 }
 
-// TODO: test with resharing
 func (s *Storage) LoadTssShare(share tss.Share) error {
 	data, err := s.load(share.GetVaultPath())
 	if err != nil {

@@ -15,7 +15,7 @@ type Party struct {
 
 	connection *grpc.ClientConn
 	pemCert    []byte
-	identifier core.Identifier // TODO: use common types like interface
+	identifier core.Identifier
 }
 
 func (p *Party) Identifier() core.Identifier {

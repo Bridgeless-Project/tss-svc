@@ -7,7 +7,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -18,7 +18,7 @@ type Finalizer struct {
 	client client.Client
 
 	data          *SigningData
-	signatures    []*common.SignatureData
+	signatures    []tss.SignatureData
 	sessionLeader bool
 
 	errChan chan error
@@ -47,7 +47,7 @@ func (f *Finalizer) WithData(data *SigningData) *Finalizer {
 	return f
 }
 
-func (f *Finalizer) WithSignatures(signatures []*common.SignatureData) *Finalizer {
+func (f *Finalizer) WithSignatures(signatures []tss.SignatureData) *Finalizer {
 	f.signatures = signatures
 	return f
 }

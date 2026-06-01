@@ -138,7 +138,7 @@ func (s *SignaturesDistributor) validateSignatures() error {
 
 	// verify signature with appropriate share: frost or ecdsa
 	for i, signature := range s.signatures.Data {
-		ok, err := s.self.Share.Verify(signature.Signature, s.sigData[i])
+		ok, err := s.self.Share.Verify(signature.GetSignature(), s.sigData[i])
 		if err != nil {
 			return errors.Wrap(err, "failed to verify signature")
 		}

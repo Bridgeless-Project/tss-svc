@@ -18,7 +18,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -200,10 +199,9 @@ func (s *Session) runSession(ctx context.Context) error {
 			return errors.New("signing phase error occurred")
 		}
 
-		signatures = &tss.Signatures{
-			Data: []*common.SignatureData{signature},
-		}
-
+		signatures = new(tss.Signatures)
+		signatures.SetSignature(signature)
+		
 		distributionCtx, distributionCancel = context.WithTimeout(ctx, time.Second)
 	} else {
 		distributionCtx, distributionCancel = context.WithTimeout(ctx, session.BoundarySign+time.Second)
@@ -229,7 +227,7 @@ func (s *Session) printResult(data MockSigningData, signatures *tss.Signatures) 
 
 	signature := signatures.Data[0]
 
-	ok, err := s.self.Share.Verify(signature.Signature, data.Hash)
+	ok, err := s.self.Share.Verify(signature.GetSignature(), data.Hash)
 	if err != nil {
 		return err
 	}
@@ -247,7 +245,7 @@ func (s *Session) printResult(data MockSigningData, signatures *tss.Signatures) 
 		Curve:     "secp256k1",
 		Message:   data.Message,
 		Hash:      hexutil.Encode(data.Hash),
-		Signature: hexutil.Encode(signature.Signature),
+		Signature: hexutil.Encode(signature.GetSignature()),
 		Verified:  ok,
 	}
 

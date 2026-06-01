@@ -20,7 +20,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -218,9 +217,8 @@ func (s *Session) runSession(ctx context.Context) error {
 			return errors.New("signing phase error occurred")
 		}
 
-		signatures = &tss.Signatures{
-			Data: []*common.SignatureData{signature},
-		}
+		signatures = new(tss.Signatures)
+		signatures.SetSignature(signature)
 
 		// signature distribution phase should be started not later than
 		// a second after the signing phase

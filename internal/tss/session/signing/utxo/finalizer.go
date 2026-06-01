@@ -11,7 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -19,7 +19,7 @@ import (
 
 type Finalizer struct {
 	withdrawalData *withdrawal.UtxoWithdrawalData
-	signatures     []*common.SignatureData
+	signatures     []tss.SignatureData
 
 	tssPub *ecdsa.PublicKey
 
@@ -58,7 +58,7 @@ func (f *Finalizer) WithData(withdrawalData *withdrawal.UtxoWithdrawalData) *Fin
 	return f
 }
 
-func (f *Finalizer) WithSignatures(signatures []*common.SignatureData) *Finalizer {
+func (f *Finalizer) WithSignatures(signatures []tss.SignatureData) *Finalizer {
 	f.signatures = signatures
 	return f
 }

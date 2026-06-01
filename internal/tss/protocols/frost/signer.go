@@ -10,7 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	"github.com/bnb-chain/tss-lib/v3/common"
+
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
@@ -40,7 +40,7 @@ type SignParty struct {
 	msgs   chan tss.PartyMsg
 	once   sync.Once
 	data   []byte
-	result *common.SignatureData
+	result tss.SignatureData
 	err    error
 	logger *logan.Entry
 }
@@ -59,11 +59,11 @@ func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry
 func (p *SignParty) WithParties(parties []p2p.Party) tss.SignParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	signers := make([]party.ID, 0, len(parties)+1)
-	signers = append(signers, tss.ToFROSTPartyId(p.self.Account.CosmosAddress().PartyIdentifier()))
+	signers = append(signers, party.ID((p.self.Account.CosmosAddress().String())))
 
 	for _, p2pParty := range parties {
 		partyMap[p2pParty.CoreAddress] = struct{}{}
-		signers = append(signers, tss.ToFROSTPartyId(p2pParty.CoreAddress.PartyIdentifier()))
+		signers = append(signers, party.ID(p2pParty.CoreAddress.String()))
 	}
 
 	p.parties = partyMap
@@ -79,7 +79,6 @@ func (p *SignParty) WithSigningData(data []byte) tss.SignParty {
 }
 
 func (p *SignParty) Run(ctx context.Context) {
-	//  TODO add custom curve here
 	config, err := toTaprootConfig(p.self.Share.MustFrostShare())
 	if err != nil {
 		p.err = err
@@ -104,7 +103,7 @@ func (p *SignParty) Run(ctx context.Context) {
 	p.logger.Info("frost signing started")
 }
 
-func (p *SignParty) WaitFor() *common.SignatureData {
+func (p *SignParty) WaitFor() tss.SignatureData {
 	p.wg.Wait()
 	p.finish()
 
@@ -187,7 +186,11 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 					return
 				}
 
-				p.result = frostSignatureData(signature, p.data)
+				err = p.result.SetSignature(signature)
+				if err != nil {
+					p.err = err
+				}
+
 				return
 			}
 
@@ -272,18 +275,18 @@ func toTaprootConfig(config *keygen.Config) (*keygen.TaprootConfig, error) {
 	}, nil
 }
 
-func frostSignatureData(signature taproot.Signature, msg []byte) *common.SignatureData {
-	data := make([]byte, len(signature))
-	copy(data, signature)
-
-	result := &common.SignatureData{
-		Signature: data,
-		M:         append([]byte(nil), msg...),
-	}
-	if len(data) == taproot.SignatureLen {
-		result.R = append([]byte(nil), data[:32]...)
-		result.S = append([]byte(nil), data[32:]...)
-	}
-
-	return result
-}
+//func frostSignatureData(signature taproot.Signature, msg []byte)  {
+//	data := make([]byte, len(signature))
+//	copy(data, signature)
+//
+//	result := &common.SignatureData{
+//		Signature: data,
+//		M:         append([]byte(nil), msg...),
+//	}
+//	if len(data) == taproot.SignatureLen {
+//		result.R = append([]byte(nil), data[:32]...)
+//		result.S = append([]byte(nil), data[32:]...)
+//	}
+//
+//	return result
+//}

@@ -10,7 +10,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	tssProtocols "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -33,7 +32,7 @@ type Session struct {
 
 	signingParty tss.SignParty
 
-	result *common.SignatureData
+	result tss.SignatureData
 	err    error
 }
 
@@ -83,7 +82,7 @@ func (s *Session) run(ctx context.Context) {
 	}
 }
 
-func (s *Session) WaitFor() (*common.SignatureData, error) {
+func (s *Session) WaitFor() (tss.SignatureData, error) {
 	s.wg.Wait()
 	return s.result, s.err
 }

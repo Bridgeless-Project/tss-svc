@@ -125,7 +125,6 @@ func (s *Session) Run(ctx context.Context) error {
 	return nil
 }
 
-// TODO: integrate FROST
 func (s *Session) runMigration(ctx context.Context, state *resharingTypes.State) error {
 	err := s.secrets.LoadTssShare(state.OldShare)
 	if err != nil {

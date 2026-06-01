@@ -41,15 +41,14 @@ type KeygenParty struct {
 	logger *logan.Entry
 }
 
-// TODO: remove the group and threshold here
 func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.Party, sessionId string, logger *logan.Entry) *KeygenParty {
 	partyMap := make(map[core.Address]struct{}, len(parties))
 	partyIds := make([]party.ID, 0, len(parties)+1)
-	partyIds = append(partyIds, tss.ToFROSTPartyId(self.Address.PartyIdentifier()))
+	partyIds = append(partyIds, party.ID(self.Address.String()))
 
 	for _, p := range parties {
 		partyMap[p.CoreAddress] = struct{}{}
-		partyIds = append(partyIds, tss.ToFROSTPartyId(p.CoreAddress.PartyIdentifier()))
+		partyIds = append(partyIds, party.ID(p.CoreAddress.String()))
 	}
 	participants := party.NewIDSlice(partyIds)
 
@@ -69,7 +68,7 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
-	h, err := protocol.NewMultiHandler(frost.Keygen(p.group, tss.ToFROSTPartyId(p.self.Address.PartyIdentifier()), p.participants, p.self.Threshold), []byte(p.sessionId))
+	h, err := protocol.NewMultiHandler(frost.Keygen(p.group, party.ID(p.self.Address.String()), p.participants, p.self.Threshold), []byte(p.sessionId))
 	if err != nil {
 		p.err = err
 		p.finish()
@@ -141,7 +140,7 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 				p.logger.WithError(err).WithField("party", msg.Sender).Warn("failed to unmarshal message")
 				continue
 			}
-			if err := validateMessageEnvelope(msg.Sender, tss.ToFROSTPartyId(p.self.Address.PartyIdentifier()), msg, message); err != nil {
+			if err := validateMessageEnvelope(msg.Sender, party.ID(p.self.Address.String()), msg, message); err != nil {
 				p.logger.WithError(err).WithField("party", msg.Sender).Warn("rejected invalid frost message envelope")
 				continue
 			}

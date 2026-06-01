@@ -7,14 +7,15 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/bnb-chain/tss-lib/v3/common"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
 type Finalizer struct {
 	withdrawalData *withdrawal.TonWithdrawalData
-	signature      *common.SignatureData
+	signature      tss.SignatureData
 
 	db   database.DepositsQ
 	core *coreConnector.Connector
@@ -45,7 +46,7 @@ func (tf *Finalizer) WithData(withdrawalData *withdrawal.TonWithdrawalData) *Fin
 	return tf
 }
 
-func (tf *Finalizer) WithSignature(sig *common.SignatureData) *Finalizer {
+func (tf *Finalizer) WithSignature(sig tss.SignatureData) *Finalizer {
 	tf.signature = sig
 	return tf
 }

@@ -81,7 +81,8 @@ func (e *EcdsaShare) Verify(signature, data []byte) (bool, error) {
 		sigData.S = append([]byte(nil), signature[32:64]...)
 	}
 
-	return verifyEcdsaSignature(e.data.ECDSAPub.ToECDSAPubKey(), data, sigData), nil
+	r, s := new(big.Int).SetBytes(sigData.GetR()), new(big.Int).SetBytes(sigData.GetS())
+	return ecdsa.Verify(e.data.ECDSAPub.ToECDSAPubKey(), data, r, s), nil
 }
 
 func (e *EcdsaShare) PubKey() []byte {
@@ -90,15 +91,6 @@ func (e *EcdsaShare) PubKey() []byte {
 	}
 
 	return crypto.CompressPubkey(e.data.ECDSAPub.ToECDSAPubKey())
-}
-
-func verifyEcdsaSignature(pubKey *ecdsa.PublicKey, data []byte, sig *common.SignatureData) bool {
-	if pubKey == nil || sig == nil || len(sig.R) == 0 || len(sig.S) == 0 {
-		return false
-	}
-
-	r, s := new(big.Int).SetBytes(sig.GetR()), new(big.Int).SetBytes(sig.GetS())
-	return ecdsa.Verify(pubKey, data, r, s)
 }
 
 func (e *EcdsaShare) SetVaultData(kvData map[string]interface{}) error {
@@ -113,7 +105,6 @@ func (e *EcdsaShare) SetVaultData(kvData map[string]interface{}) error {
 	e.data = data
 
 	return nil
-
 }
 
 func (e *EcdsaShare) GetVaultPath() string {
