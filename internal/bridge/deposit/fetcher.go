@@ -2,11 +2,10 @@ package deposit
 
 import (
 	"math/big"
-	"strconv"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
-	"github.com/Bridgeless-Project/tss-svc/internal/config/bridge"
+	bridge "github.com/Bridgeless-Project/tss-svc/internal/bridge/config"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -66,10 +65,13 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
-	// TODO: Implement swap commission logic
+
 	withdrawalAmount, commission, err := p.GetWithdrawalAmount(depositData.DepositAmount, srcInfo, dstInfo)
 	if err != nil {
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
+	}
+	if depositData.IsSwap {
+		withdrawalAmount = depositData.DepositAmount
 	}
 
 	ignoreDistribution := dstClient.IsCentralized()
@@ -160,7 +162,7 @@ func (p *Fetcher) configureDepositParams(
 		IsWrappedToken:     dstInfo.IsWrapped,
 		IgnoreDistribution: ignoreDistribution,
 		Receiver:           depositData.DestinationAddress,
-		WithdrawalToken:    strconv.FormatUint(dstInfo.TokenId, 10),
+		WithdrawalToken:    dstInfo.Address,
 		WithdrawalChainId:  dstInfo.ChainId,
 	}
 
@@ -168,9 +170,8 @@ func (p *Fetcher) configureDepositParams(
 		return params
 	}
 
+	params.WithdrawalAmount = depositData.DepositAmount
 	params.Receiver = p.swapSettings.Contract
-	params.WithdrawalToken = p.swapSettings.WrappedBridge
-	params.WithdrawalChainId = p.swapSettings.ChainId
 
 	params.FinalReceiver = &depositData.DestinationAddress
 	params.FinalChainId = &depositData.DestinationChainId

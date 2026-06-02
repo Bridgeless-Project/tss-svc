@@ -38,7 +38,7 @@ func (c *Connector) SubmitSwaps(ctx context.Context, depositsSwapTxs *swaptypes.
 		return nil
 	}
 	if strings.Contains(err.Error(), swaptypes.ErrAlreadySubmitted.Error()) {
-		return core.ErrTransactionAlreadySubmitted
+		return core.ErrSwapAlreadySubmitted
 	}
 
 	return errors.Wrap(err, "failed to submit swap deposits")

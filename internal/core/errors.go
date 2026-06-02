@@ -9,6 +9,7 @@ var (
 	ErrSourceTokenInfoNotFound      = errors.New("source token not found")
 	ErrDestinationTokenInfoNotFound = errors.New("destination token not found")
 	ErrReferralNotFound             = errors.New("referral not found")
+	ErrSwapAlreadySubmitted         = errors.New("swap already submitted")
 
 	ErrEpochNotFound = errors.New("epoch not found")
 )
