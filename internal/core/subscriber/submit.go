@@ -100,7 +100,6 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 
 				if err = s.submitPendingDeposit(ctx, pendingDeposit); err != nil {
 					logger.WithError(err).Error("failed to submit deposit, will retry later")
-					cooldown = time.Second * 5
 					continue
 				}
 
@@ -109,7 +108,6 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 					logger.WithError(err).Error("failed to update deposit as submitted")
 				}
 			}
-			cooldown = time.Second * 0
 		}
 	}
 }
