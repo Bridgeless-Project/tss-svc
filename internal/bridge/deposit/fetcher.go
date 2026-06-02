@@ -65,10 +65,13 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
-	// TODO: Implement swap commission logic
+
 	withdrawalAmount, commission, err := p.GetWithdrawalAmount(depositData.DepositAmount, srcInfo, dstInfo)
 	if err != nil {
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
+	}
+	if depositData.IsSwap {
+		withdrawalAmount = depositData.DepositAmount
 	}
 
 	ignoreDistribution := dstClient.IsCentralized()
@@ -167,7 +170,7 @@ func (p *Fetcher) configureDepositParams(
 		return params
 	}
 
-	withdrawalAmount = depositData.DepositAmount
+	params.WithdrawalAmount = depositData.DepositAmount
 	params.Receiver = p.swapSettings.Contract
 
 	params.FinalReceiver = &depositData.DestinationAddress

@@ -100,6 +100,7 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 
 				if err = s.submitPendingDeposit(ctx, pendingDeposit); err != nil {
 					logger.WithError(err).Error("failed to submit deposit, will retry later")
+					time.Sleep(time.Second * 1)
 					continue
 				}
 
