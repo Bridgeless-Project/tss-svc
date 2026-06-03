@@ -1,43 +1,43 @@
 package bridge
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-type SwapConfigurator interface {
-	SwapSettings() SwapSettings
+type EvmSettingsConfigurator interface {
+	EvmSettings() EvmSettings
 }
 
-const swapKey = "swap_config"
+const settingsKey = "bridge_evm_config"
 
-type SwapSettings struct {
-	Contract      string `fig:"contract_address,required"`
-	ChainId       string `fig:"chain_id,required"`
-	WrappedBridge string `fig:"wrapped_bridge,required"`
+type EvmSettings struct {
+	SwapContract common.Address `fig:"swap_contract_address,required"`
+	ChainId      string         `fig:"chain_id,required"`
 }
 
-type swapper struct {
+type settinger struct {
 	getter kv.Getter
 	once   comfig.Once
 }
 
-func NewSwapConfigurator(getter kv.Getter) SwapConfigurator {
-	return &swapper{getter: getter}
+func NewEvmSettingsConfigurator(getter kv.Getter) EvmSettingsConfigurator {
+	return &settinger{getter: getter}
 }
 
-func (s *swapper) SwapSettings() SwapSettings {
+func (s *settinger) EvmSettings() EvmSettings {
 	return s.once.Do(func() any {
-		var cfg SwapSettings
+		var cfg EvmSettings
 		if err := figure.
 			Out(&cfg).
-			With(figure.BaseHooks).
-			From(kv.MustGetStringMap(s.getter, swapKey)).
+			With(figure.BaseHooks, figure.EthereumHooks).
+			From(kv.MustGetStringMap(s.getter, settingsKey)).
 			Please(); err != nil {
 			panic(errors.Wrap(err, "failed to figure out swap config"))
 		}
 		return cfg
-	}).(SwapSettings)
+	}).(EvmSettings)
 }

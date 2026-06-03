@@ -13,16 +13,16 @@ import (
 )
 
 type Fetcher struct {
-	core         *connector.Connector
-	clients      chain.Repository
-	swapSettings bridge.SwapSettings
+	core              *connector.Connector
+	clients           chain.Repository
+	bridgeEvmSettings bridge.EvmSettings
 }
 
-func NewFetcher(clients chain.Repository, core *connector.Connector, swapSettings bridge.SwapSettings) *Fetcher {
+func NewFetcher(clients chain.Repository, core *connector.Connector, bridgeEvmSettings bridge.EvmSettings) *Fetcher {
 	return &Fetcher{
-		clients:      clients,
-		core:         core,
-		swapSettings: swapSettings,
+		clients:           clients,
+		core:              core,
+		bridgeEvmSettings: bridgeEvmSettings,
 	}
 }
 
@@ -58,7 +58,7 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 
 	targetChainId := depositData.DestinationChainId
 	if depositData.IsSwap {
-		targetChainId = p.swapSettings.ChainId
+		targetChainId = p.bridgeEvmSettings.ChainId
 	}
 
 	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, targetChainId)
@@ -171,7 +171,7 @@ func (p *Fetcher) configureDepositParams(
 	}
 
 	params.WithdrawalAmount = depositData.DepositAmount
-	params.Receiver = p.swapSettings.Contract
+	params.Receiver = p.bridgeEvmSettings.SwapContract.String()
 
 	params.FinalReceiver = &depositData.DestinationAddress
 	params.FinalChainId = &depositData.DestinationChainId
