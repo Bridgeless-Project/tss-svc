@@ -20,12 +20,8 @@ import (
 )
 
 const (
-	OpServiceName = "op-subscriber"
-	OpPoolSize    = 50
-)
-
-var (
-	statusProcessed = types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED
+	opSubscriberSubmit = "op-subscriber-submit"
+	opPoolSize         = 50
 )
 
 type SubmitEventSubscriber struct {
@@ -50,7 +46,7 @@ func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *
 }
 
 func (s *SubmitEventSubscriber) Run(ctx context.Context) error {
-	out, err := s.client.Subscribe(ctx, OpServiceName, s.query, OpPoolSize)
+	out, err := s.client.Subscribe(ctx, opSubscriberSubmit, s.query, opPoolSize)
 	if err != nil {
 		return errors.Wrap(err, "subscriber init failed")
 	}
@@ -83,7 +79,7 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 			cooldown = time.Second * 5
 
 			pendingDeposits, err := s.db.Select(database.DepositsSelector{
-				Status:       &statusProcessed,
+				Status:       new(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED),
 				NotSubmitted: true,
 				Limit:        20,
 			})
@@ -135,7 +131,7 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 		case <-ctx.Done():
 			s.log.Info("context cancelled, stopping receiving events")
 			shutdownDeadline, cancel := context.WithTimeout(context.Background(), time.Second)
-			if err := s.client.Unsubscribe(shutdownDeadline, OpServiceName, s.query); err != nil {
+			if err := s.client.Unsubscribe(shutdownDeadline, opSubscriberSubmit, s.query); err != nil {
 				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 
