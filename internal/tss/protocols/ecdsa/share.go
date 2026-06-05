@@ -10,7 +10,6 @@ import (
 	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	ecdsaKeygen "github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 	"gitlab.com/distributed_lab/logan/v3/errors"
@@ -54,13 +53,13 @@ func (e *EcdsaShare) SetData(data any) error {
 }
 
 func (e *EcdsaShare) Marshal() ([]byte, error) {
-	data, err := cbor.Marshal(e.data)
+	data, err := json.Marshal(e.data)
 	return data, err
 }
 
 func (e *EcdsaShare) Unmarshal(data []byte) error {
 	e.data = new(ecdsaKeygen.LocalPartySaveData)
-	if err := cbor.Unmarshal(data, e.data); err != nil {
+	if err := json.Unmarshal(data, e.data); err != nil {
 		return errors.Wrap(err, "failed to decode ecdsa share data")
 	}
 

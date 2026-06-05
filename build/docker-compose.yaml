@@ -69,6 +69,7 @@ services:
     hostname: tss-1-api
     ports:
       - "8081:8080"
+      - "8086:8085"
     container_name: tss-1-api
     environment:
       VAULT_PATH: http://vault:8200
@@ -98,7 +99,7 @@ services:
       - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss1.local.yaml:/config.yaml
       - ./configs/shares/preparams1.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run keygen --output vault "
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign "
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -120,7 +121,7 @@ services:
       - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss2.local.yaml:/config.yaml
       - ./configs/shares/preparams2.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run keygen --output vault"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -142,7 +143,7 @@ services:
       - ./configs/certs/party2.crt:/party2.crt
       - ./configs/tss3.local.yaml:/config.yaml
       - ./configs/shares/preparams3.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run keygen --output vault"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
     depends_on:
       vault_init:
         condition: service_completed_successfully

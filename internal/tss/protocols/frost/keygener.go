@@ -3,6 +3,7 @@ package tss
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -184,13 +185,15 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 					p.logger.WithField("type", r).Error("failed to get keygen result")
 					return
 				}
+				pk, _ := config.PublicKey.MarshalBinary()
+				fmt.Println("tp.result.PubKey():", pk)
+
 				err = p.result.SetData(config)
 				if err != nil {
 					p.err = err
 					p.logger.WithError(err).Error("failed to set keygen result")
 					return
 				}
-
 				return
 			}
 

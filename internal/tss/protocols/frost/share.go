@@ -1,9 +1,11 @@
 package tss
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	ecdsa "github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
-	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
@@ -46,13 +48,15 @@ func (f *FrostShare) SetData(data any) error {
 }
 
 func (f *FrostShare) Marshal() ([]byte, error) {
-	data, err := cbor.Marshal(f.data)
+	data, _ := f.data.PublicKey.MarshalBinary()
+	fmt.Println(data)
+	data, err := json.Marshal(f.data)
 	return data, err
 }
 
 func (f *FrostShare) Unmarshal(data []byte) error {
 	config := frost.EmptyConfig(f.Group())
-	if err := cbor.Unmarshal(data, config); err != nil {
+	if err := json.Unmarshal(data, config); err != nil {
 		return errors.Wrap(err, "failed to decode frost share data")
 	}
 
@@ -95,7 +99,7 @@ func (f *FrostShare) SetVaultData(kvData map[string]interface{}) error {
 	}
 
 	data := frost.EmptyConfig(f.Group())
-	if err := cbor.Unmarshal([]byte(val), data); err != nil {
+	if err := json.Unmarshal([]byte(val), data); err != nil {
 		return errors.Wrap(err, "failed to decode frost share data")
 	}
 

@@ -14,7 +14,7 @@ type SwapConfigurator interface {
 const swapKey = "swap_config"
 
 type SwapSettings struct {
-	Contract      string `fig:"contract_address,"`
+	Contract      string `fig:"contract_address"`
 	ChainId       string `fig:"chain_id"`
 	WrappedBridge string `fig:"wrapped_bridge"`
 }
