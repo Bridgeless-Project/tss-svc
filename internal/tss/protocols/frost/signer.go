@@ -53,6 +53,7 @@ func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry
 		sessionId: sessionId,
 		logger:    logger.WithField("protocol", "frost"),
 		group:     self.Share.Group(),
+		result:    new(FrostSignature),
 	}
 }
 
@@ -274,19 +275,3 @@ func toTaprootConfig(config *keygen.Config) (*keygen.TaprootConfig, error) {
 		VerificationShares: verificationShares,
 	}, nil
 }
-
-//func frostSignatureData(signature taproot.Signature, msg []byte)  {
-//	data := make([]byte, len(signature))
-//	copy(data, signature)
-//
-//	result := &common.SignatureData{
-//		Signature: data,
-//		M:         append([]byte(nil), msg...),
-//	}
-//	if len(data) == taproot.SignatureLen {
-//		result.R = append([]byte(nil), data[:32]...)
-//		result.S = append([]byte(nil), data[32:]...)
-//	}
-//
-//	return result
-//}

@@ -63,7 +63,7 @@ func (s Signatures) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(buff.Bytes()))
 }
 
-func (s Signatures) SetSignature(data SignatureData) {
+func (s *Signatures) SetSignature(data SignatureData) {
 	s.Data = append(s.Data, data)
 }
 

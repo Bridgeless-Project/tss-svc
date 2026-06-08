@@ -44,6 +44,7 @@ func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry
 		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
 		sessionId: sessionId,
 		logger:    logger.WithField("protocol", "ecdsa"),
+		result:    new(EcdsaSignature),
 	}
 }
 
@@ -163,7 +164,7 @@ func (p *SignParty) receiveUpdates(ctx context.Context, out <-chan bnb.Message, 
 			if err != nil {
 				p.logger.WithError(err).Error("failed to update signature")
 			}
-			
+
 			if !ok {
 				p.logger.Error("failed to decode the signature")
 			}

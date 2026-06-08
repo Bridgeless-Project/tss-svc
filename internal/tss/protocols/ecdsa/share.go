@@ -13,6 +13,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 	"gitlab.com/distributed_lab/logan/v3/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 const keyShare = "tss_shares/ecdsa"
@@ -74,10 +75,12 @@ func (e *EcdsaShare) Verify(signature, data []byte) (bool, error) {
 		return false, errors.New("signature is invalid")
 	}
 
-	sigData := &common.SignatureData{Signature: signature}
-	if len(signature) >= 64 {
-		sigData.R = append([]byte(nil), signature[:32]...)
-		sigData.S = append([]byte(nil), signature[32:64]...)
+	sigData := new(common.SignatureData)
+	if err := proto.Unmarshal(signature, sigData); err != nil {
+		return false, errors.Wrap(err, "failed to decode signature")
+	}
+	if len(sigData.GetR()) == 0 || len(sigData.GetS()) == 0 {
+		return false, errors.New("signature components are missing")
 	}
 
 	r, s := new(big.Int).SetBytes(sigData.GetR()), new(big.Int).SetBytes(sigData.GetS())

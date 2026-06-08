@@ -14,7 +14,7 @@ type FrostSignature struct {
 	s    []byte
 }
 
-func (s FrostSignature) SetSignature(signature any) error {
+func (s *FrostSignature) SetSignature(signature any) error {
 	s.data = signature.([]byte)
 
 	if len(s.data) == taproot.SignatureLen {
@@ -25,22 +25,22 @@ func (s FrostSignature) SetSignature(signature any) error {
 	return nil
 }
 
-func (s FrostSignature) GetSignature() []byte {
+func (s *FrostSignature) GetSignature() []byte {
 	return s.data
 }
 
-func (s FrostSignature) GetSignatureRecovery() []byte {
+func (s *FrostSignature) GetSignatureRecovery() []byte {
 	return nil
 }
 
-func (s FrostSignature) GetR() []byte {
+func (s *FrostSignature) GetR() []byte {
 	return s.r
 }
 
-func (s FrostSignature) GetS() []byte {
+func (s *FrostSignature) GetS() []byte {
 	return s.s
 }
 
-func (s FrostSignature) GetM() []byte {
+func (s *FrostSignature) GetM() []byte {
 	return s.m
 }

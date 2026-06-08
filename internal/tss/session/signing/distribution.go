@@ -132,6 +132,10 @@ func (s *SignaturesDistributor) validateSignatures() error {
 	if s.signatures == nil {
 		return errors.New("no signatures received")
 	}
+
+	fmt.Println("len: ", len(s.signatures.Data), "s.signatures.Data: ", s.signatures.Data)
+	fmt.Println("len: ", len(s.sigData), "s.sigData: ", s.sigData)
+
 	if len(s.signatures.Data) != len(s.sigData) {
 		return errors.New("received signatures count does not match expected")
 	}
