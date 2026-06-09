@@ -23,7 +23,7 @@ replace (
 )
 
 require (
-	github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20260603102453-5c5a9a73cedc
+	github.com/Bridgeless-Project/bridgeless-core/v12 v12.0.0-20260608150503-37465c09c5d8
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bnb-chain/tss-lib/v3 v3.0.0

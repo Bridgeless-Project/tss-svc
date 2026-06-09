@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"math/big"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 )
 
-type WithdrawERC20OperationData struct {
+type WithdrawOperationData struct {
 	WithdrawalAmount *big.Int
 	Receiver         common.Address
 	TxHash           string
@@ -20,7 +21,16 @@ type WithdrawERC20OperationData struct {
 	IsWrapped        bool
 }
 
-func (w WithdrawERC20OperationData) ToOperation() *WithdrawERC20Content {
+func (w WithdrawOperationData) ToOperation() Operation {
+	if w.DestinationToken == common.HexToAddress(bridge.DefaultNativeTokenAddress) {
+		return &WithdrawNativeContent{
+			Amount:  ToBytes32(w.WithdrawalAmount.Bytes()),
+			TxHash:  TxHashToBytes32(w.TxHash),
+			TxNonce: IntToBytes32(w.TxNonce),
+			ChainID: ToBytes32(w.ChainId.Bytes()),
+		}
+	}
+
 	return &WithdrawERC20Content{
 		Amount:                  ToBytes32(w.WithdrawalAmount.Bytes()),
 		Receiver:                w.Receiver.Bytes(),
@@ -42,7 +52,7 @@ type WithdrawERC20Content struct {
 	IsWrapped               []byte
 }
 
-func NewWithdrawERC20Content(data db.Deposit) (*WithdrawERC20Content, error) {
+func NewWithdrawERC20Content(data db.Deposit) (Operation, error) {
 	destinationChainID, ok := new(big.Int).SetString(data.WithdrawalChainId, 10)
 	if !ok {
 		return nil, errors.New("invalid chain id")
@@ -60,7 +70,7 @@ func NewWithdrawERC20Content(data db.Deposit) (*WithdrawERC20Content, error) {
 		return nil, errors.New("invalid destination token address")
 	}
 
-	return WithdrawERC20OperationData{
+	return WithdrawOperationData{
 		WithdrawalAmount: withdrawalAmount,
 		Receiver:         common.HexToAddress(data.Receiver),
 		TxHash:           data.TxHash,
@@ -81,6 +91,10 @@ func (w WithdrawERC20Content) CalculateHash() []byte {
 		w.ChainID,
 		w.IsWrapped,
 	)
+}
+
+func (w WithdrawERC20Content) CalculateHashPrefixed() []byte {
+	return SetSignaturePrefix(w.CalculateHash())
 }
 
 func (w WithdrawERC20Content) Equals(other []byte) bool {

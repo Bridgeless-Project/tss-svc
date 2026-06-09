@@ -43,3 +43,17 @@ func (c *Connector) SubmitSwaps(ctx context.Context, depositsSwapTxs *swaptypes.
 
 	return errors.Wrap(err, "failed to submit swap deposits")
 }
+
+func (c *Connector) SubmitSystemWithdrawals(ctx context.Context, epochId uint32, withdrawalTxs ...bridgetypes.SystemWithdrawal) error {
+	if len(withdrawalTxs) == 0 {
+		return nil
+	}
+
+	msg := bridgetypes.NewMsgProcessSystemWithdrawal(c.account.CosmosAddress().String(), epochId, withdrawalTxs...)
+	err := c.submitMsgs(ctx, msg)
+	if err == nil {
+		return nil
+	}
+
+	return errors.Wrap(err, "failed to submit system withdrawals")
+}

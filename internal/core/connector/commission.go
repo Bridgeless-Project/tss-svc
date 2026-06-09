@@ -8,13 +8,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *Connector) GetCommission(epoch uint32, tokenId uint64) (*bridgeTypes.Commission, error) {
+func (c *Connector) GetCommission(epoch uint32, tokenId uint64, blockHeight ...int64) (*bridgeTypes.Commission, error) {
 	req := bridgeTypes.QueryGetCommissionByToken{
 		EpochId: epoch,
 		TokenId: tokenId,
 	}
 
-	resp, err := c.querier.GetCommissionByToken(context.Background(), &req)
+	ctx := context.Background()
+	if len(blockHeight) > 0 {
+		ctx = historyCtx(ctx, blockHeight[0])
+	}
+
+	resp, err := c.querier.GetCommissionByToken(ctx, &req)
 	if err != nil {
 		if errors.Is(err, bridgeTypes.ErrCommissionNotFound.GRPCStatus().Err()) {
 			return nil, core.ErrCommissionNotFound

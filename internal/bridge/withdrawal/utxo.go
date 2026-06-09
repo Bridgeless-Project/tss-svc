@@ -56,6 +56,10 @@ func (e UtxoWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (e UtxoWithdrawalData) SignHashes() [][]byte {
+	return e.ProposalData.SigData
+}
+
 type UtxoWithdrawalConstructor struct {
 	client  client.Client
 	helper  helper.UtxoHelper

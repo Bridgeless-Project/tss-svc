@@ -10,10 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Operation interface {
-	CalculateHash() []byte
-}
-
 func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 	if amount.Cmp(bridge.ZeroAmount) != 1 {
 		return false
@@ -23,7 +19,7 @@ func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 }
 
 func (p *Client) getSignHash(data db.Deposit) ([]byte, error) {
-	var operation Operation
+	var operation operations.Operation
 	var err error
 
 	if data.WithdrawalToken == bridge.DefaultNativeTokenAddress {

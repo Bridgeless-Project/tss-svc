@@ -14,4 +14,10 @@ const (
 	BoundaryFinalize              = 7 * time.Second
 
 	BoundaryBitcoinSignRoundDelay = 500 * time.Millisecond
+
+	BoundaryConsensusSession = BoundaryConsensus + BoundarySign + BoundarySignatureDistribution
+)
+
+const (
+	CommissionCollectionSessionDelay = 5 * time.Minute
 )

@@ -49,6 +49,10 @@ func (e SolanaWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (e SolanaWithdrawalData) SignHashes() [][]byte {
+	return [][]byte{e.ProposalData.SigData}
+}
+
 func NewSolanaConstructor(client *solana.Client) *SolanaWithdrawalConstructor {
 	return &SolanaWithdrawalConstructor{
 		client: client,

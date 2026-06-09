@@ -84,7 +84,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		return errors.Wrap(err, "failed to get local party tls certificate")
 	}
 
-	wg := new(sync.WaitGroup)
 	eg, ctx := errgroup.WithContext(ctx)
 	logger := cfg.Log()
 	clients := cfg.Clients()
@@ -101,7 +100,26 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create core connector")
 	}
-	sub := subscriber.NewSubmitEventSubscriber(dtb, cfg.TendermintHttpClient(), logger.WithField("component", "core_event_subscriber"), connector)
+	submitSubscriber := subscriber.NewSubmitEventSubscriber(
+		dtb,
+		cfg.TendermintHttpClient(),
+		logger.WithField("component", "core_event_subscriber"),
+		connector,
+	)
+	commissionsSubscriber := subscriber.NewCommissionEventSubscriber(
+		cfg.TendermintHttpClient(),
+		connector,
+		tss.LocalSignParty{
+			Account:   *account,
+			Share:     share,
+			Threshold: cfg.TssSessionParams().Threshold,
+		},
+		parties,
+		sessionManager,
+		bridgeEvmSettings,
+		logger.WithField("component", "commission_event_subscriber"),
+	)
+
 	fetcher := deposit.NewFetcher(clientsRepo, connector, bridgeEvmSettings)
 
 	p2pServer := p2p.NewServer(
@@ -112,12 +130,8 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		logger.WithField("component", "p2p_server"),
 	)
 
-	wg.Add(1)
-
 	// p2p server spin-up
 	eg.Go(func() error {
-		defer wg.Done()
-
 		status := p2p.PartyStatus_PS_SIGN
 		if syncEnabled {
 			status = p2p.PartyStatus_PS_SYNC
@@ -169,11 +183,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 
 			sess := configureSigningSession(sessParams, parties, *account, share, dtb, fetcher, logger, client, connector, depositAcceptorSession)
 
-			wg.Add(1)
-			eg.Go(func() error {
-				defer wg.Done()
-				return errors.Wrap(sess.Run(ctx), "error while running signing session")
-			})
+			eg.Go(func() error { return errors.Wrap(sess.Run(ctx), "error while running signing session") })
 
 			sessionManager.Add(sess)
 
@@ -182,10 +192,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	}
 
 	// additional deposit acceptor session
-	wg.Add(1)
 	eg.Go(func() error {
-		defer wg.Done()
-
 		sessionManager.Add(depositAcceptorSession)
 		depositAcceptorSession.Run(ctx)
 
@@ -193,11 +200,13 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	})
 
 	// Core deposit subscriber spin-up
-	wg.Add(1)
 	eg.Go(func() error {
-		defer wg.Done()
+		return errors.Wrap(submitSubscriber.Run(ctx), "error while running core deposit subscriber")
+	})
 
-		return errors.Wrap(sub.Run(ctx), "error while running core deposit subscriber")
+	// Core commissions subscriber spin-up
+	eg.Go(func() error {
+		return errors.Wrap(commissionsSubscriber.Run(ctx), "error while running commissions subscriber")
 	})
 
 	if syncEnabled {
@@ -211,10 +220,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 		})
 	}
 
-	err = eg.Wait()
-	wg.Wait()
-
-	return err
+	return eg.Wait()
 }
 
 func configureSigningSession(

@@ -42,6 +42,14 @@ func (s SigningData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (s SigningData) SignHashes() [][]byte {
+	if s.ProposalData == nil {
+		return nil
+	}
+
+	return s.ProposalData.SigData
+}
+
 type ConsensusMechanism struct {
 	client     client.Client
 	helper     helper.UtxoHelper

@@ -1,6 +1,8 @@
 package bridge
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
@@ -17,6 +19,15 @@ const settingsKey = "bridge_evm_config"
 type EvmSettings struct {
 	SwapContract common.Address `fig:"swap_contract_address,required"`
 	ChainId      string         `fig:"chain_id,required"`
+}
+
+func (s EvmSettings) ChainIdAsBigInt() *big.Int {
+	chainId, ok := new(big.Int).SetString(s.ChainId, 10)
+	if !ok {
+		return big.NewInt(0)
+	}
+
+	return chainId
 }
 
 type settinger struct {
