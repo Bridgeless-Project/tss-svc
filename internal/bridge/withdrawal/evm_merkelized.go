@@ -55,6 +55,10 @@ func (e EvmMerkelizedWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (e EvmMerkelizedWithdrawalData) SignHashes() [][]byte {
+	return [][]byte{e.ProposalData.SigData}
+}
+
 func NewEvmMerkelizedConstructor(client *evm.Client) *EvmMerkelizedWithdrawalConstructor {
 	return &EvmMerkelizedWithdrawalConstructor{
 		client: client,
