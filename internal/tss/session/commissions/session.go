@@ -168,9 +168,10 @@ func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, erro
 			// no commission to collect for this token, skipping it
 			continue
 		}
+		convertedAmount := bridge.TransformAmount(amount, bridgeTypes.DefaultChainDecimals, bridgeTokenInfo.Decimals)
 
 		ops = append(ops, operations.WithdrawOperationData{
-			WithdrawalAmount: amount,
+			WithdrawalAmount: convertedAmount,
 			Receiver:         bridgeTypes.ModuleAddress,
 			TxHash: bridgeKeeper.ConstructSystemTxHash(
 				amount,

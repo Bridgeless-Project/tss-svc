@@ -140,7 +140,7 @@ func (s *CommissionEventSubscriber) processEvent(ctx context.Context, event core
 	}
 
 	if err = retry.Do(func() error {
-		return s.connector.SubmitSystemWithdrawals(ctx, data.EpochId, withdrawals...)
+		return s.connector.SubmitSystemWithdrawals(ctx, withdrawals...)
 	}, retry.Attempts(10), retry.Delay(3*time.Second)); err != nil {
 		return 0, errors.Wrap(err, "failed to submit commission withdrawals")
 	}
