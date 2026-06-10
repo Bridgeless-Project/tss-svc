@@ -70,9 +70,6 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 	if err != nil {
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
 	}
-	if depositData.IsSwap {
-		withdrawalAmount = depositData.DepositAmount
-	}
 
 	ignoreDistribution := dstClient.IsCentralized()
 

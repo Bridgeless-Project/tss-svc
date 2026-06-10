@@ -14,7 +14,7 @@ import (
 )
 
 type Finalizer struct {
-	withdrawalData *withdrawal.EvmWithdrawalData
+	withdrawalData *withdrawal.EvmMerkelizedWithdrawalData
 	signature      *common.SignatureData
 
 	db   database.DepositsQ
@@ -41,7 +41,7 @@ func NewFinalizer(
 	}
 }
 
-func (ef *Finalizer) WithData(withdrawalData *withdrawal.EvmWithdrawalData) *Finalizer {
+func (ef *Finalizer) WithData(withdrawalData *withdrawal.EvmMerkelizedWithdrawalData) *Finalizer {
 	ef.withdrawalData = withdrawalData
 	return ef
 }

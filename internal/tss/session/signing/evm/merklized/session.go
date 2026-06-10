@@ -49,10 +49,10 @@ type Session struct {
 	fetcher       *deposit.Fetcher
 	client        *evm.Client
 
-	mechanism consensus.Mechanism[withdrawal.EvmWithdrawalData]
+	mechanism consensus.Mechanism[withdrawal.EvmMerkelizedWithdrawalData]
 
 	signingParty          *tss.SignParty
-	consensusParty        *consensus.Consensus[withdrawal.EvmWithdrawalData]
+	consensusParty        *consensus.Consensus[withdrawal.EvmMerkelizedWithdrawalData]
 	signaturesDistributor *signing.SignaturesDistributor
 	finalizer             *Finalizer
 	depositDistributor    *distributor.DepositDistributionSession
@@ -117,10 +117,10 @@ func (s *Session) Build() error {
 		return errors.New("deposit distributor is not set")
 	}
 
-	s.mechanism = signingConsensus.NewBatchDepositConsensusMechanism[withdrawal.EvmWithdrawalData](
+	s.mechanism = signingConsensus.NewBatchDepositConsensusMechanism[withdrawal.EvmMerkelizedWithdrawalData](
 		s.params.ChainId,
 		s.db,
-		withdrawal.NewEvmConstructor(s.client),
+		withdrawal.NewEvmMerkelizedConstructor(s.client),
 		s.fetcher,
 	)
 
@@ -136,7 +136,7 @@ func (s *Session) Run(ctx context.Context) error {
 		s.mu.Lock()
 		s.logger = s.logger.WithField("session_id", s.Id())
 		s.sessionLeader = session.DetermineLeader(s.Id(), s.sortedPartyIds)
-		s.consensusParty = consensus.New[withdrawal.EvmWithdrawalData](
+		s.consensusParty = consensus.New[withdrawal.EvmMerkelizedWithdrawalData](
 			consensus.LocalConsensusParty{
 				SessionId: s.Id(),
 				Threshold: s.self.Threshold,
