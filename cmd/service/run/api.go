@@ -39,7 +39,7 @@ func runServiceApiMode(ctx context.Context, cfg config.Config) error {
 	logger := cfg.Log()
 	storage := cfg.SecretsStorage()
 	account, err := storage.GetCoreAccount()
-	swapSettings := cfg.SwapSettings()
+	bridgeEvmSettings := cfg.EvmSettings()
 	if err != nil {
 		return errors.Wrap(err, "failed to get core account")
 	}
@@ -53,7 +53,7 @@ func runServiceApiMode(ctx context.Context, cfg config.Config) error {
 		return errors.Wrap(err, "failed to create core connector")
 	}
 	clientsRepo := repository.NewClientsRepository(cfg.Clients())
-	fetcher := deposit.NewFetcher(clientsRepo, connector, swapSettings)
+	fetcher := deposit.NewFetcher(clientsRepo, connector, bridgeEvmSettings)
 	dtb := pg.NewDepositsQ(cfg.DB())
 
 	apiServer := api.NewServer(

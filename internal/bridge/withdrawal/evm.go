@@ -48,6 +48,10 @@ func (e EvmWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (e EvmWithdrawalData) SignHashes() [][]byte {
+	return [][]byte{e.ProposalData.SigData}
+}
+
 func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
 	return &EvmWithdrawalConstructor{
 		client: client,

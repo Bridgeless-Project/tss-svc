@@ -9,6 +9,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+type Operation interface {
+	CalculateHash() []byte
+	CalculateHashPrefixed() []byte
+}
+
 func ToBytes32(arr []byte) []byte {
 	if len(arr) >= 32 {
 		return arr[:32]

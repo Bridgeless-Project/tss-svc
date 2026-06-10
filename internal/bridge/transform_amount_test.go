@@ -1,4 +1,4 @@
-package deposit
+package bridge
 
 import (
 	"math/big"
@@ -49,7 +49,7 @@ func Test_TransformAmount(t *testing.T) {
 
 	for name, tCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := transformAmount(tCase.amount, tCase.cDec, tCase.tDec)
+			result := TransformAmount(tCase.amount, tCase.cDec, tCase.tDec)
 			require.Equal(t, tCase.expected.String(), result.String())
 		})
 	}

@@ -26,7 +26,7 @@ type Config interface {
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
 	resharing.ParamsConfigurator
-	bridge.SwapConfigurator
+	bridge.EvmSettingsConfigurator
 }
 
 type config struct {
@@ -42,7 +42,7 @@ type config struct {
 	connector.ConnectorConfigurer
 	subscriber.SubscriberConfigurator
 	resharing.ParamsConfigurator
-	bridge.SwapConfigurator
+	bridge.EvmSettingsConfigurator
 }
 
 func New(getter kv.Getter) Config {
@@ -60,6 +60,6 @@ func New(getter kv.Getter) Config {
 		Chainer:                   chain.NewChainer(getter),
 		ConnectorConfigurer:       connector.NewConnectorConfigurer(getter),
 		SubscriberConfigurator:    subscriber.NewSubscriberConfigurator(getter),
-		SwapConfigurator:          bridge.NewSwapConfigurator(getter),
+		EvmSettingsConfigurator:   bridge.NewEvmSettingsConfigurator(getter),
 	}
 }
