@@ -140,6 +140,12 @@ func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, erro
 		return nil, errors.Wrap(err, "failed to get all tokens")
 	}
 
+	commissions, err := s.connector.GetCommissions(s.event.EpochId, s.event.BlockHeight)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get commissions")
+	}
+	mappedCommissions := connector.MapCommissions(commissions)
+
 	slices.SortFunc(tokens, func(a, b bridgeTypes.Token) int { return cmp.Compare(a.Id, b.Id) })
 
 	ops := make([]operations.WithdrawOperationData, 0)
@@ -149,18 +155,13 @@ func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, erro
 			// token is not bridgeable to the chain we operate on, skipping it
 			continue
 		}
-		bridgeTokenInfo := token.Info[bridgeChainIdx]
-
-		tokenCommission, err := s.connector.GetCommission(s.event.EpochId, token.Id, s.event.BlockHeight)
-		if err != nil {
-			if errors.Is(err, core.ErrCommissionNotFound) {
-				// no commission to collect for this token, skipping it
-				continue
-			}
-
-			return nil, errors.Wrapf(err, "failed to get commission for token %v", token.Id)
+		tokenCommission, found := mappedCommissions[token.Id]
+		if !found {
+			// no commission info found for this token, skipping it
+			continue
 		}
 
+		bridgeTokenInfo := token.Info[bridgeChainIdx]
 		amount, set := new(big.Int).SetString(tokenCommission.Amount, 10)
 		if !set {
 			return nil, errors.Errorf("failed to parse commission amount %s for token %v", tokenCommission.Amount, token.Id)
