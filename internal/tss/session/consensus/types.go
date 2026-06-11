@@ -40,19 +40,19 @@ type Mechanism[T SigningData] interface {
 }
 
 type PlainSignData struct {
-	signHash []byte
+	SignHash []byte
 }
 
 func NewPlainSignData(signHash []byte) *PlainSignData {
-	return &PlainSignData{signHash: signHash}
+	return &PlainSignData{SignHash: signHash}
 }
 
 func (p PlainSignData) HashString() string {
-	return fmt.Sprintf("%x", sha256.Sum256(p.signHash))
+	return fmt.Sprintf("%x", sha256.Sum256(p.SignHash))
 }
 
 func (p PlainSignData) SignHashes() [][]byte {
-	return [][]byte{p.signHash}
+	return [][]byte{p.SignHash}
 }
 
 type PlainSignDataMechanism struct {
@@ -68,7 +68,7 @@ func (m *PlainSignDataMechanism) FormProposalData() (*PlainSignData, error) {
 }
 
 func (m *PlainSignDataMechanism) VerifyProposedData(data PlainSignData) error {
-	if !bytes.Equal(m.SignHash, data.signHash) {
+	if !bytes.Equal(m.SignHash, data.SignHash) {
 		return fmt.Errorf("sign hash mismatch")
 	}
 
