@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"slices"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/api/common"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
+	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/gorilla/websocket"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -132,7 +134,12 @@ func watchWithdrawalStatus(ctxt context.Context, ws *websocket.Conn, connClosed 
 			continue
 		}
 
-		rawMsg = common.ProtoJsonMustMarshal(common.ToStatusResponse(withdrawal))
+		response := common.ToStatusResponse(withdrawal)
+		if response.WithdrawalStatus == types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED {
+			fmt.Println(response.WithdrawalIdentifier)
+		}
+
+		rawMsg = common.ProtoJsonMustMarshal(response)
 		if err = ws.WriteMessage(websocket.TextMessage, rawMsg); err != nil {
 			_ = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Internal server error"))
 			return
