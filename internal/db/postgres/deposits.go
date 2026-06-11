@@ -186,7 +186,7 @@ func (d *depositsQ) UpdateStatus(status types.WithdrawalStatus, identifier ...db
     `
 
 	return d.db.ExecRaw(query,
-		types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED,
+		status,
 		hashes,
 		nonces,
 		chainIds,
