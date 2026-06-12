@@ -73,6 +73,9 @@ func (s *Session) Run(ctx context.Context) ([]bridgeTypes.SystemWithdrawal, erro
 		withdrawals   = make([]bridgeTypes.SystemWithdrawal, 0, len(commissionsData))
 		sessStartTime = s.event.Time.Add(session.CommissionCollectionSessionDelay)
 	)
+
+	s.logger.Infof("signing commission withdrawals for %v tokens", len(commissionsData))
+
 	for _, data := range commissionsData {
 		signAttempts := 1
 
@@ -131,6 +134,8 @@ func (s *Session) Run(ctx context.Context) ([]bridgeTypes.SystemWithdrawal, erro
 		signAttempts = 1
 	}
 
+	s.logger.Infof("signed commission withdrawals for %v tokens ", len(withdrawals))
+
 	return withdrawals, nil
 }
 
@@ -165,11 +170,12 @@ func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, erro
 		amount, set := new(big.Int).SetString(tokenCommission.Amount, 10)
 		if !set {
 			return nil, errors.Errorf("failed to parse commission amount %s for token %v", tokenCommission.Amount, token.Id)
-		} else if amount.Cmp(bridge.ZeroAmount) <= 0 {
+		}
+		convertedAmount := bridge.TransformAmount(amount, bridgeTypes.DefaultChainDecimals, bridgeTokenInfo.Decimals)
+		if convertedAmount.Cmp(bridge.ZeroAmount) <= 0 {
 			// no commission to collect for this token, skipping it
 			continue
 		}
-		convertedAmount := bridge.TransformAmount(amount, bridgeTypes.DefaultChainDecimals, bridgeTokenInfo.Decimals)
 
 		ops = append(ops, operations.WithdrawOperationData{
 			WithdrawalAmount: convertedAmount,
