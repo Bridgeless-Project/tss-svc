@@ -181,7 +181,7 @@ func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, erro
 			WithdrawalAmount: convertedAmount,
 			Receiver:         common.HexToAddress(bridgeTypes.ContractCallerAddress),
 			TxHash: bridgeKeeper.ConstructSystemTxHash(
-				amount,
+				convertedAmount,
 				common.HexToAddress(bridgeTokenInfo.Address).Bytes(),
 				common.HexToAddress(bridgeTypes.ContractCallerAddress).Bytes(),
 			),
