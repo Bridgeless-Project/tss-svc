@@ -240,21 +240,26 @@ func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) err
 				DepositIdentifier: id,
 				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
 			}
-			if _, err = d.data.Insert(*deposit); err != nil {
+			if _, err := d.data.Insert(*deposit); err != nil {
 				return errors.Wrap(err, "failed to insert invalid deposit")
 			}
+
+			return errors.Wrap(err, "invalid deposit")
 		}
+
 		return errors.Wrap(err, "failed to fetch deposit")
 	}
+
 	deposit.Distributed = true
 	if _, err = d.data.Insert(*deposit); err != nil {
 		if errors.Is(err, db.ErrAlreadySubmitted) {
 			log.Info("deposit already found in db")
 			return nil
-		} else {
-			return errors.Wrap(err, "failed to insert deposit")
 		}
+
+		return errors.Wrap(err, "failed to insert deposit")
 	}
+
 	return nil
 }
 
