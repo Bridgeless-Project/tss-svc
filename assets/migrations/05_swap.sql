@@ -14,8 +14,8 @@ ALTER TABLE deposits
     DROP COLUMN is_swap,
     DROP COLUMN min_destination_amount,
     DROP COLUMN swap_deadline,
-    DROP COLUMN final_receiver;
-    DROP COLUMN final_chain_id;
+    DROP COLUMN final_receiver,
+    DROP COLUMN final_chain_id,
     DROP COLUMN final_token;
 
     

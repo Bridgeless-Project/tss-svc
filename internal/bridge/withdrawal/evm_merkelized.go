@@ -149,17 +149,23 @@ func (c *EvmMerkelizedWithdrawalConstructor) IsValid(data EvmMerkelizedWithdrawa
 	}
 
 	for i := range tree.Leaves {
+		if i >= len(data.ProposalData.MerkleProofs) {
+			return false, errors.Errorf("missing merkle proof for leaf %d", i)
+		}
 		proof, err := tree.GetProof(i)
 		if err != nil {
 			return false, errors.Wrapf(err, "failed to get proof for leaf %d", i)
 		}
 		expectedHashes := data.ProposalData.MerkleProofs[i].Hashes
+		if len(expectedHashes) != len(proof)+1 {
+			return false, errors.Errorf("merkle proof length mismatch at leaf %d", i)
+		}
 		if hexutil.Encode(tree.Leaves[i].Hash) != expectedHashes[0] {
 			return false, errors.Errorf("leaf does not match the expected one")
 		}
 
 		for j, hash := range proof {
-			if hexutil.Encode(hash) != expectedHashes[j+1] {
+			if j+1 >= len(expectedHashes) || hexutil.Encode(hash) != expectedHashes[j+1] {
 				return false, errors.Errorf("merkle proof mismatch at leaf %d, hash %d", i, j)
 			}
 		}
