@@ -183,7 +183,7 @@ func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, erro
 			TxHash: bridgeKeeper.ConstructSystemTxHash(
 				amount,
 				common.HexToAddress(bridgeTokenInfo.Address).Bytes(),
-				bridgeTypes.ModuleAddress.Bytes(),
+				common.HexToAddress(bridgeTypes.ContractCallerAddress).Bytes(),
 			),
 			TxNonce:          0,
 			ChainId:          s.settings.ChainIdAsBigInt(),
