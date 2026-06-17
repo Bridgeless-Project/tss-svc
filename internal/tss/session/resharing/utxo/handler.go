@@ -91,7 +91,7 @@ func (h *Handler) MaxHandleDuration() time.Duration {
 func (h *Handler) Handle(ctx context.Context, state *resharingTypes.State) error {
 	var (
 		inputsLeft      = h.unspentCount
-		resharingParams = utxoutils.DefaultResharingParams
+		resharingParams = utxoutils.GetResharingParamsCopy()
 		targetAddr      = h.client.UtxoHelper().P2pkhAddress(state.NewPubKey)
 	)
 

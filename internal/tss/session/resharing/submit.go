@@ -2,6 +2,8 @@ package resharing
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"time"
 
 	bridgeTypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
@@ -64,6 +66,14 @@ func (h *SubmitHandler) stateToEpochData(state *resharingTypes.State) ([]bridgeT
 			Address: addr,
 		})
 	}
+	slices.SortFunc(addresses, func(a, b bridgeTypes.EpochBridgeAddress) int {
+		return strings.Compare(a.Address, b.Address)
+	})
+
+	signatures := state.Signatures
+	slices.SortFunc(signatures, func(a, b bridgeTypes.EpochChainSignatures) int {
+		return strings.Compare(a.ChainType.String(), b.ChainType.String())
+	})
 
 	return state.Signatures, addresses
 }

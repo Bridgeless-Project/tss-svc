@@ -13,6 +13,10 @@ import (
 )
 
 func (c *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error) {
+	if id.TxNonce < 0 {
+		return nil, bridgeTypes.ErrInvalidTxNonce
+	}
+	
 	tx, err := c.getTxByLtHash(uint64(id.TxNonce), id.TxHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get tx")
