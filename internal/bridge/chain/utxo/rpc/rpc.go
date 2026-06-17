@@ -33,8 +33,8 @@ type Settings struct {
 }
 
 type Client struct {
-	c        *rpc.Client
-	settings Settings
+	rpcClient *rpc.Client
+	settings  Settings
 
 	helper utxohelper.UtxoHelper
 	chain  types.Chain
@@ -46,19 +46,19 @@ func NewClient(settings Settings) (*Client, error) {
 		settings.Host = "http://" + settings.Host
 	}
 
-	c, err := rpc.DialContext(context.Background(), settings.Host)
+	rpcClient, err := rpc.DialContext(context.Background(), settings.Host)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to RPC server")
 	}
 
 	auth := base64.StdEncoding.EncodeToString([]byte(settings.User + ":" + settings.Password))
-	c.SetHeader("Authorization", fmt.Sprintf("Basic %s", auth))
+	rpcClient.SetHeader("Authorization", fmt.Sprintf("Basic %s", auth))
 
 	return &Client{
-		c:        c,
-		settings: settings,
-		helper:   factory.NewUtxoHelper(settings.Chain, settings.Network),
-		chain:    settings.Chain,
+		rpcClient: rpcClient,
+		settings:  settings,
+		helper:    factory.NewUtxoHelper(settings.Chain, settings.Network),
+		chain:     settings.Chain,
 	}, nil
 }
 
@@ -188,7 +188,7 @@ func (c *Client) LockUnspent(unlock bool, ops []*wire.OutPoint) error {
 }
 
 func (c *Client) Call(result any, method string, args ...interface{}) error {
-	err := c.c.Call(result, method, args...)
+	err := c.rpcClient.Call(result, method, args...)
 	return extractRpcError(err)
 }
 
