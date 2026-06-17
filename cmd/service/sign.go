@@ -110,7 +110,7 @@ var signCmd = &cobra.Command{
 
 			select {
 			case <-ctx.Done():
-				return errors.New("resharing session was interrupted before it started")
+				return errors.New("signing session was interrupted before it started")
 			case <-time.After(time.Until(cfg.TssSessionParams().StartTime)):
 				break
 			}
