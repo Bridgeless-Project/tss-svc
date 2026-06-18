@@ -19,5 +19,5 @@ const (
 )
 
 const (
-	CommissionCollectionSessionDelay = 1 * time.Minute
+	CommissionCollectionSessionDelay = 3 * time.Minute
 )
