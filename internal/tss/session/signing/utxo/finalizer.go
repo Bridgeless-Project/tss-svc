@@ -11,7 +11,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -94,7 +94,7 @@ func (f *Finalizer) finalize(_ context.Context) {
 	encodedTx := utils.EncodeTransaction(tx)
 
 	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: f.withdrawalData.DepositIdentifier(),
+		Identifier: f.withdrawalData.DepositIdentifiers()[0],
 		TxData:     &encodedTx,
 		TxHash:     &withdrawalTxHash,
 	}); err != nil {

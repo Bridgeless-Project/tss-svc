@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 )
 
 type Storage interface {
@@ -15,7 +15,9 @@ type Storage interface {
 	SaveCoreAccount(account *core.Account) error
 
 	SaveTssShare(data *keygen.LocalPartySaveData) error
+	SaveTemporaryTssShare(data *keygen.LocalPartySaveData) error
 	GetTssShare() (*keygen.LocalPartySaveData, error)
+	GetTemporaryTssShare() (*keygen.LocalPartySaveData, error)
 
 	SaveLocalPartyTlsCertificate(rawCert, rawKey []byte) error
 	GetLocalPartyTlsCertificate() (*tls.Certificate, error)

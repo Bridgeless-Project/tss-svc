@@ -1,7 +1,9 @@
 package client
 
 import (
+	"crypto/ecdsa"
 	"math/big"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -18,13 +20,15 @@ import (
 type Client interface {
 	chain.Client
 
-	ConsolidationThreshold() int
+	InitializeWallet(pk *ecdsa.PublicKey, epoch uint32, syncTime time.Time) error
+
 	UnspentCount() (int, error)
 	LockOutputs(tx *wire.MsgTx) error
 	ListUnspent() ([]btcjson.ListUnspentResult, error)
 	SendSignedTransaction(tx *wire.MsgTx) (string, error)
 	EstimateFeeOrDefault() btcutil.Amount
 
+	ConsolidationParams() utils.ConsolidationParams
 	UtxoHelper() helper.UtxoHelper
 }
 
@@ -55,10 +59,6 @@ func (c *client) Type() chain.Type {
 	return chain.TypeBitcoin
 }
 
-func (c *client) ConsolidationThreshold() int {
-	return utils.ConsolidationThreshold
-}
-
 func (c *client) AddressValid(addr string) bool {
 	return c.helper.AddressValid(addr)
 }
@@ -75,6 +75,10 @@ func (c *client) WithdrawalAmountValid(amount *big.Int) bool {
 	return true
 }
 
+func (c *client) ConsolidationParams() utils.ConsolidationParams {
+	return c.chain.Meta.ConsolidationParams
+}
+
 func (c *client) HealthCheck() error {
 	_, err := c.chain.Rpc.Node.GetBlockCount()
 	if err != nil {
@@ -87,4 +91,12 @@ func (c *client) HealthCheck() error {
 	}
 
 	return nil
+}
+
+func (c *client) IsCentralized() bool {
+	return false
+}
+
+func (c *client) InitializeWallet(pk *ecdsa.PublicKey, epoch uint32, syncTime time.Time) error {
+	return c.chain.Rpc.Node.InitializeWallet(pk, epoch, syncTime)
 }

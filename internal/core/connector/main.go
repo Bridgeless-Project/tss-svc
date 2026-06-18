@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,28 +15,31 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	txclient "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/rpc/client"
 	"gitlab.com/distributed_lab/logan/v3"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
-
-const gasLimit = 3_000_000
 
 type Settings struct {
 	ChainId     string `fig:"chain_id,required"`
 	Denom       string `fig:"denom,required"`
 	MinGasPrice uint64 `fig:"min_gas_price,required"`
+	GasLimit    uint64 `fig:"gas_limit,required"`
 }
 
 type Connector struct {
 	logger *logan.Entry
 	conn   *grpc.ClientConn
 
+	rpcClient  client.Client
 	transactor txclient.ServiceClient
 	txConfiger sdkclient.TxConfig
 	auther     authtypes.QueryClient
@@ -91,9 +95,6 @@ func (c *Connector) HealthCheck() error {
 }
 
 func (c *Connector) getAccountSequence() uint64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	accountData, err := getAccountData(context.Background(), c.auther, c.account.CosmosAddress())
 	if err != nil {
 		c.logger.WithError(err).Error("failed to get account data")
@@ -113,9 +114,12 @@ func (c *Connector) submitMsgs(ctx context.Context, msgs ...sdk.Msg) error {
 		return nil
 	}
 
-	feeAmount := gasLimit * c.settings.MinGasPrice
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	tx, err := c.buildTx(gasLimit, feeAmount, msgs...)
+	feeAmount := c.settings.GasLimit * c.settings.MinGasPrice
+
+	tx, err := c.buildTx(c.settings.GasLimit, feeAmount, msgs...)
 	if err != nil {
 		return errors.Wrap(err, "failed to build transaction")
 	}
@@ -190,4 +194,8 @@ func getAccountData(ctx context.Context, auther authtypes.QueryClient, address c
 	}
 
 	return &account, nil
+}
+
+func historyCtx(ctx context.Context, height int64) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, grpctypes.GRPCBlockHeightHeader, fmt.Sprintf("%d", height))
 }

@@ -7,7 +7,8 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	bridgeTypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	v1 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v1"
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v2"
+	v2 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v2"
+	v3 "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm/contracts/v3"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -25,7 +26,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, bridgeTypes.ErrTxFailed
 	}
 
-	if int64(len(txReceipt.Logs)) < id.TxNonce+1 {
+	if id.TxNonce < 0 || int64(len(txReceipt.Logs)) < id.TxNonce+1 {
 		return nil, bridgeTypes.ErrDepositNotFound
 	}
 
@@ -43,67 +44,130 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		return nil, errors.Wrap(err, "failed to validate confirmations")
 	}
 
+	unpackedData, err := p.unpackData(id, eventType, log, *from)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unpack data")
+	}
+
+	return unpackedData, nil
+}
+
+func (p *Client) unpackData(id db.DepositIdentifier, eventType EventType, log *types.Log, from common.Address) (*db.DepositData, error) {
 	var unpackedData *db.DepositData
 	switch eventType {
 	case EventV1DepositedNative:
 		eventBody := new(v1.BridgeDepositedNative)
-		if err = p.abiV1.UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV1].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			TokenAddress:       bridge.DefaultNativeTokenAddress,
-			DepositAmount:      eventBody.Amount,
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         0, // v1 does not have referralId
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			TokenAddress:         bridge.DefaultNativeTokenAddress,
+			DepositAmount:        eventBody.Amount,
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           0,     // v1 does not have referralId
+			MinDestinationAmount: nil,   // v1 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v1 does not have SwapDeadline
+			DestinationToken:     "",    // v1 does not have DestinationToken
+			IsSwap:               false, // v1 does not have IsSwap
 		}
 	case EventV2DepositedNative:
 		eventBody := new(v2.BridgeDepositedNative)
-		if err = p.abiV2.UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV2].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			TokenAddress:       bridge.DefaultNativeTokenAddress,
-			DepositAmount:      eventBody.Amount,
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         eventBody.ReferralId,
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			TokenAddress:         bridge.DefaultNativeTokenAddress,
+			DepositAmount:        eventBody.Amount,
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           eventBody.ReferralId,
+			MinDestinationAmount: nil,   // v2 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v2 does not have SwapDeadline
+			DestinationToken:     "",    // v2 does not have DestinationToken
+			IsSwap:               false, // v2 does not have IsSwap
+		}
+	case EventV1DepositedNativeAndSwapped:
+		eventBody := new(v3.BridgeBridgedNativeAndSwapped)
+		if err := p.abis[ContractVersionV3].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+			return nil, bridgeTypes.ErrFailedUnpackLogs
+		}
+		unpackedData = &db.DepositData{
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			TokenAddress:         bridge.DefaultNativeTokenAddress,
+			DepositAmount:        eventBody.Amount,
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           eventBody.ReferralId,
+			MinDestinationAmount: eventBody.MinDestinationAmount,
+			SwapDeadline:         eventBody.SwapDeadline,
+			DestinationToken:     eventBody.DestinationToken,
+			IsSwap:               true,
 		}
 	case EventV1DepositedERC20:
 		eventBody := new(v1.BridgeDepositedERC20)
-		if err = p.abiV1.UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV1].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			DepositAmount:      eventBody.Amount,
-			TokenAddress:       strings.ToLower(eventBody.Token.String()),
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         0, // v1 does not have referralId
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			DepositAmount:        eventBody.Amount,
+			TokenAddress:         strings.ToLower(eventBody.Token.String()),
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           0,     // v1 does not have referralId
+			MinDestinationAmount: nil,   // v1 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v1 does not have SwapDeadline
+			DestinationToken:     "",    // v1 does not have DestinationToken
+			IsSwap:               false, // v1 does not have IsSwap
 		}
 	case EventV2DepositedERC20:
 		eventBody := new(v2.BridgeDepositedERC20)
-		if err = p.abiV2.UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+		if err := p.abis[ContractVersionV2].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
 			return nil, bridgeTypes.ErrFailedUnpackLogs
 		}
 		unpackedData = &db.DepositData{
-			DepositIdentifier:  id,
-			DestinationChainId: eventBody.Network,
-			DestinationAddress: eventBody.Receiver,
-			DepositAmount:      eventBody.Amount,
-			TokenAddress:       strings.ToLower(eventBody.Token.String()),
-			Block:              int64(log.BlockNumber),
-			SourceAddress:      from.String(),
-			ReferralId:         eventBody.ReferralId,
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			DepositAmount:        eventBody.Amount,
+			TokenAddress:         strings.ToLower(eventBody.Token.String()),
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           eventBody.ReferralId,
+			MinDestinationAmount: nil,   // v2 does not have MinDestinationAmount
+			SwapDeadline:         nil,   // v2 does not have SwapDeadline
+			DestinationToken:     "",    // v2 does not have DestinationToken
+			IsSwap:               false, // v2 does not have IsSwap
+		}
+	case EventV1DepositedERC20AndSwapped:
+		eventBody := new(v3.BridgeDepositedERC20AndSwapped)
+		if err := p.abis[ContractVersionV3].UnpackIntoInterface(eventBody, EventToEventName[eventType], log.Data); err != nil {
+			return nil, bridgeTypes.ErrFailedUnpackLogs
+		}
+		unpackedData = &db.DepositData{
+			DepositIdentifier:    id,
+			DestinationChainId:   eventBody.Network,
+			DestinationAddress:   eventBody.Receiver,
+			DepositAmount:        eventBody.Amount,
+			TokenAddress:         strings.ToLower(eventBody.Token.String()),
+			Block:                int64(log.BlockNumber),
+			SourceAddress:        from.String(),
+			ReferralId:           eventBody.ReferralId,
+			MinDestinationAmount: eventBody.MinDestinationAmount,
+			SwapDeadline:         eventBody.SwapDeadline,
+			DestinationToken:     eventBody.DestinationToken,
+			IsSwap:               true,
 		}
 	default:
 		return nil, bridgeTypes.ErrUnsupportedEvent
@@ -113,7 +177,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 }
 
 func (p *Client) validateConfirmations(receipt *types.Receipt) error {
-	curHeight, err := p.chain.Rpc.BlockNumber(context.Background())
+	curHeight, err := p.GetCurrentBlockNumber()
 	if err != nil {
 		return errors.Wrap(err, "failed to get current block number")
 	}
@@ -124,4 +188,15 @@ func (p *Client) validateConfirmations(receipt *types.Receipt) error {
 	}
 
 	return nil
+}
+
+func (p *Client) GetCurrentBlockNumber() (uint64, error) {
+	val, err, _ := p.reqGroup.Do("getCurrentBlockNumber", func() (interface{}, error) {
+		return p.chain.Rpc.BlockNumber(context.Background())
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get current block number")
+	}
+
+	return val.(uint64), nil
 }

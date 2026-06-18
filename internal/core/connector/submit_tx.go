@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
+	swaptypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/swap/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/pkg/errors"
 )
@@ -24,4 +25,35 @@ func (c *Connector) SubmitDeposits(ctx context.Context, depositTxs ...bridgetype
 	}
 
 	return errors.Wrap(err, "failed to submit deposits")
+}
+
+func (c *Connector) SubmitSwaps(ctx context.Context, depositsSwapTxs *swaptypes.SwapTransaction) error {
+	if depositsSwapTxs == nil {
+		return nil
+	}
+
+	msg := swaptypes.NewMsgSubmitSwapTx(c.account.CosmosAddress().String(), depositsSwapTxs)
+	err := c.submitMsgs(ctx, msg)
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), swaptypes.ErrAlreadySubmitted.Error()) {
+		return core.ErrSwapAlreadySubmitted
+	}
+
+	return errors.Wrap(err, "failed to submit swap deposits")
+}
+
+func (c *Connector) SubmitSystemWithdrawals(ctx context.Context, withdrawalTxs ...bridgetypes.SystemWithdrawal) error {
+	if len(withdrawalTxs) == 0 {
+		return nil
+	}
+
+	msg := bridgetypes.NewMsgProcessSystemWithdrawal(c.account.CosmosAddress().String(), withdrawalTxs...)
+	err := c.submitMsgs(ctx, msg)
+	if err == nil {
+		return nil
+	}
+
+	return errors.Wrap(err, "failed to submit system withdrawals")
 }

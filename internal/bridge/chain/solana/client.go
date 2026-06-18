@@ -52,3 +52,11 @@ func (p *Client) HealthCheck() error {
 
 	return nil
 }
+
+func (p *Client) IsCentralized() bool {
+	return false
+}
+
+func (p *Client) BridgeId() string {
+	return p.chain.Meta.BridgeId
+}

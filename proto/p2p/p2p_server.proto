@@ -68,9 +68,19 @@ message AcceptanceData {
   bool accepted = 1;
 }
 
+message MerkleProof {
+  repeated string hashes = 1;
+} 
+
 message EvmProposalData {
   deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
   bytes sigData = 2;
+}
+
+message EvmMerkelizedProposalData{
+  repeated deposit.DepositIdentifier depositIds = 1 [(gogoproto.nullable) = false];
+  bytes sigData = 2;
+  repeated MerkleProof merkleProofs = 3;
 }
 
 message TonProposalData {
@@ -108,7 +118,9 @@ message BitcoinProposalData {
 
 message BitcoinResharingProposalData {
   bytes serializedTx = 1;
-  repeated bytes sigData = 2;
+  int64 feeRate = 2;
+
+  repeated bytes sigData = 3;
 }
 
 message ZanoResharingProposalData {

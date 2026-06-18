@@ -7,7 +7,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -68,7 +68,7 @@ func (tf *Finalizer) Finalize(ctx context.Context) error {
 func (tf *Finalizer) finalize(_ context.Context) {
 	signature := tonchain.СonvertToTonSignature(tf.signature)
 	if err := tf.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: tf.withdrawalData.DepositIdentifier(),
+		Identifier: tf.withdrawalData.DepositIdentifiers()[0],
 		Signature:  &signature,
 	}); err != nil {
 		tf.errChan <- errors.Wrap(err, "failed to update signature")

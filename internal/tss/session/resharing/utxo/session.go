@@ -13,7 +13,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -23,7 +23,7 @@ var _ p2p.TssSession = &Session{}
 type SessionParams struct {
 	SessionParams     session.Params
 	TargetAddr        string
-	ConsolidateParams utxoutils.ConsolidateOutputsParams
+	ConsolidateParams utxoutils.ConsolidationParams
 }
 
 type Session struct {
@@ -33,13 +33,13 @@ type Session struct {
 	mu        *sync.RWMutex
 	wg        *sync.WaitGroup
 
-	connectedPartiesCount func() int
-	parties               []p2p.Party
+	parties []p2p.Party
 
-	client         client.Client
-	signingParty   *tss.SignParty
-	consensusParty *consensus.Consensus[SigningData]
-	finalizer      *Finalizer
+	client             client.Client
+	signingParty       *tss.SignParty
+	consensusParty     *consensus.Consensus[SigningData]
+	consensusMechanism *ConsensusMechanism
+	finalizer          *Finalizer
 
 	resultTx string
 	err      error
@@ -52,12 +52,13 @@ func NewSession(
 	client client.Client,
 	params SessionParams,
 	parties []p2p.Party,
-	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *Session {
-	sessionId := session.GetReshareSessionIdentifier(params.SessionParams.Id)
+	sessionId := session.GetReshareSessionIdentifier(client.ChainId(), params.SessionParams.Id)
 	sortedPartyIds := session.SortAllParties(parties, self.Account.CosmosAddress())
 	leader := session.DetermineLeader(sessionId, sortedPartyIds)
+
+	consensusMechanism := NewConsensusMechanism(client, params.TargetAddr, params.ConsolidateParams)
 
 	return &Session{
 		sessionId: sessionId,
@@ -66,22 +67,22 @@ func NewSession(
 		mu:        &sync.RWMutex{},
 		wg:        &sync.WaitGroup{},
 
-		connectedPartiesCount: connectedPartiesCountFunc,
-		parties:               parties,
+		parties: parties,
 
 		client:       client,
-		signingParty: tss.NewSignParty(self, session.GetReshareSessionIdentifier(params.SessionParams.Id), logger.WithField("phase", "signing")),
+		signingParty: tss.NewSignParty(self, sessionId, logger.WithField("phase", "signing")),
 		consensusParty: consensus.New[SigningData](
 			consensus.LocalConsensusParty{
-				SessionId: session.GetReshareSessionIdentifier(params.SessionParams.Id),
+				SessionId: sessionId,
 				Threshold: self.Threshold,
 				Self:      self.Account,
 			},
 			parties,
 			leader,
-			NewConsensusMechanism(client, params.TargetAddr, params.ConsolidateParams),
+			consensusMechanism,
 			logger.WithField("phase", "consensus"),
 		),
+		consensusMechanism: consensusMechanism,
 		finalizer: NewFinalizer(
 			client, self.Share.ECDSAPub.ToECDSAPubKey(),
 			logger.WithField("phase", "finalization"),
@@ -93,26 +94,7 @@ func NewSession(
 }
 
 func (s *Session) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.SessionParams.StartTime)
-	if runDelay <= 0 {
-		return errors.New("target time is in the past")
-	}
-
-	s.logger.Info(fmt.Sprintf("resharing session will start in %s", runDelay))
-
-	select {
-	case <-ctx.Done():
-		s.logger.Info("resharing session cancelled")
-		return nil
-	case <-time.After(runDelay):
-		// T+1 parties required, including self
-		if s.connectedPartiesCount()+1 < s.self.Threshold+1 {
-			return errors.New("cannot start resharing session: not enough parties connected")
-		}
-	}
-
 	s.logger.Info("resharing session started")
-
 	s.wg.Add(1)
 	go s.run(ctx)
 
@@ -125,6 +107,15 @@ func (s *Session) run(ctx context.Context) {
 	// consensus phase
 	consensusCtx, consCtxCancel := context.WithTimeout(ctx, session.BoundaryConsensus)
 	defer consCtxCancel()
+
+	selected, err := s.consensusMechanism.SelectConsolidationSet()
+	if err != nil {
+		s.err = errors.Wrap(err, "failed to select consolidation set")
+		return
+	} else if !selected {
+		s.err = errors.New("no consolidation set were found by provided parameters")
+		return
+	}
 
 	s.consensusParty.Run(consensusCtx)
 	result, err := s.consensusParty.WaitFor()
@@ -231,4 +222,15 @@ func (s *Session) RegisterIdChangeListener(func(oldId string, newId string)) {}
 // SigningSessionInfo is a no-op
 func (s *Session) SigningSessionInfo() *p2p.SigningSessionInfo {
 	return nil
+}
+
+func MaxSessionDuration(inputs uint) time.Duration {
+	if inputs == 0 {
+		return session.BoundaryConsensus
+	}
+
+	return session.BoundaryConsensus +
+		session.BoundarySign*time.Duration(inputs) +
+		session.BoundaryBitcoinSignRoundDelay*time.Duration(inputs-1) +
+		session.BoundaryFinalize
 }

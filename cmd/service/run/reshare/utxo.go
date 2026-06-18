@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -14,28 +15,34 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	utxoResharing "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
 
-var consolidateParams = utxoutils.DefaultConsolidateOutputsParams
+var (
+	consolidateParams   = utxoutils.DefaultResharingParams
+	maxFeeRateSatsPerKb = int64(consolidateParams.MaxFeeRateSatsPerKb)
+)
 
 func init() {
 	registerReshareUtxoOptions(reshareUtxoCmd)
-	consolidateParams.InputsThreshold = 1 // allow to consolidate even if there is only one input
 }
 
 func registerReshareUtxoOptions(cmd *cobra.Command) {
-	cmd.Flags().Uint64Var(&consolidateParams.FeeRate, "fee-rate", consolidateParams.FeeRate, "Fee rate for the transaction (sats/KvB)")
-	cmd.Flags().IntVar(&consolidateParams.OutputsCount, "outputs-count", consolidateParams.OutputsCount, "Number of outputs to split the funds into")
-	cmd.Flags().IntVar(&consolidateParams.MaxInputsCount, "max-inputs-count", consolidateParams.MaxInputsCount, "Maximum number of inputs to use in the transaction")
+	cmd.Flags().UintVar(&consolidateParams.SetParams[0].OutsCount, "outputs-count", consolidateParams.SetParams[0].OutsCount, "Number of outputs to split the funds into")
+	cmd.Flags().UintVar(&consolidateParams.SetParams[0].MaxInputsCount, "max-inputs-count", consolidateParams.SetParams[0].MaxInputsCount, "Maximum number of inputs to use in the transaction")
+	cmd.Flags().Int64Var(&maxFeeRateSatsPerKb, "max-fee-rate", maxFeeRateSatsPerKb, "Maximum fee rate in sats per KB for the migration transaction")
 }
 
 var reshareUtxoCmd = &cobra.Command{
 	Use:   "utxo [chain-id] [target-addr]",
 	Short: "Command for service migration during key resharing for utxo chains",
 	Args:  cobra.ExactArgs(2),
+	PreRun: func(cmd *cobra.Command, args []string) {
+		consolidateParams.MaxFeeRateSatsPerKb = btcutil.Amount(maxFeeRateSatsPerKb)
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := utils.ConfigFromFlags(cmd)
 		if err != nil {
@@ -75,12 +82,6 @@ var reshareUtxoCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to decode target address")
 		}
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_RESHARE,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		session := utxoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
@@ -94,7 +95,6 @@ var reshareUtxoCmd = &cobra.Command{
 				SessionParams:     cfg.TssSessionParams(),
 			},
 			parties,
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "btc_reshare_session"),
 		)
 
@@ -118,6 +118,13 @@ var reshareUtxoCmd = &cobra.Command{
 
 		errGroup.Go(func() error {
 			defer cancel()
+
+			select {
+			case <-ctx.Done():
+				return errors.New("resharing session was interrupted before it started")
+			case <-time.After(time.Until(cfg.TssSessionParams().StartTime)):
+				break
+			}
 
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run utxo resharing session")

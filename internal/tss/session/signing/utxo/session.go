@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/client"
-	utxoutils "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/deposit"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
@@ -19,9 +18,10 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	resharingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/utxo"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
+	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/types"
-	"github.com/bnb-chain/tss-lib/v2/common"
-	tsslib "github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/bnb-chain/tss-lib/v3/common"
+	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 	"go.uber.org/atomic"
@@ -50,7 +50,7 @@ type Session struct {
 	client        client.Client
 
 	signConsMechanism          consensus.Mechanism[withdrawal.UtxoWithdrawalData]
-	consolidationConsMechanism consensus.Mechanism[resharingConsensus.SigningData]
+	consolidationConsMechanism *resharingConsensus.ConsensusMechanism
 
 	signConsParty          *consensus.Consensus[withdrawal.UtxoWithdrawalData]
 	consolidationConsParty *consensus.Consensus[resharingConsensus.SigningData]
@@ -116,7 +116,7 @@ func (s *Session) Build() error {
 		return errors.New("core connector is not set")
 	}
 
-	s.signConsMechanism = signing.NewConsensusMechanism[withdrawal.UtxoWithdrawalData](
+	s.signConsMechanism = signingConsensus.NewSingleDepositConsensusMechanism[withdrawal.UtxoWithdrawalData](
 		s.params.ChainId,
 		s.db,
 		withdrawal.NewUtxoConstructor(s.client, s.self.Share.ECDSAPub.ToECDSAPubKey()),
@@ -126,7 +126,7 @@ func (s *Session) Build() error {
 	s.consolidationConsMechanism = resharingConsensus.NewConsensusMechanism(
 		s.client,
 		s.client.UtxoHelper().P2pkhAddress(s.self.Share.ECDSAPub.ToECDSAPubKey()),
-		utxoutils.DefaultConsolidateOutputsParams,
+		s.client.ConsolidationParams(),
 	)
 
 	return nil
@@ -203,15 +203,14 @@ func (s *Session) Run(ctx context.Context) error {
 		}
 
 		// define the next session type
-		unspentCount, err := s.client.UnspentCount()
-		if err != nil {
-			s.logger.WithError(err).Error("failed to get unspent count")
-			s.logger.Info("starting signing session")
-			s.isSignSession.Store(true)
-		} else if unspentCount > s.client.ConsolidationThreshold() {
+		selected, err := s.consolidationConsMechanism.SelectConsolidationSet()
+		if selected {
 			s.logger.Info("starting consolidation session")
 			s.isSignSession.Store(false)
 		} else {
+			if err != nil {
+				s.logger.WithError(err).Error("failed to get check consolidation requirements")
+			}
 			s.logger.Info("starting signing session")
 			s.isSignSession.Store(true)
 		}
@@ -248,13 +247,13 @@ func (s *Session) runSigningSession(ctx context.Context) (err error) {
 	signRounds := len(result.SigData.ProposalData.SigData)
 	s.updateNextSessionStartTime(signRounds)
 
-	if err = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING); err != nil {
+	if err = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSING, result.SigData.DepositIdentifiers()[0]); err != nil {
 		return errors.Wrap(err, "failed to update deposit status")
 	}
 	defer func() {
 		// compensating status update in case of error
 		if err != nil {
-			_ = s.db.UpdateStatus(result.SigData.DepositIdentifier(), types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED)
+			_ = s.db.UpdateStatus(types.WithdrawalStatus_WITHDRAWAL_STATUS_FAILED, result.SigData.DepositIdentifiers()[0])
 		}
 	}()
 

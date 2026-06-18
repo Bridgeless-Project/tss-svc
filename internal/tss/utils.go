@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 )
 
 func Verify(pk *ecdsa.PublicKey, inputData []byte, signature *common.SignatureData) bool {

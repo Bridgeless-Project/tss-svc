@@ -1,13 +1,11 @@
 package parse
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/factory"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo"
 	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -48,10 +46,7 @@ var parseAddressUtxoCmd = &cobra.Command{
 			return errors.Wrap(err, "invalid chain type")
 		}
 
-		hlp := factory.NewUtxoHelper(ch, net)
-		pubkey := &ecdsa.PublicKey{Curve: crypto.S256(), X: xCord, Y: yCord}
-
-		fmt.Println("Utxo address:", hlp.P2pkhAddress(pubkey))
+		fmt.Println("UTXO address:", utxo.PubkeyToAddress(xCord, yCord, ch, net))
 
 		return nil
 	},

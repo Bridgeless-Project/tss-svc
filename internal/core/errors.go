@@ -9,7 +9,23 @@ var (
 	ErrSourceTokenInfoNotFound      = errors.New("source token not found")
 	ErrDestinationTokenInfoNotFound = errors.New("destination token not found")
 	ErrReferralNotFound             = errors.New("referral not found")
+	ErrSwapAlreadySubmitted         = errors.New("swap already submitted")
+	ErrSwapAlreadyProcessed         = errors.New("swap already processed")
+	ErrCommissionNotFound           = errors.New("commission not found")
+	ErrEpochNotFound                = errors.New("epoch not found")
 )
+
+func IsProcessedSwapError(err error) bool {
+	return errors.Is(err, ErrSwapAlreadySubmitted) || errors.Is(err, ErrSwapAlreadyProcessed)
+}
+
+func IsProcessedDepositError(err error) bool {
+	return errors.Is(err, ErrTransactionAlreadySubmitted)
+}
+
+func IsProcessedDepositTransactionError(err error) bool {
+	return IsProcessedSwapError(err) || IsProcessedDepositError(err)
+}
 
 func IsInvalidDepositError(err error) bool {
 	return errors.Is(err, ErrTokenPairNotFound) ||

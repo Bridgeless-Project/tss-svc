@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -21,9 +20,6 @@ type Session struct {
 	sessionId string
 	params    session.Params
 	wg        *sync.WaitGroup
-
-	connectedPartiesCount func() int
-	partiesCount          int
 
 	keygenParty interface {
 		Run(ctx context.Context)
@@ -41,39 +37,19 @@ func NewSession(
 	self tss.LocalKeygenParty,
 	parties []p2p.Party,
 	params session.Params,
-	connectedPartiesCountFunc func() int,
 	logger *logan.Entry,
 ) *Session {
 	sessionId := session.GetKeygenSessionIdentifier(params.Id)
 	return &Session{
-		sessionId:             sessionId,
-		params:                params,
-		wg:                    &sync.WaitGroup{},
-		connectedPartiesCount: connectedPartiesCountFunc,
-		partiesCount:          len(parties),
-		keygenParty:           tss.NewKeygenParty(self, parties, sessionId, logger.WithField("component", "keygen_party")),
-		logger:                logger,
+		sessionId:   sessionId,
+		params:      params,
+		wg:          &sync.WaitGroup{},
+		keygenParty: tss.NewKeygenParty(self, parties, sessionId, logger.WithField("component", "keygen_party")),
+		logger:      logger,
 	}
 }
 
 func (s *Session) Run(ctx context.Context) error {
-	runDelay := time.Until(s.params.StartTime)
-	if runDelay <= 0 {
-		return errors.New("target time is in the past")
-	}
-
-	s.logger.Info(fmt.Sprintf("keygen session will start in %s", runDelay))
-
-	select {
-	case <-ctx.Done():
-		s.logger.Info("keygen session cancelled")
-		return nil
-	case <-time.After(runDelay):
-		if s.connectedPartiesCount() != s.partiesCount {
-			return errors.New("cannot start keygen session: not all parties connected")
-		}
-	}
-
 	s.logger.Info("keygen session started")
 
 	s.wg.Add(1)

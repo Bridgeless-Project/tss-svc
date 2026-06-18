@@ -6,7 +6,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -68,7 +68,7 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 func (f *Finalizer) finalize(_ context.Context) {
 	signature := convertToSolanaSignature(f.signature)
 	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: f.withdrawalData.DepositIdentifier(),
+		Identifier: f.withdrawalData.DepositIdentifiers()[0],
 		Signature:  &signature,
 	}); err != nil {
 		f.errChan <- errors.Wrap(err, "failed to update signature")

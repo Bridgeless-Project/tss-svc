@@ -8,13 +8,14 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -77,22 +78,17 @@ var signCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
-		connectionManager := p2p.NewConnectionManager(
-			parties, p2p.PartyStatus_PS_SIGN, cfg.Log().WithField("component", "connection_manager"),
-		)
-
-		session := signing.NewDefaultSession(
+		session := signing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
 				Share:     localSaveData,
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
-			signing.DefaultSessionParams{
+			signing.SessionParams{
 				Params:      cfg.TssSessionParams(),
 				SigningData: dataToSign,
 			},
 			parties,
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "signing_session"),
 		)
 
@@ -111,6 +107,13 @@ var signCmd = &cobra.Command{
 
 		errGroup.Go(func() error {
 			defer cancel()
+
+			select {
+			case <-ctx.Done():
+				return errors.New("signing session was interrupted before it started")
+			case <-time.After(time.Until(cfg.TssSessionParams().StartTime)):
+				break
+			}
 
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run signing session")

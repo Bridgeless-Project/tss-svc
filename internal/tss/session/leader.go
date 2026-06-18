@@ -6,7 +6,7 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
-	"github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/bnb-chain/tss-lib/v3/tss"
 )
 
 // TODO: add more randomness to the seed

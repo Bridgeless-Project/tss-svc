@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
-	"github.com/bnb-chain/tss-lib/v2/tss"
+	"github.com/bnb-chain/tss-lib/v3/tss"
 	"google.golang.org/grpc"
 )
 
@@ -42,4 +42,25 @@ func NewParty(coreAddr core.Address, connection *grpc.ClientConn, pemCert []byte
 		CoreAddress: coreAddr,
 		identifier:  coreAddr.PartyIdentifier(),
 	}
+}
+
+// MergeParties takes slice of parties and merges them into a single slice without duplicates based on their CoreAddress.
+// The order of the parties is preserved, with the first occurrence of each unique CoreAddress being retained in the merged result.
+func MergeParties(parties ...Party) []Party {
+	var (
+		merged  []Party
+		present = make(map[string]struct{})
+	)
+
+	for _, party := range parties {
+		key := party.CoreAddress.String()
+		if _, ok := present[key]; ok {
+			continue
+		}
+
+		present[key] = struct{}{}
+		merged = append(merged, party)
+	}
+
+	return merged
 }

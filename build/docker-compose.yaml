@@ -98,7 +98,7 @@ services:
       - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss1.local.yaml:/config.yaml
       - ./configs/shares/preparams1.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run reshare utxo 1 mzr8tgv4EaXnv9zfrmJgSgUQ1xNb2QjvTt --outputs-count=120"
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -120,7 +120,7 @@ services:
       - ./configs/certs/party3.crt:/party3.crt
       - ./configs/tss2.local.yaml:/config.yaml
       - ./configs/shares/preparams2.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run reshare utxo 1 mzr8tgv4EaXnv9zfrmJgSgUQ1xNb2QjvTt --outputs-count=120"
     depends_on:
       vault_init:
         condition: service_completed_successfully
@@ -142,7 +142,7 @@ services:
       - ./configs/certs/party2.crt:/party2.crt
       - ./configs/tss3.local.yaml:/config.yaml
       - ./configs/shares/preparams3.json:/preparams.json
-    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run sign"
+    entrypoint: sh -c "tss-svc service migrate up && tss-svc service run reshare utxo 1 mzr8tgv4EaXnv9zfrmJgSgUQ1xNb2QjvTt --outputs-count=120"
     depends_on:
       vault_init:
         condition: service_completed_successfully

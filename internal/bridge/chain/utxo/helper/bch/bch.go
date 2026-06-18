@@ -8,7 +8,7 @@ import (
 
 	utxohelper "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
-	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v3/common"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	btctxauthor "github.com/btcsuite/btcwallet/wallet/txauthor"

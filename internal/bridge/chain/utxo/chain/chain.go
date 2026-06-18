@@ -7,6 +7,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/helper/factory"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/rpc"
 	utxotypes "github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure/v3"
 )
@@ -28,6 +29,24 @@ type Rpc struct {
 type Meta struct {
 	Network utxotypes.Network `fig:"network,required"`
 	Chain   utxotypes.Chain   `fig:"chain,required"`
+
+	ConsolidationParams utils.ConsolidationParams `fig:"consolidation_params"`
+}
+
+func (m Meta) ValidateE() error {
+	if err := m.Network.Validate(); err != nil {
+		return errors.Wrap(err, "invalid network")
+	}
+
+	if err := m.ConsolidationParams.Validate(); err != nil {
+		return errors.Wrap(err, "invalid consolidation params")
+	}
+
+	if err := m.Chain.Validate(); err != nil {
+		return errors.Wrap(err, "invalid chain")
+	}
+
+	return nil
 }
 
 func FromChain(c chain.Chain) Chain {
@@ -38,12 +57,24 @@ func FromChain(c chain.Chain) Chain {
 	ch := Chain{
 		Id:            c.Id,
 		Confirmations: c.Confirmations,
+		Meta: Meta{
+			ConsolidationParams: utils.ConsolidationParams{
+				MaxFeeRateSatsPerKb: utils.DefaultConsolidationParams.MaxFeeRateSatsPerKb,
+			},
+		},
 	}
 
 	if err := figure.Out(&ch.Meta).FromInterface(c.Meta).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to decode chain meta"))
 	}
-	if err := figure.Out(&ch.Rpc).FromInterface(c.Rpc).With(clientHook(ch.Meta.Chain)).Please(); err != nil {
+	if err := ch.Meta.ValidateE(); err != nil {
+		panic(errors.Wrap(err, "invalid chain meta"))
+	}
+	if len(ch.Meta.ConsolidationParams.SetParams) == 0 {
+		ch.Meta.ConsolidationParams.SetParams = utils.DefaultConsolidationParams.SetParams
+	}
+
+	if err := figure.Out(&ch.Rpc).FromInterface(c.Rpc).With(clientHook(ch.Meta.Chain, ch.Meta.Network)).Please(); err != nil {
 		panic(errors.Wrap(err, "failed to init bitcoin chain rpc"))
 	}
 	if err := figure.Out(&ch.Receivers).FromInterface(c.BridgeAddresses).Please(); err != nil {
@@ -65,7 +96,7 @@ func FromChain(c chain.Chain) Chain {
 	return ch
 }
 
-func clientHook(chain utxotypes.Chain) figure.Hooks {
+func clientHook(chain utxotypes.Chain, network utxotypes.Network) figure.Hooks {
 	return figure.Hooks{
 		"*rpc.Client": func(value interface{}) (reflect.Value, error) {
 			switch v := value.(type) {
@@ -85,6 +116,7 @@ func clientHook(chain utxotypes.Chain) figure.Hooks {
 					User:     clientConfig.User,
 					Password: clientConfig.Pass,
 					Chain:    chain,
+					Network:  network,
 				})
 				if err != nil {
 					return reflect.Value{}, errors.Wrap(err, "failed to create bitcoin rpc client")

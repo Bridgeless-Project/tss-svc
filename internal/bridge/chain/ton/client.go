@@ -69,3 +69,7 @@ func (c *Client) HealthCheck() error {
 
 	return nil
 }
+
+func (c *Client) IsCentralized() bool {
+	return false
+}

@@ -4,7 +4,9 @@ import (
 	"math/big"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
+	bridgecfg "github.com/Bridgeless-Project/tss-svc/internal/bridge/config"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
@@ -12,14 +14,16 @@ import (
 )
 
 type Fetcher struct {
-	core    *connector.Connector
-	clients chain.Repository
+	core              *connector.Connector
+	clients           chain.Repository
+	bridgeEvmSettings bridgecfg.EvmSettings
 }
 
-func NewFetcher(clients chain.Repository, core *connector.Connector) *Fetcher {
+func NewFetcher(clients chain.Repository, core *connector.Connector, bridgeEvmSettings bridgecfg.EvmSettings) *Fetcher {
 	return &Fetcher{
-		clients: clients,
-		core:    core,
+		clients:           clients,
+		core:              core,
+		bridgeEvmSettings: bridgeEvmSettings,
 	}
 }
 
@@ -53,7 +57,12 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		}
 	}
 
-	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, depositData.DestinationChainId)
+	targetChainId := depositData.DestinationChainId
+	if depositData.IsSwap {
+		targetChainId = p.bridgeEvmSettings.ChainId
+	}
+
+	srcInfo, dstInfo, err := p.GetTokens(identifier.ChainId, depositData.TokenAddress, targetChainId)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get token info")
 	}
@@ -63,12 +72,10 @@ func (p *Fetcher) FetchDeposit(identifier db.DepositIdentifier) (*db.Deposit, er
 		return nil, errors.Wrap(chain.ErrInvalidDepositedAmount, err.Error())
 	}
 
-	deposit := depositData.ToNewDeposit(
-		withdrawalAmount,
-		commission,
-		dstInfo.Address,
-		dstInfo.IsWrapped,
-	)
+	ignoreDistribution := dstClient.IsCentralized()
+
+	depositParams := p.configureDepositParams(depositData, withdrawalAmount, commission, ignoreDistribution, dstInfo)
+	deposit := db.ToNewDeposit(depositParams, *depositData)
 
 	return &deposit, nil
 }
@@ -100,9 +107,9 @@ func (p *Fetcher) GetTokens(
 }
 
 func (p *Fetcher) GetWithdrawalAmount(depositAmount *big.Int, srcInfo, dstInfo *bridgetypes.TokenInfo) (*big.Int, *big.Int, error) {
-	withdrawalAmount := transformAmount(depositAmount, srcInfo.Decimals, dstInfo.Decimals)
+	withdrawalAmount := bridge.TransformAmount(depositAmount, srcInfo.Decimals, dstInfo.Decimals)
 
-	commissionAmount, err := bridgetypes.GetCommissionAmount(withdrawalAmount, dstInfo.CommissionRate)
+	commissionAmount, err := bridgetypes.ComputeCommissionAmount(withdrawalAmount, dstInfo.CommissionRate)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get commission amount")
 	}
@@ -120,22 +127,33 @@ func (p *Fetcher) GetWithdrawalAmount(depositAmount *big.Int, srcInfo, dstInfo *
 	return finalWithdrawalAmount, commissionAmount, nil
 }
 
-func transformAmount(amount *big.Int, currentDecimals uint64, targetDecimals uint64) *big.Int {
-	result, _ := new(big.Int).SetString(amount.String(), 10)
-
-	if currentDecimals == targetDecimals {
-		return result
+func (p *Fetcher) configureDepositParams(
+	depositData *db.DepositData,
+	withdrawalAmount *big.Int,
+	commission *big.Int,
+	ignoreDistribution bool,
+	dstInfo *bridgetypes.TokenInfo,
+) db.DepositParams {
+	params := db.DepositParams{
+		WithdrawalAmount:   withdrawalAmount,
+		CommissionAmount:   commission,
+		IsWrappedToken:     dstInfo.IsWrapped,
+		IgnoreDistribution: ignoreDistribution,
+		Receiver:           depositData.DestinationAddress,
+		WithdrawalToken:    dstInfo.Address,
+		WithdrawalChainId:  dstInfo.ChainId,
 	}
 
-	if currentDecimals < targetDecimals {
-		for i := uint64(0); i < targetDecimals-currentDecimals; i++ {
-			result.Mul(result, new(big.Int).SetInt64(10))
-		}
-	} else {
-		for i := uint64(0); i < currentDecimals-targetDecimals; i++ {
-			result.Div(result, new(big.Int).SetInt64(10))
-		}
+	if !depositData.IsSwap {
+		return params
 	}
 
-	return result
+	params.WithdrawalAmount = depositData.DepositAmount
+	params.Receiver = p.bridgeEvmSettings.SwapContract.String()
+
+	params.FinalReceiver = &depositData.DestinationAddress
+	params.FinalChainId = &depositData.DestinationChainId
+	params.FinalToken = &depositData.DestinationToken
+
+	return params
 }

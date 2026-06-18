@@ -21,18 +21,18 @@ type EvmWithdrawalData struct {
 	SignedWithdrawal string
 }
 
-func (e EvmWithdrawalData) DepositIdentifier() db.DepositIdentifier {
-	identifier := db.DepositIdentifier{}
-
+func (e EvmWithdrawalData) DepositIdentifiers() []db.DepositIdentifier {
 	if e.ProposalData == nil || e.ProposalData.DepositId == nil {
-		return identifier
+		return nil
 	}
 
-	identifier.ChainId = e.ProposalData.DepositId.ChainId
-	identifier.TxHash = e.ProposalData.DepositId.TxHash
-	identifier.TxNonce = e.ProposalData.DepositId.TxNonce
+	identifier := db.DepositIdentifier{
+		ChainId: e.ProposalData.DepositId.ChainId,
+		TxHash:  e.ProposalData.DepositId.TxHash,
+		TxNonce: e.ProposalData.DepositId.TxNonce,
+	}
 
-	return identifier
+	return []db.DepositIdentifier{identifier}
 }
 
 func (e EvmWithdrawalData) HashString() string {
@@ -48,6 +48,10 @@ func (e EvmWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (e EvmWithdrawalData) SignHashes() [][]byte {
+	return [][]byte{e.ProposalData.SigData}
+}
+
 func NewEvmConstructor(client *evm.Client) *EvmWithdrawalConstructor {
 	return &EvmWithdrawalConstructor{
 		client: client,
@@ -58,7 +62,12 @@ type EvmWithdrawalConstructor struct {
 	client *evm.Client
 }
 
-func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*EvmWithdrawalData, error) {
+func (c *EvmWithdrawalConstructor) FormSigningData(deposits ...db.Deposit) (*EvmWithdrawalData, error) {
+	if len(deposits) == 0 {
+		return nil, errors.New("invalid data: no deposits provided")
+	}
+	deposit := deposits[0] // Expecting only one deposit to process
+
 	sigHash, err := c.client.GetSignHash(deposit)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get signing hash")
@@ -76,7 +85,12 @@ func (c *EvmWithdrawalConstructor) FormSigningData(deposit db.Deposit) (*EvmWith
 	}, nil
 }
 
-func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposit db.Deposit) (bool, error) {
+func (c *EvmWithdrawalConstructor) IsValid(data EvmWithdrawalData, deposits ...db.Deposit) (bool, error) {
+	if len(deposits) == 0 {
+		return false, errors.New("invalid data: no deposits provided")
+	}
+	deposit := deposits[0]
+
 	if data.ProposalData == nil {
 		return false, errors.New("invalid proposal data")
 	}

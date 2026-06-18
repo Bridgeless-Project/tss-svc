@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -62,12 +63,6 @@ var reshareZanoCmd = &cobra.Command{
 			return errors.New("zano client configuration not found")
 		}
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_RESHARE,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		session := zanoResharing.NewSession(
 			tss.LocalSignParty{
 				Account:   *account,
@@ -82,7 +77,6 @@ var reshareZanoCmd = &cobra.Command{
 				SessionParams: cfg.TssSessionParams(),
 			},
 			parties,
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "zano_reshare_session"),
 		)
 
@@ -106,6 +100,13 @@ var reshareZanoCmd = &cobra.Command{
 
 		eg.Go(func() error {
 			defer cancel()
+
+			select {
+			case <-ctx.Done():
+				return errors.New("resharing session was interrupted before it started")
+			case <-time.After(time.Until(cfg.TssSessionParams().StartTime)):
+				break
+			}
 
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run zano resharing session")

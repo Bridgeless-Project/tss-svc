@@ -7,13 +7,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -58,12 +59,6 @@ var keygenCmd = &cobra.Command{
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
 
-		connectionManager := p2p.NewConnectionManager(
-			parties,
-			p2p.PartyStatus_PS_KEYGEN,
-			cfg.Log().WithField("component", "connection_manager"),
-		)
-
 		session := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: *preParams,
@@ -72,7 +67,6 @@ var keygenCmd = &cobra.Command{
 			},
 			parties,
 			cfg.TssSessionParams(),
-			connectionManager.GetReadyCount,
 			cfg.Log().WithField("component", "keygen_session"),
 		)
 
@@ -92,6 +86,13 @@ var keygenCmd = &cobra.Command{
 
 		errGroup.Go(func() error {
 			defer cancel()
+
+			select {
+			case <-ctx.Done():
+				return errors.New("keygen session was interrupted before it started")
+			case <-time.After(time.Until(cfg.TssSessionParams().StartTime)):
+				break
+			}
 
 			if err := session.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
