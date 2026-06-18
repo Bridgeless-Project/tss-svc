@@ -216,6 +216,7 @@ func (d *DepositDistributionSession) QueueMissing(ctx context.Context, ids []db.
 	case <-ctx.Done():
 		d.logger.Info("context cancelled before send")
 	case d.missingIds <- ids:
+		d.logger.Debug("missing ids sent to chan")
 	}
 }
 
@@ -225,7 +226,7 @@ func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) err
 	if err != nil {
 		return errors.Wrap(err, "failed to check if deposit exists")
 	} else if deposit != nil {
-		log.Warnf("deposit already exists")
+		log.Warn("deposit already exists")
 		return nil
 	}
 
