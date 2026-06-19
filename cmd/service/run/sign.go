@@ -217,7 +217,7 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 			core.EventCommissionCollection{
 				EventDataCommissionCollection: core.EventDataCommissionCollection{
 					EpochId:     0,
-					BlockHeight: 6388699,
+					BlockHeight: 6388819,
 				},
 				Time: cfg.TssSessionParams().StartTime,
 			},
