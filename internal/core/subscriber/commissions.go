@@ -50,8 +50,9 @@ func NewCommissionEventSubscriber(
 	return &CommissionEventSubscriber{
 		client:    client,
 		connector: connector,
+		// FIXME: update the query later
 		subscriptionQuery: fmt.Sprintf(
-			"tm.event='Tx' AND %s.%s EXISTS",
+			"%s.%s EXISTS",
 			bridgeTypes.EventType_DISTRIBUTE_FEES.String(),
 			bridgeTypes.AttributeEpochId,
 		),
