@@ -12,9 +12,9 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p/broadcast"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

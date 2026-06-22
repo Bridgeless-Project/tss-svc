@@ -4,11 +4,11 @@
 // - protoc             (unknown)
 // source: api_server.proto
 
-package types
+package api
 
 import (
 	context "context"
-	types "github.com/Bridgeless-Project/tss-svc/internal/types"
+	deposit "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -29,8 +29,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type APIClient interface {
-	SubmitWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	CheckWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*CheckWithdrawalResponse, error)
+	SubmitWithdrawal(ctx context.Context, in *deposit.DepositIdentifier, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CheckWithdrawal(ctx context.Context, in *deposit.DepositIdentifier, opts ...grpc.CallOption) (*CheckWithdrawalResponse, error)
 }
 
 type aPIClient struct {
@@ -41,7 +41,7 @@ func NewAPIClient(cc grpc.ClientConnInterface) APIClient {
 	return &aPIClient{cc}
 }
 
-func (c *aPIClient) SubmitWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *aPIClient) SubmitWithdrawal(ctx context.Context, in *deposit.DepositIdentifier, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, API_SubmitWithdrawal_FullMethodName, in, out, cOpts...)
@@ -51,7 +51,7 @@ func (c *aPIClient) SubmitWithdrawal(ctx context.Context, in *types.DepositIdent
 	return out, nil
 }
 
-func (c *aPIClient) CheckWithdrawal(ctx context.Context, in *types.DepositIdentifier, opts ...grpc.CallOption) (*CheckWithdrawalResponse, error) {
+func (c *aPIClient) CheckWithdrawal(ctx context.Context, in *deposit.DepositIdentifier, opts ...grpc.CallOption) (*CheckWithdrawalResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CheckWithdrawalResponse)
 	err := c.cc.Invoke(ctx, API_CheckWithdrawal_FullMethodName, in, out, cOpts...)
@@ -65,8 +65,8 @@ func (c *aPIClient) CheckWithdrawal(ctx context.Context, in *types.DepositIdenti
 // All implementations should embed UnimplementedAPIServer
 // for forward compatibility.
 type APIServer interface {
-	SubmitWithdrawal(context.Context, *types.DepositIdentifier) (*emptypb.Empty, error)
-	CheckWithdrawal(context.Context, *types.DepositIdentifier) (*CheckWithdrawalResponse, error)
+	SubmitWithdrawal(context.Context, *deposit.DepositIdentifier) (*emptypb.Empty, error)
+	CheckWithdrawal(context.Context, *deposit.DepositIdentifier) (*CheckWithdrawalResponse, error)
 }
 
 // UnimplementedAPIServer should be embedded to have
@@ -76,10 +76,10 @@ type APIServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAPIServer struct{}
 
-func (UnimplementedAPIServer) SubmitWithdrawal(context.Context, *types.DepositIdentifier) (*emptypb.Empty, error) {
+func (UnimplementedAPIServer) SubmitWithdrawal(context.Context, *deposit.DepositIdentifier) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubmitWithdrawal not implemented")
 }
-func (UnimplementedAPIServer) CheckWithdrawal(context.Context, *types.DepositIdentifier) (*CheckWithdrawalResponse, error) {
+func (UnimplementedAPIServer) CheckWithdrawal(context.Context, *deposit.DepositIdentifier) (*CheckWithdrawalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckWithdrawal not implemented")
 }
 func (UnimplementedAPIServer) testEmbeddedByValue() {}
@@ -103,7 +103,7 @@ func RegisterAPIServer(s grpc.ServiceRegistrar, srv APIServer) {
 }
 
 func _API_SubmitWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.DepositIdentifier)
+	in := new(deposit.DepositIdentifier)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -115,13 +115,13 @@ func _API_SubmitWithdrawal_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: API_SubmitWithdrawal_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).SubmitWithdrawal(ctx, req.(*types.DepositIdentifier))
+		return srv.(APIServer).SubmitWithdrawal(ctx, req.(*deposit.DepositIdentifier))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _API_CheckWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(types.DepositIdentifier)
+	in := new(deposit.DepositIdentifier)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func _API_CheckWithdrawal_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: API_CheckWithdrawal_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).CheckWithdrawal(ctx, req.(*types.DepositIdentifier))
+		return srv.(APIServer).CheckWithdrawal(ctx, req.(*deposit.DepositIdentifier))
 	}
 	return interceptor(ctx, in, info, handler)
 }

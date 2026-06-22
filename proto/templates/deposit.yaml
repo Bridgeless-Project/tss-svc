@@ -1,6 +1,6 @@
 version: v2
 plugins:
   - local: protoc-gen-go
-    out: ../internal/types
+    out: ../pkg/proto/deposit
     opt:
       - paths=source_relative
