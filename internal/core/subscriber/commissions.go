@@ -50,9 +50,7 @@ func NewCommissionEventSubscriber(
 	return &CommissionEventSubscriber{
 		client:    client,
 		connector: connector,
-		// FIXME: update the query later
-		subscriptionQuery: fmt.Sprintf(
-			"%s.%s EXISTS",
+		subscriptionQuery: fmt.Sprintf("%s.%s EXISTS",
 			bridgeTypes.EventType_DISTRIBUTE_FEES.String(),
 			bridgeTypes.AttributeEpochId,
 		),
@@ -65,9 +63,9 @@ func NewCommissionEventSubscriber(
 }
 
 func (s *CommissionEventSubscriber) Run(ctx context.Context) error {
-	out, err := s.client.Subscribe(ctx, opSubscriberCommission, s.subscriptionQuery, opPoolSize)
+	events, err := s.client.Subscribe(ctx, opSubscriberCommission, s.subscriptionQuery, opPoolSize)
 	if err != nil {
-		return errors.Wrap(err, "subscriber init failed")
+		return errors.Wrap(err, "commission event subscriber init failed")
 	}
 
 	for {
@@ -79,10 +77,10 @@ func (s *CommissionEventSubscriber) Run(ctx context.Context) error {
 			err = s.client.Unsubscribe(shutdownDeadline, opSubscriberCommission, s.subscriptionQuery)
 			cancel()
 
-			return errors.Wrap(err, "failed to unsubscribe from events")
-		case resultEvent, ok := <-out:
+			return errors.Wrap(err, "failed to unsubscribe from commission events")
+		case resultEvent, ok := <-events:
 			if !ok {
-				return errors.New("subscription channel closed")
+				return errors.New("commission event subscription channel closed")
 			}
 
 			s.log.Info("received event to process commission withdrawals")
@@ -100,6 +98,11 @@ func (s *CommissionEventSubscriber) processEvent(ctx context.Context, event core
 	switch data := event.Data.(type) {
 	case types.EventDataTx:
 		blockHeight = data.Height
+	case types.EventDataNewBlock:
+		if data.Block == nil {
+			return 0, errors.New("new-block event contains no block")
+		}
+		blockHeight = data.Block.Height
 	default:
 		return 0, errors.Errorf("unexpected event data type: %T", event.Data)
 	}

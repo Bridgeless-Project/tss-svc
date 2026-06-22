@@ -6,7 +6,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -26,7 +25,6 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
-	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/commissions"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
 	evmMerklized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/merklized"
@@ -35,7 +33,6 @@ import (
 	tonSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/ton"
 	utxoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/utxo"
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
-	"github.com/avast/retry-go"
 	"github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -211,43 +208,6 @@ func runSigningServiceMode(ctx context.Context, cfg config.Config) error {
 	eg.Go(func() error {
 		return errors.Wrap(commissionsSubscriber.Run(ctx), "error while running commissions subscriber")
 	})
-
-	go func() {
-		withdrawals, err := commissions.NewSession(
-			core.EventCommissionCollection{
-				EventDataCommissionCollection: core.EventDataCommissionCollection{
-					EpochId:     0,
-					BlockHeight: 6388819,
-				},
-				Time: cfg.TssSessionParams().StartTime,
-			},
-			tss.LocalSignParty{
-				Account:   *account,
-				Share:     share,
-				Threshold: cfg.TssSessionParams().Threshold,
-			},
-			parties,
-			connector,
-			bridgeEvmSettings,
-			sessionManager,
-			logger.WithField("component", "commissions_withdrawal_sessions"),
-		).Run(ctx)
-		if err != nil {
-			logger.WithError(err).Error("failed to run commissions_withdrawal_sessions")
-			return
-		} else if len(withdrawals) == 0 {
-			logger.Warn("no commissions to withdraw")
-			return
-		}
-
-		if err = retry.Do(func() error {
-			return connector.SubmitSystemWithdrawals(ctx, withdrawals...)
-		}, retry.Attempts(10), retry.Delay(3*time.Second)); err != nil {
-			logger.WithError(err).Error("failed to submit commission withdrawals")
-		}
-
-		logger.WithField("count", len(withdrawals)).Info("successfully submitted commission withdrawals")
-	}()
 
 	if syncEnabled {
 		eg.Go(func() error {
