@@ -1,11 +1,11 @@
 package tss
 
 import (
-	"encoding/json"
-	"fmt"
+	"encoding/base64"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	ecdsa "github.com/bnb-chain/tss-lib/v3/ecdsa/keygen"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
@@ -47,21 +47,23 @@ func (f *FrostShare) SetData(data any) error {
 	return nil
 }
 
+// We need to use CBOR to prevent data loss
 func (f *FrostShare) Marshal() ([]byte, error) {
-	data, _ := f.data.PublicKey.MarshalBinary()
-	fmt.Println(data)
-	data, err := json.Marshal(f.data)
-	return data, err
+	if f.data == nil {
+		return nil, errors.New("missing frost share")
+	}
+
+	return cbor.Marshal(f.data)
 }
 
-func (f *FrostShare) Unmarshal(data []byte) error {
+func (f *FrostShare) Unmarshal(raw []byte) error {
 	config := frost.EmptyConfig(f.Group())
-	if err := json.Unmarshal(data, config); err != nil {
+
+	if err := cbor.Unmarshal(raw, config); err != nil {
 		return errors.Wrap(err, "failed to decode frost share data")
 	}
 
 	f.data = config
-
 	return nil
 }
 
@@ -98,12 +100,16 @@ func (f *FrostShare) SetVaultData(kvData map[string]interface{}) error {
 		return errors.New("share data not found")
 	}
 
-	data := frost.EmptyConfig(f.Group())
-	if err := json.Unmarshal([]byte(val), data); err != nil {
+	raw, err := base64.StdEncoding.DecodeString(val)
+	if err != nil {
+		return errors.Wrap(err, "failed to base64 decode frost share data")
+	}
+
+	err = f.Unmarshal(raw)
+	if err != nil {
 		return errors.Wrap(err, "failed to decode frost share data")
 	}
 
-	f.data = data
 	return nil
 }
 

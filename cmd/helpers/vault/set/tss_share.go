@@ -5,8 +5,9 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
-	tss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	ecdsa "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
+	frost "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -23,18 +24,18 @@ var tssShareCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to read TSS share file")
 		}
 
-		var share tss2.Share
+		var share tss.Share
 		switch protocol {
-		case "ecdsa":
-			share = tss.NewEcdsaShare()
+		case string(tss.ProtocolID_ECDSA):
+			share = ecdsa.NewEcdsaShare()
 			if err := share.Unmarshal(raw); err != nil {
-				return errors.Wrap(err, "failed to unmarshal TSS share")
+				return errors.Wrap(err, "failed to unmarshal ECDSA TSS share")
 			}
 
-		case "frost":
-			share = tss.NewEcdsaShare()
+		case string(tss.ProtocolID_FROST):
+			share = frost.NewFrostShare()
 			if err := share.Unmarshal(raw); err != nil {
-				return errors.Wrap(err, "failed to unmarshal TSS share")
+				return errors.Wrap(err, "failed to unmarshal FROST TSS share")
 			}
 
 		default:

@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
@@ -114,11 +115,11 @@ func (s *Storage) SaveCoreAccount(account *core.Account) error {
 func (s *Storage) LoadTssShare(share tss.Share) error {
 	data, err := s.load(share.GetVaultPath())
 	if err != nil {
-		return errors.Wrap(err, "failed to load ecdsa share data")
+		return errors.Wrap(err, "failed to load share data")
 	}
 
 	if err = share.SetVaultData(data); err != nil {
-		return errors.Wrap(err, "failed to set ecdsa share data")
+		return errors.Wrap(err, "failed to set share data")
 	}
 
 	return nil

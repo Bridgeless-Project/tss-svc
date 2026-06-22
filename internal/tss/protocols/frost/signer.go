@@ -186,8 +186,8 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 					p.logger.WithField("type", result).Error("failed to get frost signing result")
 					return
 				}
-
-				err = p.result.SetSignature(signature)
+				// convert signature to bytes before passing to SetSignature
+				err = p.result.SetSignature([]byte(signature))
 				if err != nil {
 					p.err = err
 				}
