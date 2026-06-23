@@ -1,6 +1,7 @@
 package deposit
 
 import (
+	"fmt"
 	"math/big"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"

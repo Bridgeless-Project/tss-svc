@@ -3,7 +3,7 @@
 YAML_FILES=("./configs/tss1.local.yaml" "./configs/tss2.local.yaml" "./configs/tss3.local.yaml")
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    NEW_TIME=$(date -u -v+15S +"%Y-%m-%d %H:%M:%S")
+    NEW_TIME=$(date -u -v+25S +"%Y-%m-%d %H:%M:%S")
 else
     NEW_TIME=$(date -u -d "+80 seconds" +"%Y-%m-%d %H:%M:%S")
 fi

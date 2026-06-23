@@ -41,19 +41,18 @@ type RoundMessage[T Hashable] struct {
 	Signatures []Signature
 }
 
-func (m RoundMessage[T]) Encode() []byte {
+func (m RoundMessage[T]) Encode() ([]byte, error) {
 	var buff bytes.Buffer
-	fmt.Println("start encodings")
 	encoder := gob.NewEncoder(&buff)
-	_ = encoder.Encode(m)
-	fmt.Println("finish encoding")
+	if err := encoder.Encode(m); err != nil {
+		return nil, errors.Wrap(err, "failed to encode round message")
+	}
 
-	return buff.Bytes()
+	return buff.Bytes(), nil
 }
 
 func DecodeRoundMessage[T Hashable](data []byte) (RoundMessage[T], error) {
 	var msg RoundMessage[T]
-	fmt.Println("start decoding")
 
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	if err := decoder.Decode(&msg); err != nil {
@@ -76,10 +75,8 @@ func (m RoundMessage[T]) SignatureValid(signature Signature) bool {
 func (m RoundMessage[T]) SignHash() []byte {
 	var buf bytes.Buffer
 
-	fmt.Println("start encoding")
 	encoder := gob.NewEncoder(&buf)
 	_ = encoder.Encode(m.SessionId)
-	fmt.Println("finish encoding")
 
 	// gob cannot encode nil values, but they are valid
 	if m.Value != (*T)(nil) {
@@ -321,7 +318,18 @@ func (b *ReliableBroadcaster[T]) addToValuesSet(value *T) {
 }
 
 func (b *ReliableBroadcaster[T]) broadcastMsg(msg RoundMessage[T]) {
-	rawReq, _ := anypb.New(&p2p.ReliableBroadcastData{RoundMsg: msg.Encode()})
+	encodedMsg, err := msg.Encode()
+	if err != nil {
+		b.logger.WithError(err).Error("failed to encode round message")
+		return
+	}
+
+	rawReq, err := anypb.New(&p2p.ReliableBroadcastData{RoundMsg: encodedMsg})
+	if err != nil {
+		b.logger.WithError(err).Error("failed to encode reliable broadcast data")
+		return
+	}
+
 	b.broadcaster.Broadcast(&p2p.SubmitRequest{
 		Sender:    b.self.CosmosAddress().String(),
 		SessionId: b.sessionId,

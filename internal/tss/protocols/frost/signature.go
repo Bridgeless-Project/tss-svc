@@ -1,11 +1,18 @@
 package tss
 
 import (
+	"encoding/gob"
+
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/pkg/errors"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 )
 
 var _ tss.SignatureData = new(FrostSignature)
+
+func init() {
+	gob.Register(new(FrostSignature))
+}
 
 type FrostSignature struct {
 	data []byte
@@ -15,7 +22,13 @@ type FrostSignature struct {
 }
 
 func (s *FrostSignature) SetSignature(signature any) error {
-	s.data = signature.([]byte)
+	rawSignature, ok := signature.([]byte)
+	if !ok {
+		return errors.Errorf("unexpected FROST signature type %T", signature)
+	}
+	s.data = append([]byte(nil), rawSignature...)
+	s.r = nil
+	s.s = nil
 
 	if len(s.data) == taproot.SignatureLen {
 		s.r = s.data[:32]
@@ -43,4 +56,16 @@ func (s *FrostSignature) GetS() []byte {
 
 func (s *FrostSignature) GetM() []byte {
 	return s.m
+}
+
+func (s *FrostSignature) GobEncode() ([]byte, error) {
+	if s == nil || len(s.data) == 0 {
+		return nil, errors.New("missing FROST signature data")
+	}
+
+	return append([]byte(nil), s.data...), nil
+}
+
+func (s *FrostSignature) GobDecode(data []byte) error {
+	return s.SetSignature(data)
 }
