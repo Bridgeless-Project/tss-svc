@@ -3,7 +3,6 @@ package vault
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"

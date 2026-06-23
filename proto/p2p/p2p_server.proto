@@ -70,9 +70,14 @@ message AcceptanceData {
 
 message MerkleProof {
   repeated string hashes = 1;
-} 
+}
 
-message EvmProposalData{
+message EvmProposalData {
+  deposit.DepositIdentifier depositId = 1 [(gogoproto.nullable) = false];
+  bytes sigData = 2;
+}
+
+message EvmMerkelizedProposalData{
   repeated deposit.DepositIdentifier depositIds = 1 [(gogoproto.nullable) = false];
   bytes sigData = 2;
   repeated MerkleProof merkleProofs = 3;

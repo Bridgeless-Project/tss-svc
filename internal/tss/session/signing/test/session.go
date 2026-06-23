@@ -31,6 +31,11 @@ type MockSigningData struct {
 	Hash    []byte
 }
 
+func (d MockSigningData) SignHashes() [][]byte {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewMockSigningData() MockSigningData {
 	hash := sha256.Sum256([]byte(chain.MockSigningMessage))
 	return MockSigningData{
@@ -201,7 +206,7 @@ func (s *Session) runSession(ctx context.Context) error {
 
 		signatures = new(tss.Signatures)
 		signatures.SetSignature(signature)
-		
+
 		distributionCtx, distributionCancel = context.WithTimeout(ctx, time.Second)
 	} else {
 		distributionCtx, distributionCancel = context.WithTimeout(ctx, session.BoundarySign+time.Second)

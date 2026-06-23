@@ -83,6 +83,13 @@ func (m *SessionManager) onIdChange(oldId, newId string) {
 	m.sessions[newId] = session
 }
 
+func (m *SessionManager) Remove(id string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	delete(m.sessions, id)
+}
+
 func (m *SessionManager) GetSigningSession(chainId string) (TssSession, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

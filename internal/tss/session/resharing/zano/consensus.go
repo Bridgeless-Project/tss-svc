@@ -36,6 +36,14 @@ func (s SigningData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (s SigningData) SignHashes() [][]byte {
+	if s.ProposalData == nil {
+		return nil
+	}
+
+	return [][]byte{s.ProposalData.SigData}
+}
+
 type ConsensusMechanism struct {
 	assetId     string
 	ownerPubKey string

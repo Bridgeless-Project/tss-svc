@@ -48,6 +48,10 @@ func (w WithdrawNativeContent) CalculateHash() []byte {
 	)
 }
 
+func (w WithdrawNativeContent) CalculateHashPrefixed() []byte {
+	return SetSignaturePrefix(w.CalculateHash())
+}
+
 func (w WithdrawNativeContent) Equals(other []byte) bool {
 	return bytes.Equal(other, w.CalculateHash())
 }

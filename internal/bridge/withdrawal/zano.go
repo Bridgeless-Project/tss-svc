@@ -52,6 +52,10 @@ func (z ZanoWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (z ZanoWithdrawalData) SignHashes() [][]byte {
+	return [][]byte{z.ProposalData.SigData}
+}
+
 type ZanoWithdrawalConstructor struct {
 	client *zano.Client
 }

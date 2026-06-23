@@ -22,6 +22,14 @@ var DefaultResharingParams = ConsolidationParams{
 	},
 }
 
+func GetResharingParamsCopy() ConsolidationParams {
+	params := DefaultResharingParams
+	params.SetParams = make([]ConsolidationSetParams, len(DefaultResharingParams.SetParams))
+	copy(params.SetParams, DefaultResharingParams.SetParams)
+
+	return params
+}
+
 var DefaultConsolidationParams = ConsolidationParams{
 	MaxFeeRateSatsPerKb: MaxConsolidationFeeRateBtcPerKvb,
 	SetParams: []ConsolidationSetParams{

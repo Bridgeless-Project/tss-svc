@@ -24,6 +24,7 @@ type Client struct {
 }
 
 // NewBridgeClient creates a new bridge Client for the given chain.
+// Panics if any supported version contains an invalid ABI or ABI fails to parse.
 func NewBridgeClient(chain Chain) *Client {
 	versions := supportedVersions
 

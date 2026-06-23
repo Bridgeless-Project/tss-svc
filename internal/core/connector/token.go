@@ -24,14 +24,19 @@ func (c *Connector) GetToken(id uint64) (*bridgeTypes.Token, error) {
 	return &resp.Token, nil
 }
 
-func (c *Connector) GetTokens() ([]bridgeTypes.Token, error) {
+func (c *Connector) GetTokens(blockHeight ...int64) ([]bridgeTypes.Token, error) {
 	req := bridgeTypes.QueryGetTokens{
 		Pagination: &query.PageRequest{
 			Limit: query.MaxLimit,
 		},
 	}
 
-	resp, err := c.querier.GetTokens(context.Background(), &req)
+	ctx := context.Background()
+	if len(blockHeight) > 0 {
+		ctx = historyCtx(ctx, blockHeight[0])
+	}
+
+	resp, err := c.querier.GetTokens(ctx, &req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get tokens")
 	}

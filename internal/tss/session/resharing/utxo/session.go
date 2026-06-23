@@ -88,6 +88,7 @@ func NewSession(
 			logger.WithField("phase", "consensus"),
 		),
 		consensusMechanism: consensusMechanism,
+		// TODO: add frost support
 		finalizer: NewFinalizer(
 			client, self.Share.MustEcdsaShare().ECDSAPub.ToECDSAPubKey(),
 			logger.WithField("phase", "finalization"),

@@ -20,12 +20,8 @@ import (
 )
 
 const (
-	OpServiceName = "op-subscriber"
-	OpPoolSize    = 50
-)
-
-var (
-	statusProcessed = types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED
+	opSubscriberSubmit = "op-subscriber-submit"
+	opPoolSize         = 50
 )
 
 type SubmitEventSubscriber struct {
@@ -50,7 +46,7 @@ func NewSubmitEventSubscriber(db database.DepositsQ, client *http.HTTP, logger *
 }
 
 func (s *SubmitEventSubscriber) Run(ctx context.Context) error {
-	out, err := s.client.Subscribe(ctx, OpServiceName, s.query, OpPoolSize)
+	out, err := s.client.Subscribe(ctx, opSubscriberSubmit, s.query, opPoolSize)
 	if err != nil {
 		return errors.Wrap(err, "subscriber init failed")
 	}
@@ -83,7 +79,7 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 			cooldown = time.Second * 5
 
 			pendingDeposits, err := s.db.Select(database.DepositsSelector{
-				Status:       &statusProcessed,
+				Status:       new(types.WithdrawalStatus_WITHDRAWAL_STATUS_PROCESSED),
 				NotSubmitted: true,
 				Limit:        20,
 			})
@@ -94,38 +90,37 @@ func (s *SubmitEventSubscriber) runSubmitter(ctx context.Context) {
 				continue
 			}
 
-			for _, pendingDeposit := range pendingDeposits {
-				logger := s.log.WithField("deposit", pendingDeposit.DepositIdentifier.TxHash)
-				logger.Info("got deposit to submit")
-
-				if err = s.submitPendingDeposit(ctx, pendingDeposit); err != nil {
-					logger.WithError(err).Error("failed to submit deposit, will retry later")
-					continue
-				}
-
-				logger.Info("deposit submitted successfully")
-				if err = s.db.UpdateSubmittedStatus(pendingDeposit.DepositIdentifier, true); err != nil {
-					logger.WithError(err).Error("failed to update deposit as submitted")
-				}
-			}
-			cooldown = time.Second * 0
+			s.processDeposits(ctx, pendingDeposits)
 		}
 	}
 }
 
-func (s *SubmitEventSubscriber) submitPendingDeposit(ctx context.Context, pendingDeposit database.Deposit) error {
-	var err error
+func (s *SubmitEventSubscriber) processDeposits(ctx context.Context, deposits []database.Deposit) {
+	for _, deposit := range deposits {
+		logger := s.log.WithField("deposit", deposit.DepositIdentifier.TxHash)
+		logger.Info("got deposit to submit")
 
+		if err := s.submitPendingDepositTransaction(ctx, deposit, logger); err == nil {
+			logger.Info("deposit submitted successfully")
+		} else if core.IsProcessedDepositTransactionError(err) {
+			logger.Info("deposit transaction already processed, marking as submitted")
+		} else {
+			logger.WithError(err).Error("failed to submit deposit transaction")
+			continue
+		}
+
+		if err := s.db.UpdateSubmittedStatus(deposit.DepositIdentifier, true); err != nil {
+			logger.WithError(err).Error("failed to update deposit as submitted")
+		}
+	}
+}
+
+func (s *SubmitEventSubscriber) submitPendingDepositTransaction(ctx context.Context, pendingDeposit database.Deposit, log *logan.Entry) error {
 	if pendingDeposit.IsSwap {
-		err = s.connector.SubmitSwaps(ctx, pendingDeposit.ToSwapTransaction())
-	} else {
-		err = s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
-	}
-	if err != nil && !errors.Is(err, core.ErrTransactionAlreadySubmitted) {
-		return fmt.Errorf("failed to submit deposit: %w", err)
+		return s.connector.SubmitSwaps(ctx, pendingDeposit.ToSwapTransaction())
 	}
 
-	return nil
+	return s.connector.SubmitDeposits(ctx, pendingDeposit.ToTransaction())
 }
 
 func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.ResultEvent) {
@@ -134,7 +129,7 @@ func (s *SubmitEventSubscriber) run(ctx context.Context, out <-chan coretypes.Re
 		case <-ctx.Done():
 			s.log.Info("context cancelled, stopping receiving events")
 			shutdownDeadline, cancel := context.WithTimeout(context.Background(), time.Second)
-			if err := s.client.Unsubscribe(shutdownDeadline, OpServiceName, s.query); err != nil {
+			if err := s.client.Unsubscribe(shutdownDeadline, opSubscriberSubmit, s.query); err != nil {
 				s.log.WithError(err).Error("failed to unsubscribe from new operations")
 			}
 
@@ -248,9 +243,9 @@ func parseSubmittedDeposit(attributes map[string][]string) (*database.Deposit, e
 		case bridgeTypes.AttributeKeyCommissionAmount:
 			deposit.CommissionAmount = attribute[0]
 		case bridgeTypes.AttributeKeyMerkleProof:
-		// skip merkle proof for now
+			deposit.MerkleProof = &attribute[0]
 		case bridgeTypes.AttributeEpochId:
-				
+			// not used here
 		default:
 			return nil, errors.Wrap(errors.New(fmt.Sprintf("unknown attribute key: %s", parts[1])), "failed to parse attribute")
 		}

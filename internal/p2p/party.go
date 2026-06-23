@@ -43,8 +43,9 @@ func NewParty(coreAddr core.Address, connection *grpc.ClientConn, pemCert []byte
 	}
 }
 
-// MergeParties takes multiple slices of parties and merges them
-// into a single slice without duplicates based on the CoreAddress.
+
+// MergeParties takes slice of parties and merges them into a single slice without duplicates based on their CoreAddress.
+// The order of the parties is preserved, with the first occurrence of each unique CoreAddress being retained in the merged result.
 func MergeParties(parties ...Party) []Party {
 	var (
 		merged  []Party
@@ -52,9 +53,13 @@ func MergeParties(parties ...Party) []Party {
 	)
 
 	for _, party := range parties {
-		if _, ok := present[party.CoreAddress.String()]; !ok {
-			merged = append(merged, party)
+		key := party.CoreAddress.String()
+		if _, ok := present[key]; ok {
+			continue
 		}
+
+		present[key] = struct{}{}
+		merged = append(merged, party)
 	}
 
 	return merged

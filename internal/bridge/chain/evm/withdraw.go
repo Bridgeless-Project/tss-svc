@@ -10,10 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Operation interface {
-	CalculateHash() []byte
-}
-
 func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 	if amount.Cmp(bridge.ZeroAmount) != 1 {
 		return false
@@ -23,7 +19,7 @@ func (p *Client) WithdrawalAmountValid(amount *big.Int) bool {
 }
 
 func (p *Client) getSignHash(data db.Deposit) ([]byte, error) {
-	var operation Operation
+	var operation operations.Operation
 	var err error
 
 	if data.WithdrawalToken == bridge.DefaultNativeTokenAddress {
@@ -54,6 +50,16 @@ func (p *Client) GetSignHashes(deposits []db.Deposit) ([][]byte, error) {
 	}
 
 	return hashedDeposits, nil
+}
+
+func (p *Client) GetSignHash(data db.Deposit) ([]byte, error) {
+	hash, err := p.getSignHash(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to form withdrawal signing hash")
+	}
+	prefixedHash := operations.SetSignaturePrefix(hash)
+
+	return prefixedHash, nil
 }
 
 func (p *Client) Sign(data db.Deposit) ([]byte, error) {

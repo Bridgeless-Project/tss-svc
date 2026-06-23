@@ -216,6 +216,7 @@ func (d *DepositDistributionSession) QueueMissing(ctx context.Context, ids []db.
 	case <-ctx.Done():
 		d.logger.Info("context cancelled before send")
 	case d.missingIds <- ids:
+		d.logger.Debug("missing ids sent to chan")
 	}
 }
 
@@ -225,7 +226,7 @@ func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) err
 	if err != nil {
 		return errors.Wrap(err, "failed to check if deposit exists")
 	} else if deposit != nil {
-		log.Warnf("deposit already exists")
+		log.Warn("deposit already exists")
 		return nil
 	}
 
@@ -240,21 +241,26 @@ func (d *DepositDistributionSession) processDeposit(id db.DepositIdentifier) err
 				DepositIdentifier: id,
 				WithdrawalStatus:  types.WithdrawalStatus_WITHDRAWAL_STATUS_INVALID,
 			}
-			if _, err = d.data.Insert(*deposit); err != nil {
+			if _, err := d.data.Insert(*deposit); err != nil {
 				return errors.Wrap(err, "failed to insert invalid deposit")
 			}
+
+			return errors.Wrap(err, "invalid deposit")
 		}
+
 		return errors.Wrap(err, "failed to fetch deposit")
 	}
+
 	deposit.Distributed = true
 	if _, err = d.data.Insert(*deposit); err != nil {
 		if errors.Is(err, db.ErrAlreadySubmitted) {
 			log.Info("deposit already found in db")
 			return nil
-		} else {
-			return errors.Wrap(err, "failed to insert deposit")
 		}
+
+		return errors.Wrap(err, "failed to insert deposit")
 	}
+
 	return nil
 }
 

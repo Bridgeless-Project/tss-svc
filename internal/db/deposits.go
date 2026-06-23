@@ -116,8 +116,8 @@ type Deposit struct {
 	MerkleProof *string `structs:"merkle_proof" db:"merkle_proof"`
 
 	IsSwap               bool    `structs:"is_swap" db:"is_swap"`
-	MinDestinationAmount string  `structs:"min_destination_amount" db:"min_destination_amount"`
-	SwapDeadline         uint64  `structs:"swap_deadline" db:"swap_deadline"`
+	MinDestinationAmount *string `structs:"min_destination_amount" db:"min_destination_amount"`
+	SwapDeadline         *uint64 `structs:"swap_deadline" db:"swap_deadline"`
 	FinalReceiver        *string `structs:"final_receiver" db:"final_receiver"`
 	FinalChainId         *string `structs:"final_chain_id" db:"final_chain_id"`
 	FinalToken           *string `structs:"final_token" db:"final_token"`
@@ -149,11 +149,11 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 func (d Deposit) ToSwapTransaction() *swaptypes.SwapTransaction {
 	return &swaptypes.SwapTransaction{
 		Tx:            d.ToTransaction(),
-		FinalReceiver: *d.FinalReceiver,
-		SwapOutAmount: d.MinDestinationAmount,
-		FinalToken:    *d.FinalToken,
-		FinalChainId:  *d.FinalChainId,
-		SwapDeadline:  d.SwapDeadline,
+		FinalReceiver: stringOrEmpty(d.FinalReceiver),
+		SwapOutAmount: stringOrEmpty(d.MinDestinationAmount),
+		FinalToken:    stringOrEmpty(d.FinalToken),
+		FinalChainId:  stringOrEmpty(d.FinalChainId),
+		SwapDeadline:  uint64OrEmpty(d.SwapDeadline),
 	}
 }
 
@@ -206,8 +206,8 @@ func ToNewDeposit(p DepositParams, d DepositData) Deposit {
 		Distributed:          p.IgnoreDistribution,
 		IsSwap:               d.IsSwap,
 		FinalReceiver:        p.FinalReceiver,
-		MinDestinationAmount: bigIntToStringOrEmpty(d.MinDestinationAmount),
-		SwapDeadline:         bigIntToUint64OrEmpty(d.SwapDeadline),
+		MinDestinationAmount: bigIntToString(d.MinDestinationAmount),
+		SwapDeadline:         bigIntToUint64(d.SwapDeadline),
 		FinalChainId:         p.FinalChainId,
 		FinalToken:           p.FinalToken,
 	}
@@ -238,6 +238,30 @@ func stringOrEmpty(s *string) string {
 	}
 
 	return *s
+}
+
+func uint64OrEmpty(u *uint64) uint64 {
+	if u == nil {
+		return 0
+	}
+
+	return *u
+}
+
+func bigIntToUint64(b *big.Int) *uint64 {
+	if b == nil {
+		return nil
+	}
+
+	return new(uint64(b.Int64()))
+}
+
+func bigIntToString(s *big.Int) *string {
+	if s == nil {
+		return nil
+	}
+
+	return new(s.String())
 }
 
 func bigIntToUint64OrEmpty(b *big.Int) uint64 {

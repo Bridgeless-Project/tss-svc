@@ -8,7 +8,7 @@ import (
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	
+
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )

@@ -48,6 +48,10 @@ func (e TonWithdrawalData) HashString() string {
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
+func (e TonWithdrawalData) SignHashes() [][]byte {
+	return [][]byte{e.ProposalData.SigData}
+}
+
 func NewTonConstructor(client *ton.Client) *TonWithdrawalConstructor {
 	return &TonWithdrawalConstructor{
 		client: client,
