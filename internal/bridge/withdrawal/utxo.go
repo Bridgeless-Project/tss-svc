@@ -12,7 +12,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet/txauthor"

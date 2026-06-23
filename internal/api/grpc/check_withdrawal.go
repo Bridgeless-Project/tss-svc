@@ -5,8 +5,8 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/api/common"
 	"github.com/Bridgeless-Project/tss-svc/internal/api/ctx"
-	apiTypes "github.com/Bridgeless-Project/tss-svc/internal/api/types"
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	apiTypes "github.com/Bridgeless-Project/tss-svc/pkg/proto/api"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

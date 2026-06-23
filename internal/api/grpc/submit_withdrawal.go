@@ -8,7 +8,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

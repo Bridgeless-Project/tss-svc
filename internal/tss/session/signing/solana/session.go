@@ -18,7 +18,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/consensus"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing"
 	signingConsensus "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/consensus"
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"github.com/bnb-chain/tss-lib/v3/common"
 	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/pkg/errors"

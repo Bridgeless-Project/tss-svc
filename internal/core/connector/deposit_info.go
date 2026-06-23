@@ -4,7 +4,7 @@ import (
 	"context"
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

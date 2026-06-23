@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strconv"
 
-	apiTypes "github.com/Bridgeless-Project/tss-svc/internal/api/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	apiTypes "github.com/Bridgeless-Project/tss-svc/pkg/proto/api"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"github.com/go-chi/chi/v5"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/pkg/errors"

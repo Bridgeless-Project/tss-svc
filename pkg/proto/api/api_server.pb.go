@@ -4,10 +4,10 @@
 // 	protoc        (unknown)
 // source: api_server.proto
 
-package types
+package api
 
 import (
-	types "github.com/Bridgeless-Project/tss-svc/internal/types"
+	deposit "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -26,11 +26,11 @@ const (
 )
 
 type CheckWithdrawalResponse struct {
-	state                protoimpl.MessageState      `protogen:"open.v1"`
-	DepositIdentifier    *types.DepositIdentifier    `protobuf:"bytes,1,opt,name=deposit_identifier,json=depositIdentifier,proto3" json:"deposit_identifier,omitempty"`
-	TransferData         *types.TransferData         `protobuf:"bytes,2,opt,name=transfer_data,json=transferData,proto3" json:"transfer_data,omitempty"`
-	WithdrawalStatus     types.WithdrawalStatus      `protobuf:"varint,3,opt,name=withdrawal_status,json=withdrawalStatus,proto3,enum=deposit.WithdrawalStatus" json:"withdrawal_status,omitempty"`
-	WithdrawalIdentifier *types.WithdrawalIdentifier `protobuf:"bytes,4,opt,name=withdrawal_identifier,json=withdrawalIdentifier,proto3,oneof" json:"withdrawal_identifier,omitempty"`
+	state                protoimpl.MessageState        `protogen:"open.v1"`
+	DepositIdentifier    *deposit.DepositIdentifier    `protobuf:"bytes,1,opt,name=deposit_identifier,json=depositIdentifier,proto3" json:"deposit_identifier,omitempty"`
+	TransferData         *deposit.TransferData         `protobuf:"bytes,2,opt,name=transfer_data,json=transferData,proto3" json:"transfer_data,omitempty"`
+	WithdrawalStatus     deposit.WithdrawalStatus      `protobuf:"varint,3,opt,name=withdrawal_status,json=withdrawalStatus,proto3,enum=deposit.WithdrawalStatus" json:"withdrawal_status,omitempty"`
+	WithdrawalIdentifier *deposit.WithdrawalIdentifier `protobuf:"bytes,4,opt,name=withdrawal_identifier,json=withdrawalIdentifier,proto3,oneof" json:"withdrawal_identifier,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -65,28 +65,28 @@ func (*CheckWithdrawalResponse) Descriptor() ([]byte, []int) {
 	return file_api_server_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CheckWithdrawalResponse) GetDepositIdentifier() *types.DepositIdentifier {
+func (x *CheckWithdrawalResponse) GetDepositIdentifier() *deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositIdentifier
 	}
 	return nil
 }
 
-func (x *CheckWithdrawalResponse) GetTransferData() *types.TransferData {
+func (x *CheckWithdrawalResponse) GetTransferData() *deposit.TransferData {
 	if x != nil {
 		return x.TransferData
 	}
 	return nil
 }
 
-func (x *CheckWithdrawalResponse) GetWithdrawalStatus() types.WithdrawalStatus {
+func (x *CheckWithdrawalResponse) GetWithdrawalStatus() deposit.WithdrawalStatus {
 	if x != nil {
 		return x.WithdrawalStatus
 	}
-	return types.WithdrawalStatus(0)
+	return deposit.WithdrawalStatus(0)
 }
 
-func (x *CheckWithdrawalResponse) GetWithdrawalIdentifier() *types.WithdrawalIdentifier {
+func (x *CheckWithdrawalResponse) GetWithdrawalIdentifier() *deposit.WithdrawalIdentifier {
 	if x != nil {
 		return x.WithdrawalIdentifier
 	}
@@ -106,7 +106,7 @@ const file_api_server_proto_rawDesc = "" +
 	"\x16_withdrawal_identifier2\xde\x01\n" +
 	"\x03API\x12Z\n" +
 	"\x10SubmitWithdrawal\x12\x1a.deposit.DepositIdentifier\x1a\x16.google.protobuf.Empty\"\x12\x82\xd3\xe4\x93\x02\f:\x01*\"\a/submit\x12{\n" +
-	"\x0fCheckWithdrawal\x12\x1a.deposit.DepositIdentifier\x1a\x1c.api.CheckWithdrawalResponse\".\x82\xd3\xe4\x93\x02(\x12&/check/{chain_id}/{tx_hash}/{tx_nonce}B:Z8github.com/Bridgeless-Project/tss-svc/internal/api/typesb\x06proto3"
+	"\x0fCheckWithdrawal\x12\x1a.deposit.DepositIdentifier\x1a\x1c.api.CheckWithdrawalResponse\".\x82\xd3\xe4\x93\x02(\x12&/check/{chain_id}/{tx_hash}/{tx_nonce}B5Z3github.com/Bridgeless-Project/tss-svc/pkg/proto/apib\x06proto3"
 
 var (
 	file_api_server_proto_rawDescOnce sync.Once
@@ -122,12 +122,12 @@ func file_api_server_proto_rawDescGZIP() []byte {
 
 var file_api_server_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_api_server_proto_goTypes = []any{
-	(*CheckWithdrawalResponse)(nil),    // 0: api.CheckWithdrawalResponse
-	(*types.DepositIdentifier)(nil),    // 1: deposit.DepositIdentifier
-	(*types.TransferData)(nil),         // 2: deposit.TransferData
-	(types.WithdrawalStatus)(0),        // 3: deposit.WithdrawalStatus
-	(*types.WithdrawalIdentifier)(nil), // 4: deposit.WithdrawalIdentifier
-	(*emptypb.Empty)(nil),              // 5: google.protobuf.Empty
+	(*CheckWithdrawalResponse)(nil),      // 0: api.CheckWithdrawalResponse
+	(*deposit.DepositIdentifier)(nil),    // 1: deposit.DepositIdentifier
+	(*deposit.TransferData)(nil),         // 2: deposit.TransferData
+	(deposit.WithdrawalStatus)(0),        // 3: deposit.WithdrawalStatus
+	(*deposit.WithdrawalIdentifier)(nil), // 4: deposit.WithdrawalIdentifier
+	(*emptypb.Empty)(nil),                // 5: google.protobuf.Empty
 }
 var file_api_server_proto_depIdxs = []int32{
 	1, // 0: api.CheckWithdrawalResponse.deposit_identifier:type_name -> deposit.DepositIdentifier
