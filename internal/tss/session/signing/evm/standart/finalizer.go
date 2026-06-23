@@ -66,9 +66,23 @@ func (ef *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (ef *Finalizer) finalize(_ context.Context) {
-	signature := evm.ConvertSignature(ef.signature)
+	if ef.withdrawalData == nil {
+		ef.errChan <- errors.New("withdrawal data is not set")
+		return
+	}
+	identifiers := ef.withdrawalData.DepositIdentifiers()
+	if len(identifiers) != 1 {
+		ef.errChan <- errors.Errorf("expected exactly one deposit identifier, got %d", len(identifiers))
+		return
+	}
+
+	signature, err := evm.ConvertSignature(ef.signature)
+	if err != nil {
+		ef.errChan <- errors.Wrap(err, "failed to convert signature")
+		return
+	}
 	if err := ef.db.UpdateProcessed(database.ProcessedDepositData{
-		Identifier: ef.withdrawalData.DepositIdentifiers()[0],
+		Identifier: identifiers[0],
 		Signature:  &signature,
 	}); err != nil {
 		ef.errChan <- errors.Wrap(err, "failed to update signature")

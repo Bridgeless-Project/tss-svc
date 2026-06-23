@@ -114,7 +114,13 @@ func (s *Session) Run(ctx context.Context) ([]bridgeTypes.SystemWithdrawal, erro
 			s.logger.Infof("commission withdrawal for token %v signed successfully", data.DestinationToken)
 
 			result := sess.Result()
-			signature := evm.ConvertSignature(result.Signature)
+			if result == nil {
+				return nil, errors.New("commission signing session returned no result")
+			}
+			signature, err := evm.ConvertSignature(result.Signature)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to convert commission withdrawal signature")
+			}
 
 			withdrawals = append(withdrawals, bridgeTypes.SystemWithdrawal{
 				TxHash:    data.TxHash,
@@ -140,6 +146,11 @@ func (s *Session) Run(ctx context.Context) ([]bridgeTypes.SystemWithdrawal, erro
 }
 
 func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, error) {
+	chainId, err := s.settings.ChainIdAsBigInt()
+	if err != nil {
+		return nil, err
+	}
+
 	tokens, err := s.connector.GetTokens(s.event.BlockHeight)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get all tokens")
@@ -186,7 +197,7 @@ func (s *Session) loadCommissionData() ([]operations.WithdrawOperationData, erro
 				common.HexToAddress(bridgeTypes.ContractCallerAddress).Bytes(),
 			),
 			TxNonce:          0,
-			ChainId:          s.settings.ChainIdAsBigInt(),
+			ChainId:          chainId,
 			DestinationToken: common.HexToAddress(bridgeTokenInfo.Address),
 			IsWrapped:        bridgeTokenInfo.IsWrapped,
 		})

@@ -202,6 +202,26 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 		s.logger.Info("no data to sign in the current session")
 		return nil
 	}
+	if result.SigData.ProposalData == nil {
+		return errors.New("proposal data is not set")
+	}
+	signHashes := result.SigData.SignHashes()
+	if len(signHashes) != 1 {
+		return errors.Errorf("expected exactly one signing hash, got %d", len(signHashes))
+	}
+	if len(signHashes[0]) == 0 {
+		return errors.New("signing hash is empty")
+	}
+	if len(result.SigData.ProposalData.DepositIds) == 0 {
+		return errors.New("proposal contains no deposit identifiers")
+	}
+	if len(result.SigData.ProposalData.MerkleProofs) != len(result.SigData.ProposalData.DepositIds) {
+		return errors.Errorf(
+			"merkle proof count %d does not match deposit identifier count %d",
+			len(result.SigData.ProposalData.MerkleProofs),
+			len(result.SigData.ProposalData.DepositIds),
+		)
+	}
 
 	identifiers := make([]db.DepositIdentifier, len(result.SigData.ProposalData.DepositIds))
 	for i, pbId := range result.SigData.ProposalData.DepositIds {
@@ -235,7 +255,7 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 
 		s.signingParty.
 			WithParties(result.Signers).
-			WithSigningData(result.SigData.ProposalData.SigData).
+			WithSigningData(signHashes[0]).
 			Run(signingCtx)
 		signature := s.signingParty.WaitFor()
 		if signature == nil {
@@ -260,11 +280,14 @@ func (s *Session) runSession(ctx context.Context) (err error) {
 
 	s.signaturesDistributor.
 		WithSignatures(signatures).
-		WithSigData([][]byte{result.SigData.ProposalData.SigData}).
+		WithSigData(signHashes).
 		Run(distributionCtx)
 	signatures, err = s.signaturesDistributor.WaitFor()
 	if err != nil {
 		return errors.Wrap(err, "signature distribution phase error occurred")
+	}
+	if signatures == nil || len(signatures.Data) != len(signHashes) || signatures.Data[0] == nil {
+		return errors.Errorf("expected %d distributed signatures, got %d", len(signHashes), signatureCount(signatures))
 	}
 
 	// finalization phase
@@ -346,4 +369,11 @@ func (s *Session) SigningSessionInfo() *p2p.SigningSessionInfo {
 		s.self.Threshold,
 		s.params.ChainId,
 	)
+}
+
+func signatureCount(signatures *tss.Signatures) int {
+	if signatures == nil {
+		return 0
+	}
+	return len(signatures.Data)
 }

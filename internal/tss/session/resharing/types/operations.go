@@ -14,7 +14,7 @@ type ContractOperation interface {
 	Nonce() uint64
 
 	CalculateHash() []byte
-	ConvertSignature(sig tss.SignatureData) string
+	ConvertSignature(sig tss.SignatureData) (string, error)
 }
 
 func OperationRemoveSignerStartTime(startTime time.Time, epochSupport time.Duration) time.Time {

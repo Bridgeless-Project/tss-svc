@@ -67,9 +67,10 @@ func (c *BatchDepositConsensusMechanism[T]) VerifyProposedData(data T) error {
 	unsignedDeposits := data.DepositIdentifiers()
 
 	if len(unsignedDeposits) == 0 {
-		return nil
+		return errors.New("proposal contains no deposit identifiers")
 	}
 
+	// TODO: maybe add the validation to prevent duplicate
 	selector := db.DepositsSelector{
 		Identifiers: unsignedDeposits,
 	}

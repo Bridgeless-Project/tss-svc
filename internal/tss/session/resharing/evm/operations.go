@@ -39,7 +39,7 @@ func (u UpdateSignerOperation) Nonce() uint64 {
 	return u.nonce.Uint64()
 }
 
-func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) string {
+func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) (string, error) {
 	return evm.ConvertSignature(sig)
 }
 

@@ -43,15 +43,17 @@ type RoundMessage[T Hashable] struct {
 
 func (m RoundMessage[T]) Encode() []byte {
 	var buff bytes.Buffer
-
+	fmt.Println("start encodings")
 	encoder := gob.NewEncoder(&buff)
 	_ = encoder.Encode(m)
+	fmt.Println("finish encoding")
 
 	return buff.Bytes()
 }
 
 func DecodeRoundMessage[T Hashable](data []byte) (RoundMessage[T], error) {
 	var msg RoundMessage[T]
+	fmt.Println("start decoding")
 
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	if err := decoder.Decode(&msg); err != nil {
@@ -74,8 +76,11 @@ func (m RoundMessage[T]) SignatureValid(signature Signature) bool {
 func (m RoundMessage[T]) SignHash() []byte {
 	var buf bytes.Buffer
 
+	fmt.Println("start encoding")
 	encoder := gob.NewEncoder(&buf)
 	_ = encoder.Encode(m.SessionId)
+	fmt.Println("finish encoding")
+
 	// gob cannot encode nil values, but they are valid
 	if m.Value != (*T)(nil) {
 		_ = encoder.Encode((*m.Value).HashString())

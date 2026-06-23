@@ -103,13 +103,22 @@ func (r *UpdateContractHandler) Handle(ctx context.Context, state *resharingType
 		return errors.Wrap(err, "failed to produce remove signer signature")
 	}
 
+	addSignature, err := r.addSigOp.ConvertSignature(addSignerResult)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert add signer signature")
+	}
+	removeSignature, err := r.removeSigOp.ConvertSignature(removeSignerResult)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert remove signer signature")
+	}
+
 	state.AddSignature(bridgeTypes.EpochChainSignatures{
 		ChainType: r.chainType,
 		EpochId:   state.Epoch,
 		AddedSignature: &bridgeTypes.EpochSignature{
 			Mod:       bridgeTypes.EpochSignatureMod_ADD,
 			EpochId:   state.Epoch,
-			Signature: r.addSigOp.ConvertSignature(addSignerResult),
+			Signature: addSignature,
 			Data: &bridgeTypes.EpochSignatureData{
 				NewSigner: r.addSigOp.Signer(),
 				StartTime: uint64(r.addSigOp.StartTime().Unix()),
@@ -120,7 +129,7 @@ func (r *UpdateContractHandler) Handle(ctx context.Context, state *resharingType
 		RemovedSignature: &bridgeTypes.EpochSignature{
 			Mod:       bridgeTypes.EpochSignatureMod_REMOVE,
 			EpochId:   state.Epoch,
-			Signature: r.removeSigOp.ConvertSignature(removeSignerResult),
+			Signature: removeSignature,
 			Data: &bridgeTypes.EpochSignatureData{
 				NewSigner: r.removeSigOp.Signer(),
 				StartTime: uint64(r.removeSigOp.StartTime().Unix()),

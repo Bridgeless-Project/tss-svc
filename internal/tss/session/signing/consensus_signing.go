@@ -99,7 +99,13 @@ func (s *ConsensusSession[T]) Run(ctx context.Context) error {
 	}
 
 	// expecting only one signature data to sign, so taking the first one
-	signData := (*result.SigData).SignHashes()[0]
+	signHashes := (*result.SigData).SignHashes()
+	if len(signHashes) != 1 {
+		return errors.Errorf("expected exactly one signing hash, got %d", len(signHashes))
+	}
+	if len(signHashes[0]) == 0 {
+		return errors.New("signing hash is empty")
+	}
 
 	var (
 		distributionCtx    context.Context
@@ -113,7 +119,7 @@ func (s *ConsensusSession[T]) Run(ctx context.Context) error {
 
 		s.signingParty.
 			WithParties(result.Signers).
-			WithSigningData(signData).
+			WithSigningData(signHashes[0]).
 			Run(signingCtx)
 		signature := s.signingParty.WaitFor()
 		if signature == nil {
@@ -138,11 +144,14 @@ func (s *ConsensusSession[T]) Run(ctx context.Context) error {
 
 	s.signaturesDistributor.
 		WithSignatures(signatures).
-		WithSigData((*result.SigData).SignHashes()).
+		WithSigData(signHashes).
 		Run(distributionCtx)
 	signatures, err = s.signaturesDistributor.WaitFor()
 	if err != nil {
 		return errors.Wrap(err, "signature distribution phase error occurred")
+	}
+	if signatures == nil || len(signatures.Data) != len(signHashes) || signatures.Data[0] == nil {
+		return errors.Errorf("expected %d distributed signatures, got %d", len(signHashes), signatureCount(signatures))
 	}
 
 	s.result = &ConsensusSessionResult[T]{
@@ -196,4 +205,11 @@ func (s *ConsensusSession[T]) RegisterIdChangeListener(func(oldId, newId string)
 // SigningSessionInfo is a no-op for ConsensusSession
 func (s *ConsensusSession[T]) SigningSessionInfo() *p2p.SigningSessionInfo {
 	return nil
+}
+
+func signatureCount(signatures *tss.Signatures) int {
+	if signatures == nil {
+		return 0
+	}
+	return len(signatures.Data)
 }

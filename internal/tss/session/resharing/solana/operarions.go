@@ -46,8 +46,8 @@ func (u UpdateSignerOperation) Nonce() uint64 {
 	return u.nonce.Uint64()
 }
 
-func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) string {
-	return hexutil.Encode(append(sig.GetSignature(), sig.GetSignatureRecovery()...))
+func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) (string, error) {
+	return hexutil.Encode(append(sig.GetSignature(), sig.GetSignatureRecovery()...)), nil
 }
 
 func (u UpdateSignerOperation) CalculateHash() []byte {

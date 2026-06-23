@@ -1,5 +1,12 @@
 #!/usr/bin/env sh
 
+if [ "${ALLOW_DEV_VAULT_FIXTURES:-}" != "true" ]; then
+  echo "Refusing to seed deterministic dev-only Vault fixtures. Set ALLOW_DEV_VAULT_FIXTURES=true only for local development." >&2
+  exit 1
+fi
+
+echo "Seeding deterministic dev-only Vault fixtures. Do not use this bootstrap in production." >&2
+
 # shellcheck disable=SC2113
 function check_vault_init {
   RESPONSE=$(curl --insecure --silent --header "X-Vault-Token: $VAULT_TOKEN" http://$VAULT_ADDR/v1/tss1/data/keygen_preparams)

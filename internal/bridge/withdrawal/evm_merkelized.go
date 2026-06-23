@@ -56,6 +56,10 @@ func (e EvmMerkelizedWithdrawalData) HashString() string {
 }
 
 func (e EvmMerkelizedWithdrawalData) SignHashes() [][]byte {
+	if e.ProposalData == nil || len(e.ProposalData.SigData) == 0 {
+		return nil
+	}
+
 	return [][]byte{e.ProposalData.SigData}
 }
 
@@ -151,6 +155,9 @@ func (c *EvmMerkelizedWithdrawalConstructor) IsValid(data EvmMerkelizedWithdrawa
 	for i := range tree.Leaves {
 		if i >= len(data.ProposalData.MerkleProofs) {
 			return false, errors.Errorf("missing merkle proof for leaf %d", i)
+		}
+		if data.ProposalData.MerkleProofs[i] == nil {
+			return false, errors.Errorf("nil merkle proof at leaf %d", i)
 		}
 		proof, err := tree.GetProof(i)
 		if err != nil {

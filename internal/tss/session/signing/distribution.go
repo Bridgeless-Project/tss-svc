@@ -133,15 +133,15 @@ func (s *SignaturesDistributor) validateSignatures() error {
 		return errors.New("no signatures received")
 	}
 
-	fmt.Println("len: ", len(s.signatures.Data), "s.signatures.Data: ", s.signatures.Data)
-	fmt.Println("len: ", len(s.sigData), "s.sigData: ", s.sigData)
-
 	if len(s.signatures.Data) != len(s.sigData) {
 		return errors.New("received signatures count does not match expected")
 	}
 
 	// verify signature with appropriate share: frost or ecdsa
 	for i, signature := range s.signatures.Data {
+		if signature == nil {
+			return errors.Errorf("missing signature at index %d", i)
+		}
 		ok, err := s.self.Share.Verify(signature.GetSignature(), s.sigData[i])
 		if err != nil {
 			return errors.Wrap(err, "failed to verify signature")

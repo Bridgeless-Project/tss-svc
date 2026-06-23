@@ -21,13 +21,13 @@ type EvmSettings struct {
 	ChainId      string         `fig:"chain_id,required"`
 }
 
-func (s EvmSettings) ChainIdAsBigInt() *big.Int {
+func (s EvmSettings) ChainIdAsBigInt() (*big.Int, error) {
 	chainId, ok := new(big.Int).SetString(s.ChainId, 10)
 	if !ok {
-		return big.NewInt(0)
+		return nil, errors.Errorf("invalid bridge EVM chain id: %s", s.ChainId)
 	}
 
-	return chainId
+	return chainId, nil
 }
 
 type settinger struct {
@@ -47,7 +47,7 @@ func (s *settinger) EvmSettings() EvmSettings {
 			With(figure.BaseHooks, figure.EthereumHooks).
 			From(kv.MustGetStringMap(s.getter, settingsKey)).
 			Please(); err != nil {
-			panic(errors.Wrap(err, "failed to figure out swap config"))
+			panic(errors.Wrap(err, "failed to figure out bridge EVM config"))
 		}
 		return cfg
 	}).(EvmSettings)
