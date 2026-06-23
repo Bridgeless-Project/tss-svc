@@ -40,6 +40,26 @@ var (
 		msg:  "Nonce must be larger than the old one",
 		name: "OutdatedNonce",
 	}
+	ErrRequestNotYetValid = &customErrorDef{
+		code: 6006,
+		msg:  "Request is not valid yet.",
+		name: "RequestNotYetValid",
+	}
+	ErrRequestExpired = &customErrorDef{
+		code: 6007,
+		msg:  "Request is expired",
+		name: "RequestExpired",
+	}
+	ErrSignerExist = &customErrorDef{
+		code: 6008,
+		msg:  "Signer is already exist",
+		name: "SignerExist",
+	}
+	ErrSignerNotExist = &customErrorDef{
+		code: 6009,
+		msg:  "Signer is not exist",
+		name: "SignerNotExist",
+	}
 	Errors = map[int]CustomError{
 		6000: ErrInvalidAmount,
 		6001: ErrInvalidSignature,
@@ -47,6 +67,10 @@ var (
 		6003: ErrMismatchedHash,
 		6004: ErrInvalidWithdrawal,
 		6005: ErrOutdatedNonce,
+		6006: ErrRequestNotYetValid,
+		6007: ErrRequestExpired,
+		6008: ErrSignerExist,
+		6009: ErrSignerNotExist,
 	}
 )
 

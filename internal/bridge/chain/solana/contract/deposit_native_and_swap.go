@@ -10,13 +10,16 @@ import (
 	ag_treeout "github.com/gagliardetto/treeout"
 )
 
-// DepositNative is the `deposit_native` instruction.
-type DepositNative struct {
-	BridgeId   *string
-	Amount     *uint64
-	ChainId    *string
-	Address    *string
-	ReferralId *uint16
+// DepositNativeAndSwap is the `deposit_native_and_swap` instruction.
+type DepositNativeAndSwap struct {
+	BridgeId             *string
+	Amount               *uint64
+	ChainId              *string
+	Address              *string
+	ReferralId           *uint16
+	DestinationToken     *string
+	MinDestinationAmount *uint64
+	SwapDeadline         *uint64
 
 	// [0] = [WRITE] authority
 	//
@@ -26,9 +29,9 @@ type DepositNative struct {
 	ag_solanago.AccountMetaSlice `bin:"-"`
 }
 
-// NewDepositNativeInstructionBuilder creates a new `DepositNative` instruction builder.
-func NewDepositNativeInstructionBuilder() *DepositNative {
-	nd := &DepositNative{
+// NewDepositNativeAndSwapInstructionBuilder creates a new `DepositNativeAndSwap` instruction builder.
+func NewDepositNativeAndSwapInstructionBuilder() *DepositNativeAndSwap {
+	nd := &DepositNativeAndSwap{
 		AccountMetaSlice: make(ag_solanago.AccountMetaSlice, 3),
 	}
 	nd.AccountMetaSlice[2] = ag_solanago.Meta(Addresses["11111111111111111111111111111111"])
@@ -36,47 +39,65 @@ func NewDepositNativeInstructionBuilder() *DepositNative {
 }
 
 // SetBridgeId sets the "bridge_id" parameter.
-func (inst *DepositNative) SetBridgeId(bridge_id string) *DepositNative {
+func (inst *DepositNativeAndSwap) SetBridgeId(bridge_id string) *DepositNativeAndSwap {
 	inst.BridgeId = &bridge_id
 	return inst
 }
 
 // SetAmount sets the "amount" parameter.
-func (inst *DepositNative) SetAmount(amount uint64) *DepositNative {
+func (inst *DepositNativeAndSwap) SetAmount(amount uint64) *DepositNativeAndSwap {
 	inst.Amount = &amount
 	return inst
 }
 
 // SetChainId sets the "chain_id" parameter.
-func (inst *DepositNative) SetChainId(chain_id string) *DepositNative {
+func (inst *DepositNativeAndSwap) SetChainId(chain_id string) *DepositNativeAndSwap {
 	inst.ChainId = &chain_id
 	return inst
 }
 
 // SetAddress sets the "address" parameter.
-func (inst *DepositNative) SetAddress(address string) *DepositNative {
+func (inst *DepositNativeAndSwap) SetAddress(address string) *DepositNativeAndSwap {
 	inst.Address = &address
 	return inst
 }
 
 // SetReferralId sets the "_referral_id" parameter.
-func (inst *DepositNative) SetReferralId(_referral_id uint16) *DepositNative {
+func (inst *DepositNativeAndSwap) SetReferralId(_referral_id uint16) *DepositNativeAndSwap {
 	inst.ReferralId = &_referral_id
 	return inst
 }
 
+// SetDestinationToken sets the "_destination_token" parameter.
+func (inst *DepositNativeAndSwap) SetDestinationToken(_destination_token string) *DepositNativeAndSwap {
+	inst.DestinationToken = &_destination_token
+	return inst
+}
+
+// SetMinDestinationAmount sets the "_min_destination_amount" parameter.
+func (inst *DepositNativeAndSwap) SetMinDestinationAmount(_min_destination_amount uint64) *DepositNativeAndSwap {
+	inst.MinDestinationAmount = &_min_destination_amount
+	return inst
+}
+
+// SetSwapDeadline sets the "_swap_deadline" parameter.
+func (inst *DepositNativeAndSwap) SetSwapDeadline(_swap_deadline uint64) *DepositNativeAndSwap {
+	inst.SwapDeadline = &_swap_deadline
+	return inst
+}
+
 // SetAuthorityAccount sets the "authority" account.
-func (inst *DepositNative) SetAuthorityAccount(authority ag_solanago.PublicKey) *DepositNative {
+func (inst *DepositNativeAndSwap) SetAuthorityAccount(authority ag_solanago.PublicKey) *DepositNativeAndSwap {
 	inst.AccountMetaSlice[0] = ag_solanago.Meta(authority).WRITE()
 	return inst
 }
 
 // GetAuthorityAccount gets the "authority" account.
-func (inst *DepositNative) GetAuthorityAccount() *ag_solanago.AccountMeta {
+func (inst *DepositNativeAndSwap) GetAuthorityAccount() *ag_solanago.AccountMeta {
 	return inst.AccountMetaSlice.Get(0)
 }
 
-func (inst *DepositNative) findAuthorityAddress(bridgeId string, knownBumpSeed uint8) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
+func (inst *DepositNativeAndSwap) findAuthorityAddress(bridgeId string, knownBumpSeed uint8) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
 	var seeds [][]byte
 	// const: 0x617574686f72697479
 	seeds = append(seeds, []byte{byte(0x61), byte(0x75), byte(0x74), byte(0x68), byte(0x6f), byte(0x72), byte(0x69), byte(0x74), byte(0x79)})
@@ -101,11 +122,11 @@ func (inst *DepositNative) findAuthorityAddress(bridgeId string, knownBumpSeed u
 
 // findAuthorityAddressWithBumpSeed calculates Authority account address with given seeds and a known bump seed.
 // pda program and seeds which refer to the instruction accounts or args should be provided as parameters.
-func (inst *DepositNative) findAuthorityAddressWithBumpSeed(bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey, err error) {
+func (inst *DepositNativeAndSwap) findAuthorityAddressWithBumpSeed(bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey, err error) {
 	pda, _, err = inst.findAuthorityAddress(bridgeId, bumpSeed)
 	return
 }
-func (inst *DepositNative) MustfindAuthorityAddressWithBumpSeed(bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey) {
+func (inst *DepositNativeAndSwap) MustfindAuthorityAddressWithBumpSeed(bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey) {
 	pda, _, err := inst.findAuthorityAddress(bridgeId, bumpSeed)
 	if err != nil {
 		panic(err)
@@ -114,11 +135,11 @@ func (inst *DepositNative) MustfindAuthorityAddressWithBumpSeed(bridgeId string,
 }
 
 // FindAuthorityAddress finds Authority account address with given seeds.
-func (inst *DepositNative) FindAuthorityAddress(bridgeId string) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
+func (inst *DepositNativeAndSwap) FindAuthorityAddress(bridgeId string) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
 	pda, bumpSeed, err = inst.findAuthorityAddress(bridgeId, 0)
 	return
 }
-func (inst *DepositNative) MustFindAuthorityAddress(bridgeId string) (pda ag_solanago.PublicKey) {
+func (inst *DepositNativeAndSwap) MustFindAuthorityAddress(bridgeId string) (pda ag_solanago.PublicKey) {
 	pda, _, err := inst.findAuthorityAddress(bridgeId, 0)
 	if err != nil {
 		panic(err)
@@ -127,35 +148,35 @@ func (inst *DepositNative) MustFindAuthorityAddress(bridgeId string) (pda ag_sol
 }
 
 // SetSenderAccount sets the "sender" account.
-func (inst *DepositNative) SetSenderAccount(sender ag_solanago.PublicKey) *DepositNative {
+func (inst *DepositNativeAndSwap) SetSenderAccount(sender ag_solanago.PublicKey) *DepositNativeAndSwap {
 	inst.AccountMetaSlice[1] = ag_solanago.Meta(sender).WRITE().SIGNER()
 	return inst
 }
 
 // GetSenderAccount gets the "sender" account.
-func (inst *DepositNative) GetSenderAccount() *ag_solanago.AccountMeta {
+func (inst *DepositNativeAndSwap) GetSenderAccount() *ag_solanago.AccountMeta {
 	return inst.AccountMetaSlice.Get(1)
 }
 
 // SetSystemProgramAccount sets the "system_program" account.
-func (inst *DepositNative) SetSystemProgramAccount(systemProgram ag_solanago.PublicKey) *DepositNative {
+func (inst *DepositNativeAndSwap) SetSystemProgramAccount(systemProgram ag_solanago.PublicKey) *DepositNativeAndSwap {
 	inst.AccountMetaSlice[2] = ag_solanago.Meta(systemProgram)
 	return inst
 }
 
 // GetSystemProgramAccount gets the "system_program" account.
-func (inst *DepositNative) GetSystemProgramAccount() *ag_solanago.AccountMeta {
+func (inst *DepositNativeAndSwap) GetSystemProgramAccount() *ag_solanago.AccountMeta {
 	return inst.AccountMetaSlice.Get(2)
 }
 
-func (inst DepositNative) Build() *Instruction {
+func (inst DepositNativeAndSwap) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
 		Impl:   inst,
-		TypeID: Instruction_DepositNative,
+		TypeID: Instruction_DepositNativeAndSwap,
 	}}
 }
 
-func (inst *DepositNative) Validate() error {
+func (inst *DepositNativeAndSwap) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.BridgeId == nil {
@@ -172,6 +193,15 @@ func (inst *DepositNative) Validate() error {
 		}
 		if inst.ReferralId == nil {
 			return errors.New("ReferralId parameter is not set")
+		}
+		if inst.DestinationToken == nil {
+			return errors.New("DestinationToken parameter is not set")
+		}
+		if inst.MinDestinationAmount == nil {
+			return errors.New("MinDestinationAmount parameter is not set")
+		}
+		if inst.SwapDeadline == nil {
+			return errors.New("SwapDeadline parameter is not set")
 		}
 	}
 
@@ -193,25 +223,28 @@ func (inst *DepositNative) Validate() error {
 // ValidateAndBuild validates the instruction parameters and accounts;
 // if there is a validation error, it returns the error.
 // Otherwise, it builds and returns the instruction.
-func (inst DepositNative) ValidateAndBuild() (*Instruction, error) {
+func (inst DepositNativeAndSwap) ValidateAndBuild() (*Instruction, error) {
 	if err := inst.Validate(); err != nil {
 		return nil, err
 	}
 	return inst.Build(), nil
 }
 
-func (inst *DepositNative) EncodeToTree(parent ag_treeout.Branches) {
+func (inst *DepositNativeAndSwap) EncodeToTree(parent ag_treeout.Branches) {
 	parent.Child(ag_format.Program(ProgramName, ProgramID)).
 		ParentFunc(func(programBranch ag_treeout.Branches) {
-			programBranch.Child(ag_format.Instruction("DepositNative")).
+			programBranch.Child(ag_format.Instruction("DepositNativeAndSwap")).
 				ParentFunc(func(instructionBranch ag_treeout.Branches) {
 					// Parameters of the instruction:
-					instructionBranch.Child("Params[len=5]").ParentFunc(func(paramsBranch ag_treeout.Branches) {
-						paramsBranch.Child(ag_format.Param("    BridgeId", *inst.BridgeId))
-						paramsBranch.Child(ag_format.Param("      Amount", *inst.Amount))
-						paramsBranch.Child(ag_format.Param("     ChainId", *inst.ChainId))
-						paramsBranch.Child(ag_format.Param("     Address", *inst.Address))
-						paramsBranch.Child(ag_format.Param("  ReferralId", *inst.ReferralId))
+					instructionBranch.Child("Params[len=8]").ParentFunc(func(paramsBranch ag_treeout.Branches) {
+						paramsBranch.Child(ag_format.Param("               BridgeId", *inst.BridgeId))
+						paramsBranch.Child(ag_format.Param("                 Amount", *inst.Amount))
+						paramsBranch.Child(ag_format.Param("                ChainId", *inst.ChainId))
+						paramsBranch.Child(ag_format.Param("                Address", *inst.Address))
+						paramsBranch.Child(ag_format.Param("             ReferralId", *inst.ReferralId))
+						paramsBranch.Child(ag_format.Param("       DestinationToken", *inst.DestinationToken))
+						paramsBranch.Child(ag_format.Param("   MinDestinationAmount", *inst.MinDestinationAmount))
+						paramsBranch.Child(ag_format.Param("           SwapDeadline", *inst.SwapDeadline))
 					})
 					// Accounts of the instruction:
 					instructionBranch.Child("Accounts[len=3]").ParentFunc(func(accountsBranch ag_treeout.Branches) {
@@ -223,7 +256,7 @@ func (inst *DepositNative) EncodeToTree(parent ag_treeout.Branches) {
 		})
 }
 
-func (obj DepositNative) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
+func (obj DepositNativeAndSwap) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `BridgeId` param:
 	err = encoder.Encode(obj.BridgeId)
 	if err != nil {
@@ -249,10 +282,25 @@ func (obj DepositNative) MarshalWithEncoder(encoder *ag_binary.Encoder) (err err
 	if err != nil {
 		return err
 	}
+	// Serialize `DestinationToken` param:
+	err = encoder.Encode(obj.DestinationToken)
+	if err != nil {
+		return err
+	}
+	// Serialize `MinDestinationAmount` param:
+	err = encoder.Encode(obj.MinDestinationAmount)
+	if err != nil {
+		return err
+	}
+	// Serialize `SwapDeadline` param:
+	err = encoder.Encode(obj.SwapDeadline)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (obj *DepositNative) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
+func (obj *DepositNativeAndSwap) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
 	// Deserialize `BridgeId`:
 	err = decoder.Decode(&obj.BridgeId)
 	if err != nil {
@@ -278,28 +326,49 @@ func (obj *DepositNative) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err 
 	if err != nil {
 		return err
 	}
+	// Deserialize `DestinationToken`:
+	err = decoder.Decode(&obj.DestinationToken)
+	if err != nil {
+		return err
+	}
+	// Deserialize `MinDestinationAmount`:
+	err = decoder.Decode(&obj.MinDestinationAmount)
+	if err != nil {
+		return err
+	}
+	// Deserialize `SwapDeadline`:
+	err = decoder.Decode(&obj.SwapDeadline)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-// NewDepositNativeInstruction declares a new DepositNative instruction with the provided parameters and accounts.
-func NewDepositNativeInstruction(
+// NewDepositNativeAndSwapInstruction declares a new DepositNativeAndSwap instruction with the provided parameters and accounts.
+func NewDepositNativeAndSwapInstruction(
 	// Parameters:
 	bridge_id string,
 	amount uint64,
 	chain_id string,
 	address string,
 	_referral_id uint16,
+	_destination_token string,
+	_min_destination_amount uint64,
+	_swap_deadline uint64,
 	// Accounts:
 	authority ag_solanago.PublicKey,
 	sender ag_solanago.PublicKey,
 	systemProgram ag_solanago.PublicKey,
-) *DepositNative {
-	return NewDepositNativeInstructionBuilder().
+) *DepositNativeAndSwap {
+	return NewDepositNativeAndSwapInstructionBuilder().
 		SetBridgeId(bridge_id).
 		SetAmount(amount).
 		SetChainId(chain_id).
 		SetAddress(address).
 		SetReferralId(_referral_id).
+		SetDestinationToken(_destination_token).
+		SetMinDestinationAmount(_min_destination_amount).
+		SetSwapDeadline(_swap_deadline).
 		SetAuthorityAccount(authority).
 		SetSenderAccount(sender).
 		SetSystemProgramAccount(systemProgram)

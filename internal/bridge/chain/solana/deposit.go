@@ -55,14 +55,18 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			return nil, bridgeTypes.ErrInvalidBridgeId
 		}
 		return &db.DepositData{
-			DepositIdentifier:  id,
-			Block:              int64(out.Slot),
-			SourceAddress:      deposit.GetSenderAccount().PublicKey.String(),
-			DepositAmount:      big.NewInt(int64(*deposit.Amount)),
-			TokenAddress:       bridge.DefaultNativeTokenAddress,
-			DestinationAddress: *deposit.Address,
-			DestinationChainId: *deposit.ChainId,
-			ReferralId:         *deposit.ReferralId,
+			DepositIdentifier:    id,
+			Block:                int64(out.Slot),
+			SourceAddress:        deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:        big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:         bridge.DefaultNativeTokenAddress,
+			DestinationAddress:   *deposit.Address,
+			DestinationChainId:   *deposit.ChainId,
+			ReferralId:           *deposit.ReferralId,
+			MinDestinationAmount: nil,   // swap fields not applicable
+			SwapDeadline:         nil,   // swap fields not applicable
+			DestinationToken:     "",    // swap fields not applicable
+			IsSwap:               false, // swap fields not applicable
 		}, nil
 
 	case *contract.DepositSpl:
@@ -70,14 +74,18 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			return nil, bridgeTypes.ErrInvalidBridgeId
 		}
 		return &db.DepositData{
-			DepositIdentifier:  id,
-			Block:              int64(out.Slot),
-			SourceAddress:      deposit.GetSenderAccount().PublicKey.String(),
-			DepositAmount:      big.NewInt(int64(*deposit.Amount)),
-			TokenAddress:       deposit.GetMintAccount().PublicKey.String(),
-			DestinationAddress: *deposit.Address,
-			DestinationChainId: *deposit.ChainId,
-			ReferralId:         *deposit.ReferralId,
+			DepositIdentifier:    id,
+			Block:                int64(out.Slot),
+			SourceAddress:        deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:        big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:         deposit.GetMintAccount().PublicKey.String(),
+			DestinationAddress:   *deposit.Address,
+			DestinationChainId:   *deposit.ChainId,
+			ReferralId:           *deposit.ReferralId,
+			MinDestinationAmount: nil,   // swap fields not applicable
+			SwapDeadline:         nil,   // swap fields not applicable
+			DestinationToken:     "",    // swap fields not applicable
+			IsSwap:               false, // swap fields not applicable
 		}, nil
 
 	case *contract.DepositWrapped:
@@ -85,14 +93,74 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 			return nil, bridgeTypes.ErrInvalidBridgeId
 		}
 		return &db.DepositData{
-			DepositIdentifier:  id,
-			Block:              int64(out.Slot),
-			SourceAddress:      deposit.GetSenderAccount().PublicKey.String(),
-			DepositAmount:      big.NewInt(int64(*deposit.Amount)),
-			TokenAddress:       deposit.GetMintAccount().PublicKey.String(),
-			DestinationAddress: *deposit.Address,
-			DestinationChainId: *deposit.ChainId,
-			ReferralId:         *deposit.ReferralId,
+			DepositIdentifier:    id,
+			Block:                int64(out.Slot),
+			SourceAddress:        deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:        big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:         deposit.GetMintAccount().PublicKey.String(),
+			DestinationAddress:   *deposit.Address,
+			DestinationChainId:   *deposit.ChainId,
+			ReferralId:           *deposit.ReferralId,
+			MinDestinationAmount: nil,   // swap fields not applicable
+			SwapDeadline:         nil,   // swap fields not applicable
+			DestinationToken:     "",    // swap fields not applicable
+			IsSwap:               false, // swap fields not applicable
+		}, nil
+	case *contract.DepositNativeAndSwap:
+		if *deposit.BridgeId != p.chain.Meta.BridgeId {
+			return nil, bridgeTypes.ErrInvalidBridgeId
+		}
+		return &db.DepositData{
+			DepositIdentifier:    id,
+			Block:                int64(out.Slot),
+			SourceAddress:        deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:        big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:         bridge.DefaultNativeTokenAddress,
+			DestinationAddress:   *deposit.Address,
+			DestinationChainId:   *deposit.ChainId,
+			ReferralId:           *deposit.ReferralId,
+			DestinationToken:     *deposit.DestinationToken,
+			MinDestinationAmount: big.NewInt(int64(*deposit.MinDestinationAmount)),
+			SwapDeadline:         big.NewInt(int64(*deposit.SwapDeadline)),
+			IsSwap:               true,
+		}, nil
+
+	case *contract.DepositSplAndSwap:
+		if *deposit.BridgeId != p.chain.Meta.BridgeId {
+			return nil, bridgeTypes.ErrInvalidBridgeId
+		}
+		return &db.DepositData{
+			DepositIdentifier:    id,
+			Block:                int64(out.Slot),
+			SourceAddress:        deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:        big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:         deposit.GetMintAccount().PublicKey.String(),
+			DestinationAddress:   *deposit.Address,
+			DestinationChainId:   *deposit.ChainId,
+			ReferralId:           *deposit.ReferralId,
+			DestinationToken:     *deposit.DestinationToken,
+			MinDestinationAmount: big.NewInt(int64(*deposit.MinDestinationAmount)),
+			SwapDeadline:         big.NewInt(int64(*deposit.SwapDeadline)),
+			IsSwap:               true,
+		}, nil
+
+	case *contract.DepositWrappedAndSwap:
+		if *deposit.BridgeId != p.chain.Meta.BridgeId {
+			return nil, bridgeTypes.ErrInvalidBridgeId
+		}
+		return &db.DepositData{
+			DepositIdentifier:    id,
+			Block:                int64(out.Slot),
+			SourceAddress:        deposit.GetSenderAccount().PublicKey.String(),
+			DepositAmount:        big.NewInt(int64(*deposit.Amount)),
+			TokenAddress:         deposit.GetMintAccount().PublicKey.String(),
+			DestinationAddress:   *deposit.Address,
+			DestinationChainId:   *deposit.ChainId,
+			ReferralId:           *deposit.ReferralId,
+			DestinationToken:     *deposit.DestinationToken,
+			MinDestinationAmount: big.NewInt(int64(*deposit.MinDestinationAmount)),
+			SwapDeadline:         big.NewInt(int64(*deposit.SwapDeadline)),
+			IsSwap:               true,
 		}, nil
 	}
 

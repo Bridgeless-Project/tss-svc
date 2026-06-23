@@ -72,3 +72,22 @@ func (obj *TxUsed) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) 
 	}
 	return nil
 }
+
+type UpdateSignerRequestType ag_binary.BorshEnum
+
+const (
+	UpdateSignerRequestTypeAdd UpdateSignerRequestType = iota
+
+	UpdateSignerRequestTypeRemove
+)
+
+func (value UpdateSignerRequestType) String() string {
+	switch value {
+	case UpdateSignerRequestTypeAdd:
+		return "Add"
+	case UpdateSignerRequestTypeRemove:
+		return "Remove"
+	default:
+		return ""
+	}
+}

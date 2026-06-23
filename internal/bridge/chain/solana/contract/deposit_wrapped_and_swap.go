@@ -10,15 +10,18 @@ import (
 	ag_treeout "github.com/gagliardetto/treeout"
 )
 
-// DepositWrapped is the `deposit_wrapped` instruction.
-type DepositWrapped struct {
-	BridgeId   *string
-	MintNonce  *uint64
-	Symbol     *string
-	Amount     *uint64
-	ChainId    *string
-	Address    *string
-	ReferralId *uint16
+// DepositWrappedAndSwap is the `deposit_wrapped_and_swap` instruction.
+type DepositWrappedAndSwap struct {
+	BridgeId             *string
+	MintNonce            *uint64
+	Symbol               *string
+	Amount               *uint64
+	ChainId              *string
+	Address              *string
+	ReferralId           *uint16
+	DestinationToken     *string
+	MinDestinationAmount *uint64
+	SwapDeadline         *uint64
 
 	// [0] = [WRITE] mint
 	//
@@ -30,68 +33,86 @@ type DepositWrapped struct {
 	ag_solanago.AccountMetaSlice `bin:"-"`
 }
 
-// NewDepositWrappedInstructionBuilder creates a new `DepositWrapped` instruction builder.
-func NewDepositWrappedInstructionBuilder() *DepositWrapped {
-	nd := &DepositWrapped{
+// NewDepositWrappedAndSwapInstructionBuilder creates a new `DepositWrappedAndSwap` instruction builder.
+func NewDepositWrappedAndSwapInstructionBuilder() *DepositWrappedAndSwap {
+	nd := &DepositWrappedAndSwap{
 		AccountMetaSlice: make(ag_solanago.AccountMetaSlice, 4),
 	}
 	return nd
 }
 
 // SetBridgeId sets the "bridge_id" parameter.
-func (inst *DepositWrapped) SetBridgeId(bridge_id string) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetBridgeId(bridge_id string) *DepositWrappedAndSwap {
 	inst.BridgeId = &bridge_id
 	return inst
 }
 
 // SetMintNonce sets the "mint_nonce" parameter.
-func (inst *DepositWrapped) SetMintNonce(mint_nonce uint64) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetMintNonce(mint_nonce uint64) *DepositWrappedAndSwap {
 	inst.MintNonce = &mint_nonce
 	return inst
 }
 
 // SetSymbol sets the "symbol" parameter.
-func (inst *DepositWrapped) SetSymbol(symbol string) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetSymbol(symbol string) *DepositWrappedAndSwap {
 	inst.Symbol = &symbol
 	return inst
 }
 
 // SetAmount sets the "amount" parameter.
-func (inst *DepositWrapped) SetAmount(amount uint64) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetAmount(amount uint64) *DepositWrappedAndSwap {
 	inst.Amount = &amount
 	return inst
 }
 
 // SetChainId sets the "chain_id" parameter.
-func (inst *DepositWrapped) SetChainId(chain_id string) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetChainId(chain_id string) *DepositWrappedAndSwap {
 	inst.ChainId = &chain_id
 	return inst
 }
 
 // SetAddress sets the "address" parameter.
-func (inst *DepositWrapped) SetAddress(address string) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetAddress(address string) *DepositWrappedAndSwap {
 	inst.Address = &address
 	return inst
 }
 
 // SetReferralId sets the "_referral_id" parameter.
-func (inst *DepositWrapped) SetReferralId(_referral_id uint16) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetReferralId(_referral_id uint16) *DepositWrappedAndSwap {
 	inst.ReferralId = &_referral_id
 	return inst
 }
 
+// SetDestinationToken sets the "_destination_token" parameter.
+func (inst *DepositWrappedAndSwap) SetDestinationToken(_destination_token string) *DepositWrappedAndSwap {
+	inst.DestinationToken = &_destination_token
+	return inst
+}
+
+// SetMinDestinationAmount sets the "_min_destination_amount" parameter.
+func (inst *DepositWrappedAndSwap) SetMinDestinationAmount(_min_destination_amount uint64) *DepositWrappedAndSwap {
+	inst.MinDestinationAmount = &_min_destination_amount
+	return inst
+}
+
+// SetSwapDeadline sets the "_swap_deadline" parameter.
+func (inst *DepositWrappedAndSwap) SetSwapDeadline(_swap_deadline uint64) *DepositWrappedAndSwap {
+	inst.SwapDeadline = &_swap_deadline
+	return inst
+}
+
 // SetMintAccount sets the "mint" account.
-func (inst *DepositWrapped) SetMintAccount(mint ag_solanago.PublicKey) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetMintAccount(mint ag_solanago.PublicKey) *DepositWrappedAndSwap {
 	inst.AccountMetaSlice[0] = ag_solanago.Meta(mint).WRITE()
 	return inst
 }
 
 // GetMintAccount gets the "mint" account.
-func (inst *DepositWrapped) GetMintAccount() *ag_solanago.AccountMeta {
+func (inst *DepositWrappedAndSwap) GetMintAccount() *ag_solanago.AccountMeta {
 	return inst.AccountMetaSlice.Get(0)
 }
 
-func (inst *DepositWrapped) findMintAddress(symbol string, mintNonce uint64, bridgeId string, knownBumpSeed uint8) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
+func (inst *DepositWrappedAndSwap) findMintAddress(symbol string, mintNonce uint64, bridgeId string, knownBumpSeed uint8) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
 	var seeds [][]byte
 	// const: 0x6d696e74
 	seeds = append(seeds, []byte{byte(0x6d), byte(0x69), byte(0x6e), byte(0x74)})
@@ -134,11 +155,11 @@ func (inst *DepositWrapped) findMintAddress(symbol string, mintNonce uint64, bri
 
 // findMintAddressWithBumpSeed calculates Mint account address with given seeds and a known bump seed.
 // pda program and seeds which refer to the instruction accounts or args should be provided as parameters.
-func (inst *DepositWrapped) findMintAddressWithBumpSeed(symbol string, mintNonce uint64, bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey, err error) {
+func (inst *DepositWrappedAndSwap) findMintAddressWithBumpSeed(symbol string, mintNonce uint64, bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey, err error) {
 	pda, _, err = inst.findMintAddress(symbol, mintNonce, bridgeId, bumpSeed)
 	return
 }
-func (inst *DepositWrapped) MustfindMintAddressWithBumpSeed(symbol string, mintNonce uint64, bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey) {
+func (inst *DepositWrappedAndSwap) MustfindMintAddressWithBumpSeed(symbol string, mintNonce uint64, bridgeId string, bumpSeed uint8) (pda ag_solanago.PublicKey) {
 	pda, _, err := inst.findMintAddress(symbol, mintNonce, bridgeId, bumpSeed)
 	if err != nil {
 		panic(err)
@@ -147,11 +168,11 @@ func (inst *DepositWrapped) MustfindMintAddressWithBumpSeed(symbol string, mintN
 }
 
 // FindMintAddress finds Mint account address with given seeds.
-func (inst *DepositWrapped) FindMintAddress(symbol string, mintNonce uint64, bridgeId string) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
+func (inst *DepositWrappedAndSwap) FindMintAddress(symbol string, mintNonce uint64, bridgeId string) (pda ag_solanago.PublicKey, bumpSeed uint8, err error) {
 	pda, bumpSeed, err = inst.findMintAddress(symbol, mintNonce, bridgeId, 0)
 	return
 }
-func (inst *DepositWrapped) MustFindMintAddress(symbol string, mintNonce uint64, bridgeId string) (pda ag_solanago.PublicKey) {
+func (inst *DepositWrappedAndSwap) MustFindMintAddress(symbol string, mintNonce uint64, bridgeId string) (pda ag_solanago.PublicKey) {
 	pda, _, err := inst.findMintAddress(symbol, mintNonce, bridgeId, 0)
 	if err != nil {
 		panic(err)
@@ -160,46 +181,46 @@ func (inst *DepositWrapped) MustFindMintAddress(symbol string, mintNonce uint64,
 }
 
 // SetSenderAccount sets the "sender" account.
-func (inst *DepositWrapped) SetSenderAccount(sender ag_solanago.PublicKey) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetSenderAccount(sender ag_solanago.PublicKey) *DepositWrappedAndSwap {
 	inst.AccountMetaSlice[1] = ag_solanago.Meta(sender).WRITE()
 	return inst
 }
 
 // GetSenderAccount gets the "sender" account.
-func (inst *DepositWrapped) GetSenderAccount() *ag_solanago.AccountMeta {
+func (inst *DepositWrappedAndSwap) GetSenderAccount() *ag_solanago.AccountMeta {
 	return inst.AccountMetaSlice.Get(1)
 }
 
 // SetSignerAccount sets the "signer" account.
-func (inst *DepositWrapped) SetSignerAccount(signer ag_solanago.PublicKey) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetSignerAccount(signer ag_solanago.PublicKey) *DepositWrappedAndSwap {
 	inst.AccountMetaSlice[2] = ag_solanago.Meta(signer).WRITE().SIGNER()
 	return inst
 }
 
 // GetSignerAccount gets the "signer" account.
-func (inst *DepositWrapped) GetSignerAccount() *ag_solanago.AccountMeta {
+func (inst *DepositWrappedAndSwap) GetSignerAccount() *ag_solanago.AccountMeta {
 	return inst.AccountMetaSlice.Get(2)
 }
 
 // SetTokenProgramAccount sets the "token_program" account.
-func (inst *DepositWrapped) SetTokenProgramAccount(tokenProgram ag_solanago.PublicKey) *DepositWrapped {
+func (inst *DepositWrappedAndSwap) SetTokenProgramAccount(tokenProgram ag_solanago.PublicKey) *DepositWrappedAndSwap {
 	inst.AccountMetaSlice[3] = ag_solanago.Meta(tokenProgram)
 	return inst
 }
 
 // GetTokenProgramAccount gets the "token_program" account.
-func (inst *DepositWrapped) GetTokenProgramAccount() *ag_solanago.AccountMeta {
+func (inst *DepositWrappedAndSwap) GetTokenProgramAccount() *ag_solanago.AccountMeta {
 	return inst.AccountMetaSlice.Get(3)
 }
 
-func (inst DepositWrapped) Build() *Instruction {
+func (inst DepositWrappedAndSwap) Build() *Instruction {
 	return &Instruction{BaseVariant: ag_binary.BaseVariant{
 		Impl:   inst,
-		TypeID: Instruction_DepositWrapped,
+		TypeID: Instruction_DepositWrappedAndSwap,
 	}}
 }
 
-func (inst *DepositWrapped) Validate() error {
+func (inst *DepositWrappedAndSwap) Validate() error {
 	// Check whether all (required) parameters are set:
 	{
 		if inst.BridgeId == nil {
@@ -222,6 +243,15 @@ func (inst *DepositWrapped) Validate() error {
 		}
 		if inst.ReferralId == nil {
 			return errors.New("ReferralId parameter is not set")
+		}
+		if inst.DestinationToken == nil {
+			return errors.New("DestinationToken parameter is not set")
+		}
+		if inst.MinDestinationAmount == nil {
+			return errors.New("MinDestinationAmount parameter is not set")
+		}
+		if inst.SwapDeadline == nil {
+			return errors.New("SwapDeadline parameter is not set")
 		}
 	}
 
@@ -246,27 +276,30 @@ func (inst *DepositWrapped) Validate() error {
 // ValidateAndBuild validates the instruction parameters and accounts;
 // if there is a validation error, it returns the error.
 // Otherwise, it builds and returns the instruction.
-func (inst DepositWrapped) ValidateAndBuild() (*Instruction, error) {
+func (inst DepositWrappedAndSwap) ValidateAndBuild() (*Instruction, error) {
 	if err := inst.Validate(); err != nil {
 		return nil, err
 	}
 	return inst.Build(), nil
 }
 
-func (inst *DepositWrapped) EncodeToTree(parent ag_treeout.Branches) {
+func (inst *DepositWrappedAndSwap) EncodeToTree(parent ag_treeout.Branches) {
 	parent.Child(ag_format.Program(ProgramName, ProgramID)).
 		ParentFunc(func(programBranch ag_treeout.Branches) {
-			programBranch.Child(ag_format.Instruction("DepositWrapped")).
+			programBranch.Child(ag_format.Instruction("DepositWrappedAndSwap")).
 				ParentFunc(func(instructionBranch ag_treeout.Branches) {
 					// Parameters of the instruction:
-					instructionBranch.Child("Params[len=7]").ParentFunc(func(paramsBranch ag_treeout.Branches) {
-						paramsBranch.Child(ag_format.Param("    BridgeId", *inst.BridgeId))
-						paramsBranch.Child(ag_format.Param("   MintNonce", *inst.MintNonce))
-						paramsBranch.Child(ag_format.Param("      Symbol", *inst.Symbol))
-						paramsBranch.Child(ag_format.Param("      Amount", *inst.Amount))
-						paramsBranch.Child(ag_format.Param("     ChainId", *inst.ChainId))
-						paramsBranch.Child(ag_format.Param("     Address", *inst.Address))
-						paramsBranch.Child(ag_format.Param("  ReferralId", *inst.ReferralId))
+					instructionBranch.Child("Params[len=10]").ParentFunc(func(paramsBranch ag_treeout.Branches) {
+						paramsBranch.Child(ag_format.Param("               BridgeId", *inst.BridgeId))
+						paramsBranch.Child(ag_format.Param("              MintNonce", *inst.MintNonce))
+						paramsBranch.Child(ag_format.Param("                 Symbol", *inst.Symbol))
+						paramsBranch.Child(ag_format.Param("                 Amount", *inst.Amount))
+						paramsBranch.Child(ag_format.Param("                ChainId", *inst.ChainId))
+						paramsBranch.Child(ag_format.Param("                Address", *inst.Address))
+						paramsBranch.Child(ag_format.Param("             ReferralId", *inst.ReferralId))
+						paramsBranch.Child(ag_format.Param("       DestinationToken", *inst.DestinationToken))
+						paramsBranch.Child(ag_format.Param("   MinDestinationAmount", *inst.MinDestinationAmount))
+						paramsBranch.Child(ag_format.Param("           SwapDeadline", *inst.SwapDeadline))
 					})
 					// Accounts of the instruction:
 					instructionBranch.Child("Accounts[len=4]").ParentFunc(func(accountsBranch ag_treeout.Branches) {
@@ -279,7 +312,7 @@ func (inst *DepositWrapped) EncodeToTree(parent ag_treeout.Branches) {
 		})
 }
 
-func (obj DepositWrapped) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
+func (obj DepositWrappedAndSwap) MarshalWithEncoder(encoder *ag_binary.Encoder) (err error) {
 	// Serialize `BridgeId` param:
 	err = encoder.Encode(obj.BridgeId)
 	if err != nil {
@@ -315,10 +348,25 @@ func (obj DepositWrapped) MarshalWithEncoder(encoder *ag_binary.Encoder) (err er
 	if err != nil {
 		return err
 	}
+	// Serialize `DestinationToken` param:
+	err = encoder.Encode(obj.DestinationToken)
+	if err != nil {
+		return err
+	}
+	// Serialize `MinDestinationAmount` param:
+	err = encoder.Encode(obj.MinDestinationAmount)
+	if err != nil {
+		return err
+	}
+	// Serialize `SwapDeadline` param:
+	err = encoder.Encode(obj.SwapDeadline)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (obj *DepositWrapped) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
+func (obj *DepositWrappedAndSwap) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err error) {
 	// Deserialize `BridgeId`:
 	err = decoder.Decode(&obj.BridgeId)
 	if err != nil {
@@ -354,11 +402,26 @@ func (obj *DepositWrapped) UnmarshalWithDecoder(decoder *ag_binary.Decoder) (err
 	if err != nil {
 		return err
 	}
+	// Deserialize `DestinationToken`:
+	err = decoder.Decode(&obj.DestinationToken)
+	if err != nil {
+		return err
+	}
+	// Deserialize `MinDestinationAmount`:
+	err = decoder.Decode(&obj.MinDestinationAmount)
+	if err != nil {
+		return err
+	}
+	// Deserialize `SwapDeadline`:
+	err = decoder.Decode(&obj.SwapDeadline)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-// NewDepositWrappedInstruction declares a new DepositWrapped instruction with the provided parameters and accounts.
-func NewDepositWrappedInstruction(
+// NewDepositWrappedAndSwapInstruction declares a new DepositWrappedAndSwap instruction with the provided parameters and accounts.
+func NewDepositWrappedAndSwapInstruction(
 	// Parameters:
 	bridge_id string,
 	mint_nonce uint64,
@@ -367,13 +430,16 @@ func NewDepositWrappedInstruction(
 	chain_id string,
 	address string,
 	_referral_id uint16,
+	_destination_token string,
+	_min_destination_amount uint64,
+	_swap_deadline uint64,
 	// Accounts:
 	mint ag_solanago.PublicKey,
 	sender ag_solanago.PublicKey,
 	signer ag_solanago.PublicKey,
 	tokenProgram ag_solanago.PublicKey,
-) *DepositWrapped {
-	return NewDepositWrappedInstructionBuilder().
+) *DepositWrappedAndSwap {
+	return NewDepositWrappedAndSwapInstructionBuilder().
 		SetBridgeId(bridge_id).
 		SetMintNonce(mint_nonce).
 		SetSymbol(symbol).
@@ -381,6 +447,9 @@ func NewDepositWrappedInstruction(
 		SetChainId(chain_id).
 		SetAddress(address).
 		SetReferralId(_referral_id).
+		SetDestinationToken(_destination_token).
+		SetMinDestinationAmount(_min_destination_amount).
+		SetSwapDeadline(_swap_deadline).
 		SetMintAccount(mint).
 		SetSenderAccount(sender).
 		SetSignerAccount(signer).
