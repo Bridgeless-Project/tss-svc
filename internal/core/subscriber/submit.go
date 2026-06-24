@@ -106,6 +106,8 @@ func (s *SubmitEventSubscriber) processDeposits(ctx context.Context, deposits []
 			logger.Info("deposit transaction already processed, marking as submitted")
 		} else {
 			logger.WithError(err).Error("failed to submit deposit transaction")
+			// small delay to avoid hammering the core
+			<-time.After(time.Second)
 			continue
 		}
 
