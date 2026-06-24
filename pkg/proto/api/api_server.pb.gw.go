@@ -2,11 +2,11 @@
 // source: api_server.proto
 
 /*
-Package types is a reverse proxy.
+Package api is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package types
+package api
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"io"
 	"net/http"
 
-	types_0 "github.com/Bridgeless-Project/tss-svc/internal/types"
+	"github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
 	"google.golang.org/grpc"
@@ -38,7 +38,7 @@ var (
 
 func request_API_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, client APIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq types_0.DepositIdentifier
+		protoReq deposit.DepositIdentifier
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -53,7 +53,7 @@ func request_API_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marsh
 
 func local_request_API_SubmitWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, server APIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq types_0.DepositIdentifier
+		protoReq deposit.DepositIdentifier
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -65,7 +65,7 @@ func local_request_API_SubmitWithdrawal_0(ctx context.Context, marshaler runtime
 
 func request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, client APIClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq types_0.DepositIdentifier
+		protoReq deposit.DepositIdentifier
 		metadata runtime.ServerMetadata
 		err      error
 	)
@@ -102,7 +102,7 @@ func request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marsha
 
 func local_request_API_CheckWithdrawal_0(ctx context.Context, marshaler runtime.Marshaler, server APIServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq types_0.DepositIdentifier
+		protoReq deposit.DepositIdentifier
 		metadata runtime.ServerMetadata
 		err      error
 	)

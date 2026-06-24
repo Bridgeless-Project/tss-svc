@@ -6,7 +6,7 @@ import (
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	swaptypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/swap/types"
-	"github.com/Bridgeless-Project/tss-svc/internal/types"
+	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 

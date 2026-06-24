@@ -7,7 +7,7 @@
 package p2p
 
 import (
-	types "github.com/Bridgeless-Project/tss-svc/internal/types"
+	deposit "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	_ "github.com/gogo/protobuf/gogoproto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -550,9 +550,9 @@ func (x *MerkleProof) GetHashes() []string {
 }
 
 type EvmProposalData struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	DepositId     *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
-	SigData       []byte                   `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	DepositId     *deposit.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
+	SigData       []byte                     `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -587,7 +587,7 @@ func (*EvmProposalData) Descriptor() ([]byte, []int) {
 	return file_p2p_server_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *EvmProposalData) GetDepositId() *types.DepositIdentifier {
+func (x *EvmProposalData) GetDepositId() *deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositId
 	}
@@ -602,10 +602,10 @@ func (x *EvmProposalData) GetSigData() []byte {
 }
 
 type EvmMerkelizedProposalData struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	DepositIds    []*types.DepositIdentifier `protobuf:"bytes,1,rep,name=depositIds,proto3" json:"depositIds,omitempty"`
-	SigData       []byte                     `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
-	MerkleProofs  []*MerkleProof             `protobuf:"bytes,3,rep,name=merkleProofs,proto3" json:"merkleProofs,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	DepositIds    []*deposit.DepositIdentifier `protobuf:"bytes,1,rep,name=depositIds,proto3" json:"depositIds,omitempty"`
+	SigData       []byte                       `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
+	MerkleProofs  []*MerkleProof               `protobuf:"bytes,3,rep,name=merkleProofs,proto3" json:"merkleProofs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -640,7 +640,7 @@ func (*EvmMerkelizedProposalData) Descriptor() ([]byte, []int) {
 	return file_p2p_server_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *EvmMerkelizedProposalData) GetDepositIds() []*types.DepositIdentifier {
+func (x *EvmMerkelizedProposalData) GetDepositIds() []*deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositIds
 	}
@@ -662,9 +662,9 @@ func (x *EvmMerkelizedProposalData) GetMerkleProofs() []*MerkleProof {
 }
 
 type TonProposalData struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	DepositId     *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
-	SigData       []byte                   `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	DepositId     *deposit.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
+	SigData       []byte                     `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -699,7 +699,7 @@ func (*TonProposalData) Descriptor() ([]byte, []int) {
 	return file_p2p_server_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *TonProposalData) GetDepositId() *types.DepositIdentifier {
+func (x *TonProposalData) GetDepositId() *deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositId
 	}
@@ -714,9 +714,9 @@ func (x *TonProposalData) GetSigData() []byte {
 }
 
 type SolanaProposalData struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	DepositId     *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
-	SigData       []byte                   `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	DepositId     *deposit.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
+	SigData       []byte                     `protobuf:"bytes,2,opt,name=sigData,proto3" json:"sigData,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -751,7 +751,7 @@ func (*SolanaProposalData) Descriptor() ([]byte, []int) {
 	return file_p2p_server_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *SolanaProposalData) GetDepositId() *types.DepositIdentifier {
+func (x *SolanaProposalData) GetDepositId() *deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositId
 	}
@@ -766,8 +766,8 @@ func (x *SolanaProposalData) GetSigData() []byte {
 }
 
 type ZanoProposalData struct {
-	state     protoimpl.MessageState   `protogen:"open.v1"`
-	DepositId *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
+	state     protoimpl.MessageState     `protogen:"open.v1"`
+	DepositId *deposit.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
 	// data to decrypt tx info
 	OutputsAddresses []string `protobuf:"bytes,2,rep,name=outputsAddresses,proto3" json:"outputsAddresses,omitempty"`
 	UnsignedTx       string   `protobuf:"bytes,3,opt,name=unsignedTx,proto3" json:"unsignedTx,omitempty"`
@@ -809,7 +809,7 @@ func (*ZanoProposalData) Descriptor() ([]byte, []int) {
 	return file_p2p_server_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *ZanoProposalData) GetDepositId() *types.DepositIdentifier {
+func (x *ZanoProposalData) GetDepositId() *deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositId
 	}
@@ -859,11 +859,11 @@ func (x *ZanoProposalData) GetSigData() []byte {
 }
 
 type BitcoinProposalData struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	DepositId     *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
-	SerializedTx  []byte                   `protobuf:"bytes,2,opt,name=serializedTx,proto3" json:"serializedTx,omitempty"`
-	FeeRate       int64                    `protobuf:"varint,3,opt,name=feeRate,proto3" json:"feeRate,omitempty"`
-	SigData       [][]byte                 `protobuf:"bytes,4,rep,name=sigData,proto3" json:"sigData,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	DepositId     *deposit.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
+	SerializedTx  []byte                     `protobuf:"bytes,2,opt,name=serializedTx,proto3" json:"serializedTx,omitempty"`
+	FeeRate       int64                      `protobuf:"varint,3,opt,name=feeRate,proto3" json:"feeRate,omitempty"`
+	SigData       [][]byte                   `protobuf:"bytes,4,rep,name=sigData,proto3" json:"sigData,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -898,7 +898,7 @@ func (*BitcoinProposalData) Descriptor() ([]byte, []int) {
 	return file_p2p_server_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *BitcoinProposalData) GetDepositId() *types.DepositIdentifier {
+func (x *BitcoinProposalData) GetDepositId() *deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositId
 	}
@@ -1088,8 +1088,8 @@ func (x *ZanoResharingProposalData) GetSigData() []byte {
 }
 
 type DepositDistributionData struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	DepositId     *types.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	DepositId     *deposit.DepositIdentifier `protobuf:"bytes,1,opt,name=depositId,proto3" json:"depositId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1124,7 +1124,7 @@ func (*DepositDistributionData) Descriptor() ([]byte, []int) {
 	return file_p2p_server_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *DepositDistributionData) GetDepositId() *types.DepositIdentifier {
+func (x *DepositDistributionData) GetDepositId() *deposit.DepositIdentifier {
 	if x != nil {
 		return x.DepositId
 	}
@@ -1309,7 +1309,7 @@ var file_p2p_server_proto_goTypes = []any{
 	(*DepositDistributionData)(nil),      // 18: p2p.DepositDistributionData
 	(*ReliableBroadcastData)(nil),        // 19: p2p.ReliableBroadcastData
 	(*anypb.Any)(nil),                    // 20: google.protobuf.Any
-	(*types.DepositIdentifier)(nil),      // 21: deposit.DepositIdentifier
+	(*deposit.DepositIdentifier)(nil),    // 21: deposit.DepositIdentifier
 	(*emptypb.Empty)(nil),                // 22: google.protobuf.Empty
 }
 var file_p2p_server_proto_depIdxs = []int32{
