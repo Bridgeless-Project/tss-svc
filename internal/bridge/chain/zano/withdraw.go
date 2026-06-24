@@ -38,8 +38,11 @@ func (p *Client) TransferAssetOwnershipUnsigned(assetId, newOwnerPubKey string, 
 }
 
 func (p *Client) DecryptTxDetails(data zanoTypes.DataForExternalSigning) (*zanoTypes.DecryptTxDetailsResponse, error) {
+	// filter duplicates from OutputsAddresses
+	outputsAddresses := unique(data.OutputsAddresses)
+
 	return p.chain.Client.TxDetails(
-		data.OutputsAddresses,
+		outputsAddresses,
 		data.UnsignedTx,
 		// leaving empty as only unsignedTx OR txId should be specified, otherwise error
 		"",
@@ -64,4 +67,17 @@ func (p *Client) SendSignedTransaction(signedTx SignedTransaction) (string, erro
 	}
 
 	return bridge.HexPrefix + signedTx.ExpectedTxHash, nil
+}
+
+func unique(ss []string) []string {
+	seen := make(map[string]struct{}, len(ss))
+	out := ss[:0]
+
+	for _, s := range ss {
+		if _, ok := seen[s]; !ok {
+			seen[s] = struct{}{}
+			out = append(out, s)
+		}
+	}
+	return out
 }
