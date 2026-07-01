@@ -18,6 +18,7 @@ const (
 	TypeBase58      Type = 0x04
 	TypeBase64      Type = 0x05
 	TypeBase64Url   Type = 0x06
+	TypeHexNoPrefix Type = 0x07
 )
 
 type Encoder interface {
@@ -38,6 +39,8 @@ func GetEncoder(t Type) Encoder {
 		return &Base64{}
 	case TypeBase64Url:
 		return &Base64Url{}
+	case TypeHexNoPrefix:
+		return &HexNoPrefix{}
 	default:
 		return nil
 	}
@@ -53,6 +56,12 @@ type Hex struct{}
 
 func (d *Hex) Encode(raw []byte) string {
 	return "0x" + hex.EncodeToString(raw)
+}
+
+type HexNoPrefix struct{}
+
+func (d *HexNoPrefix) Encode(raw []byte) string {
+	return hex.EncodeToString(raw)
 }
 
 type Base58 struct{}

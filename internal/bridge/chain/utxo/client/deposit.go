@@ -97,9 +97,11 @@ type DepositMemo struct {
 	Address    string
 	ChainId    string
 	ReferralId uint16
-}
 
-const referralIdLength = 2
+	DestinationToken     *string
+	MinDestinationAmount *big.Int
+	SwapDeadline         *big.Int
+}
 
 func NewDepositDecoder(helper helper.UtxoHelper, bridgeAddresses []string) *DepositDecoder {
 	return &DepositDecoder{
@@ -199,6 +201,112 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 	return depositMemo, nil
 }
 
+// decodeDepositMemoV3 decodes the deposit memo from raw bytes for version 3.
+// deposit memo structure:
+
+// [magic][version][isSwap]
+//   - magic: 1 byte (0xFF), indicates the start of the memo
+//   - version: 1 byte, indicates the version of the memo (0x03 for v3), allows for future extensions
+//   - isSwap: 1 byte, indicates if the deposit is a swap (0x00 for false, 0x01 for true)
+
+// Depending on the isSwap value, the structure of the memo will differ.
+// If isSwap is false, the v2 structure and decoding logic will be used.
+// Otherwise, the following structure will be used for v3 swap deposits (continuing from the isSwap byte):
+
+// [lenChainId][chainId][referralId][addressEncodingType][lenDstAddr][dstAddr][tokenEncodingType][lenDstToken][dstToken][lenMinDstAmount][minDstAmount][lenSwapDeadline][swapDeadline]
+//   - lenChainId: 1 byte, length of chainId
+//   - chainId: variable length
+//   - referralId: 2 bytes, big-endian
+//   - addressEncodingType: 1 byte
+//   - lenDstAddr: 1 byte, length of destination address
+//   - dstAddr: variable length, destination address
+//   - tokenEncodingType: 1 byte
+//   - lenDstToken: 1 byte, length of destination token address
+//   - dstToken: variable length, destination token address
+//   - lenMinDstAmount: 1 byte, length of minimum destination amount
+//   - minDstAmount: variable length, minimum destination amount (big-endian)
+//   - lenSwapDeadline: 1 byte, length of swap deadline
+//   - swapDeadline: variable length, swap deadline timestamp in seconds (big-endian)
+func (d *DepositDecoder) decodeDepositMemoV3(raw []byte) (*DepositMemo, error) {
+	if len(raw) < memoV3HeaderLength || raw[0] != memoMagicByte || raw[1] != memoV3Version {
+		return nil, bridgeTypes.ErrInvalidTransactionMemo
+	}
+
+	memo := raw[memoV3HeaderLength:]
+	switch raw[2] {
+	case memoV3NoSwap:
+		// decode v2-compatible deposit memo
+		return d.decodeDepositMemoV2(memo)
+	case memoV3Swap:
+		// continue below
+	default:
+		return nil, bridgeTypes.ErrInvalidTransactionMemo
+	}
+
+	// decode v3 swap deposit memo ensuring length checks for each field
+	memoReader := NewMemoReader(memo)
+	chainId, err := memoReader.ReadLenBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	referralId, err := memoReader.ReadBytes(memoReferralIdLength)
+	if err != nil {
+		return nil, err
+	}
+
+	encodingTypeByte, err := memoReader.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	encoder := encoding.GetEncoder(encoding.Type(encodingTypeByte))
+	if encoder == nil {
+		return nil, bridgeTypes.ErrInvalidTransactionMemo
+	}
+
+	dstAddr, err := memoReader.ReadLenBytes()
+	if err != nil {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+	}
+
+	tokenEncodingTypeByte, err := memoReader.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	tokenEncoder := encoding.GetEncoder(encoding.Type(tokenEncodingTypeByte))
+	if tokenEncoder == nil {
+		return nil, bridgeTypes.ErrInvalidTransactionMemo
+	}
+
+	dstToken, err := memoReader.ReadLenBytes()
+	if err != nil {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+	}
+
+	minDstAmount, err := memoReader.ReadLenBytes()
+	if err != nil {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+	}
+
+	swapDeadline, err := memoReader.ReadLenBytes()
+	if err != nil {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+	}
+
+	if memoReader.Remaining() != 0 {
+		return nil, bridgeTypes.ErrInvalidTransactionMemo
+	}
+
+	return &DepositMemo{
+		ChainId:              string(chainId),
+		ReferralId:           binary.BigEndian.Uint16(referralId),
+		Address:              encoder.Encode(dstAddr),
+		DestinationToken:     new(tokenEncoder.Encode(dstToken)),
+		MinDestinationAmount: new(big.Int).SetBytes(minDstAmount),
+		SwapDeadline:         new(big.Int).SetBytes(swapDeadline),
+	}, nil
+}
+
 // decodeDepositMemoV2 decodes the deposit memo from raw bytes.
 // deposit memo structure:
 //
@@ -214,54 +322,54 @@ func (d *DepositDecoder) decodeDepositMemoV2(raw []byte) (*DepositMemo, error) {
 	}
 
 	chainIdLength := int(raw[0])
-	if len(raw) <= 1+chainIdLength+referralIdLength+1 {
+	if len(raw) <= 1+chainIdLength+memoReferralIdLength+1 {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "invalid deposit memo length")
 	}
 	chainIdEndIdx := 1 + chainIdLength
 
 	var depositMemo DepositMemo
 	depositMemo.ChainId = string(raw[1:chainIdEndIdx])
-	depositMemo.ReferralId = binary.BigEndian.Uint16(raw[chainIdEndIdx : chainIdEndIdx+referralIdLength])
+	depositMemo.ReferralId = binary.BigEndian.Uint16(raw[chainIdEndIdx : chainIdEndIdx+memoReferralIdLength])
 
-	encodingTypeByte := raw[chainIdEndIdx+referralIdLength]
+	encodingTypeByte := raw[chainIdEndIdx+memoReferralIdLength]
 	encoder := encoding.GetEncoder(encoding.Type(encodingTypeByte))
 	if encoder == nil {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, "unknown address encoding type")
 	}
 
-	depositMemo.Address = encoder.Encode(raw[chainIdEndIdx+referralIdLength+1:])
+	depositMemo.Address = encoder.Encode(raw[chainIdEndIdx+memoReferralIdLength+1:])
 
 	return &depositMemo, nil
 }
 
 const (
-	dstSeparator   = "#"
-	dstParamsCount = 2
-	dstAddrIdx     = 0
-	dstChainIdIdx  = 1
+	memoV1DstSeparator   = "#"
+	memoV1DstParamsCount = 2
+	memoV1DstAddrIdx     = 0
+	memoV1DstChainIdIdx  = 1
 
-	dstZanoAddrLen = 71
+	memoV1DstZanoAddrLen = 71
 )
 
 func (d *DepositDecoder) decodeDepositMemoV1(raw []byte) (*DepositMemo, error) {
-	parts := strings.Split(string(raw), dstSeparator)
-	if len(parts) < dstParamsCount {
+	parts := strings.Split(string(raw), memoV1DstSeparator)
+	if len(parts) < memoV1DstParamsCount {
 		return nil, errors.New("invalid destination parameters")
 	}
-	if len(parts) > dstParamsCount {
+	if len(parts) > memoV1DstParamsCount {
 		// try concatenating all but the last parts in case the raw bytes sequence in a string contains the separator
 		parts = []string{
-			strings.Join(parts[:len(parts)-1], dstSeparator),
+			strings.Join(parts[:len(parts)-1], memoV1DstSeparator),
 			parts[len(parts)-1],
 		}
 	}
 
-	addr, chainId := parts[dstAddrIdx], parts[dstChainIdIdx]
+	addr, chainId := parts[memoV1DstAddrIdx], parts[memoV1DstChainIdIdx]
 	if len(addr) == 0 || len(chainId) == 0 {
 		return nil, errors.New("invalid destination parameters")
 	}
 
-	if len(addr) == dstZanoAddrLen {
+	if len(addr) == memoV1DstZanoAddrLen {
 		addr = base58.Encode([]byte(addr))
 	}
 
