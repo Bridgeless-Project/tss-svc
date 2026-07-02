@@ -14,10 +14,13 @@ import (
 	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
-func СonvertToTonSignature(sig tss.SignatureData) string {
-	rawSig := append(sig.GetSignature(), sig.GetSignatureRecovery()...)
+func ConvertToTonSignature(sig tss.SignatureData) (string, error) {
+	rawSig, err := tss.RecoverableECDSASignatureBytes(sig)
+	if err != nil {
+		return "", err
+	}
 
-	return hexutil.Encode(rawSig)
+	return hexutil.Encode(rawSig), nil
 }
 
 func parseMsgOpCode(msg *cell.Slice) (string, error) {

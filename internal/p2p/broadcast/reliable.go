@@ -162,7 +162,7 @@ func NewReliable[T Hashable](
 	}
 }
 
-func (b *ReliableBroadcaster[T]) Broadcast(msg *T) bool {
+func (b *ReliableBroadcaster[T]) Broadcast(msg *T) error {
 	b.addToValuesSet(msg)
 	b.originMsgSender = b.self.CosmosAddress()
 
@@ -174,12 +174,13 @@ func (b *ReliableBroadcaster[T]) Broadcast(msg *T) bool {
 	signHash := roundMsg.SignHash()
 	sig, err := b.self.PrivateKey().Sign(signHash)
 	if err != nil {
-		b.logger.Error(fmt.Sprintf("failed to sign initial broadcasting message: %s", err))
-		return false
+		return errors.Wrap(err, "failed to sign initial broadcasting message")
 	}
 	roundMsg.Signatures = []Signature{{Signer: b.self.CosmosAddress(), Value: sig}}
 
-	b.broadcastMsg(roundMsg)
+	if err := b.broadcastMsg(roundMsg); err != nil {
+		return errors.Wrap(err, "failed to broadcast initial round message")
+	}
 
 	if b.relayRounds == 1 {
 		// there will be no incoming messages from other parties
@@ -191,7 +192,11 @@ func (b *ReliableBroadcaster[T]) Broadcast(msg *T) bool {
 	b.startRounds()
 
 	// checking if the message was delivered successfully
-	return b.decideValid()
+	if !b.decideValid() {
+		return errors.New("message was not reliably broadcast")
+	}
+
+	return nil
 }
 
 func (b *ReliableBroadcaster[T]) EnsureValid(msg ReliableBroadcastMsg[T]) bool {
@@ -228,15 +233,20 @@ func (b *ReliableBroadcaster[T]) startRounds() {
 				b.logger.Info(fmt.Sprintf("malicious party %q sending message with different session id", msg.Sender))
 				continue
 			}
-			if msg.Msg.Round > b.relayRounds {
-				b.logger.Info(fmt.Sprintf("malicious party %q sending message with round greater than relay rounds count", msg.Sender))
+			if msg.Msg.Round < 0 || msg.Msg.Round > b.relayRounds {
+				b.logger.Info(fmt.Sprintf("malicious party %q sending message with invalid round %d", msg.Sender, msg.Msg.Round))
 				continue
 			}
-			if b.receivedMsgs[msg.Sender][msg.Msg.Round] {
+			receivedRounds, ok := b.receivedMsgs[msg.Sender]
+			if !ok {
+				receivedRounds = make(map[int]bool, b.relayRounds)
+				b.receivedMsgs[msg.Sender] = receivedRounds
+			}
+			if receivedRounds[msg.Msg.Round] {
 				b.logger.Info(fmt.Sprintf("malicious party %q sending duplicate round message", msg.Sender))
 				continue
 			}
-			b.receivedMsgs[msg.Sender][msg.Msg.Round] = true
+			receivedRounds[msg.Msg.Round] = true
 
 			b.processMsg(msg)
 		}
@@ -284,7 +294,9 @@ func (b *ReliableBroadcaster[T]) processMsg(msg ReliableBroadcastMsg[T]) {
 		Value:  sig,
 	})
 
-	b.broadcastMsg(msg.Msg)
+	if err := b.broadcastMsg(msg.Msg); err != nil {
+		b.logger.WithError(err).Error("failed to broadcast round message")
+	}
 }
 
 func (b *ReliableBroadcaster[T]) decideValid() bool {
@@ -317,17 +329,15 @@ func (b *ReliableBroadcaster[T]) addToValuesSet(value *T) {
 	}
 }
 
-func (b *ReliableBroadcaster[T]) broadcastMsg(msg RoundMessage[T]) {
+func (b *ReliableBroadcaster[T]) broadcastMsg(msg RoundMessage[T]) error {
 	encodedMsg, err := msg.Encode()
 	if err != nil {
-		b.logger.WithError(err).Error("failed to encode round message")
-		return
+		return errors.Wrap(err, "failed to encode round message")
 	}
 
 	rawReq, err := anypb.New(&p2p.ReliableBroadcastData{RoundMsg: encodedMsg})
 	if err != nil {
-		b.logger.WithError(err).Error("failed to encode reliable broadcast data")
-		return
+		return errors.Wrap(err, "failed to encode reliable broadcast data")
 	}
 
 	b.broadcaster.Broadcast(&p2p.SubmitRequest{
@@ -336,10 +346,20 @@ func (b *ReliableBroadcaster[T]) broadcastMsg(msg RoundMessage[T]) {
 		Type:      b.requestType,
 		Data:      rawReq,
 	})
+
+	return nil
 }
 
 func (b *ReliableBroadcaster[T]) validateSignatures(msg ReliableBroadcastMsg[T]) (valid, selfSigned bool) {
 	roundMsg := msg.Msg
+	if roundMsg.Round < 0 {
+		b.logger.Info(fmt.Sprintf("malicious party %q sending message with invalid round %d", msg.Sender, roundMsg.Round))
+		return
+	}
+	if len(roundMsg.Signatures) == 0 {
+		b.logger.Info(fmt.Sprintf("malicious party %q sending empty signature chain", msg.Sender))
+		return
+	}
 	if len(roundMsg.Signatures) != roundMsg.Round+1 {
 		b.logger.Info(fmt.Sprintf("malicious party %q sending incomplete signature chain", msg.Sender))
 		return

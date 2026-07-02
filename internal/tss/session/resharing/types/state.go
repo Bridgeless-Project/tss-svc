@@ -8,6 +8,7 @@ import (
 	bridgeTypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 )
 
 type State struct {
@@ -44,6 +45,11 @@ func InitializeState(
 		Account:              account,
 		NewBridgeAddresses:   make(map[string]string),
 	}
+}
+
+func (s *State) InitECDSAShares() {
+	s.OldShare = ecdsaTss.NewEcdsaShare()
+	s.NewShare = ecdsaTss.NewEcdsaShare()
 }
 
 func (s *State) AddBridgeAddress(chainId, addr string) {

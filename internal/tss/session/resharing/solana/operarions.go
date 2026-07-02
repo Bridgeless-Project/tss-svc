@@ -47,7 +47,12 @@ func (u UpdateSignerOperation) Nonce() uint64 {
 }
 
 func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) (string, error) {
-	return hexutil.Encode(append(sig.GetSignature(), sig.GetSignatureRecovery()...)), nil
+	rawSig, err := tss.RecoverableECDSASignatureBytes(sig)
+	if err != nil {
+		return "", err
+	}
+
+	return hexutil.Encode(rawSig), nil
 }
 
 func (u UpdateSignerOperation) CalculateHash() []byte {

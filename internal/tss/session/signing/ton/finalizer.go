@@ -67,7 +67,11 @@ func (tf *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (tf *Finalizer) finalize(_ context.Context) {
-	signature := tonchain.СonvertToTonSignature(tf.signature)
+	signature, err := tonchain.ConvertToTonSignature(tf.signature)
+	if err != nil {
+		tf.errChan <- errors.Wrap(err, "failed to convert signature")
+		return
+	}
 	if err := tf.db.UpdateProcessed(database.ProcessedDepositData{
 		Identifier: tf.withdrawalData.DepositIdentifiers()[0],
 		Signature:  &signature,

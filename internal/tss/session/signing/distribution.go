@@ -92,8 +92,8 @@ func (s *SignaturesDistributor) distribute() {
 		return
 	}
 
-	if !s.broadcaster.Broadcast(s.signatures) {
-		s.err = errors.New("signatures was not correctly broadcast")
+	if err := s.broadcaster.Broadcast(s.signatures); err != nil {
+		s.err = errors.Wrap(err, "signatures were not correctly broadcast")
 		return
 	}
 

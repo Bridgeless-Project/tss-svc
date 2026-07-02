@@ -253,6 +253,9 @@ func configureSigningSession(
 	if !client.IsCentralized() && localParty.Share == nil {
 		return nil, errors.Errorf("TSS share is not configured for chain %s", client.ChainId())
 	}
+	if err := ensureSigningProtocolSupported(client, localParty.Share); err != nil {
+		return nil, err
+	}
 
 	switch client.Type() {
 	case chain.TypeEVM:
@@ -367,5 +370,28 @@ func configureSigningSession(
 		return testSession, nil
 	default:
 		return nil, errors.Errorf("unsupported chain type: %s", client.Type())
+	}
+}
+
+func ensureSigningProtocolSupported(client chain.Client, share tss.Share) error {
+	if client.IsCentralized() {
+		return nil
+	}
+	if share == nil {
+		return errors.Errorf("TSS share is not configured for chain %s", client.ChainId())
+	}
+	if share.Protocol() != tss.ProtocolID_FROST {
+		return nil
+	}
+
+	switch client.Type() {
+	case chain.TypeEVM, chain.TypeZano, chain.TypeTON, chain.TypeSolana:
+		return errors.Errorf(
+			"chain %s (%s) does not support FROST signing yet",
+			client.ChainId(),
+			client.Type(),
+		)
+	default:
+		return nil
 	}
 }

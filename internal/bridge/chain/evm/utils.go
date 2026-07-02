@@ -4,8 +4,8 @@ import (
 	"crypto/elliptic"
 	"math/big"
 
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
-	"github.com/bnb-chain/tss-lib/v3/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -13,7 +13,7 @@ import (
 )
 
 func PubkeyToAddress(x, y *big.Int) common.Address {
-	marshalled := elliptic.Marshal(tss.S256(), x, y)
+	marshalled := elliptic.Marshal(tsslib.S256(), x, y)
 	// Marshalled point contains constant 0x04 first byte, we do not have to include it
 	hash := crypto.Keccak256(marshalled[1:])
 
@@ -21,9 +21,9 @@ func PubkeyToAddress(x, y *big.Int) common.Address {
 	return common.BytesToAddress(hash[12:])
 }
 
-func ConvertSignature(sig tss2.SignatureData) (string, error) {
-	if sig == nil {
-		return "", errors.New("nil signature")
+func ConvertSignature(sig tss.SignatureData) (string, error) {
+	if err := tss.RequireSignatureFormat(sig, tss.SignatureFormatECDSARecoverable); err != nil {
+		return "", err
 	}
 
 	r := sig.GetR()

@@ -6,9 +6,9 @@ import (
 	"math/big"
 	"time"
 
-	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
-	"github.com/bnb-chain/tss-lib/v3/tss"
+	tsslib "github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/xssnick/tonutils-go/tvm/cell"
@@ -23,7 +23,7 @@ type UpdateSignerOperation struct {
 }
 
 func (u UpdateSignerOperation) Signer() string {
-	return hexutil.Encode(elliptic.Marshal(tss.S256(), u.signer.X, u.signer.Y))
+	return hexutil.Encode(elliptic.Marshal(tsslib.S256(), u.signer.X, u.signer.Y))
 }
 
 func (u UpdateSignerOperation) StartTime() time.Time {
@@ -38,8 +38,13 @@ func (u UpdateSignerOperation) Nonce() uint64 {
 	return u.nonce.Uint64()
 }
 
-func (u UpdateSignerOperation) ConvertSignature(sig tss2.SignatureData) (string, error) {
-	return hexutil.Encode(append(sig.GetSignature(), sig.GetSignatureRecovery()...)), nil
+func (u UpdateSignerOperation) ConvertSignature(sig tss.SignatureData) (string, error) {
+	rawSig, err := tss.RecoverableECDSASignatureBytes(sig)
+	if err != nil {
+		return "", err
+	}
+
+	return hexutil.Encode(rawSig), nil
 }
 
 func (u UpdateSignerOperation) CalculateHash() []byte {

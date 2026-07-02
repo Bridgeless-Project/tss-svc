@@ -49,6 +49,7 @@ func NewMigrationSession(
 
 func (s *MigrationSession) Run(ctx context.Context) error {
 	state := resharingTypes.InitializeState(s.params.Epoch, s.params.Threshold, s.params.StartTime, 0, s.self.Account)
+	state.InitECDSAShares()
 	state.SessionStartTime = s.params.StartTime
 	state.NewPubKey = s.newKey
 

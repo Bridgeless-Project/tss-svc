@@ -21,24 +21,32 @@ type FrostSignature struct {
 	s    []byte
 }
 
+func (s *FrostSignature) Format() tss.SignatureFormat {
+	return tss.SignatureFormatSchnorrTaproot
+}
+
 func (s *FrostSignature) SetSignature(signature any) error {
 	rawSignature, ok := signature.([]byte)
 	if !ok {
 		return errors.Errorf("unexpected FROST signature type %T", signature)
 	}
+	if len(rawSignature) != taproot.SignatureLen {
+		return errors.Errorf("invalid FROST signature length: %d", len(rawSignature))
+	}
+
 	s.data = append([]byte(nil), rawSignature...)
 	s.r = nil
 	s.s = nil
-
-	if len(s.data) == taproot.SignatureLen {
-		s.r = s.data[:32]
-		s.s = s.data[32:]
-	}
+	s.m = nil
 
 	return nil
 }
 
 func (s *FrostSignature) GetSignature() []byte {
+	if s == nil {
+		return nil
+	}
+
 	return s.data
 }
 
@@ -47,14 +55,26 @@ func (s *FrostSignature) GetSignatureRecovery() []byte {
 }
 
 func (s *FrostSignature) GetR() []byte {
+	if s == nil {
+		return nil
+	}
+
 	return s.r
 }
 
 func (s *FrostSignature) GetS() []byte {
+	if s == nil {
+		return nil
+	}
+
 	return s.s
 }
 
 func (s *FrostSignature) GetM() []byte {
+	if s == nil {
+		return nil
+	}
+
 	return s.m
 }
 

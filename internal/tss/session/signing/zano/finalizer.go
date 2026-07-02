@@ -70,8 +70,13 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 
 func (f *Finalizer) finalize(_ context.Context) {
 	withdrawalTxHash := bridge.HexPrefix + f.withdrawalData.ProposalData.TxId
+	signature, err := zano.EncodeSignature(f.signature)
+	if err != nil {
+		f.errChan <- errors.Wrap(err, "failed to convert signature")
+		return
+	}
 	signedTx := zano.SignedTransaction{
-		Signature: zano.EncodeSignature(f.signature),
+		Signature: signature,
 		UnsignedTransaction: zano.UnsignedTransaction{
 			ExpectedTxHash: f.withdrawalData.ProposalData.TxId,
 			FinalizedTx:    f.withdrawalData.ProposalData.FinalizedTx,

@@ -6,6 +6,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/zano"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -64,8 +65,14 @@ func (f *Finalizer) finalize() {
 		return
 	}
 
-	_, err := f.client.SendSignedTransaction(zano.SignedTransaction{
-		Signature: zano.EncodeSignature(f.signature),
+	signature, err := zano.EncodeSignature(f.signature)
+	if err != nil {
+		f.errChan <- errors.Wrap(err, "failed to convert signature")
+		return
+	}
+
+	_, err = f.client.SendSignedTransaction(zano.SignedTransaction{
+		Signature: signature,
 		UnsignedTransaction: zano.UnsignedTransaction{
 			ExpectedTxHash: f.data.ProposalData.TxId,
 			FinalizedTx:    f.data.ProposalData.FinalizedTx,

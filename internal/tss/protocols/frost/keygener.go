@@ -3,7 +3,6 @@ package tss
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -104,7 +103,11 @@ func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 		return
 	}
 
-	p.logger.Debug("received message", sender, data)
+	p.logger.WithFields(logan.F{
+		"sender":    sender,
+		"broadcast": data.IsBroadcast,
+		"bytes":     len(data.Data),
+	}).Debug("received frost keygen message")
 
 	p.msgs <- tss.PartyMsg{
 		Sender:      sender,
@@ -129,7 +132,11 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 				p.logger.Warn("channel closed; stopping receiving messages")
 				return
 			}
-			p.logger.Info("received message", msg)
+			p.logger.WithFields(logan.F{
+				"sender":    msg.Sender,
+				"broadcast": msg.IsBroadcast,
+				"bytes":     len(msg.WireMsg),
+			}).Debug("processing frost keygen message")
 
 			if _, exists := p.parties[msg.Sender]; !exists {
 				p.logger.WithField("party", msg.Sender).Warn("got message from outside party")
@@ -146,7 +153,11 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 				continue
 			}
 
-			p.logger.Info("received message", message)
+			p.logger.WithFields(logan.F{
+				"sender":    msg.Sender,
+				"broadcast": msg.IsBroadcast,
+				"bytes":     len(msg.WireMsg),
+			}).Debug("accepted frost keygen message")
 			p.handler.Accept(message)
 		}
 	}
@@ -185,8 +196,6 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 					p.logger.WithField("type", r).Error("failed to get keygen result")
 					return
 				}
-				pk, _ := config.PublicKey.MarshalBinary()
-				fmt.Println("tp.result.PubKey():", pk)
 
 				err = p.result.SetData(config)
 				if err != nil {
@@ -197,7 +206,10 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 				return
 			}
 
-			p.logger.Debug("received update", msg)
+			p.logger.WithFields(logan.F{
+				"to":        msg.To,
+				"broadcast": msg.Broadcast,
+			}).Debug("received frost keygen update")
 			raw, err := msg.MarshalBinary()
 			if err != nil {
 				p.logger.WithError(err).Error("failed to marshal message")

@@ -1,9 +1,6 @@
 package deposit
 
 import (
-	"fmt"
-	"math/big"
-
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain"
@@ -12,6 +9,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/pkg/errors"
+	"math/big"
 )
 
 type Fetcher struct {

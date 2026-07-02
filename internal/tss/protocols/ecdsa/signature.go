@@ -19,6 +19,10 @@ type EcdsaSignature struct {
 	data *tsslib.SignatureData
 }
 
+func (s *EcdsaSignature) Format() tss.SignatureFormat {
+	return tss.SignatureFormatECDSARecoverable
+}
+
 func (s *EcdsaSignature) SetSignature(signature any) error {
 	sigData, ok := signature.(*tsslib.SignatureData)
 	if !ok {
@@ -29,22 +33,42 @@ func (s *EcdsaSignature) SetSignature(signature any) error {
 }
 
 func (s *EcdsaSignature) GetSignature() []byte {
+	if s == nil || s.data == nil {
+		return nil
+	}
+
 	data, _ := proto.MarshalOptions{Deterministic: true}.Marshal(s.data)
 	return data
 }
 
 func (s *EcdsaSignature) GetSignatureRecovery() []byte {
+	if s == nil || s.data == nil {
+		return nil
+	}
+
 	return s.data.GetSignatureRecovery()
 }
 
 func (s *EcdsaSignature) GetR() []byte {
+	if s == nil || s.data == nil {
+		return nil
+	}
+
 	return s.data.GetR()
 }
 
 func (s *EcdsaSignature) GetS() []byte {
+	if s == nil || s.data == nil {
+		return nil
+	}
+
 	return s.data.GetS()
 }
 func (s *EcdsaSignature) GetM() []byte {
+	if s == nil || s.data == nil {
+		return nil
+	}
+
 	return s.data.GetM()
 }
 

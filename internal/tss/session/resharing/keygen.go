@@ -1,8 +1,8 @@
 package resharing
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge"
@@ -16,6 +16,7 @@ import (
 	tssKeygen "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	resharingTypes "github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing/types"
 	"github.com/avast/retry-go"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -99,6 +100,10 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 		return true, nil
 	}
 
+	if state.NewShare == nil || state.NewShare.Protocol() != tss.ProtocolID_ECDSA {
+		return false, errors.New("resharing currently supports only ECDSA shares")
+	}
+
 	// should load new share from temporary secrets
 	if r.oldEpochMember {
 		err = r.secrets.GetTemporaryTssShare(state.NewShare)
@@ -110,13 +115,12 @@ func (r *KeygenHandler) RecoverStateIfProcessed(state *resharingTypes.State) (bo
 		return false, errors.Wrap(err, "failed to get key share from secrets storage")
 	}
 
-	// TODO: check it
-	if !state.NewPubKey.Equal(state.NewShare.PubKey()) {
-		return false, errors.New(fmt.Sprintf(
+	if !bytes.Equal(crypto.CompressPubkey(state.NewPubKey), state.NewShare.PubKey()) {
+		return false, errors.Errorf(
 			"pubkey from core does not match pubkey derived from saved share: %s vs %s",
 			pubkey,
 			state.NewShare.PubKey(),
-		))
+		)
 	}
 
 	return true, nil
@@ -157,6 +161,9 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 	state.NewShare, err = keygenSession.WaitFor()
 	if err != nil {
 		return errors.Wrap(err, "failed to produce key share")
+	}
+	if err = setECDSANewPubKey(state); err != nil {
+		return errors.Wrap(err, "failed to derive new pubkey from key share")
 	}
 
 	if err = r.saveKeyShare(state.NewShare); err != nil {
@@ -237,4 +244,22 @@ func (r *KeygenHandler) saveKeyShare(result tss.Share) error {
 	}
 
 	return errors.Wrap(r.secrets.SaveTssShare(secrets.TssShareKey(result.GetVaultPath()), bytes), "failed to save key share")
+}
+
+func setECDSANewPubKey(state *resharingTypes.State) error {
+	if state.NewShare == nil || state.NewShare.Protocol() != tss.ProtocolID_ECDSA {
+		return errors.New("resharing currently supports only ECDSA shares")
+	}
+
+	share := state.NewShare.MustEcdsaShare()
+	if share == nil || share.ECDSAPub == nil {
+		return errors.New("missing ECDSA keygen result")
+	}
+
+	state.NewPubKey = share.ECDSAPub.ToECDSAPubKey()
+	if state.NewPubKey == nil {
+		return errors.New("failed to convert ECDSA keygen result to public key")
+	}
+
+	return nil
 }

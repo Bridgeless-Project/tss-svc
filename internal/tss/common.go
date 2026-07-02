@@ -33,6 +33,7 @@ type PartyMsg struct {
 }
 
 type SignatureData interface {
+	Format() SignatureFormat
 	SetSignature(signature any) error
 	GetSignature() []byte
 	GetSignatureRecovery() []byte
@@ -43,6 +44,50 @@ type SignatureData interface {
 
 type Signatures struct {
 	Data []SignatureData
+}
+
+type SignatureFormat string
+
+const (
+	SignatureFormatECDSARecoverable SignatureFormat = "ecdsa_recoverable"
+	SignatureFormatSchnorrTaproot   SignatureFormat = "schnorr_taproot"
+)
+
+func RequireSignatureFormat(sig SignatureData, want SignatureFormat) error {
+	if sig == nil {
+		return fmt.Errorf("nil signature")
+	}
+	if sig.Format() != want {
+		return fmt.Errorf("unsupported signature format %q, expected %q", sig.Format(), want)
+	}
+
+	return nil
+}
+
+func RecoverableECDSASignatureBytes(sig SignatureData) ([]byte, error) {
+	if err := RequireSignatureFormat(sig, SignatureFormatECDSARecoverable); err != nil {
+		return nil, err
+	}
+
+	r := sig.GetR()
+	if len(r) != 32 {
+		return nil, fmt.Errorf("invalid recoverable ECDSA R length: %d", len(r))
+	}
+	s := sig.GetS()
+	if len(s) != 32 {
+		return nil, fmt.Errorf("invalid recoverable ECDSA S length: %d", len(s))
+	}
+	recovery := sig.GetSignatureRecovery()
+	if len(recovery) != 1 {
+		return nil, fmt.Errorf("invalid recoverable ECDSA recovery length: %d", len(recovery))
+	}
+
+	result := make([]byte, 0, 65)
+	result = append(result, r...)
+	result = append(result, s...)
+	result = append(result, recovery...)
+
+	return result, nil
 }
 
 func (s Signatures) HashString() string {

@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/evm"
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/withdrawal"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	database "github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -67,7 +67,11 @@ func (ef *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (ef *Finalizer) finalize(_ context.Context) {
-	signature := convertToEthSignature(ef.signature)
+	signature, err := evm.ConvertSignature(ef.signature)
+	if err != nil {
+		ef.errChan <- errors.Wrap(err, "failed to convert signature")
+		return
+	}
 
 	processedData := make([]database.ProcessedDepositData, 0, len(ef.withdrawalData.ProposalData.DepositIds))
 
@@ -93,11 +97,4 @@ func (ef *Finalizer) finalize(_ context.Context) {
 	}
 
 	ef.errChan <- nil
-}
-
-func convertToEthSignature(sig tss.SignatureData) string {
-	rawSig := append(sig.GetSignature(), sig.GetSignatureRecovery()...)
-	rawSig[64] += 27
-
-	return hexutil.Encode(rawSig)
 }

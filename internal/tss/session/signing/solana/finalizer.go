@@ -66,7 +66,11 @@ func (f *Finalizer) Finalize(ctx context.Context) error {
 }
 
 func (f *Finalizer) finalize(_ context.Context) {
-	signature := convertToSolanaSignature(f.signature)
+	signature, err := convertToSolanaSignature(f.signature)
+	if err != nil {
+		f.errChan <- errors.Wrap(err, "failed to convert signature")
+		return
+	}
 	if err := f.db.UpdateProcessed(database.ProcessedDepositData{
 		Identifier: f.withdrawalData.DepositIdentifiers()[0],
 		Signature:  &signature,
@@ -78,7 +82,11 @@ func (f *Finalizer) finalize(_ context.Context) {
 	f.errChan <- nil
 }
 
-func convertToSolanaSignature(sig tss.SignatureData) string {
-	rawSig := append(sig.GetSignature(), sig.GetSignatureRecovery()...)
-	return hexutil.Encode(rawSig)
+func convertToSolanaSignature(sig tss.SignatureData) (string, error) {
+	rawSig, err := tss.RecoverableECDSASignatureBytes(sig)
+	if err != nil {
+		return "", err
+	}
+
+	return hexutil.Encode(rawSig), nil
 }

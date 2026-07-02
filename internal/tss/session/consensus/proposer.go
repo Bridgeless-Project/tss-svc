@@ -20,9 +20,8 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 		return
 	}
 
-	broadcast := c.proposalBroadcaster.Broadcast(signingData)
-	if !broadcast {
-		c.result.err = errors.New("proposal data broadcast failure")
+	if err = c.proposalBroadcaster.Broadcast(signingData); err != nil {
+		c.result.err = errors.Wrap(err, "proposal data broadcast failure")
 		return
 	}
 
@@ -64,9 +63,8 @@ func (c *Consensus[T]) propose(ctx context.Context) {
 					Parties: append(signersToStr(signers), c.self.CosmosAddress().String()),
 				},
 			}
-			broadcast = c.signStartBroadcaster.Broadcast(signStartMsg)
-			if !broadcast {
-				c.result.err = errors.New("sign start message broadcast failure")
+			if err = c.signStartBroadcaster.Broadcast(signStartMsg); err != nil {
+				c.result.err = errors.Wrap(err, "sign start message broadcast failure")
 				return
 			}
 

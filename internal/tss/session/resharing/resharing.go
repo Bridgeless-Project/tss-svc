@@ -87,6 +87,10 @@ func (s *Session) Run(ctx context.Context) error {
 	}
 
 	state := resharingTypes.InitializeState(s.newEpochParams.Epoch, s.newEpochParams.Threshold, s.newEpochParams.StartTime, bridgeParams.SupportingTime, *account)
+	state.InitECDSAShares()
+	if err = s.ensureECDSAOnly(); err != nil {
+		return err
+	}
 
 	keygenRound := NewKeygenHandler(s.newEpochParams.Parties, s.secrets, s.core, s.sessionManager, s.logger, s.oldEpochMember, s.newEpochMember)
 	keygenManager := resharingTypes.NewHandlerManager(
@@ -120,6 +124,28 @@ func (s *Session) Run(ctx context.Context) error {
 
 	if err = s.manageShares(state); err != nil {
 		return errors.Wrap(err, "failed to manage key shares")
+	}
+
+	return nil
+}
+
+func (s *Session) ensureECDSAOnly() error {
+	for _, ch := range s.chains.Clients() {
+		if ch.IsCentralized() {
+			continue
+		}
+
+		share := ch.Share()
+		if share == nil {
+			return errors.Errorf("TSS share is not configured for chain %s", ch.ChainId())
+		}
+		if share.Protocol() != tss.ProtocolID_ECDSA {
+			return errors.Errorf(
+				"resharing currently supports only ECDSA shares: chain %s uses %s",
+				ch.ChainId(),
+				share.Protocol(),
+			)
+		}
 	}
 
 	return nil
