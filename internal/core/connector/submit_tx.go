@@ -40,6 +40,9 @@ func (c *Connector) SubmitSwaps(ctx context.Context, depositsSwapTxs *swaptypes.
 	if strings.Contains(err.Error(), swaptypes.ErrAlreadySubmitted.Error()) {
 		return core.ErrSwapAlreadySubmitted
 	}
+	if strings.Contains(err.Error(), swaptypes.ErrAlreadyProcessed.Error()) {
+		return core.ErrSwapAlreadyProcessed
+	}
 
 	return errors.Wrap(err, "failed to submit swap deposits")
 }
