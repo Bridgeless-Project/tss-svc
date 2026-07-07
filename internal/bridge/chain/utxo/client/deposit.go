@@ -128,7 +128,7 @@ func (d *DepositDecoder) Decode(tx *btcjson.TxRawResult, depositIdx int64) (*Dep
 		return nil, errors.Wrap(err, "failed to decode deposit output")
 	}
 
-	depositMemo, err := d.decodeDepositMemoOutput(tx.Vout[destinationOutputIdx])
+	depositMemo, err := d.decodeDepositMemo(tx.Vout, destinationOutputIdx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode destination output")
 	}
@@ -176,7 +176,45 @@ func (d *DepositDecoder) isBridgeAddress(addr string) bool {
 	return false
 }
 
-func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo, error) {
+func (d *DepositDecoder) decodeDepositMemo(vouts []btcjson.Vout, memoIdx int) (*DepositMemo, error) {
+	memoRaw, err := d.decodeOpReturnOutput(vouts[memoIdx])
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode op_return output")
+	}
+
+	if chunksCount := d.getMemoChunksCount(memoRaw); chunksCount > 0 {
+		chunks, err := d.retrieveMemoChunks(vouts, memoIdx, chunksCount)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to retrieve memo chunks")
+		}
+
+		memoRaw = append(memoRaw, chunks...)
+	}
+
+	if depositMemo, err := d.decodeDepositMemoV3(memoRaw); err == nil {
+		return depositMemo, nil
+	}
+
+	if depositMemo, err := d.decodeDepositMemoV2(memoRaw); err == nil {
+		return depositMemo, nil
+	}
+
+	if depositMemo, err := d.decodeDepositMemoV1(memoRaw); err == nil {
+		return depositMemo, nil
+	}
+
+	return nil, bridgeTypes.ErrInvalidTransactionMemo
+}
+
+func (d *DepositDecoder) getMemoChunksCount(rawMemo []byte) int {
+	if !d.isMemoV3(rawMemo) {
+		return 0
+	}
+
+	return int(rawMemo[memoV3ChunksCountIdx])
+}
+
+func (d *DepositDecoder) decodeOpReturnOutput(out btcjson.Vout) ([]byte, error) {
 	scriptRaw, err := hex.DecodeString(out.ScriptPubKey.Hex)
 	if err != nil {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
@@ -187,26 +225,40 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
 	}
 
-	depositMemo, err := d.decodeDepositMemoV2(raw)
-	if err == nil {
-		return depositMemo, nil
+	return raw, nil
+}
+
+func (d *DepositDecoder) retrieveMemoChunks(vouts []btcjson.Vout, memoIdx, chunksCount int) ([]byte, error) {
+	if memoIdx+chunksCount >= len(vouts) {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, "not enough outputs for memo chunks")
 	}
 
-	// fallback to v1
-	depositMemo, err = d.decodeDepositMemoV1(raw)
-	if err != nil {
-		return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
+	chunks := make([]byte, 0)
+	for i := 0; i < chunksCount; i++ {
+		chunkIdx := memoIdx + 1 + i
+		scriptRaw, err := hex.DecodeString(vouts[chunkIdx].ScriptPubKey.Hex)
+		if err != nil {
+			return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
+		}
+
+		chunk, err := d.helper.RetrieveMemoChunkData(scriptRaw)
+		if err != nil {
+			return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+		}
+
+		chunks = append(chunks, chunk...)
 	}
 
-	return depositMemo, nil
+	return chunks, nil
 }
 
 // decodeDepositMemoV3 decodes the deposit memo from raw bytes for version 3.
 // deposit memo structure:
 
-// [magic][version][isSwap]
+// [magic][version][chunksCount][isSwap]
 //   - magic: 1 byte (0xFF), indicates the start of the memo
 //   - version: 1 byte, indicates the version of the memo (0x03 for v3), allows for future extensions
+//   - chunksCount: 1 byte, number of following chunk outputs used by this memo
 //   - isSwap: 1 byte, indicates if the deposit is a swap (0x00 for false, 0x01 for true)
 
 // Depending on the isSwap value, the structure of the memo will differ.
@@ -228,12 +280,12 @@ func (d *DepositDecoder) decodeDepositMemoOutput(out btcjson.Vout) (*DepositMemo
 //   - lenSwapDeadline: 1 byte, length of swap deadline
 //   - swapDeadline: variable length, swap deadline timestamp in seconds (big-endian)
 func (d *DepositDecoder) decodeDepositMemoV3(raw []byte) (*DepositMemo, error) {
-	if len(raw) < memoV3HeaderLength || raw[0] != memoMagicByte || raw[1] != memoV3Version {
+	if !d.isMemoV3(raw) {
 		return nil, bridgeTypes.ErrInvalidTransactionMemo
 	}
 
 	memo := raw[memoV3HeaderLength:]
-	switch raw[2] {
+	switch raw[memoV3SwapFlagIdx] {
 	case memoV3NoSwap:
 		// decode v2-compatible deposit memo
 		return d.decodeDepositMemoV2(memo)
@@ -291,10 +343,6 @@ func (d *DepositDecoder) decodeDepositMemoV3(raw []byte) (*DepositMemo, error) {
 	swapDeadline, err := memoReader.ReadLenBytes()
 	if err != nil {
 		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
-	}
-
-	if memoReader.Remaining() != 0 {
-		return nil, bridgeTypes.ErrInvalidTransactionMemo
 	}
 
 	return &DepositMemo{
@@ -378,4 +426,10 @@ func (d *DepositDecoder) decodeDepositMemoV1(raw []byte) (*DepositMemo, error) {
 		ChainId:    chainId,
 		ReferralId: 0,
 	}, nil
+}
+
+func (d *DepositDecoder) isMemoV3(rawMemo []byte) bool {
+	return len(rawMemo) >= memoV3HeaderLength &&
+		rawMemo[memoMagicByteIdx] == memoMagicByte &&
+		rawMemo[memoV3VersionIdx] == memoV3Version
 }

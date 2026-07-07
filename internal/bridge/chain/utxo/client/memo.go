@@ -6,12 +6,18 @@ import (
 
 const (
 	memoMagicByte        = 0xFF
+	memoMagicByteIdx     = 0
 	memoReferralIdLength = 2
 
-	memoV3HeaderLength = 3
+	memoV3HeaderLength = 4
 	memoV3Version      = 0x03
-	memoV3NoSwap       = 0x00
-	memoV3Swap         = 0x01
+
+	memoV3VersionIdx     = 1
+	memoV3ChunksCountIdx = 2
+	memoV3SwapFlagIdx    = 3
+
+	memoV3NoSwap = 0x00
+	memoV3Swap   = 0x01
 )
 
 type MemoReader struct {

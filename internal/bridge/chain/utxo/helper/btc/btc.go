@@ -165,8 +165,8 @@ func (b *helper) TxHash(tx *wire.MsgTx) string {
 }
 
 func (b *helper) RetrieveOpReturnData(script []byte) ([]byte, error) {
-	if !btcscript.IsNullData(script) {
-		return nil, errors.New("invalid script type, expected valid OP_RETURN")
+	if len(script) == 0 || script[0] != btcscript.OP_RETURN {
+		return nil, errors.New("invalid script type, expected OP_RETURN")
 	}
 
 	data, err := btcscript.PushedData(script)
@@ -178,6 +178,19 @@ func (b *helper) RetrieveOpReturnData(script []byte) ([]byte, error) {
 	}
 
 	return data[0], nil
+}
+
+func (b *helper) RetrieveMemoChunkData(script []byte) ([]byte, error) {
+	if !btcscript.IsPayToWitnessScriptHash(script) {
+		return nil, errors.New("invalid script type, expected P2WSH")
+	}
+
+	_, data, err := btcscript.ExtractWitnessProgramInfo(script)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to extract witness program info")
+	}
+
+	return data, nil
 }
 
 func (b *helper) NewUnsignedTransaction(
