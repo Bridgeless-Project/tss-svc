@@ -12,6 +12,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/utxo/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/db"
 	"github.com/Bridgeless-Project/tss-svc/pkg/encoding"
+	"github.com/Bridgeless-Project/tss-svc/pkg/pointer"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil/base58"
 	"github.com/pkg/errors"
@@ -58,6 +59,11 @@ func (c *client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		// as Bitcoin does not have any other currencies
 		TokenAddress: bridge.DefaultNativeTokenAddress,
 		Block:        block.Height,
+		// v3
+		MinDestinationAmount: depositData.MinDestinationAmount,
+		SwapDeadline:         depositData.SwapDeadline,
+		DestinationToken:     pointer.ValueOr(depositData.DestinationToken, ""),
+		IsSwap:               depositData.DestinationToken != nil,
 	}, nil
 }
 

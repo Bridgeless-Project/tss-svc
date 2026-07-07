@@ -6,6 +6,7 @@ import (
 
 	bridgetypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/bridge/types"
 	swaptypes "github.com/Bridgeless-Project/bridgeless-core/v12/x/swap/types"
+	"github.com/Bridgeless-Project/tss-svc/pkg/pointer"
 	types "github.com/Bridgeless-Project/tss-svc/pkg/proto/deposit"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -128,8 +129,8 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		DepositTxHash:     d.TxHash,
 		DepositTxIndex:    uint64(d.TxNonce),
 		DepositChainId:    d.ChainId,
-		WithdrawalTxHash:  stringOrEmpty(d.WithdrawalTxHash),
-		Depositor:         stringOrEmpty(d.Depositor),
+		WithdrawalTxHash:  pointer.ValueOr(d.WithdrawalTxHash, ""),
+		Depositor:         pointer.ValueOr(d.Depositor, ""),
 		DepositAmount:     d.DepositAmount,
 		WithdrawalAmount:  d.WithdrawalAmount,
 		CommissionAmount:  d.CommissionAmount,
@@ -138,22 +139,22 @@ func (d Deposit) ToTransaction() bridgetypes.Transaction {
 		WithdrawalToken:   d.WithdrawalToken,
 		WithdrawalChainId: d.WithdrawalChainId,
 		DepositBlock:      uint64(d.DepositBlock),
-		Signature:         stringOrEmpty(d.Signature),
+		Signature:         pointer.ValueOr(d.Signature, ""),
 		IsWrapped:         d.IsWrappedToken,
 		ReferralId:        uint32(d.ReferralId),
-		TxData:            stringOrEmpty(d.TxData),
-		MerkleProof:       stringOrEmpty(d.MerkleProof),
+		TxData:            pointer.ValueOr(d.TxData, ""),
+		MerkleProof:       pointer.ValueOr(d.MerkleProof, ""),
 	}
 }
 
 func (d Deposit) ToSwapTransaction() *swaptypes.SwapTransaction {
 	return &swaptypes.SwapTransaction{
 		Tx:            d.ToTransaction(),
-		FinalReceiver: stringOrEmpty(d.FinalReceiver),
-		SwapOutAmount: stringOrEmpty(d.MinDestinationAmount),
-		FinalToken:    stringOrEmpty(d.FinalToken),
-		FinalChainId:  stringOrEmpty(d.FinalChainId),
-		SwapDeadline:  uint64OrEmpty(d.SwapDeadline),
+		FinalReceiver: pointer.ValueOr(d.FinalReceiver, ""),
+		SwapOutAmount: pointer.ValueOr(d.MinDestinationAmount, ""),
+		FinalToken:    pointer.ValueOr(d.FinalToken, ""),
+		FinalChainId:  pointer.ValueOr(d.FinalChainId, ""),
+		SwapDeadline:  pointer.ValueOr(d.SwapDeadline, 0),
 	}
 }
 
@@ -230,22 +231,6 @@ type ProcessedDepositData struct {
 type SignedDeposit struct {
 	Id        int64
 	Signature string
-}
-
-func stringOrEmpty(s *string) string {
-	if s == nil {
-		return ""
-	}
-
-	return *s
-}
-
-func uint64OrEmpty(u *uint64) uint64 {
-	if u == nil {
-		return 0
-	}
-
-	return *u
 }
 
 func bigIntToUint64(b *big.Int) *uint64 {
