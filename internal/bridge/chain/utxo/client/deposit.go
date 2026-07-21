@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -241,7 +242,7 @@ func (d *DepositDecoder) retrieveMemoChunks(vouts []btcjson.Vout, memoIdx, chunk
 
 	chunks := make([]byte, 0)
 	for i := 0; i < chunksCount; i++ {
-		chunkIdx := memoIdx + 1 + i
+		chunkIdx := memoIdx + 1 + i // chunks should be located after the memo output
 		scriptRaw, err := hex.DecodeString(vouts[chunkIdx].ScriptPubKey.Hex)
 		if err != nil {
 			return nil, errors.Wrap(bridgeTypes.ErrInvalidScriptPubKey, err.Error())
@@ -305,50 +306,50 @@ func (d *DepositDecoder) decodeDepositMemoV3(raw []byte) (*DepositMemo, error) {
 	memoReader := NewMemoReader(memo)
 	chainId, err := memoReader.ReadLenBytes()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read chainId: %v", err))
 	}
 
 	referralId, err := memoReader.ReadBytes(memoReferralIdLength)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read referralId: %v", err))
 	}
 
 	encodingTypeByte, err := memoReader.ReadByte()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read address encoding type: %v", err))
 	}
 	encoder := encoding.GetEncoder(encoding.Type(encodingTypeByte))
 	if encoder == nil {
-		return nil, bridgeTypes.ErrInvalidTransactionMemo
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("unknown address encoding type: %v", encodingTypeByte))
 	}
 
 	dstAddr, err := memoReader.ReadLenBytes()
 	if err != nil {
-		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read destination address: %v", err))
 	}
 
 	tokenEncodingTypeByte, err := memoReader.ReadByte()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read token encoding type: %v", err))
 	}
 	tokenEncoder := encoding.GetEncoder(encoding.Type(tokenEncodingTypeByte))
 	if tokenEncoder == nil {
-		return nil, bridgeTypes.ErrInvalidTransactionMemo
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("unknown token encoding type: %v", tokenEncodingTypeByte))
 	}
 
 	dstToken, err := memoReader.ReadLenBytes()
 	if err != nil {
-		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read destination token: %v", err))
 	}
 
 	minDstAmount, err := memoReader.ReadLenBytes()
 	if err != nil {
-		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read minimum destination amount: %v", err))
 	}
 
 	swapDeadline, err := memoReader.ReadLenBytes()
 	if err != nil {
-		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, fmt.Sprintf("failed to read swap deadline: %v", err))
 	}
 
 	return &DepositMemo{
