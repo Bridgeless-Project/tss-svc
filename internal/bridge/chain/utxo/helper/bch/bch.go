@@ -177,8 +177,8 @@ func (b *helper) TxHash(tx *btcwire.MsgTx) string {
 }
 
 func (b *helper) RetrieveOpReturnData(script []byte) ([]byte, error) {
-	if bchscript.GetScriptClass(script) != bchscript.NullDataTy {
-		return nil, errors.New("invalid script type, expected valid OP_RETURN")
+	if len(script) == 0 || script[0] != bchscript.OP_RETURN {
+		return nil, errors.New("invalid script type, expected OP_RETURN")
 	}
 
 	data, err := bchscript.PushedData(script)
@@ -191,6 +191,21 @@ func (b *helper) RetrieveOpReturnData(script []byte) ([]byte, error) {
 	}
 
 	return data[0], nil
+}
+
+func (b *helper) RetrieveMemoChunkData(script []byte) ([]byte, error) {
+	if bchscript.GetScriptClass(script) != bchscript.PubKeyHashTy {
+		return nil, errors.New("invalid memo chunk script type, expected P2PKH")
+	}
+
+	_, addresses, _, err := bchscript.ExtractPkScriptAddrs(script, b.chainParams)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to extract memo chunk script address")
+	} else if len(addresses) != 1 {
+		return nil, errors.New("expected exactly one memo chunk script address")
+	}
+
+	return addresses[0].ScriptAddress(), nil
 }
 
 func (b *helper) NewUnsignedTransaction(
