@@ -41,7 +41,7 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		depositor = transaction.RemoteAddresses[0]
 	}
 
-	return &db.DepositData{
+	depositData := &db.DepositData{
 		DepositIdentifier:  id,
 		DestinationChainId: depositMemo.ChainId,
 		DestinationAddress: depositMemo.Address,
@@ -50,7 +50,23 @@ func (p *Client) GetDepositData(id db.DepositIdentifier) (*db.DepositData, error
 		DepositAmount:      transaction.Ado.OptAmount,
 		TokenAddress:       *transaction.Ado.OptAssetId,
 		Block:              int64(transaction.Height),
-	}, nil
+	}
+
+	if !depositMemo.IsSwap() {
+		return depositData, nil
+	}
+
+	swap, err := depositMemo.SwapParams()
+	if err != nil {
+		return nil, errors.Wrap(bridgeTypes.ErrInvalidTransactionMemo, err.Error())
+	}
+
+	depositData.IsSwap = true
+	depositData.DestinationToken = depositMemo.DestinationToken
+	depositData.MinDestinationAmount = swap.MinDestinationAmount
+	depositData.SwapDeadline = swap.SwapDeadline
+
+	return depositData, nil
 }
 
 func (p *Client) validateConfirmations(txHeight uint64) error {
