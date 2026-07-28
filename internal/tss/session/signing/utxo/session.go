@@ -106,6 +106,9 @@ func (s *Session) WithCoreConnector(conn *connector.Connector) *Session {
 
 // Build is a method that should be called before Run to prepare the session for execution.
 func (s *Session) Build() error {
+	if s.self.Share == nil || s.self.Share.Protocol() != tss.ProtocolID_ECDSA {
+		return errors.New("bitcoin signing currently supports only ECDSA shares")
+	}
 	if s.fetcher == nil {
 		return errors.New("deposit fetcher is not set")
 	}

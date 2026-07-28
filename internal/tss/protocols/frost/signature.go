@@ -47,7 +47,7 @@ func (s *FrostSignature) GetSignature() []byte {
 		return nil
 	}
 
-	return s.data
+	return append([]byte(nil), s.data...)
 }
 
 func (s *FrostSignature) GetSignatureRecovery() []byte {

@@ -23,6 +23,7 @@ import (
 	pg "github.com/Bridgeless-Project/tss-svc/internal/db/postgres"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
+	frostTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/distributor"
 	evmCentralized "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/evm/centralized"
@@ -35,6 +36,7 @@ import (
 	zanoSigning "github.com/Bridgeless-Project/tss-svc/internal/tss/session/signing/zano"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"gitlab.com/distributed_lab/logan/v3"
 	"golang.org/x/sync/errgroup"
 )
@@ -256,6 +258,9 @@ func configureSigningSession(
 	if err := ensureSigningProtocolSupported(client, localParty.Share); err != nil {
 		return nil, err
 	}
+	if err := validateLoadedSigningShare(localParty, parties); err != nil {
+		return nil, errors.Wrap(err, "invalid local signing share")
+	}
 
 	switch client.Type() {
 	case chain.TypeEVM:
@@ -377,21 +382,32 @@ func ensureSigningProtocolSupported(client chain.Client, share tss.Share) error 
 	if client.IsCentralized() {
 		return nil
 	}
+
 	if share == nil {
 		return errors.Errorf("TSS share is not configured for chain %s", client.ChainId())
 	}
-	if share.Protocol() != tss.ProtocolID_FROST {
-		return nil
+	if err := chain.ValidateSigningProtocol(client.Type(), share.Protocol()); err != nil {
+		return errors.Wrapf(err, "chain %s does not support configured signing protocol", client.ChainId())
 	}
+	return nil
+}
 
-	switch client.Type() {
-	case chain.TypeEVM, chain.TypeZano, chain.TypeTON, chain.TypeSolana:
-		return errors.Errorf(
-			"chain %s (%s) does not support FROST signing yet",
-			client.ChainId(),
-			client.Type(),
-		)
-	default:
+func validateLoadedSigningShare(localParty tss.LocalSignParty, parties []p2p.Party) error {
+	if localParty.Share == nil || localParty.Share.Protocol() != tss.ProtocolID_FROST {
 		return nil
 	}
+	frostShare, ok := localParty.Share.(*frostTss.FrostShare)
+	if !ok {
+		return errors.New("FROST share has an unexpected implementation")
+	}
+	participantIDs := make([]party.ID, 0, len(parties)+1)
+	participantIDs = append(participantIDs, party.ID(localParty.Account.CosmosAddress().String()))
+	for _, remote := range parties {
+		participantIDs = append(participantIDs, party.ID(remote.CoreAddress.String()))
+	}
+	return frostShare.Validate(
+		party.ID(localParty.Account.CosmosAddress().String()),
+		localParty.Threshold,
+		participantIDs,
+	)
 }

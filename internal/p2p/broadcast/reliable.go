@@ -22,7 +22,16 @@ const (
 	roundTimeout = 500 * time.Millisecond
 
 	defaultChanCapacity = 200
+	tssReliablePrefix   = "bridgeless:tss:rbc:v1:"
 )
+
+func IsReliableTSSData(data []byte) bool {
+	return bytes.HasPrefix(data, []byte(tssReliablePrefix))
+}
+
+func ReliableTSSPayload(data []byte) []byte {
+	return bytes.TrimPrefix(data, []byte(tssReliablePrefix))
+}
 
 type Hashable interface {
 	HashString() string
@@ -106,11 +115,14 @@ type ReliableBroadcastMsg[T Hashable] struct {
 // Instead of running the relay rounds one by one, it runs one big round and processes all incoming messages,
 // ensuring each early or late but valid message is processed.
 type ReliableBroadcaster[T Hashable] struct {
-	sessionId   string
-	parties     []p2p.Party
-	self        core.Account
-	logger      *logan.Entry
-	requestType p2p.RequestType
+	sessionId      string
+	routeSessionId string
+	wrapAsTssData  bool
+	parties        []p2p.Party
+	self           core.Account
+	logger         *logan.Entry
+	requestType    p2p.RequestType
+	configErr      error
 
 	relayRounds int
 	broadcaster *Broadcaster
@@ -133,6 +145,87 @@ func NewReliable[T Hashable](
 	requestType p2p.RequestType,
 	logger *logan.Entry,
 ) *ReliableBroadcaster[T] {
+	return NewReliableForRoute[T](
+		sessionId,
+		sessionId,
+		parties,
+		self,
+		maxMaliciousParties,
+		requestType,
+		logger,
+	)
+}
+
+// NewReliableForRoute creates a reliable-broadcast instance whose signed
+// broadcast identifier can differ from the outer session identifier used by
+// SessionManager. This is useful for protocols, such as FROST, that execute
+// multiple reliable broadcasts inside one routed TSS session.
+func NewReliableForRoute[T Hashable](
+	broadcastId string,
+	routeSessionId string,
+	parties []p2p.Party,
+	self core.Account,
+	maxMaliciousParties int,
+	requestType p2p.RequestType,
+	logger *logan.Entry,
+) *ReliableBroadcaster[T] {
+	return newReliableForRoute[T](
+		broadcastId,
+		routeSessionId,
+		parties,
+		self,
+		maxMaliciousParties,
+		requestType,
+		false,
+		logger,
+	)
+}
+
+// NewReliableForTSSRoute wraps relay messages in TssData. It allows a TSS
+// protocol to use reliable broadcast without adding a second request type to
+// every session that routes RT_KEYGEN or RT_SIGN messages.
+func NewReliableForTSSRoute[T Hashable](
+	broadcastId string,
+	routeSessionId string,
+	parties []p2p.Party,
+	self core.Account,
+	maxMaliciousParties int,
+	requestType p2p.RequestType,
+	logger *logan.Entry,
+) *ReliableBroadcaster[T] {
+	return newReliableForRoute[T](
+		broadcastId,
+		routeSessionId,
+		parties,
+		self,
+		maxMaliciousParties,
+		requestType,
+		true,
+		logger,
+	)
+}
+
+func newReliableForRoute[T Hashable](
+	broadcastId string,
+	routeSessionId string,
+	parties []p2p.Party,
+	self core.Account,
+	maxMaliciousParties int,
+	requestType p2p.RequestType,
+	wrapAsTssData bool,
+	logger *logan.Entry,
+) *ReliableBroadcaster[T] {
+	partyCount := len(parties) + 1
+	var configErr error
+	if maxMaliciousParties < 0 || maxMaliciousParties >= partyCount {
+		configErr = errors.Errorf(
+			"invalid Byzantine threshold %d for %d reliable-broadcast parties",
+			maxMaliciousParties,
+			partyCount,
+		)
+		// Keep allocation sizes valid; public methods will return configErr.
+		maxMaliciousParties = 0
+	}
 	// relay rounds are calculated as the f + 1,
 	// where f is the maximum number of possible malicious parties,
 	relayRounds := maxMaliciousParties + 1
@@ -146,11 +239,14 @@ func NewReliable[T Hashable](
 	partiesMap[self.CosmosAddress()] = true
 
 	return &ReliableBroadcaster[T]{
-		sessionId:   sessionId,
-		parties:     parties,
-		self:        self,
-		logger:      logger,
-		requestType: requestType,
+		sessionId:      broadcastId,
+		routeSessionId: routeSessionId,
+		wrapAsTssData:  wrapAsTssData,
+		parties:        parties,
+		self:           self,
+		logger:         logger,
+		requestType:    requestType,
+		configErr:      configErr,
 
 		relayRounds: relayRounds,
 		broadcaster: NewBroadcaster(parties, logger),
@@ -163,6 +259,9 @@ func NewReliable[T Hashable](
 }
 
 func (b *ReliableBroadcaster[T]) Broadcast(msg *T) error {
+	if b.configErr != nil {
+		return b.configErr
+	}
 	b.addToValuesSet(msg)
 	b.originMsgSender = b.self.CosmosAddress()
 
@@ -200,7 +299,20 @@ func (b *ReliableBroadcaster[T]) Broadcast(msg *T) error {
 }
 
 func (b *ReliableBroadcaster[T]) EnsureValid(msg ReliableBroadcastMsg[T]) bool {
-	b.originMsgSender = msg.Sender
+	return b.EnsureValidFrom(msg.Sender, msg)
+}
+
+// EnsureValidFrom validates a received broadcast when the first packet seen
+// may be a relay rather than the origin's round-zero packet.
+func (b *ReliableBroadcaster[T]) EnsureValidFrom(origin core.Address, msg ReliableBroadcastMsg[T]) bool {
+	if b.configErr != nil {
+		b.logger.WithError(b.configErr).Error("invalid reliable-broadcast configuration")
+		return false
+	}
+	if !b.partiesMap[origin] {
+		return false
+	}
+	b.originMsgSender = origin
 	b.msgs <- msg
 
 	b.startRounds()
@@ -209,6 +321,9 @@ func (b *ReliableBroadcaster[T]) EnsureValid(msg ReliableBroadcastMsg[T]) bool {
 }
 
 func (b *ReliableBroadcaster[T]) Receive(msg ReliableBroadcastMsg[T]) error {
+	if b.configErr != nil {
+		return b.configErr
+	}
 	if !b.partiesMap[msg.Sender] {
 		return errors.New("party is not in the group")
 	}
@@ -335,14 +450,22 @@ func (b *ReliableBroadcaster[T]) broadcastMsg(msg RoundMessage[T]) error {
 		return errors.Wrap(err, "failed to encode round message")
 	}
 
-	rawReq, err := anypb.New(&p2p.ReliableBroadcastData{RoundMsg: encodedMsg})
+	var rawReq *anypb.Any
+	if b.wrapAsTssData {
+		wrapped := make([]byte, 0, len(tssReliablePrefix)+len(encodedMsg))
+		wrapped = append(wrapped, tssReliablePrefix...)
+		wrapped = append(wrapped, encodedMsg...)
+		rawReq, err = anypb.New(&p2p.TssData{Data: wrapped, IsBroadcast: true})
+	} else {
+		rawReq, err = anypb.New(&p2p.ReliableBroadcastData{RoundMsg: encodedMsg})
+	}
 	if err != nil {
 		return errors.Wrap(err, "failed to encode reliable broadcast data")
 	}
 
 	b.broadcaster.Broadcast(&p2p.SubmitRequest{
 		Sender:    b.self.CosmosAddress().String(),
-		SessionId: b.sessionId,
+		SessionId: b.routeSessionId,
 		Type:      b.requestType,
 		Data:      rawReq,
 	})

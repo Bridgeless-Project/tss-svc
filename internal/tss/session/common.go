@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -8,6 +9,21 @@ import (
 
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 )
+
+func WaitUntil(ctx context.Context, start time.Time) error {
+	delay := time.Until(start)
+	if delay <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
 
 const (
 	KeygenSessionPrefix  = "KEYGEN"

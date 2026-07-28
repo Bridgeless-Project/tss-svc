@@ -139,12 +139,8 @@ func (s *Session) ensureECDSAOnly() error {
 		if share == nil {
 			return errors.Errorf("TSS share is not configured for chain %s", ch.ChainId())
 		}
-		if share.Protocol() != tss.ProtocolID_ECDSA {
-			return errors.Errorf(
-				"resharing currently supports only ECDSA shares: chain %s uses %s",
-				ch.ChainId(),
-				share.Protocol(),
-			)
+		if err := tss.ValidateResharingProtocol(share.Protocol()); err != nil {
+			return errors.Wrapf(err, "chain %s cannot participate in resharing", ch.ChainId())
 		}
 	}
 
@@ -312,7 +308,7 @@ func (s *Session) manageShares(state *resharingTypes.State) error {
 		return errors.Wrap(err, "failed to save new TSS share")
 	}
 	if err = s.secrets.SaveTssShare(
-		secrets.TssShareKeyTemporary+secrets.TssShareKey(state.NewShare.GetVaultPath()),
+		secrets.TemporaryTssShareKey(state.NewShare),
 		oldShareBytes,
 	); err != nil {
 		return errors.Wrap(err, "failed to save old TSS share")

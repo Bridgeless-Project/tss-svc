@@ -3,6 +3,7 @@ package tss
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -24,6 +25,7 @@ type KeygenParty struct {
 	ended atomic.Bool
 
 	broadcaster *broadcast.Broadcaster
+	reliable    *reliableTransport
 	parties     map[core.Address]struct{}
 	group       curve.Curve
 
@@ -34,6 +36,7 @@ type KeygenParty struct {
 	handler   *protocol.MultiHandler
 
 	msgs   chan tss.PartyMsg
+	done   chan struct{}
 	once   sync.Once
 	result *FrostShare
 
@@ -52,19 +55,30 @@ func NewKeygenParty(self tss.LocalKeygenParty, group curve.Curve, parties []p2p.
 	}
 	participants := party.NewIDSlice(partyIds)
 
-	return &KeygenParty{
+	p := &KeygenParty{
 		self:         self,
 		broadcaster:  broadcast.NewBroadcaster(parties, logger.WithField("component", "broadcaster")),
 		parties:      partyMap,
 		group:        group,
 		participants: participants,
 		msgs:         make(chan tss.PartyMsg, tss.MsgsCapacity),
+		done:         make(chan struct{}),
 		result:       NewFrostShare(),
 
 		logger:    logger.WithField("protocol", "frost"),
 		sessionId: sessionId,
 		wg:        new(sync.WaitGroup),
 	}
+	p.reliable = newReliableTransport(
+		sessionId,
+		p2p.RequestType_RT_KEYGEN,
+		self.Account,
+		parties,
+		self.Threshold,
+		p.logger,
+		p.enqueue,
+	)
+	return p
 }
 
 func (p *KeygenParty) Run(ctx context.Context) {
@@ -76,7 +90,6 @@ func (p *KeygenParty) Run(ctx context.Context) {
 		return
 	}
 	p.handler = h
-
 	p.wg.Add(2)
 	go p.receiveMsgs(ctx)
 	go p.receiveUpdates(ctx)
@@ -86,7 +99,7 @@ func (p *KeygenParty) Run(ctx context.Context) {
 
 func (p *KeygenParty) WaitFor() tss.Share {
 	p.wg.Wait()
-	if p.err != nil || p.result == nil {
+	if p.err != nil || p.result == nil || p.result.MustFrostShare() == nil {
 		p.logger.Error("keygen failed to wait for keygen")
 		return nil
 	}
@@ -99,7 +112,21 @@ func (p *KeygenParty) WaitFor() tss.Share {
 }
 
 func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
-	if p.ended.Load() {
+	if p == nil || data == nil || p.ended.Load() {
+		return
+	}
+	if broadcast.IsReliableTSSData(data.Data) {
+		if p.reliable == nil {
+			p.logger.Warn("received FROST reliable broadcast before keygen started")
+			return
+		}
+		if err := p.reliable.receive(sender, data.Data); err != nil {
+			p.logger.WithError(err).WithField("party", sender).Warn("rejected FROST reliable broadcast message")
+		}
+		return
+	}
+	if data.IsBroadcast {
+		p.logger.WithField("party", sender).Warn("rejected FROST broadcast outside reliable transport")
 		return
 	}
 
@@ -109,10 +136,22 @@ func (p *KeygenParty) Receive(sender core.Address, data *p2p.TssData) {
 		"bytes":     len(data.Data),
 	}).Debug("received frost keygen message")
 
-	p.msgs <- tss.PartyMsg{
+	p.enqueue(tss.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
+	})
+
+}
+
+func (p *KeygenParty) enqueue(msg tss.PartyMsg) {
+	select {
+	case <-p.done:
+		return
+	case p.msgs <- msg:
+		return
+	default:
+		p.logger.WithField("party", msg.Sender).Warn("FROST keygen inbox is full; rejecting message")
 	}
 
 }
@@ -127,11 +166,9 @@ func (p *KeygenParty) receiveMsgs(ctx context.Context) {
 			p.logger.Warn("context is done; stopping receiving messages")
 			return
 
-		case msg, ok := <-p.msgs:
-			if !ok {
-				p.logger.Warn("channel closed; stopping receiving messages")
-				return
-			}
+		case <-p.done:
+			return
+		case msg := <-p.msgs:
 			p.logger.WithFields(logan.F{
 				"sender":    msg.Sender,
 				"broadcast": msg.IsBroadcast,
@@ -172,6 +209,7 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			p.err = ctx.Err()
 			p.logger.Warn("context is done; stopping listening to updates")
 			return
 
@@ -216,12 +254,29 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 				continue
 			}
 
-			tssData := &p2p.TssData{
-				Data:        raw,
-				IsBroadcast: msg.Broadcast,
+			if msg.Broadcast {
+				if p.reliable == nil {
+					p.err = errors.New("FROST reliable broadcast is not configured")
+					return
+				}
+				if err := p.reliable.broadcast(raw); err != nil {
+					p.err = fmt.Errorf("failed to reliably broadcast FROST keygen message: %w", err)
+					p.logger.WithError(p.err).Error("failed to send FROST keygen message")
+					return
+				}
+				continue
 			}
 
-			tssReq, _ := anypb.New(tssData)
+			tssData := &p2p.TssData{
+				Data:        raw,
+				IsBroadcast: false,
+			}
+
+			tssReq, err := anypb.New(tssData)
+			if err != nil {
+				p.err = fmt.Errorf("failed to encode FROST keygen message: %w", err)
+				return
+			}
 			submitReq := p2p.SubmitRequest{
 				Sender:    p.self.Address.String(),
 				SessionId: p.sessionId,
@@ -247,6 +302,6 @@ func (p *KeygenParty) receiveUpdates(ctx context.Context) {
 func (p *KeygenParty) finish() {
 	p.once.Do(func() {
 		p.ended.Store(true)
-		close(p.msgs)
+		close(p.done)
 	})
 }

@@ -119,3 +119,17 @@ func (c Type) Validate() error {
 
 	return nil
 }
+
+func ValidateSigningProtocol(chainType Type, protocol tss.ProtocolType) error {
+	switch protocol {
+	case tss.ProtocolID_ECDSA:
+		return nil
+	case tss.ProtocolID_FROST:
+		if chainType == TypeOther {
+			return nil
+		}
+		return errors.Errorf("chain type %s does not support FROST signing yet", chainType)
+	default:
+		return errors.Errorf("unsupported TSS protocol %s", protocol)
+	}
+}

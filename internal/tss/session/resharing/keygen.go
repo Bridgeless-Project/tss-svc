@@ -144,6 +144,7 @@ func (r *KeygenHandler) Handle(ctx context.Context, state *resharingTypes.State)
 	keygenSession := tssKeygen.NewSession(
 		tss.LocalKeygenParty{
 			PreParams: preparams,
+			Account:   *account,
 			Address:   account.CosmosAddress(),
 			Threshold: int(state.Threshold),
 		},
@@ -238,7 +239,7 @@ func (r *KeygenHandler) saveKeyShare(result tss.Share) error {
 
 	if r.oldEpochMember {
 		return errors.Wrap(r.secrets.SaveTssShare(
-			secrets.TssShareKeyTemporary+secrets.TssShareKey(result.GetVaultPath()),
+			secrets.TemporaryTssShareKey(result),
 			bytes,
 		), "failed to save temporary key share")
 	}
@@ -247,8 +248,11 @@ func (r *KeygenHandler) saveKeyShare(result tss.Share) error {
 }
 
 func setECDSANewPubKey(state *resharingTypes.State) error {
-	if state.NewShare == nil || state.NewShare.Protocol() != tss.ProtocolID_ECDSA {
+	if state.NewShare == nil {
 		return errors.New("resharing currently supports only ECDSA shares")
+	}
+	if err := tss.ValidateResharingProtocol(state.NewShare.Protocol()); err != nil {
+		return err
 	}
 
 	share := state.NewShare.MustEcdsaShare()

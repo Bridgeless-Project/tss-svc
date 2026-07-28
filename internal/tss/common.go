@@ -22,6 +22,7 @@ func init() {
 
 type LocalKeygenParty struct {
 	PreParams PreParams
+	Account   core.Account
 	Address   core.Address
 	Threshold int
 }
@@ -113,6 +114,8 @@ func (s *Signatures) SetSignature(data SignatureData) {
 }
 
 func MaxMaliciousParties(partiesCount, threshold int) int {
+	// Deprecated: this is the liveness slack, not the Byzantine fault budget.
+	// Reliable broadcast callers must use the configured threshold directly.
 	// T+1 parties are required to function
 	return partiesCount - (threshold + 1)
 }

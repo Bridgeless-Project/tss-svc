@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"crypto/tls"
+	"strings"
 
 	"github.com/Bridgeless-Project/tss-svc/internal/core"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
@@ -13,26 +14,32 @@ import (
 )
 
 const (
-	keyAccount = "core_account"
+	keyAccount     = "core_account"
+	keyTssShareSet = "tss_shares/current"
 
 	valueVaultKey = "value"
 
-	tempShareKey = "temp"
-	keyTlsCert   = "tls_cert"
-	tlsCertData  = "cert_data"
-	tlsKeyData   = "key_data"
+	keyTlsCert  = "tls_cert"
+	tlsCertData = "cert_data"
+	tlsKeyData  = "key_data"
 )
 
+var errDataNotFound = errors.New("data not found")
+
 type Storage struct {
-	client kvStore
+	client KVStore
 }
 
-type kvStore interface {
+type KVStore interface {
 	Get(ctx context.Context, secretPath string) (*client.KVSecret, error)
 	Put(ctx context.Context, secretPath string, data map[string]interface{}, opts ...client.KVOption) (*client.KVSecret, error)
 }
 
 func NewStorage(client *client.KVv2) secrets.Storage {
+	return NewStorageFromKV(client)
+}
+
+func NewStorageFromKV(client KVStore) *Storage {
 	return &Storage{
 		client: client,
 	}
@@ -44,7 +51,7 @@ func (s *Storage) load(path string) (map[string]interface{}, error) {
 		return nil, errors.Wrap(err, "failed to load data")
 	}
 	if kvData == nil {
-		return nil, errors.New("data not found")
+		return nil, errDataNotFound
 	}
 
 	return kvData.Data, nil
@@ -81,9 +88,30 @@ func (s *Storage) SaveKeygenPreParams(params tss.PreParams) error {
 }
 
 func (s *Storage) SaveTssShare(key secrets.TssShareKey, bytes []byte) error {
+	if strings.HasPrefix(string(key), "tss_shares/") {
+		return s.SaveTssShares(map[secrets.TssShareKey][]byte{key: bytes})
+	}
 	return s.store(string(key), map[string]interface{}{
 		valueVaultKey: bytes,
 	})
+}
+
+func (s *Storage) SaveTssShares(shares map[secrets.TssShareKey][]byte) error {
+	if len(shares) == 0 {
+		return errors.New("no TSS shares to save")
+	}
+	values := make(map[string]interface{}, len(shares))
+	if current, err := s.load(keyTssShareSet); err == nil {
+		for key, value := range current {
+			values[key] = value
+		}
+	} else if !isSecretNotFound(err) {
+		return errors.Wrap(err, "failed to load current TSS share set")
+	}
+	for key, value := range shares {
+		values[string(key)] = value
+	}
+	return errors.Wrap(s.store(keyTssShareSet, values), "failed to atomically save TSS shares")
 }
 
 func (s *Storage) GetCoreAccount() (*core.Account, error) {
@@ -112,6 +140,20 @@ func (s *Storage) SaveCoreAccount(account *core.Account) error {
 }
 
 func (s *Storage) LoadTssShare(share tss.Share) error {
+	if shares, batchErr := s.load(keyTssShareSet); batchErr == nil {
+		if value, ok := shares[share.GetVaultPath()]; ok {
+			if err := share.SetVaultData(map[string]interface{}{valueVaultKey: value}); err != nil {
+				return errors.Wrap(err, "failed to set batched share data")
+			}
+			return nil
+		}
+		// An active set is authoritative. Falling back to a legacy per-protocol
+		// record here could resurrect a stale share after an atomic rotation.
+		return errors.Wrapf(errDataNotFound, "active TSS share set has no %s", share.GetVaultPath())
+	} else if !isSecretNotFound(batchErr) {
+		return errors.Wrap(batchErr, "failed to load active TSS share set")
+	}
+
 	data, err := s.load(share.GetVaultPath())
 	if err != nil {
 		return errors.Wrap(err, "failed to load share data")
@@ -124,8 +166,16 @@ func (s *Storage) LoadTssShare(share tss.Share) error {
 	return nil
 }
 
+func isSecretNotFound(err error) bool {
+	if errors.Is(err, errDataNotFound) {
+		return true
+	}
+	var responseErr *client.ResponseError
+	return errors.As(err, &responseErr) && responseErr.StatusCode == 404
+}
+
 func (s *Storage) GetTemporaryTssShare(share tss.Share) error {
-	kvData, err := s.load(tempShareKey + "/" + share.GetVaultPath())
+	kvData, err := s.load(string(secrets.TemporaryTssShareKey(share)))
 	if err != nil {
 		return errors.Wrap(err, "failed to load temporary share data")
 	}

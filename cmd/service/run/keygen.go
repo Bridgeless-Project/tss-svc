@@ -3,16 +3,19 @@ package run
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/signal"
+	"sort"
 	"syscall"
+	"time"
 
 	"github.com/Bridgeless-Project/tss-svc/cmd/utils"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
 	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets/sharefile"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	ecdsaTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	frostTss "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/frost"
+	"github.com/Bridgeless-Project/tss-svc/internal/tss/session"
 	keygenSession "github.com/Bridgeless-Project/tss-svc/internal/tss/session/keygen"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -21,17 +24,29 @@ import (
 )
 
 func init() {
-	utils.RegisterOutputFlags(keygenCmd)
+	keygenCmd.Flags().StringVarP(&keygenOutputType, "output", "o", "vault", "Output type: vault, file, or console")
+	keygenCmd.Flags().StringVar(&keygenFilePath, "path", "tss-share.json", "Base path for protocol-specific share files")
+	keygenCmd.Flags().BoolVar(&unsafeKeygenConsole, "unsafe-console", false, "Allow private TSS shares to be printed to the terminal")
+	utils.RegisterConfigFlag(keygenCmd)
 }
 
 const KeygensCount = 2
+
+var (
+	keygenOutputType    string
+	keygenFilePath      string
+	unsafeKeygenConsole bool
+)
 
 var keygenCmd = &cobra.Command{
 	Use:   "keygen",
 	Short: "Generates a new keypair using TSS",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if !utils.OutputValid() {
+		if keygenOutputType != "console" && keygenOutputType != "file" && keygenOutputType != "vault" {
 			return errors.New("invalid output type")
+		}
+		if keygenOutputType == "console" && !unsafeKeygenConsole {
+			return errors.New("printing private TSS shares requires --unsafe-console")
 		}
 
 		return nil
@@ -65,6 +80,7 @@ var keygenCmd = &cobra.Command{
 		frostSeession := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: frostTss.NewFrostPreParams(),
+				Account:   *account,
 				Address:   account.CosmosAddress(),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
@@ -77,6 +93,7 @@ var keygenCmd = &cobra.Command{
 		ecdsaSeession := keygenSession.NewSession(
 			tss.LocalKeygenParty{
 				PreParams: preParams,
+				Account:   *account,
 				Address:   account.CosmosAddress(),
 				Threshold: cfg.TssSessionParams().Threshold,
 			},
@@ -99,9 +116,21 @@ var keygenCmd = &cobra.Command{
 			return server.Run(ctx)
 		})
 
-		endChan := make(chan struct{}, KeygensCount)
+		resultChan := make(chan tss.Share, KeygensCount)
+		startChan := make(chan struct{})
 		errGroup.Go(func() error {
-			defer func() { endChan <- struct{}{} }()
+			if err := waitForKeygenStart(ctx, cfg.TssSessionParams().StartTime); err != nil {
+				return err
+			}
+			close(startChan)
+			return nil
+		})
+		errGroup.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-startChan:
+			}
 
 			if err := frostSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
@@ -112,12 +141,16 @@ var keygenCmd = &cobra.Command{
 			}
 
 			cfg.Log().Info("frost keygen session successfully completed")
-
-			return errors.Wrap(storeKeygenResult(result, storage), "failed  to store FROST shares")
+			resultChan <- result
+			return nil
 		})
 
 		errGroup.Go(func() error {
-			defer func() { endChan <- struct{}{} }()
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-startChan:
+			}
 
 			if err := ecdsaSeession.Run(ctx); err != nil {
 				return errors.Wrap(err, "failed to run keygen session")
@@ -128,19 +161,22 @@ var keygenCmd = &cobra.Command{
 			}
 
 			cfg.Log().Info("ecdsa keygen session successfully completed")
-
-			return errors.Wrap(storeKeygenResult(result, storage), "failed to store ECDSA shares")
+			resultChan <- result
+			return nil
 		})
 
 		errGroup.Go(func() error {
-			keygenCount := 0
+			results := make([]tss.Share, 0, KeygensCount)
 			for {
 				select {
 				case <-ctx.Done():
 					return nil
-				case <-endChan:
-					keygenCount++
-					if keygenCount == KeygensCount {
+				case result := <-resultChan:
+					results = append(results, result)
+					if len(results) == KeygensCount {
+						if err := storeKeygenResults(results, storage); err != nil {
+							return errors.Wrap(err, "failed to store keygen shares")
+						}
 						cancel()
 						return nil
 					}
@@ -152,33 +188,47 @@ var keygenCmd = &cobra.Command{
 	},
 }
 
-func storeKeygenResult(result tss.Share, storage secrets.Storage) error {
-	switch utils.OutputType {
-	case "console":
-		raw, err := result.Marshal()
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal keygen result")
-		}
-		fmt.Println("raw: ", string(raw))
-	case "file":
-		raw, err := result.Marshal()
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal keygen result")
-		}
-		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
-			return errors.Wrap(err, "failed to write keygen result to file")
-		}
-	case "vault":
-		bytes, err := result.Marshal()
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal keygen result")
-		}
+func waitForKeygenStart(ctx context.Context, start time.Time) error {
+	return errors.Wrap(session.WaitUntil(ctx, start), "keygen interrupted before its configured start time")
+}
 
-		if err = storage.SaveTssShare(secrets.TssShareKey(result.GetVaultPath()), bytes); err != nil {
-			return errors.Wrap(err, "failed to save keygen result to vault")
+func storeKeygenResults(results []tss.Share, storage secrets.Storage) error {
+	if len(results) != KeygensCount {
+		return errors.Errorf("expected %d keygen results, got %d", KeygensCount, len(results))
+	}
+	sort.Slice(results, func(i, j int) bool { return results[i].Protocol() < results[j].Protocol() })
+	rawResults := make(map[tss.ProtocolType][]byte, len(results))
+	for _, result := range results {
+		if result == nil {
+			return errors.New("nil keygen result")
 		}
+		raw, err := result.Marshal()
+		if err != nil {
+			return errors.Wrapf(err, "failed to marshal %s keygen result", result.Protocol())
+		}
+		rawResults[result.Protocol()] = raw
+	}
+	if len(rawResults) != len(results) {
+		return errors.New("duplicate keygen protocol result")
+	}
+
+	switch keygenOutputType {
+	case "console":
+		if !unsafeKeygenConsole {
+			return errors.New("printing private TSS shares requires --unsafe-console")
+		}
+		for _, result := range results {
+			fmt.Printf("%s: %s\n", result.Protocol(), rawResults[result.Protocol()])
+		}
+	case "file":
+		_, err := sharefile.WriteSet(keygenFilePath, rawResults)
+		return err
+	case "vault":
+		// Do not publish either protocol until both ceremonies have completed and
+		// both results have serialized successfully.
+		return secrets.SaveTssShareSet(storage, results)
 	default:
-		return errors.Errorf("unknown output type: %s", utils.OutputType)
+		return errors.Errorf("unknown output type: %s", keygenOutputType)
 	}
 
 	return nil

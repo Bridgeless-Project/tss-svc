@@ -42,7 +42,7 @@ func NewSession(
 	parties []p2p.Party,
 	logger *logan.Entry,
 ) *Session {
-	sessionId := session.GetSigningSessionIdentifier(fmt.Sprintf("%v", hexutil.Encode(params.SigningData)))
+	sessionId := session.GetSigningSessionIdentifier(fmt.Sprintf("%d_%s", params.Id, hexutil.Encode(params.SigningData)))
 	return &Session{
 		sessionId: sessionId,
 		params:    params,

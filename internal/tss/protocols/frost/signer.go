@@ -3,6 +3,7 @@ package tss
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -27,6 +28,7 @@ type SignParty struct {
 	ended atomic.Bool
 
 	broadcaster *broadcast.Broadcaster
+	reliable    *reliableTransport
 	parties     map[core.Address]struct{}
 	signers     []party.ID
 
@@ -38,6 +40,7 @@ type SignParty struct {
 	handler   *protocol.MultiHandler
 
 	msgs   chan tss.PartyMsg
+	done   chan struct{}
 	once   sync.Once
 	data   []byte
 	result tss.SignatureData
@@ -50,6 +53,7 @@ func NewSignParty(self tss.LocalSignParty, sessionId string, logger *logan.Entry
 		wg:        new(sync.WaitGroup),
 		self:      self,
 		msgs:      make(chan tss.PartyMsg, tss.MsgsCapacity),
+		done:      make(chan struct{}),
 		sessionId: sessionId,
 		logger:    logger.WithField("protocol", "frost"),
 		group:     self.Share.Group(),
@@ -70,6 +74,15 @@ func (p *SignParty) WithParties(parties []p2p.Party) tss.SignParty {
 	p.parties = partyMap
 	p.signers = party.NewIDSlice(signers)
 	p.broadcaster = broadcast.NewBroadcaster(parties, p.logger.WithField("component", "broadcaster"))
+	p.reliable = newReliableTransport(
+		p.sessionId,
+		p2p.RequestType_RT_SIGN,
+		p.self.Account,
+		parties,
+		p.self.Threshold,
+		p.logger,
+		p.enqueue,
+	)
 
 	return p
 }
@@ -80,7 +93,24 @@ func (p *SignParty) WithSigningData(data []byte) tss.SignParty {
 }
 
 func (p *SignParty) Run(ctx context.Context) {
-	config, err := toTaprootConfig(p.self.Share.MustFrostShare())
+	frostShare, ok := p.self.Share.(*FrostShare)
+	if !ok {
+		p.err = errors.New("invalid FROST share implementation")
+		p.finish()
+		return
+	}
+	if err := frostShare.Validate(
+		party.ID(p.self.Account.CosmosAddress().String()),
+		p.self.Threshold,
+		p.signers,
+	); err != nil {
+		p.err = fmt.Errorf("invalid FROST signing share: %w", err)
+		p.finish()
+		p.logger.WithError(p.err).Error("failed to validate FROST signing share")
+		return
+	}
+
+	config, err := toTaprootConfig(frostShare.MustFrostShare())
 	if err != nil {
 		p.err = err
 		p.finish()
@@ -119,14 +149,39 @@ func (p *SignParty) WaitFor() tss.SignatureData {
 }
 
 func (p *SignParty) Receive(sender core.Address, data *p2p.TssData) {
-	if p.ended.Load() {
+	if p == nil || data == nil || p.ended.Load() {
+		return
+	}
+	if broadcast.IsReliableTSSData(data.Data) {
+		if p.reliable == nil {
+			p.logger.Warn("received FROST reliable broadcast before parties were configured")
+			return
+		}
+		if err := p.reliable.receive(sender, data.Data); err != nil {
+			p.logger.WithError(err).WithField("party", sender).Warn("rejected FROST reliable broadcast message")
+		}
+		return
+	}
+	if data.IsBroadcast {
+		p.logger.WithField("party", sender).Warn("rejected FROST broadcast outside reliable transport")
 		return
 	}
 
-	p.msgs <- tss.PartyMsg{
+	p.enqueue(tss.PartyMsg{
 		Sender:      sender,
 		WireMsg:     data.Data,
 		IsBroadcast: data.IsBroadcast,
+	})
+}
+
+func (p *SignParty) enqueue(msg tss.PartyMsg) {
+	select {
+	case <-p.done:
+		return
+	case p.msgs <- msg:
+		return
+	default:
+		p.logger.WithField("party", msg.Sender).Warn("FROST signing inbox is full; rejecting message")
 	}
 }
 
@@ -138,10 +193,9 @@ func (p *SignParty) receiveMsgs(ctx context.Context) {
 		case <-ctx.Done():
 			p.logger.Warn("context is done; stopping receiving frost messages")
 			return
-		case msg, ok := <-p.msgs:
-			if !ok {
-				return
-			}
+		case <-p.done:
+			return
+		case msg := <-p.msgs:
 
 			if _, exists := p.parties[msg.Sender]; !exists {
 				p.logger.WithField("party", msg.Sender).Warn("got message from outside party")
@@ -169,6 +223,7 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			p.err = ctx.Err()
 			p.logger.Warn("context is done; stopping listening to frost updates")
 			return
 		case msg, ok := <-p.handler.Listen():
@@ -201,12 +256,29 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 				continue
 			}
 
-			tssData := &p2p.TssData{
-				Data:        raw,
-				IsBroadcast: msg.Broadcast,
+			if msg.Broadcast {
+				if p.reliable == nil {
+					p.err = errors.New("FROST reliable broadcast is not configured")
+					return
+				}
+				if err = p.reliable.broadcast(raw); err != nil {
+					p.err = fmt.Errorf("failed to reliably broadcast FROST signing message: %w", err)
+					p.logger.WithError(p.err).Error("failed to send FROST signing message")
+					return
+				}
+				continue
 			}
 
-			tssReq, _ := anypb.New(tssData)
+			tssData := &p2p.TssData{
+				Data:        raw,
+				IsBroadcast: false,
+			}
+
+			tssReq, err := anypb.New(tssData)
+			if err != nil {
+				p.err = fmt.Errorf("failed to encode FROST signing message: %w", err)
+				return
+			}
 			submitReq := p2p.SubmitRequest{
 				Sender:    p.self.Account.CosmosAddress().String(),
 				SessionId: p.sessionId,
@@ -230,7 +302,7 @@ func (p *SignParty) receiveUpdates(ctx context.Context) {
 func (p *SignParty) finish() {
 	p.once.Do(func() {
 		p.ended.Store(true)
-		close(p.msgs)
+		close(p.done)
 	})
 }
 

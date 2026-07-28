@@ -35,8 +35,7 @@ const (
 )
 
 var (
-	verify       bool
-	signProtocol string
+	verify bool
 )
 
 func registerSignCmdFlags(cmd *cobra.Command) {
@@ -59,14 +58,9 @@ var signCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to read config from flags")
 		}
 
-		rawData := args[0]
-		if !strings.HasPrefix(rawData, bridge.HexPrefix) {
-			rawData = bridge.HexPrefix + rawData
-		}
-
-		dataToSign := hexutil.MustDecode(rawData)
-		if len(dataToSign) == 0 {
-			return errors.Wrap(errors.New("empty data to-sign"), "invalid data")
+		dataToSign, signProtocol, err := ParseSignArguments(args)
+		if err != nil {
+			return err
 		}
 
 		storage := cfg.SecretsStorage()
@@ -77,9 +71,9 @@ var signCmd = &cobra.Command{
 
 		var share tss.Share
 		switch signProtocol {
-		case signProtocolECDSA:
+		case tss.ProtocolID_ECDSA:
 			share = tss2.NewEcdsaShare()
-		case signProtocolFROST:
+		case tss.ProtocolID_FROST:
 			share = tss3.NewFrostShare()
 		}
 
@@ -164,6 +158,28 @@ var signCmd = &cobra.Command{
 	},
 }
 
+func ParseSignArguments(args []string) ([]byte, tss.ProtocolType, error) {
+	if len(args) != 2 {
+		return nil, "", errors.Errorf("expected data and protocol arguments, got %d", len(args))
+	}
+	rawData := args[0]
+	if !strings.HasPrefix(rawData, bridge.HexPrefix) {
+		rawData = bridge.HexPrefix + rawData
+	}
+	data, err := hexutil.Decode(rawData)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "invalid hex data to sign")
+	}
+	if len(data) == 0 {
+		return nil, "", errors.New("invalid empty data to sign")
+	}
+	protocol := strings.ToLower(args[1])
+	if err = validateSignProtocol(protocol); err != nil {
+		return nil, "", errors.Wrap(err, "failed to validate sign protocol")
+	}
+	return data, tss.ProtocolType(protocol), nil
+}
+
 func validateSignProtocol(protocol string) error {
 	switch protocol {
 	case signProtocolECDSA, signProtocolFROST:
@@ -184,7 +200,7 @@ func saveSigningResult(result tss.SignatureData) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal signing result")
 		}
-		if err = os.WriteFile(utils.FilePath, raw, 0644); err != nil {
+		if err = os.WriteFile(utils.FilePath, raw, 0600); err != nil {
 			return errors.Wrap(err, "failed to write signing result to file")
 		}
 	}

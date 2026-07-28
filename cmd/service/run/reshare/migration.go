@@ -10,6 +10,7 @@ import (
 	"github.com/Bridgeless-Project/tss-svc/internal/bridge/chain/repository"
 	coreConnector "github.com/Bridgeless-Project/tss-svc/internal/core/connector"
 	"github.com/Bridgeless-Project/tss-svc/internal/p2p"
+	"github.com/Bridgeless-Project/tss-svc/internal/secrets"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss"
 	tss2 "github.com/Bridgeless-Project/tss-svc/internal/tss/protocols/ecdsa"
 	"github.com/Bridgeless-Project/tss-svc/internal/tss/session/resharing"
@@ -40,10 +41,9 @@ var reshareMigrationCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to get core account")
 		}
 
-		//TODO add frost support
-		oldKeyShare := tss2.NewEcdsaShare()
-		if secrets.GetTemporaryTssShare(oldKeyShare) != nil {
-			return errors.Wrap(err, "failed to get old key share")
+		oldKeyShare, err := LoadMigrationShare(secrets)
+		if err != nil {
+			return err
 		}
 
 		self := tss.LocalSignParty{
@@ -112,4 +112,13 @@ var reshareMigrationCmd = &cobra.Command{
 
 		return eg.Wait()
 	},
+}
+
+func LoadMigrationShare(storage secrets.Storage) (tss.Share, error) {
+	// FROST resharing is intentionally not implemented yet.
+	oldKeyShare := tss2.NewEcdsaShare()
+	if err := storage.GetTemporaryTssShare(oldKeyShare); err != nil {
+		return nil, errors.Wrap(err, "failed to get old key share")
+	}
+	return oldKeyShare, nil
 }

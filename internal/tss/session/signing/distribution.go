@@ -52,7 +52,7 @@ func NewSignaturesDistributor(
 			sessionId,
 			parties,
 			self.Account,
-			tss.MaxMaliciousParties(len(parties)+1, self.Threshold),
+			self.Threshold,
 			p2p.RequestType_RT_SIGNATURE_DISTRIBUTION,
 			logger.WithField("component", "signatures_broadcaster"),
 		),
