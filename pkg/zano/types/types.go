@@ -58,28 +58,30 @@ type GetTxResponse struct {
 
 type Transaction struct {
 	Ado                   *AssetDescriptorOperation `json:"ado,omitempty"`
-	Amount                uint64                    `json:"amount"`
 	Comment               string                    `json:"comment"`
 	Contract              []Contract                `json:"contract"`
 	EmployedEntries       interface{}               `json:"employed_entries"`
 	Fee                   uint64                    `json:"fee"`
 	Height                uint64                    `json:"height"`
-	IsIncome              bool                      `json:"is_income"`
 	IsMining              bool                      `json:"is_mining"`
 	IsMixing              bool                      `json:"is_mixing"`
 	IsService             bool                      `json:"is_service"`
-	PaymentID             string                    `json:"payment_id"`
 	RemoteAddresses       []string                  `json:"remote_addresses"`
 	RemoteAliases         []string                  `json:"remote_aliases"`
 	ServiceEntries        []ServiceEntry            `json:"service_entries"`
+	SubtransfersByPID     []SubtransfersByPID       `json:"subtransfers_by_pid"`
 	ShowSender            bool                      `json:"show_sender"`
-	Subtransfers          []SubTransfer             `json:"subtransfers"`
 	Timestamp             int                       `json:"timestamp"`
 	TransferInternalIndex int                       `json:"transfer_internal_index"`
 	TxBlobSize            int                       `json:"tx_blob_size"`
 	TxHash                string                    `json:"tx_hash"`
 	TxType                int                       `json:"tx_type"`
 	UnlockTime            int                       `json:"unlock_time"`
+}
+
+type SubtransfersByPID struct {
+	PaymentID    string        `json:"payment_id"`
+	Subtransfers []SubTransfer `json:"subtransfers"`
 }
 
 type Contract struct {

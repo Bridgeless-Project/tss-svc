@@ -65,7 +65,7 @@ func (z Sdk) GetTransactions(txid string) (*types.GetTxResponse, error) {
 		TxID:           txid,
 	}
 	resp := new(types.GetTxResponse)
-	if err := z.client.Call(types.WalletMethodSearchForTransactions, resp, req, true); err != nil {
+	if err := z.client.Call(types.WalletMethodSearchForTransactions2, resp, req, true); err != nil {
 		return nil, err
 	}
 

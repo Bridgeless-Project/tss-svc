@@ -9,7 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-var addressPattern = regexp.MustCompile(`^[1-9A-HJ-NP-Za-km-z]{97}$`)
+// Zano address patterns: - - - - - - - - - - - - - - - Standard - - - - - - - - Integrated - - - - - - - - Auditable - - - - - - - - Auditable Integrated - - - - - - Gateway - - - - - - - - - Gateway Integrated
+var addressPattern = regexp.MustCompile(`^(?:Zx[1-9A-HJ-NP-Za-km-z]{95}|iZ[1-9A-HJ-NP-Za-km-z]{106}|aZx[1-9A-HJ-NP-Za-km-z]{96}|aiZ[1-9A-HJ-NP-Za-km-z]{107}|gwZ[1-9A-HJ-NP-Za-km-z]{54}|gwiZ[1-9A-HJ-NP-Za-km-z]{64})$`)
 
 type Client struct {
 	chain Chain

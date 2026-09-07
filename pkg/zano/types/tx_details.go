@@ -54,10 +54,7 @@ func (e *TxExtra) UnmarshalJSON(data []byte) error {
 }
 
 type TxInJson struct {
-	Aggregated struct {
-		TxExtra TxExtra `json:"extra"`
-		// Add other fields as needed
-	} `json:"AGGREGATED"`
+	Extra TxExtra `json:"extra"`
 }
 type AssetDescriptorBase struct {
 	OperationType uint64           `json:"operation_type"`
@@ -94,7 +91,7 @@ func (r *DecryptTxDetailsResponse) GetAssetInfo() (*AssetDescriptorBase, error) 
 		return nil, errors.Wrap(err, "failed to unmarshal transaction")
 	}
 
-	for _, extra := range tx.Aggregated.TxExtra {
+	for _, extra := range tx.Extra {
 		if extra.Type == extraEntryAssetDescriptor {
 			assetDescriptor, ok := extra.Value.(AssetDescriptorBase)
 			if !ok {
